@@ -16,6 +16,7 @@ import {
 import { Link } from 'react-router-dom';
 import { MaintenanceConfig } from '../types';
 import { SITE_SETTINGS_DEFAULTS } from '../lib/siteSettings';
+import Logo from './Logo';
 
 interface DevelopmentModeScreenProps {
   config?: MaintenanceConfig;
@@ -62,17 +63,7 @@ export default function DevelopmentModeScreen({
       {/* Top Header Bar */}
       <header className="relative z-10 w-full max-w-7xl mx-auto px-6 py-6 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-[#000080] flex items-center justify-center text-white font-black text-lg shadow-lg shadow-blue-900/30 border border-blue-400/20">
-            P
-          </div>
-          <div>
-            <span className="font-extrabold text-lg tracking-tight text-white block leading-none">
-              {businessName}
-            </span>
-            <span className="text-[11px] font-mono uppercase tracking-wider text-blue-400 font-semibold">
-              Digital Engineering & Design
-            </span>
-          </div>
+          <Logo light className="h-9 sm:h-11 w-auto" />
         </div>
 
         <div className="flex items-center gap-3">
