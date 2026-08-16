@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useCMS } from '../lib/CMSProvider';
+import { formatR2ImageUrl } from '../lib/r2Media';
 import { motion } from 'motion/react';
 import { 
   ArrowLeft, ArrowUpRight, Building2, Share2, Check, Palette, Layout, Monitor, 
@@ -270,9 +271,12 @@ function VisualCard({ vis, onOpenLightbox }: { vis: any; onOpenLightbox: (vis: a
           className="relative aspect-[16/10] overflow-hidden bg-slate-100 cursor-pointer border-b border-slate-100"
         >
           <img
-            src={allImages[activeIdx]}
+            src={formatR2ImageUrl(allImages[activeIdx])}
             alt={`${vis.title} - Image ${activeIdx + 1}`}
             className="w-full h-full object-cover object-top group-hover:scale-[1.03] transition-transform duration-700 ease-in-out"
+            onError={(e) => {
+              (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&q=80&w=1200';
+            }}
           />
 
           {/* Navigation Arrows for multi-image */}
@@ -319,7 +323,14 @@ function VisualCard({ vis, onOpenLightbox }: { vis: any; onOpenLightbox: (vis: a
                   activeIdx === i ? 'border-[#000080] shadow-md scale-105' : 'border-transparent opacity-60 hover:opacity-100 grayscale hover:grayscale-0'
                 }`}
               >
-                <img src={img} alt="" className="w-full h-full object-cover object-top" />
+                <img 
+                  src={formatR2ImageUrl(img)} 
+                  alt="" 
+                  className="w-full h-full object-cover object-top" 
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&q=80&w=1200';
+                  }}
+                />
               </button>
             ))}
           </div>
@@ -517,9 +528,12 @@ export default function PortfolioDetailView() {
         {/* Fullscreen Background Cover Image */}
         <div className="absolute inset-0 z-0">
           <img 
-            src={item.coverImage || 'https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&q=80&w=1600'} 
+            src={formatR2ImageUrl(item.coverImage) || 'https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&q=80&w=1600'} 
             alt={item.title} 
             className="w-full h-full object-cover filter brightness-90"
+            onError={(e) => {
+              (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&q=80&w=1600';
+            }}
           />
           {/* Subtle Dark Overlay Gradient */}
           <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/65 to-slate-950/40" />

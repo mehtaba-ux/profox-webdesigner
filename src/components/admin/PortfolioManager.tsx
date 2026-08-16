@@ -1331,7 +1331,7 @@ export default function PortfolioManager({ items, categories: propsCategories, o
                                 onClick={() => {
                                   const nameInput = document.getElementById(`doc-name-${idx}`) as HTMLInputElement;
                                   const urlInput = document.getElementById(`doc-url-${idx}`) as HTMLInputElement;
-                                  const typeSelect = document.getElementById(`doc-type-${idx}`) as HTMLSelectElement;
+                                  const typeSelect = document.getElementById(`doc-type-${idx}`) as unknown as HTMLSelectElement;
                                   if (nameInput && urlInput && nameInput.value.trim() && urlInput.value.trim()) {
                                     const updated = [...(editingItem.designShowcase?.visuals || [])];
                                     updated[idx].documents = [...(updated[idx].documents || []), {
@@ -1410,7 +1410,7 @@ export default function PortfolioManager({ items, categories: propsCategories, o
                           onClick={() => {
                             const nameEl = document.getElementById('proj-doc-name') as HTMLInputElement;
                             const urlEl = document.getElementById('proj-doc-url') as HTMLInputElement;
-                            const typeEl = document.getElementById('proj-doc-type') as HTMLSelectElement;
+                            const typeEl = document.getElementById('proj-doc-type') as unknown as HTMLSelectElement;
                             if (nameEl.value && urlEl.value) {
                               const current = editingItem.designShowcase?.projectDocuments || [];
                               setEditingItem({

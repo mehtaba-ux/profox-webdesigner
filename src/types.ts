@@ -57,13 +57,17 @@ export interface CaseStudy {
 export interface SEOConfig {
   metaTitle: string;
   metaDescription: string;
-  focusKeyword: string;
-  canonicalUrl: string;
-  ogTitle: string;
-  ogDescription: string;
-  ogImage: string;
-  noIndex: boolean;
-  schemaType: 'WebPage' | 'Article' | 'Organization' | 'Service';
+  focusKeyword?: string;
+  keywords?: string;
+  canonicalUrl?: string;
+  ogTitle?: string;
+  ogDescription?: string;
+  ogImage?: string;
+  noIndex?: boolean;
+  schemaType?: 'WebPage' | 'Article' | 'Organization' | 'Service';
+  _author?: { name: string; avatar?: string };
+  _highlights?: string[];
+  _faq?: { question: string; answer: string }[];
 }
 
 export interface ThemeConfig {
@@ -329,6 +333,7 @@ export interface FeedbackResolution {
 export interface FeedbackEntry {
   image?: string;
   position?: string;
+  link?: string;
   showOnWebsite?: boolean;
   id: string;
   customerName: string;

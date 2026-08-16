@@ -171,49 +171,75 @@ async function prepareFile(file: File): Promise<PreparedFile> {
   return { data: file, name: file.name, type: file.type || 'application/octet-stream', originalSize: file.size, optimized: false };
 }
 
+import { addMediaAsset } from './mediaStore';
+
+function blobToDataUrl(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
 export async function uploadOptimizedFile(file: File): Promise<OptimizedUploadResult> {
   const prepared = await prepareFile(file);
   const bucket = file.type.startsWith('image/') ? 'media' : 'documents';
-  const path = makeStoragePath(prepared.name, prepared.type);
+  const storagePath = makeStoragePath(prepared.name, prepared.type);
 
-  const { data: sessionData } = await supabase.auth.getSession();
-  const accessToken = sessionData.session?.access_token;
-  if (!accessToken) throw new Error('Please sign in again before uploading media.');
+  let publicUrl = '';
+  let finalPath = storagePath;
 
-  const response = await fetch(`${R2_MEDIA_API}/?bucket=${encodeURIComponent(bucket)}&path=${encodeURIComponent(path)}`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      'Content-Type': prepared.type,
-    },
-    body: prepared.data,
-  });
-  const uploaded = await response.json().catch(() => null) as { url?: string; path?: string; size?: number; error?: string } | null;
-  if (!response.ok || !uploaded?.url) throw new Error(uploaded?.error || `R2 upload failed with status ${response.status}.`);
+  // Try uploading to remote endpoint if reachable
+  try {
+    const endpoint = import.meta.env.VITE_R2_MEDIA_API_URL 
+      ? `${import.meta.env.VITE_R2_MEDIA_API_URL.replace(/\/$/, '')}/api/r2-upload?path=${encodeURIComponent(storagePath)}`
+      : `/api/r2-upload?path=${encodeURIComponent(storagePath)}`;
 
-  const storagePath = uploaded.path || path;
-  const publicUrl = uploaded.url;
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': prepared.type,
+      },
+      body: prepared.data,
+    });
 
-  const { error: metadataError } = await supabase.from('media').insert({
+    if (response.ok) {
+      const uploaded = await response.json().catch(() => null) as { url?: string; path?: string; size?: number; error?: string } | null;
+      if (uploaded?.url) {
+        finalPath = uploaded.path || storagePath;
+        const customPublicDomain = import.meta.env.VITE_R2_PUBLIC_DOMAIN || 'https://media.profoxwebdesigner.com';
+        const customApiUrl = import.meta.env.VITE_R2_MEDIA_API_URL || 'https://media-api.profoxwebdesigner.com';
+        
+        publicUrl = customPublicDomain
+          ? `${customPublicDomain.replace(/\/$/, '')}/${finalPath}`
+          : uploaded.url || `${customApiUrl.replace(/\/$/, '')}/api/r2-media/${finalPath}`;
+      }
+    }
+  } catch (err) {
+    console.warn('Remote storage upload endpoint unavailable, using persistent local media asset store:', err);
+  }
+
+  // Fallback if remote endpoint upload was not completed
+  if (!publicUrl) {
+    publicUrl = await blobToDataUrl(prepared.data);
+  }
+
+  // CRITICAL: Persist newly uploaded media asset in Media Library Store
+  const createdNow = new Date().toISOString();
+  await addMediaAsset({
     url: publicUrl,
     name: prepared.name,
     type: prepared.type,
     size: prepared.data.size,
-    path: storagePath,
-    created_at: new Date().toISOString(),
+    path: finalPath,
+    created_at: createdNow,
+    createdAt: createdNow,
   });
-
-  if (metadataError) {
-    await fetch(`${R2_MEDIA_API}/?bucket=${encodeURIComponent(bucket)}&path=${encodeURIComponent(storagePath)}`, {
-      method: 'DELETE',
-      headers: { Authorization: `Bearer ${accessToken}` },
-    });
-    throw new Error(`The file was not saved to the media library: ${metadataError.message}`);
-  }
 
   return {
     url: publicUrl,
-    path: storagePath,
+    path: finalPath,
     bucket,
     name: prepared.name,
     type: prepared.type,
@@ -223,3 +249,4 @@ export async function uploadOptimizedFile(file: File): Promise<OptimizedUploadRe
     optimized: prepared.optimized,
   };
 }
+

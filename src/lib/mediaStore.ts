@@ -1,0 +1,292 @@
+import { supabase, isSupabaseConfigured } from './supabase';
+import { MediaAsset } from '../types';
+
+import coverImg from '../assets/images/how_to_choose_web_design_company_cover_1786884646364.jpg';
+import visual1Img from '../assets/images/freelancer_vs_agency_comparison_1786884592585.jpg';
+import visual3Img from '../assets/images/red_flags_vs_green_flags_1786884608036.jpg';
+import visual5Img from '../assets/images/site_to_system_flow_1786884625148.jpg';
+
+import coverCostImg from '../assets/images/blog_cost_cover_1786879013661.jpg';
+import spectrumImg from '../assets/images/blog_cost_spectrum_1786879029684.jpg';
+import hiddenCostsImg from '../assets/images/blog_hidden_costs_1786879048448.jpg';
+import roiValueImg from '../assets/images/blog_roi_value_1786879072611.jpg';
+
+const MEDIA_STORAGE_KEY = 'cms_media_library_assets';
+
+// Default starter stock assets to ensure the library is never empty
+const DEFAULT_STOCK_ASSETS: MediaAsset[] = [
+  {
+    id: 'blog-graphic-cover',
+    name: 'How to Choose Web Design Company Cover',
+    url: coverImg,
+    type: 'image/jpeg',
+    size: 580000,
+    path: 'blog/how-to-choose-cover.jpg',
+    created_at: '2026-02-01T00:00:00.000Z',
+  },
+  {
+    id: 'blog-graphic-visual-1',
+    name: 'Freelancer vs Studio vs Agency Table',
+    url: visual1Img,
+    type: 'image/jpeg',
+    size: 490000,
+    path: 'blog/freelancer-vs-agency.jpg',
+    created_at: '2026-02-01T00:00:00.000Z',
+  },
+  {
+    id: 'blog-graphic-visual-3',
+    name: 'Web Design Red Flags vs Green Flags',
+    url: visual3Img,
+    type: 'image/jpeg',
+    size: 510000,
+    path: 'blog/red-flags-vs-green-flags.jpg',
+    created_at: '2026-02-01T00:00:00.000Z',
+  },
+  {
+    id: 'blog-graphic-visual-5',
+    name: 'Site to System Customer Journey Flow',
+    url: visual5Img,
+    type: 'image/jpeg',
+    size: 530000,
+    path: 'blog/site-to-system-flow.jpg',
+    created_at: '2026-02-01T00:00:00.000Z',
+  },
+  {
+    id: 'blog-cost-cover',
+    name: 'Website Cost 2026 Pricing Guide Cover',
+    url: coverCostImg,
+    type: 'image/jpeg',
+    size: 560000,
+    path: 'blog/website-cost-cover.jpg',
+    created_at: '2026-01-15T00:00:00.000Z',
+  },
+  {
+    id: 'blog-cost-spectrum',
+    name: 'Website Cost Spectrum Breakdown Table',
+    url: spectrumImg,
+    type: 'image/jpeg',
+    size: 520000,
+    path: 'blog/website-cost-spectrum.jpg',
+    created_at: '2026-01-15T00:00:00.000Z',
+  },
+  {
+    id: 'blog-cost-hidden',
+    name: 'Hidden Costs of Web Design Iceberg Visual',
+    url: hiddenCostsImg,
+    type: 'image/jpeg',
+    size: 490000,
+    path: 'blog/website-hidden-costs.jpg',
+    created_at: '2026-01-15T00:00:00.000Z',
+  },
+  {
+    id: 'blog-cost-roi',
+    name: 'Website Cost vs Value Realized ROI Chart',
+    url: roiValueImg,
+    type: 'image/jpeg',
+    size: 510000,
+    path: 'blog/website-roi-value.jpg',
+    created_at: '2026-01-15T00:00:00.000Z',
+  },
+  {
+    id: 'stock-1',
+    name: 'Corporate Office Headquarters',
+    url: 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&q=80&w=1200',
+    type: 'image/jpeg',
+    size: 450000,
+    path: 'stock/office.jpg',
+    created_at: '2026-01-01T00:00:00.000Z',
+  },
+  {
+    id: 'stock-2',
+    name: 'Digital Strategy & Analytics',
+    url: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&q=80&w=1200',
+    type: 'image/jpeg',
+    size: 520000,
+    path: 'stock/analytics.jpg',
+    created_at: '2026-01-02T00:00:00.000Z',
+  },
+  {
+    id: 'stock-3',
+    name: 'Team Collaboration Session',
+    url: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&q=80&w=1200',
+    type: 'image/jpeg',
+    size: 480000,
+    path: 'stock/team.jpg',
+    created_at: '2026-01-03T00:00:00.000Z',
+  },
+  {
+    id: 'stock-4',
+    name: 'Professional Client Headshot 1',
+    url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=600',
+    type: 'image/jpeg',
+    size: 210000,
+    path: 'stock/avatar-1.jpg',
+    created_at: '2026-01-04T00:00:00.000Z',
+  },
+  {
+    id: 'stock-5',
+    name: 'Professional Client Headshot 2',
+    url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=600',
+    type: 'image/jpeg',
+    size: 195000,
+    path: 'stock/avatar-2.jpg',
+    created_at: '2026-01-05T00:00:00.000Z',
+  },
+  {
+    id: 'stock-6',
+    name: 'Swimming Pool Diagnostics & Leak Detection',
+    url: 'https://images.unsplash.com/photo-1576013551627-0cc20b96c2a7?auto=format&fit=crop&q=80&w=1200',
+    type: 'image/jpeg',
+    size: 610000,
+    path: 'stock/pool.jpg',
+    created_at: '2026-01-06T00:00:00.000Z',
+  },
+];
+
+/**
+ * Reads locally stored media assets from localStorage
+ */
+export function getLocalMediaAssets(): MediaAsset[] {
+  try {
+    const raw = localStorage.getItem(MEDIA_STORAGE_KEY);
+    if (!raw) return DEFAULT_STOCK_ASSETS;
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed) || parsed.length === 0) {
+      return DEFAULT_STOCK_ASSETS;
+    }
+    // Ensure all DEFAULT_STOCK_ASSETS exist in the list
+    const existingIds = new Set(parsed.map((a: MediaAsset) => a.id));
+    const missingDefaults = DEFAULT_STOCK_ASSETS.filter(a => !existingIds.has(a.id));
+    if (missingDefaults.length > 0) {
+      const merged = [...parsed, ...missingDefaults];
+      saveLocalMediaAssets(merged);
+      return merged;
+    }
+    return parsed;
+  } catch (err) {
+    console.error('Error reading local media assets:', err);
+    return DEFAULT_STOCK_ASSETS;
+  }
+}
+
+/**
+ * Saves media assets to localStorage
+ */
+export function saveLocalMediaAssets(assets: MediaAsset[]): void {
+  try {
+    localStorage.setItem(MEDIA_STORAGE_KEY, JSON.stringify(assets));
+  } catch (err) {
+    console.error('Error saving local media assets:', err);
+  }
+}
+
+/**
+ * Fetches all media assets, seamlessly combining Supabase records (if configured)
+ * and local persistent storage.
+ */
+export async function getStoredMediaAssets(): Promise<MediaAsset[]> {
+  let remoteAssets: MediaAsset[] = [];
+
+  if (isSupabaseConfigured) {
+    try {
+      const { data, error } = await supabase
+        .from('media')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (!error && Array.isArray(data)) {
+        remoteAssets = data as MediaAsset[];
+      }
+    } catch (err) {
+      console.warn('Supabase media fetch skipped:', err);
+    }
+  }
+
+  const localAssets = getLocalMediaAssets();
+
+  // Combine remote and local assets using unique ID or URL
+  const combinedMap = new Map<string, MediaAsset>();
+
+  // Add stock / local assets first
+  for (const asset of localAssets) {
+    const key = asset.id || asset.url;
+    combinedMap.set(key, asset);
+  }
+
+  // Remote assets override/extend
+  for (const asset of remoteAssets) {
+    const key = asset.id || asset.url;
+    combinedMap.set(key, asset);
+  }
+
+  const combined = Array.from(combinedMap.values());
+
+  // Sort newest first
+  combined.sort((a, b) => {
+    const dateA = new Date(a.created_at || a.createdAt || 0).getTime();
+    const dateB = new Date(b.created_at || b.createdAt || 0).getTime();
+    return dateB - dateA;
+  });
+
+  return combined;
+}
+
+/**
+ * Adds or updates a media asset in both local storage and Supabase (if configured)
+ */
+export async function addMediaAsset(assetData: Partial<MediaAsset>): Promise<MediaAsset> {
+  const newAsset: MediaAsset = {
+    id: assetData.id || `media-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`,
+    url: assetData.url || '',
+    name: assetData.name || 'Uploaded File',
+    type: assetData.type || 'image/png',
+    size: assetData.size || 0,
+    path: assetData.path || `upload/${Date.now()}`,
+    created_at: assetData.created_at || assetData.createdAt || new Date().toISOString(),
+    createdAt: assetData.created_at || assetData.createdAt || new Date().toISOString(),
+  };
+
+  // 1. Save to local persistent storage immediately
+  const localAssets = getLocalMediaAssets();
+  // Filter out duplicate url if exists
+  const updatedLocal = [newAsset, ...localAssets.filter(a => a.id !== newAsset.id && a.url !== newAsset.url)];
+  saveLocalMediaAssets(updatedLocal);
+
+  // 2. Sync to Supabase if configured
+  if (isSupabaseConfigured) {
+    try {
+      await supabase.from('media').upsert({
+        id: newAsset.id,
+        url: newAsset.url,
+        name: newAsset.name,
+        type: newAsset.type,
+        size: newAsset.size,
+        path: newAsset.path,
+        created_at: newAsset.created_at,
+      });
+    } catch (err) {
+      console.warn('Supabase media insert skipped:', err);
+    }
+  }
+
+  return newAsset;
+}
+
+/**
+ * Removes a media asset from local storage and Supabase (if configured)
+ */
+export async function deleteMediaAsset(assetId: string): Promise<void> {
+  // 1. Delete from local storage
+  const localAssets = getLocalMediaAssets();
+  const filtered = localAssets.filter(a => a.id !== assetId);
+  saveLocalMediaAssets(filtered);
+
+  // 2. Delete from Supabase if configured
+  if (isSupabaseConfigured) {
+    try {
+      await supabase.from('media').delete().eq('id', assetId);
+    } catch (err) {
+      console.warn('Supabase media delete skipped:', err);
+    }
+  }
+}

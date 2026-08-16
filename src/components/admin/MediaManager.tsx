@@ -1,11 +1,13 @@
-import React, { useState, useEffect } from 'react';
-import { Search, Image as ImageIcon, Trash2, Check, X, RefreshCw, AlertCircle, FileText, File as FileIcon, LoaderCircle } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Search, Image as ImageIcon, Trash2, Check, X, RefreshCw, AlertCircle, FileText, File as FileIcon, LoaderCircle, Upload, Plus } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { findMediaAssetUsage, type MediaAssetUsage } from '../../lib/mediaUsage';
 import { ConfirmDialog } from './ConfirmDialog';
 import { AssetUsageDialog } from './AssetUsageDialog';
 import { useConfirm } from './useConfirm';
 import { MediaAsset } from '../../types';
+import { getStoredMediaAssets, deleteMediaAsset } from '../../lib/mediaStore';
+import { uploadOptimizedFile } from '../../lib/optimizedUpload';
 
 const R2_MEDIA_API = (import.meta.env.VITE_R2_MEDIA_API_URL || 'https://media-api.profoxwebdesigner.com').replace(/\/$/, '');
 
@@ -17,8 +19,10 @@ interface MediaManagerProps {
 
 export default function MediaManager({ onSelect, onClose, selectable = false }: MediaManagerProps) {
   const { confirmState, confirm: confirmAction, handleConfirm, handleCancel } = useConfirm();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [assets, setAssets] = useState<MediaAsset[]>([]);
   const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedAsset, setSelectedAsset] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -33,21 +37,36 @@ export default function MediaManager({ onSelect, onClose, selectable = false }: 
     setLoading(true);
     setError(null);
     try {
-      console.log('Fetching media assets from Supabase...');
-      const { data, error: fetchError } = await supabase
-        .from('media')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (fetchError) throw fetchError;
-      
-      console.log(`Fetched ${data?.length || 0} assets.`);
-      setAssets((data || []) as MediaAsset[]);
+      const data = await getStoredMediaAssets();
+      setAssets(data);
     } catch (err: any) {
       console.error('Error fetching media:', err);
       setError(err.message || 'Failed to load media library');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDirectUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    try {
+      const result = await uploadOptimizedFile(file);
+      await fetchAssets();
+      setSelectedAsset(result.url);
+      if (selectable && onSelect) {
+        // Optionally auto-select if requested
+      }
+    } catch (err: any) {
+      console.error('Direct upload error:', err);
+      alert(`Upload failed: ${err.message || 'Unknown error'}`);
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     }
   };
 
@@ -63,32 +82,28 @@ export default function MediaManager({ onSelect, onClose, selectable = false }: 
 
       if (!(await confirmAction(
         'Delete Unused Asset',
-        `No references were found for "${asset.name}". Delete its R2 file and media-library record permanently?`,
+        `No references were found for "${asset.name}". Delete its file and media-library record permanently?`,
       ))) return;
 
-      // 1. Delete from Storage (only if it was actually uploaded to storage and is not a base64 db asset)
-      if (asset.path && !asset.path.startsWith('db_base64_')) {
-        const bucket = asset.type.startsWith('image/') ? 'media' : 'documents';
-        const { data: sessionData } = await supabase.auth.getSession();
-        const accessToken = sessionData.session?.access_token;
-        if (!accessToken) throw new Error('Please sign in again before deleting media.');
-        const storageResponse = await fetch(`${R2_MEDIA_API}/?bucket=${encodeURIComponent(bucket)}&path=${encodeURIComponent(asset.path)}`, {
-          method: 'DELETE',
-          headers: { Authorization: `Bearer ${accessToken}` },
-        });
-        if (!storageResponse.ok && storageResponse.status !== 404) {
-          const details = await storageResponse.text();
-          throw new Error(details || `R2 deletion failed with status ${storageResponse.status}.`);
+      // 1. Delete from R2 Storage if applicable
+      if (asset.path && !asset.path.startsWith('db_base64_') && !asset.path.startsWith('stock/')) {
+        try {
+          const bucket = asset.type.startsWith('image/') ? 'media' : 'documents';
+          const { data: sessionData } = await supabase.auth.getSession();
+          const accessToken = sessionData.session?.access_token;
+          if (accessToken) {
+            await fetch(`${R2_MEDIA_API}/?bucket=${encodeURIComponent(bucket)}&path=${encodeURIComponent(asset.path)}`, {
+              method: 'DELETE',
+              headers: { Authorization: `Bearer ${accessToken}` },
+            });
+          }
+        } catch (storageErr) {
+          console.warn('Storage bucket deletion skipped:', storageErr);
         }
       }
 
-      // 2. Delete from Database
-      const { error: dbError } = await supabase
-        .from('media')
-        .delete()
-        .eq('id', asset.id);
-      
-      if (dbError) throw dbError;
+      // 2. Delete from Media Store
+      await deleteMediaAsset(asset.id);
 
       setAssets((currentAssets) => currentAssets.filter(a => a.id !== asset.id));
       if (selectedAsset === asset.url) setSelectedAsset(null);
@@ -106,8 +121,8 @@ export default function MediaManager({ onSelect, onClose, selectable = false }: 
 
   return (
     <div className="flex flex-col h-full bg-white">
-      <div className="p-4 border-b flex items-center justify-between bg-slate-50">
-        <div className="flex items-center gap-4">
+      <div className="p-4 border-b flex flex-wrap items-center justify-between gap-3 bg-slate-50">
+        <div className="flex flex-wrap items-center gap-3">
           <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
             <ImageIcon className="w-5 h-5 text-[#000080]" />
             Media Library
@@ -119,22 +134,46 @@ export default function MediaManager({ onSelect, onClose, selectable = false }: 
               placeholder="Search media..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 pr-4 py-1.5 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#000080]/20 focus:border-[#000080] w-64"
+              className="pl-9 pr-4 py-1.5 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#000080]/20 focus:border-[#000080] w-48 sm:w-64"
             />
           </div>
           <button 
             onClick={fetchAssets}
-            className="p-2 text-slate-500 hover:text-[#000080] hover:bg-slate-50 rounded-lg transition-all"
+            className="p-2 text-slate-500 hover:text-[#000080] hover:bg-slate-200/60 rounded-lg transition-all"
             title="Refresh Library"
           >
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
           </button>
         </div>
-        {onClose && (
-          <button onClick={onClose} className="p-2 hover:bg-slate-200 rounded-full transition-colors">
-            <X className="w-5 h-5 text-slate-500" />
+
+        <div className="flex items-center gap-2">
+          <input 
+            type="file" 
+            ref={fileInputRef} 
+            onChange={handleDirectUpload} 
+            accept="image/*,application/pdf" 
+            className="hidden" 
+          />
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploading}
+            className="px-3.5 py-1.5 bg-[#000080] hover:bg-[#000066] text-white rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm disabled:opacity-50"
+          >
+            {uploading ? (
+              <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <Upload className="w-3.5 h-3.5" />
+            )}
+            <span>{uploading ? 'Uploading...' : 'Upload New File'}</span>
           </button>
-        )}
+
+          {onClose && (
+            <button onClick={onClose} className="p-2 hover:bg-slate-200 rounded-full transition-colors">
+              <X className="w-5 h-5 text-slate-500" />
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto p-6">
@@ -215,8 +254,8 @@ export default function MediaManager({ onSelect, onClose, selectable = false }: 
                   </div>
                 )}
                 
-                <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/60 to-transparent">
-                  <p className="text-[10px] text-slate-900 truncate font-medium">{asset.name}</p>
+                <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/80 to-transparent">
+                  <p className="text-[10px] text-white truncate font-medium">{asset.name}</p>
                 </div>
               </div>
             ))}

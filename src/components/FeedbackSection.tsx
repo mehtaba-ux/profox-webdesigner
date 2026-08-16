@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { Quote, Star, MessageSquare, ArrowRight, Plus } from 'lucide-react';
+import { Quote, Star, MessageSquare, ArrowRight, Plus, ExternalLink } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useCMS } from '../lib/CMSProvider';
 import { FeedbackEntry } from '../types';
@@ -116,6 +116,18 @@ export default function FeedbackSection({ isLiveEditing = false }: FeedbackSecti
                           year: 'numeric',
                         })}
                       </p>
+                    )}
+                    {fb.link && (
+                      <a
+                        href={fb.link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-1 inline-flex items-center gap-1 text-[11px] font-bold text-[#000080] hover:underline"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <ExternalLink className="w-3 h-3" />
+                        Visit Link
+                      </a>
                     )}
                   </div>
                 </div>

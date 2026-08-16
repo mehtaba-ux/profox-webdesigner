@@ -1,5 +1,6 @@
 import React from 'react';
 import { useCMS } from '../lib/CMSProvider';
+import { formatR2ImageUrl } from '../lib/r2Media';
 import { Link } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { DynamicSection } from '../types';
@@ -253,7 +254,14 @@ export default function DynamicSectionRenderer({ section, isLiveEditing }: Dynam
               <div key={item.id} className="group relative bg-white rounded-3xl overflow-hidden border border-slate-200 hover:border-[#000080]/30 transition-all hover:shadow-2xl flex flex-col">
                 <Link to={`/portfolio/${item.slug}`} className="block relative h-48 overflow-hidden bg-slate-100">
                   {item.coverImage ? (
-                    <img src={item.coverImage} alt={item.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
+                    <img 
+                      src={formatR2ImageUrl(item.coverImage)} 
+                      alt={item.title} 
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" 
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&q=80&w=1200';
+                      }}
+                    />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-slate-300">
                       <ImageIcon className="w-8 h-8" />

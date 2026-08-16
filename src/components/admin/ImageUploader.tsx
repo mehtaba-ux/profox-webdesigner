@@ -75,53 +75,62 @@ export default function ImageUploader({
 
   return (
     <div className="space-y-2">
-      {label && (
-        <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2">
+        {label ? (
           <label className="block text-xs font-bold text-slate-700">{label}</label>
-          <div className="flex items-center gap-1 bg-slate-50 p-0.5 rounded-lg border border-slate-200 text-[10px]">
-            <button
-              type="button"
-              onClick={() => setMode('upload')}
-              className={`px-1.5 py-0.5 rounded transition-colors ${
-                mode === 'upload' ? 'bg-[#000080] text-white font-bold' : 'text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              Upload
-            </button>
-            <button
-              type="button"
-              onClick={() => setMode('database')}
-              className={`px-1.5 py-0.5 rounded transition-colors ${
-                mode === 'database' ? 'bg-[#000080] text-white font-bold' : 'text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              Library
-            </button>
-            <button
-              type="button"
-              onClick={() => setMode('url')}
-              className={`px-1.5 py-0.5 rounded transition-colors ${
-                mode === 'url' ? 'bg-[#000080] text-white font-bold' : 'text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              URL
-            </button>
-            <button
-              type="button"
-              onClick={() => { setMode('presets'); setShowPresets(!showPresets); }}
-              className={`px-1.5 py-0.5 rounded transition-colors ${
-                mode === 'presets' ? 'bg-[#000080] text-white font-bold' : 'text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              Stock
-            </button>
-          </div>
+        ) : (
+          <span className="text-[11px] font-bold text-slate-500">Image / File Source</span>
+        )}
+        <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200 text-[10px]">
+          <button
+            type="button"
+            onClick={() => setMode('upload')}
+            className={`px-2 py-1 rounded transition-colors flex items-center gap-1 ${
+              mode === 'upload' ? 'bg-[#000080] text-white font-bold shadow-xs' : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <Upload className="w-3 h-3" />
+            Upload
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setMode('database');
+              setShowMediaLibrary(true);
+            }}
+            className={`px-2 py-1 rounded transition-colors flex items-center gap-1 ${
+              mode === 'database' ? 'bg-[#000080] text-white font-bold shadow-xs' : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <Database className="w-3 h-3" />
+            Media Library
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode('url')}
+            className={`px-2 py-1 rounded transition-colors flex items-center gap-1 ${
+              mode === 'url' ? 'bg-[#000080] text-white font-bold shadow-xs' : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <LinkIcon className="w-3 h-3" />
+            Paste Link
+          </button>
+          <button
+            type="button"
+            onClick={() => { setMode('presets'); setShowPresets(!showPresets); }}
+            className={`px-2 py-1 rounded transition-colors flex items-center gap-1 ${
+              mode === 'presets' ? 'bg-[#000080] text-white font-bold shadow-xs' : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <ImageIcon className="w-3 h-3" />
+            Stock
+          </button>
         </div>
-      )}
+      </div>
 
       {/* Upload File Mode */}
       {mode === 'upload' && (
-        <div className="flex items-center gap-2">
+        <div className="flex flex-col sm:flex-row items-center gap-2">
           <input
             type="file"
             ref={fileInputRef}
@@ -133,20 +142,31 @@ export default function ImageUploader({
             type="button"
             onClick={() => fileInputRef.current?.click()}
             disabled={uploading}
-            className="flex-1 bg-slate-50 hover:bg-slate-100 border border-dashed border-slate-300 hover:border-[#000080] text-slate-700 rounded-xl py-2.5 px-4 text-xs font-bold transition-all flex items-center justify-center gap-2 group"
+            className="flex-1 w-full bg-slate-50 hover:bg-slate-100 border border-dashed border-slate-300 hover:border-[#000080] text-slate-700 rounded-xl py-2.5 px-4 text-xs font-bold transition-all flex items-center justify-center gap-2 group"
           >
             {uploading ? (
               <div className="w-4 h-4 border-2 border-[#000066] border-t-transparent rounded-full animate-spin" />
             ) : (
               <Upload className="w-4 h-4 text-[#000080] group-hover:scale-110 transition-transform" />
             )}
-            <span>{uploading ? 'Processing File...' : value ? 'Change File' : 'Click to Upload File'}</span>
+            <span>{uploading ? 'Processing File...' : value ? 'Change File' : 'Click to Upload Local File'}</span>
           </button>
+
+          <button
+            type="button"
+            onClick={() => setShowMediaLibrary(true)}
+            className="w-full sm:w-auto bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-[#000080] rounded-xl py-2.5 px-4 text-xs font-bold transition-all flex items-center justify-center gap-2 shrink-0"
+            title="Pick from existing Media Library"
+          >
+            <Database className="w-4 h-4" />
+            <span>Media Library</span>
+          </button>
+
           {value && (
             <button
               type="button"
               onClick={() => onChange('')}
-              className="p-2.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-xl transition-colors"
+              className="p-2.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 rounded-xl transition-colors shrink-0"
               title="Remove Image"
             >
               <X className="w-4 h-4" />
@@ -157,14 +177,26 @@ export default function ImageUploader({
 
       {/* Database Mode */}
       {mode === 'database' && (
-        <button
-          type="button"
-          onClick={() => setShowMediaLibrary(true)}
-          className="w-full bg-slate-50 hover:bg-slate-100 border border-slate-300 hover:border-[#000080] text-slate-700 rounded-xl py-2.5 px-4 text-xs font-bold transition-all flex items-center justify-center gap-2 group"
-        >
-          <Database className="w-4 h-4 text-[#000080]" />
-          <span>Open Media Library</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setShowMediaLibrary(true)}
+            className="flex-1 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-[#000080] rounded-xl py-3 px-4 text-xs font-bold transition-all flex items-center justify-center gap-2 group shadow-xs"
+          >
+            <Database className="w-4 h-4 text-[#000080] group-hover:scale-110 transition-transform" />
+            <span>Select from Existing Media Library</span>
+          </button>
+          {value && (
+            <button
+              type="button"
+              onClick={() => onChange('')}
+              className="p-3 bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 rounded-xl transition-colors shrink-0"
+              title="Clear Selection"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
       )}
 
       {/* URL Input Mode */}
@@ -176,7 +208,7 @@ export default function ImageUploader({
               type="text"
               value={value}
               onChange={(e) => onChange(e.target.value)}
-              placeholder={placeholder}
+              placeholder={placeholder || "Paste image URL or file link (https://...)"}
               className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-4 py-2 text-xs text-slate-900 focus:outline-none focus:border-[#000080] font-mono"
             />
           </div>
@@ -184,7 +216,7 @@ export default function ImageUploader({
             <button
               type="button"
               onClick={() => onChange('')}
-              className="p-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-xl transition-colors shrink-0"
+              className="p-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 rounded-xl transition-colors shrink-0"
             >
               <X className="w-4 h-4" />
             </button>

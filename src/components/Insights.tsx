@@ -6,6 +6,8 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { BlogPost } from '../types';
 import { Link } from 'react-router-dom';
+import { formatR2ImageUrl } from '../lib/r2Media';
+import { getAllBlogPosts } from '../lib/blogService';
 
 interface InsightsProps {
   isLiveEditing?: boolean;
@@ -29,35 +31,9 @@ export default function Insights({ isLiveEditing = false }: InsightsProps) {
   useEffect(() => {
     const fetchLatestPosts = async () => {
       try {
-        const { data, error } = await supabase
-          .from('posts')
-          .select('*')
-          .eq('status', 'published')
-          .order('updated_at', { ascending: false })
-          .limit(3);
-
-        if (error) throw error;
-
-        const fetchedPosts = (data || []).map(post => {
-          const seoData = post.seo || {};
-          return {
-            id: post.id,
-            title: post.title,
-            slug: post.slug,
-            content: post.content,
-            excerpt: post.excerpt,
-            featuredImage: post.cover_image || post.featured_image || '',
-            category: post.category,
-            tags: post.tags || [],
-            status: post.status,
-            author: seoData._author || post.author || { name: 'Admin' },
-            createdAt: post.updated_at,
-            updatedAt: post.updated_at,
-            publishedAt: post.published_at
-          };
-        }) as BlogPost[];
-        
-        setPosts(fetchedPosts);
+        const allPosts = await getAllBlogPosts();
+        const published = allPosts.filter(p => p.status === 'published');
+        setPosts(published.slice(0, 3));
       } catch (err) {
         console.error('Error fetching insights posts:', err);
       } finally {

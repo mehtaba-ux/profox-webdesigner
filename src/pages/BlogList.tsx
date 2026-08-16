@@ -7,6 +7,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../lib/AuthContext';
 import { useCMS } from '../lib/CMSProvider';
 import HeroReviewProof from '../components/HeroReviewProof';
+import { formatR2ImageUrl } from '../lib/r2Media';
+import { getAllBlogPosts } from '../lib/blogService';
 
 const articleTransition = { duration: 0.65, ease: [0.22, 1, 0.36, 1] as [number, number, number, number] };
 
@@ -27,17 +29,9 @@ export default function BlogList() {
   useEffect(() => {
     const fetchPosts = async () => {
       try {
-        const { data, error } = await supabase.from('posts').select('*').eq('status', 'published').order('published_at', { ascending: false, nullsFirst: false }).order('updated_at', { ascending: false });
-        if (error) throw error;
-        setPosts((data || []).map(post => {
-          const seoData = post.seo || {};
-          return {
-            id: post.id, title: post.title, slug: post.slug, content: post.content || '', excerpt: post.excerpt || '',
-            featuredImage: post.cover_image || post.featured_image || '', category: post.category || 'Insights', tags: post.tags || [], status: post.status,
-            author: seoData._author || post.author || { name: 'ProFox Team' }, seo: seoData,
-            createdAt: post.created_at || post.updated_at, updatedAt: post.updated_at, publishedAt: post.published_at
-          };
-        }) as BlogPost[]);
+        const allPosts = await getAllBlogPosts();
+        const published = allPosts.filter(p => p.status === 'published');
+        setPosts(published);
       } catch (error) {
         console.error('Error fetching posts:', error);
       } finally {

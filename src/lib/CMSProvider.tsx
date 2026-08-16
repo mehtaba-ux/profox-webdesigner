@@ -19,13 +19,13 @@ function filterPortfolioItems(items: any[]) {
   const defaultById = new Map(defaultPortfolioItems.map((p) => [p.id, p]));
   const defaultBySlug = new Map(defaultPortfolioItems.map((p) => [p.slug, p]));
 
-  // Merge items so that data.ts default updates (category, title, client, etc.) always take precedence for default items
+  // Merge items so that stored user items (including updated images and custom edits) override defaults, while keeping defaults as fallback
   const mergedItems = items.map((item) => {
     const def = defaultById.get(item.id) || defaultBySlug.get(item.slug);
     if (def) {
       return {
-        ...item,
         ...def,
+        ...item,
         // Keep status if explicitly set in stored item
         status: item.status || def.status || 'published',
       };
@@ -39,12 +39,7 @@ function filterPortfolioItems(items: any[]) {
 
   const combined = [...mergedItems, ...missingDefaults];
 
-  const validIds = new Set(defaultPortfolioItems.map((p) => p.id));
-  const validSlugs = new Set(defaultPortfolioItems.map((p) => p.slug));
-
-  const filtered = combined.filter((p) => 
-    validIds.has(p.id) || validSlugs.has(p.slug) || p.createdAt?.startsWith('2026-08-15')
-  );
+  const filtered = combined.filter((p) => Boolean(p && (p.id || p.slug || p.title)));
 
   return filtered.length > 0 ? filtered : defaultPortfolioItems;
 }

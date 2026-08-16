@@ -25,6 +25,8 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../lib/AuthContext';
 import { useCMS } from '../lib/CMSProvider';
+import { formatR2ImageUrl, processBlogContentR2Images } from '../lib/r2Media';
+import { getBlogPostBySlug, getAllBlogPosts } from '../lib/blogService';
 
 interface TOCItem {
   id: string;
@@ -55,70 +57,39 @@ export default function BlogPostView() {
     const fetchPost = async () => {
       setLoading(true);
       try {
-        const { data: postData, error } = await supabase
-          .from('posts')
-          .select('*')
-          .eq('slug', slug)
-          .single();
-        
-        if (error) throw error;
-        
-        if (postData) {
-          const seoData = postData.seo || {};
-          const mappedPost = {
-            id: postData.id,
-            title: postData.title,
-            slug: postData.slug,
-            content: postData.content,
-            excerpt: postData.excerpt,
-            featuredImage: postData.cover_image || postData.featured_image || '',
-            category: postData.category,
-            tags: postData.tags || [],
-            status: postData.status,
-            author: seoData._author || postData.author || { name: 'Admin' },
-            highlights: seoData._highlights || postData.highlights || [],
-            faq: seoData._faq || postData.faq || [],
-            seo: seoData,
-            createdAt: postData.updated_at,
-            updatedAt: postData.updated_at,
-            publishedAt: postData.published_at
-          } as BlogPost;
+        if (!slug) return;
+        const mappedPost = await getBlogPostBySlug(slug);
 
+        if (mappedPost) {
           setPost(mappedPost);
           
-          // Update SEO Title
-          document.title = `${mappedPost.seo.metaTitle || mappedPost.title} | ${businessName} Blog`;
+          // Update SEO Title & Meta Description
+          document.title = `${mappedPost.seo?.metaTitle || mappedPost.title} | ${businessName}`;
+          
+          let metaDesc = document.querySelector('meta[name="description"]');
+          if (!metaDesc) {
+            metaDesc = document.createElement('meta');
+            metaDesc.setAttribute('name', 'description');
+            document.head.appendChild(metaDesc);
+          }
+          metaDesc.setAttribute('content', mappedPost.seo?.metaDescription || mappedPost.excerpt);
+
+          let ogImg = document.querySelector('meta[property="og:image"]');
+          if (!ogImg) {
+            ogImg = document.createElement('meta');
+            ogImg.setAttribute('property', 'og:image');
+            document.head.appendChild(ogImg);
+          }
+          ogImg.setAttribute('content', mappedPost.featuredImage);
           
           // Fetch recent posts
-          const { data: recentData } = await supabase
-            .from('posts')
-            .select('*')
-            .eq('status', 'published')
-            .neq('id', postData.id)
-            .limit(3)
-            .order('updated_at', { ascending: false });
-          
-          if (recentData) {
-            const mappedRecent = recentData.map(p => {
-              const rSeoData = p.seo || {};
-              return {
-                id: p.id,
-                title: p.title,
-                slug: p.slug,
-                content: p.content,
-                excerpt: p.excerpt,
-                featuredImage: p.cover_image || p.featured_image || '',
-                category: p.category,
-                tags: p.tags || [],
-                status: p.status,
-                author: rSeoData._author || p.author || { name: 'Admin' },
-                createdAt: p.updated_at,
-                updatedAt: p.updated_at,
-                publishedAt: p.published_at
-              };
-            }) as BlogPost[];
-            setRecentPosts(mappedRecent);
-          }
+          const allPosts = await getAllBlogPosts();
+          const mappedRecent = allPosts
+            .filter(p => p.slug !== slug && p.status === 'published')
+            .slice(0, 3);
+          setRecentPosts(mappedRecent);
+        } else {
+          setPost(null);
         }
       } catch (err) {
         console.error('Error fetching post:', err);
@@ -135,7 +106,7 @@ export default function BlogPostView() {
   useEffect(() => {
     if (post) {
       const articleRoot = document.createElement('div');
-      articleRoot.innerHTML = post.content || '';
+      articleRoot.innerHTML = processBlogContentR2Images(post.content || '');
       // The reference TOC lists primary article sections (H2)
       // H3/H4 remain within their parent article section.
       const headings = Array.from(articleRoot.querySelectorAll('h2')) as HTMLElement[];
@@ -266,9 +237,17 @@ export default function BlogPostView() {
       <section className="relative flex min-h-[100vh] min-h-[100svh] items-end overflow-hidden pb-16 pt-40 sm:pb-20">
         <div className="absolute inset-0 z-0">
           <img 
-            src={post.featuredImage} 
+            src={post.featuredImage || (slug === 'how-much-does-a-website-cost' ? '/blog_cost_cover.jpg' : '/how_to_choose_web_design_company_cover.jpg')} 
             className="w-full h-full object-cover" 
             alt={post.title}
+            onError={(e) => {
+              const target = e.currentTarget;
+              if (slug === 'how-much-does-a-website-cost') {
+                target.src = '/blog_cost_cover.jpg';
+              } else if (slug === 'how-to-choose-a-web-design-company') {
+                target.src = '/how_to_choose_web_design_company_cover.jpg';
+              }
+            }}
           />
           <div className="absolute inset-0 bg-gradient-to-b from-slate-950/35 via-slate-950/45 to-slate-950/90" />
         </div>

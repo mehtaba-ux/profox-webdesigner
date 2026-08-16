@@ -16,3 +16,8 @@ binding = "ASSETS"
 [vars]
 ENVIRONMENT = "production"
 
+# Cloudflare R2 Storage Bucket Binding
+[[r2_buckets]]
+binding = "MEDIA_BUCKET"
+bucket_name = "profox-media"
+

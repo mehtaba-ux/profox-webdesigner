@@ -180,6 +180,10 @@ export const dbProcedure = {
   async getMediaAssets() {
     const { data, error } = await supabase.rpc('get_media_assets');
     if (!error && data) return { data, error: null };
-    return await supabase.from('media').select('*').order('created_at', { ascending: false });
+    const res = await supabase.from('media').select('*').order('created_at', { ascending: false });
+    if (!res.error && res.data) return res;
+    const { getStoredMediaAssets } = await import('./mediaStore');
+    const local = await getStoredMediaAssets();
+    return { data: local, error: null };
   }
 };

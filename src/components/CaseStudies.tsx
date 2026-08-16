@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { ArrowUpRight } from 'lucide-react';
 import { featuredCaseStudies as defaultFeatured, recentSuccess as defaultRecent, defaultPortfolioItems } from '../data';
 import { useCMS } from '../lib/CMSProvider';
+import { formatR2ImageUrl } from '../lib/r2Media';
 import VisualEditable from './admin/VisualEditable';
 
 interface CaseStudiesProps {
@@ -81,9 +82,12 @@ export default function CaseStudies({ isLiveEditing = false }: CaseStudiesProps)
                 className="group relative rounded-[22px] overflow-hidden aspect-[16/10] bg-slate-100"
               >
                 <img
-                  src={study.image}
+                  src={formatR2ImageUrl(study.image)}
                   alt={study.title}
                   className="w-full h-full object-cover opacity-80 transition-transform duration-700 group-hover:scale-105 group-hover:opacity-100"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&q=80&w=1200';
+                  }}
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-[#212329]/90 via-[#212329]/40 to-transparent pointer-events-none" />
                 <div className="absolute inset-x-0 bottom-0 p-8 flex gap-6 items-end">
@@ -142,9 +146,12 @@ export default function CaseStudies({ isLiveEditing = false }: CaseStudiesProps)
                 </div>
                 <div className="relative aspect-video overflow-hidden">
                   <img
-                    src={study.image}
+                    src={formatR2ImageUrl(study.image)}
                     alt={study.title}
                     className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&q=80&w=1200';
+                    }}
                   />
                   <div className="absolute inset-0 bg-black/40 group-hover:bg-black/20 transition-colors" />
                 </div>

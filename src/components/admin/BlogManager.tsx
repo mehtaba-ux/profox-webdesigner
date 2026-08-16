@@ -33,6 +33,15 @@ import { useConfirm } from './useConfirm';
 import { BlogPost, BlogCategory, SEOConfig } from '../../types';
 import ImageUploader from './ImageUploader';
 import AdvancedArticleEditor from './AdvancedArticleEditor';
+import { formatR2ImageUrl } from '../../lib/r2Media';
+import { 
+  getAllBlogPosts, 
+  saveBlogPost, 
+  deleteBlogPost, 
+  bulkDeleteBlogPosts, 
+  getLocalStoredCategories, 
+  saveLocalStoredCategories 
+} from '../../lib/blogService';
 
 export default function BlogManager() {
   const { confirmState, confirm: confirmAction, handleConfirm, handleCancel } = useConfirm();
@@ -190,7 +199,7 @@ export default function BlogManager() {
               slug: post.slug,
               content: post.content,
               excerpt: post.excerpt,
-              featuredImage: post.cover_image || post.featured_image || '',
+              featuredImage: formatR2ImageUrl(post.cover_image || post.featured_image || ''),
               category: post.category,
               tags: post.tags || [],
               status: post.status,
@@ -239,50 +248,8 @@ export default function BlogManager() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      // Fetch posts
-      const { data: postsData, error: postsError } = await supabase
-        .from('posts')
-        .select('*')
-        .order('updated_at', { ascending: false });
-      
-      if (postsError) throw postsError;
-
-      // Map snake_case from DB to camelCase for UI
-      const mappedPosts = (postsData || []).map(post => {
-        const seoData = post.seo || {};
-        return {
-          id: post.id,
-          title: post.title,
-          slug: post.slug,
-          content: post.content,
-          excerpt: post.excerpt,
-          featuredImage: post.cover_image || post.featured_image || '',
-          category: post.category,
-          tags: post.tags || [],
-          status: post.status,
-          author: seoData._author || post.author || { name: 'Admin' },
-          highlights: seoData._highlights || post.highlights || [],
-          faq: seoData._faq || post.faq || [],
-          seo: {
-            metaTitle: seoData.metaTitle || '',
-            metaDescription: seoData.metaDescription || '',
-            focusKeyword: seoData.focusKeyword || '',
-            canonicalUrl: seoData.canonicalUrl || '',
-            ogTitle: seoData.ogTitle || '',
-            ogDescription: seoData.ogDescription || '',
-            ogImage: seoData.ogImage || '',
-            noIndex: seoData.noIndex || false,
-            schemaType: seoData.schemaType || 'Article'
-          },
-          createdAt: post.updated_at,
-          updatedAt: post.updated_at,
-          publishedAt: post.published_at
-        };
-      }) as BlogPost[];
-
-      setPosts(mappedPosts);
-
-      // Fetch categories
+      const allPosts = await getAllBlogPosts();
+      setPosts(allPosts);
       await fetchCategories();
     } catch (err) {
       console.error('Error fetching blog data:', err);
@@ -360,36 +327,11 @@ export default function BlogManager() {
     };
 
     try {
-      const { data, error } = await supabase
-        .from('posts')
-        .insert({
-          title: duplicatePost.title,
-          slug: duplicatePost.slug,
-          content: duplicatePost.content,
-          excerpt: duplicatePost.excerpt,
-          cover_image: duplicatePost.featuredImage,
-          category: duplicatePost.category,
-          tags: duplicatePost.tags,
-          status: 'draft',
-          author_id: 'admin',
-          seo: {
-            ...duplicatePost.seo,
-            _author: duplicatePost.author,
-            _highlights: duplicatePost.highlights,
-            _faq: duplicatePost.faq,
-          },
-          updated_at: now,
-          published_at: null,
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-      const savedDuplicate = { ...duplicatePost, id: data.id, createdAt: data.updated_at || now, updatedAt: data.updated_at || now };
-      setPosts(currentPosts => [savedDuplicate, ...currentPosts]);
-      setEditingPost(savedDuplicate);
+      const { post: saved } = await saveBlogPost(duplicatePost);
+      setPosts(currentPosts => [saved, ...currentPosts]);
+      setEditingPost(saved);
       setView('editor');
-      setSearchParams({ tab: 'blog', edit: data.id });
+      setSearchParams({ tab: 'blog', edit: saved.id });
     } catch (error) {
       console.error('Error duplicating post:', error);
       alert('The post could not be duplicated. Please try again.');
@@ -399,13 +341,8 @@ export default function BlogManager() {
   const handleDelete = async (id: string) => {
     if (!(await confirmAction('Delete Post', 'Are you sure you want to delete this post?'))) return;
     try {
-      const { error } = await supabase
-        .from('posts')
-        .delete()
-        .eq('id', id);
-      
-      if (error) throw error;
-      setPosts(posts.filter(p => p.id !== id));
+      await deleteBlogPost(id);
+      setPosts(posts.filter(p => p.id !== id && p.slug !== id));
     } catch (err) {
       console.error('Error deleting post:', err);
     }
@@ -420,58 +357,14 @@ export default function BlogManager() {
     }
 
     try {
-      const now = new Date().toISOString();
-      const dbData = {
-        title: editingPost.title,
-        slug: editingPost.slug,
-        content: editingPost.content,
-        excerpt: editingPost.excerpt,
-        cover_image: editingPost.featuredImage,
-        category: editingPost.category,
-        tags: editingPost.tags,
-        status: editingPost.status,
-        author_id: 'admin',
-        seo: {
-          ...editingPost.seo,
-          _author: editingPost.author,
-          _highlights: editingPost.highlights,
-          _faq: editingPost.faq
-        },
-        updated_at: now,
-        published_at: editingPost.status === 'published' ? (editingPost.publishedAt || now) : null
-      };
-
-      if (editingPost.id) {
-        const { error } = await supabase
-          .from('posts')
-          .update(dbData)
-          .eq('id', editingPost.id);
-        if (error) throw error;
-        alert('Post updated successfully!');
-      } else {
-        const { data, error } = await supabase
-          .from('posts')
-          .insert(dbData)
-          .select()
-          .single();
-        if (error) throw error;
-        alert('Post created successfully!');
-        if (data) {
-          setEditingPost({
-            ...editingPost,
-            id: data.id,
-            createdAt: data.updated_at,
-            updatedAt: data.updated_at
-          });
-          // Stay in editor for new post so they can see the "View Live" link
-          return;
-        }
+      const { success, post: savedPost } = await saveBlogPost(editingPost);
+      if (success) {
+        setEditingPost(savedPost);
+        await fetchData();
+        setView('list');
+        setEditingPost(null);
+        setSearchParams({ tab: 'blog' });
       }
-      
-      await fetchData();
-      setView('list');
-      setEditingPost(null);
-      setSearchParams({ tab: 'blog' });
     } catch (err) {
       console.error('Error saving post:', err);
       alert('Error saving post. Please check console.');
@@ -616,9 +509,9 @@ export default function BlogManager() {
 </ul>
 <p>The objective is not to convince you that expensive automatically means better. It doesn't. The objective is to help you understand what you are actually paying for.</p>
 
-<figure class="my-10 rounded-2xl overflow-hidden border border-slate-200 shadow-sm">
-  <img src="/website_cost_spectrum.webp" alt="Table comparing the cost of different website builders and custom web design in 2026" class="w-full h-auto object-cover m-0" />
-  <figcaption class="text-center text-sm text-slate-500 py-3 bg-slate-50 m-0 border-t border-slate-200">Website Cost Spectrum: DIY to Custom Application</figcaption>
+<figure class="my-10 rounded-2xl overflow-hidden border border-slate-200 shadow-lg bg-slate-900">
+  <img src="https://media.profoxwebdesigner.com/blog_cost_spectrum.jpg" alt="Table comparing the cost of different website builders and custom web design in 2026" referrerPolicy="no-referrer" class="w-full h-auto object-cover m-0" />
+  <figcaption class="text-center text-sm text-slate-400 py-3 bg-slate-950/80 m-0 border-t border-slate-800">Figure 1: 2026 Website Cost Spectrum & Development Tier Breakdown</figcaption>
 </figure>
 
 <h2 id="tldr" class="scroll-mt-24">⏱️ TL;DR: Quick Answer for 2026</h2>
@@ -722,9 +615,9 @@ export default function BlogManager() {
 <h3>7. Performance & Accessibility (WCAG Compliance)</h3>
 <p>Modern websites must pass Google's Core Web Vitals (speed) and adhere to ADA/WCAG accessibility guidelines. Testing across devices, compressing code, and ensuring accessibility requires expert QA hours.</p>
 
-<figure class="my-10 rounded-2xl overflow-hidden border border-slate-200 shadow-sm">
-  <img src="/website_hidden_costs.webp" alt="Iceberg Visual representing visible price vs total cost including hosting, maintenance, and SEO" class="w-full h-auto object-cover m-0" />
-  <figcaption class="text-center text-sm text-slate-500 py-3 bg-slate-50 m-0 border-t border-slate-200">The Hidden Costs of Web Design (Visible Price vs. Total Cost)</figcaption>
+<figure class="my-10 rounded-2xl overflow-hidden border border-slate-200 shadow-lg bg-slate-900">
+  <img src="https://media.profoxwebdesigner.com/blog_hidden_costs.jpg" alt="Iceberg Visual representing visible price vs total cost including hosting, maintenance, and SEO" referrerPolicy="no-referrer" class="w-full h-auto object-cover m-0" />
+  <figcaption class="text-center text-sm text-slate-400 py-3 bg-slate-950/80 m-0 border-t border-slate-800">Figure 2: The Hidden Ongoing Costs of Web Design (Visible Price vs. Total Cost of Ownership)</figcaption>
 </figure>
 
 <h2 id="after-launch" class="scroll-mt-24">What Does a Website Cost After Launch? (Ongoing Fees)</h2>
@@ -821,6 +714,10 @@ export default function BlogManager() {
 <p>Why are our starting prices lower than agency benchmarks? Because price is influenced by overhead. We use efficient, modern development workflows, reusable systems, and a lean operating model to deliver agency-quality results at a small-business price point.</p>
 
 <h2>Website Cost vs. Website Value: The Bottom Line</h2>
+<figure class="my-10 rounded-2xl overflow-hidden border border-slate-200 shadow-lg bg-slate-900">
+  <img src="https://media.profoxwebdesigner.com/blog_roi_value.jpg" alt="Website ROI Comparison showing $500 static site vs high converting lead generating digital application" referrerPolicy="no-referrer" class="w-full h-auto object-cover m-0" />
+  <figcaption class="text-center text-sm text-slate-400 py-3 bg-slate-950/80 m-0 border-t border-slate-800">Figure 3: Website Cost vs Realized ROI - Low Cost Static Site vs High Converting Growth Asset</figcaption>
+</figure>
 <p>Imagine two scenarios: Website A costs $500. It produces zero inquiries. Website B costs $3,000. It consistently generates qualified leads every week.</p>
 <p>Which one was expensive? The $500 site was a total loss. The $3,000 site is a revenue-generating asset.</p>
 <p>A good website shouldn't merely exist online. It should make your business easier to understand, easier to trust, and easier to choose. And when necessary, it should connect the systems behind the experience as well. From site to system.</p>
@@ -871,7 +768,7 @@ export default function BlogManager() {
         category: "Pricing & Guides",
         status: "published",
         author_id: 'admin',
-        cover_image: "/website_cost_guide_cover.webp",
+        cover_image: "https://media.profoxwebdesigner.com/blog_cost_cover.jpg",
         tags: ["Pricing", "Web Design", "Small Business", "SEO"],
         published_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),

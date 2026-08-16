@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useCMS } from '../lib/CMSProvider';
+import { formatR2ImageUrl } from '../lib/r2Media';
 import { motion } from 'motion/react';
 import { ArrowUpRight, Image as ImageIcon, Search, FolderKanban, CheckCircle2, X } from 'lucide-react';
 import CTA from '../components/CTA';
@@ -317,10 +318,13 @@ export default function PortfolioList() {
                 {/* Background Image Container with Clip-Path Transition */}
                 <div className="case-study-img-wrap absolute inset-0 z-1 bg-slate-900 rounded-2xl overflow-hidden">
                   <img
-                    src={item.coverImage}
+                    src={formatR2ImageUrl(item.coverImage)}
                     alt={item.title}
                     className="w-full h-full object-cover object-top opacity-90 group-hover:opacity-100"
                     loading="lazy"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&q=80&w=1200';
+                    }}
                   />
                   {/* Gradient Overlay */}
                   <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/30 to-black/80 group-hover:from-black/60 group-hover:via-black/40 group-hover:to-black/90 transition-colors z-2 pointer-events-none" />

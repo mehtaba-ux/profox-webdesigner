@@ -18,10 +18,15 @@ import {
   Trash2,
   Star,
   Plus,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Pencil,
+  User,
+  Save,
+  ExternalLink
 } from 'lucide-react';
 import { useCMS } from '../../lib/CMSProvider';
 import { FeedbackEntry, FeedbackResolution } from '../../types';
+import ImageUploader from './ImageUploader';
 
 interface GroupedFeedback {
   id: string; // email
@@ -50,6 +55,34 @@ const FeedbackManager: React.FC = () => {
     status: 'resolved',
     showOnWebsite: true,
   });
+  const [editingFeedback, setEditingFeedback] = useState<FeedbackEntry | null>(null);
+
+  const handleSaveEditedFeedback = async () => {
+    if (!editingFeedback || !editingFeedback.id) return;
+
+    try {
+      const updatedFeedbacks = feedbacks.map(f => 
+        f.id === editingFeedback.id ? editingFeedback : f
+      );
+      await updateSection('feedback_submissions', updatedFeedbacks);
+
+      if (selectedGroup) {
+        const updatedGroupFeedbacks = selectedGroup.feedbacks.map(f =>
+          f.id === editingFeedback.id ? editingFeedback : f
+        );
+        setSelectedGroup({
+          ...selectedGroup,
+          customerName: editingFeedback.customerName || selectedGroup.customerName,
+          customerEmail: editingFeedback.customerEmail || selectedGroup.customerEmail,
+          feedbacks: updatedGroupFeedbacks
+        });
+      }
+
+      setEditingFeedback(null);
+    } catch (err) {
+      console.error('Error updating feedback entry:', err);
+    }
+  };
   
   const siteSettings = content.siteSettings || {};
   const [googleUrl, setGoogleUrl] = useState(siteSettings.googleReviewUrl || '');
@@ -71,6 +104,7 @@ const FeedbackManager: React.FC = () => {
         createdAt: new Date().toISOString(),
         image: newFeedback.image,
         position: newFeedback.position,
+        link: newFeedback.link,
         showOnWebsite: newFeedback.showOnWebsite,
       };
       
@@ -321,11 +355,35 @@ Management Team`);
                 filteredFeedbacks.map((group) => (
                   <tr key={group.id} className="hover:bg-slate-50/30 transition-colors group">
                     <td className="px-6 py-4">
-                      <div className="font-bold text-slate-900">{group.customerName}</div>
-                      <div className="text-xs text-slate-500">{group.customerEmail}</div>
-                      <div className="text-[10px] text-slate-400 mt-1 flex items-center gap-1">
-                        <Clock className="w-3 h-3" />
-                        {new Date(group.latestCreatedAt).toLocaleDateString()}
+                      <div className="flex items-center gap-3">
+                        <div className="relative shrink-0">
+                          {group.feedbacks.find(f => f.image)?.image ? (
+                            <img 
+                              src={group.feedbacks.find(f => f.image)?.image} 
+                              alt={group.customerName} 
+                              className="w-11 h-11 rounded-full object-cover border-2 border-indigo-100 shadow-sm" 
+                            />
+                          ) : (
+                            <div className="w-11 h-11 rounded-full bg-gradient-to-br from-[#000080] to-teal-700 text-white font-bold text-sm flex items-center justify-center shadow-sm">
+                              {group.customerName ? group.customerName.charAt(0).toUpperCase() : 'C'}
+                            </div>
+                          )}
+                        </div>
+                        <div>
+                          <div className="font-bold text-slate-900 flex items-center gap-1.5">
+                            {group.customerName}
+                            {group.feedbacks[0]?.position && (
+                              <span className="text-[11px] font-normal text-slate-500">
+                                ({group.feedbacks[0].position})
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-xs text-slate-500">{group.customerEmail}</div>
+                          <div className="text-[10px] text-slate-400 mt-0.5 flex items-center gap-1">
+                            <Clock className="w-3 h-3" />
+                            {new Date(group.latestCreatedAt).toLocaleDateString()}
+                          </div>
+                        </div>
                       </div>
                     </td>
                     <td className="px-6 py-4">
@@ -390,6 +448,13 @@ Management Team`);
                             View Details
                           </button>
                         )}
+                        <button
+                          onClick={() => setEditingFeedback(group.feedbacks[0])}
+                          title="Edit feedback & reviewer image"
+                          className="p-2 text-slate-500 hover:text-[#000080] hover:bg-indigo-50 rounded-xl transition-colors"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
                         <button
                           onClick={() => handleDeleteGroup(group)}
                           title="Delete all feedback from this client"
@@ -462,17 +527,57 @@ Management Team`);
                     <div className="space-y-4">
                       {selectedGroup.feedbacks.map((fb) => (
                         <div key={fb.id} className="p-4 bg-slate-50 rounded-2xl space-y-3 border border-slate-100">
-                          <div className="flex justify-between items-center">
-                            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                              {new Date(fb.createdAt).toLocaleDateString()}
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex items-center gap-3">
+                              <div className="relative shrink-0">
+                                {fb.image ? (
+                                  <img src={fb.image} alt={fb.customerName || 'Reviewer'} className="w-10 h-10 rounded-full object-cover border border-slate-200 shadow-sm" />
+                                ) : (
+                                  <div className="w-10 h-10 rounded-full bg-indigo-100 text-[#000080] font-bold text-xs flex items-center justify-center">
+                                    {fb.customerName ? fb.customerName.charAt(0).toUpperCase() : 'C'}
+                                  </div>
+                                )}
+                              </div>
+                              <div>
+                                <div className="font-bold text-slate-900 text-sm">{fb.customerName || 'Anonymous'}</div>
+                                {fb.position && <div className="text-xs text-slate-500">{fb.position}</div>}
+                                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">
+                                  {new Date(fb.createdAt).toLocaleDateString()}
+                                </div>
+                              </div>
                             </div>
-                            <div className="flex items-center gap-1">
-                              {[1, 2, 3, 4, 5].map((s) => (
-                                <Star key={s} className={`w-3 h-3 ${fb.rating >= s ? 'fill-yellow-400 text-yellow-400' : 'text-slate-200'}`} />
-                              ))}
+
+                            <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-0.5">
+                                {[1, 2, 3, 4, 5].map((s) => (
+                                  <Star key={s} className={`w-3 h-3 ${fb.rating >= s ? 'fill-yellow-400 text-yellow-400' : 'text-slate-200'}`} />
+                                ))}
+                              </div>
+                              <button
+                                onClick={() => setEditingFeedback(fb)}
+                                title="Edit review & image"
+                                className="p-1.5 text-slate-500 hover:text-[#000080] hover:bg-indigo-100/50 rounded-lg transition-colors ml-1"
+                              >
+                                <Pencil className="w-3.5 h-3.5" />
+                              </button>
                             </div>
                           </div>
-                          <p className="text-sm text-slate-700 italic">"{fb.comment || 'No comment'}"</p>
+                          <p className="text-sm text-slate-700 italic bg-white p-3 rounded-xl border border-slate-100">"{fb.comment || 'No comment'}"</p>
+                          
+                          {fb.link && (
+                            <div className="flex items-center gap-2 text-xs text-[#000080] bg-indigo-50/70 p-2.5 rounded-xl border border-indigo-100/80">
+                              <Link className="w-3.5 h-3.5 shrink-0" />
+                              <span className="font-semibold truncate flex-1">{fb.link}</span>
+                              <a
+                                href={fb.link}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="px-2 py-0.5 hover:bg-indigo-100 rounded text-[#000080] font-bold text-[11px] flex items-center gap-1 shrink-0"
+                              >
+                                Open <ExternalLink className="w-3 h-3" />
+                              </a>
+                            </div>
+                          )}
                           
                           <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-200/60">
                             <label className="flex items-center gap-2 cursor-pointer">
@@ -718,21 +823,30 @@ Management Team`);
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Avatar / Image URL</label>
-                  <div className="flex gap-2">
-                    <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center shrink-0 border border-slate-200 overflow-hidden">
-                      {newFeedback.image ? (
-                        <img src={newFeedback.image} alt="Avatar" className="w-full h-full object-cover" />
-                      ) : (
-                        <ImageIcon className="w-5 h-5 text-slate-400" />
-                      )}
-                    </div>
+                  <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block">
+                    Reviewer Photo / Avatar
+                  </label>
+                  <ImageUploader 
+                    value={newFeedback.image || ''}
+                    onChange={(url) => setNewFeedback({ ...newFeedback, image: url })}
+                    label=""
+                    placeholder="Upload reviewer photo or paste image URL..."
+                    helpText="Upload a photo from computer, choose from Media Library, or paste URL"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block">
+                    Website / Project / Proof Link
+                  </label>
+                  <div className="relative">
+                    <Link className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5 pointer-events-none" />
                     <input 
                       type="url"
-                      placeholder="https://..."
-                      value={newFeedback.image || ''}
-                      onChange={e => setNewFeedback({...newFeedback, image: e.target.value})}
-                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-[#000080]/20 focus:border-[#000080] outline-none"
+                      value={newFeedback.link || ''}
+                      onChange={e => setNewFeedback({...newFeedback, link: e.target.value})}
+                      placeholder="https://example.com or link to project / proof..."
+                      className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-[#000080]/20 focus:border-[#000080] outline-none"
                     />
                   </div>
                 </div>
@@ -774,6 +888,176 @@ Management Team`);
                 >
                   Save Feedback
                   <CheckCircle2 className="w-4 h-4" />
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Edit Feedback Modal */}
+      <AnimatePresence>
+        {editingFeedback && (
+          <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setEditingFeedback(null)}
+              className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
+            />
+            
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-2xl bg-white rounded-[2.5rem] shadow-2xl overflow-hidden border border-slate-100 flex flex-col max-h-[90vh]"
+            >
+              <div className="flex items-center justify-between p-8 border-b border-slate-50 shrink-0">
+                <div>
+                  <h3 className="text-xl font-bold text-slate-900">Edit Feedback & Reviewer Details</h3>
+                  <p className="text-slate-500 text-sm">Update reviewer information, image, rating, or testimonial text.</p>
+                </div>
+                <button 
+                  onClick={() => setEditingFeedback(null)}
+                  className="p-2 hover:bg-slate-50 rounded-xl transition-colors text-slate-400"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+
+              <div className="p-8 overflow-y-auto custom-scrollbar flex-1 space-y-6">
+                {/* Reviewer Image Uploader */}
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block">
+                    Reviewer Photo / Avatar
+                  </label>
+                  <ImageUploader 
+                    value={editingFeedback.image || ''}
+                    onChange={(url) => setEditingFeedback({ ...editingFeedback, image: url })}
+                    label=""
+                    placeholder="Upload reviewer photo or paste image URL..."
+                    helpText="Upload a clear headshot photo, pick from Media Library, or paste image URL"
+                  />
+                </div>
+
+                {/* Website / Project Link */}
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block">
+                    Website / Project / Proof Link
+                  </label>
+                  <div className="relative">
+                    <Link className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5 pointer-events-none" />
+                    <input 
+                      type="url"
+                      value={editingFeedback.link || ''}
+                      onChange={e => setEditingFeedback({...editingFeedback, link: e.target.value})}
+                      placeholder="https://example.com or link to project / proof..."
+                      className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-[#000080]/20 focus:border-[#000080] outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Customer Name *</label>
+                    <input 
+                      type="text"
+                      value={editingFeedback.customerName || ''}
+                      onChange={e => setEditingFeedback({...editingFeedback, customerName: e.target.value})}
+                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-[#000080]/20 focus:border-[#000080] outline-none"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Position / Role</label>
+                    <input 
+                      type="text"
+                      value={editingFeedback.position || ''}
+                      onChange={e => setEditingFeedback({...editingFeedback, position: e.target.value})}
+                      placeholder="e.g. CEO, Acme Corp"
+                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-[#000080]/20 focus:border-[#000080] outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Customer Email</label>
+                    <input 
+                      type="email"
+                      value={editingFeedback.customerEmail || ''}
+                      onChange={e => setEditingFeedback({...editingFeedback, customerEmail: e.target.value})}
+                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-[#000080]/20 focus:border-[#000080] outline-none"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Rating</label>
+                    <div className="flex items-center gap-2 h-[46px]">
+                      {[1, 2, 3, 4, 5].map((s) => (
+                        <button
+                          key={s}
+                          type="button"
+                          onClick={() => setEditingFeedback({...editingFeedback, rating: s})}
+                          className={`p-1 transition-all ${editingFeedback.rating >= s ? 'text-yellow-400' : 'text-slate-200'}`}
+                        >
+                          <Star className="w-6 h-6 fill-current" />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Comment / Testimonial *</label>
+                  <textarea 
+                    rows={4}
+                    value={editingFeedback.comment || ''}
+                    onChange={e => setEditingFeedback({...editingFeedback, comment: e.target.value})}
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-[#000080]/20 focus:border-[#000080] outline-none resize-none"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                  <label className="flex items-center gap-3 p-4 bg-slate-50 rounded-2xl border border-slate-200 cursor-pointer">
+                    <input 
+                      type="checkbox"
+                      checked={editingFeedback.showOnWebsite === true}
+                      onChange={(e) => setEditingFeedback({...editingFeedback, showOnWebsite: e.target.checked})}
+                      className="w-4 h-4 rounded border-slate-300 text-[#000080] focus:ring-[#000080]"
+                    />
+                    <div className="text-xs font-bold text-slate-700">
+                      Show on Website (Approved)
+                    </div>
+                  </label>
+
+                  <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-700">Status</span>
+                    <select
+                      value={editingFeedback.status}
+                      onChange={(e) => setEditingFeedback({...editingFeedback, status: e.target.value as 'pending' | 'resolved'})}
+                      className="bg-white border border-slate-200 rounded-lg text-xs font-bold px-3 py-1.5 focus:ring-2 focus:ring-[#000080]/20 focus:border-[#000080] outline-none"
+                    >
+                      <option value="resolved">Resolved</option>
+                      <option value="pending">Pending</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-6 bg-slate-50 border-t border-slate-100 flex items-center justify-end gap-4 shrink-0">
+                <button 
+                  onClick={() => setEditingFeedback(null)}
+                  className="px-6 py-3 text-sm font-bold text-slate-500 hover:text-slate-700 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button 
+                  disabled={!editingFeedback.customerName || !editingFeedback.comment}
+                  onClick={handleSaveEditedFeedback}
+                  className="px-8 py-3 bg-[#000080] text-white font-bold rounded-xl hover:bg-[#000066] transition-all shadow-lg shadow-[#000080]/20 disabled:opacity-50 flex items-center gap-2"
+                >
+                  Save Changes
+                  <Save className="w-4 h-4" />
                 </button>
               </div>
             </motion.div>

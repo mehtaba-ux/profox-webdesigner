@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Star, MessageSquare, ExternalLink, CheckCircle2, ArrowRight } from 'lucide-react';
+import { Star, MessageSquare, ExternalLink, CheckCircle2, ArrowRight, Link as LinkIcon, User, Upload } from 'lucide-react';
 import { useCMS } from '../lib/CMSProvider';
 import { submitPublicFeedback } from '../lib/supabase';
 import { FeedbackEntry } from '../types';
+import ImageUploader from '../components/admin/ImageUploader';
 
 type FlowStep = 'rating' | 'positive_thanks' | 'internal_feedback' | 'success';
 
@@ -14,6 +15,9 @@ const LeaveFeedback: React.FC = () => {
   const [hoveredRating, setHoveredRating] = useState(0);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [position, setPosition] = useState('');
+  const [link, setLink] = useState('');
+  const [image, setImage] = useState('');
   const [comment, setComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -36,6 +40,9 @@ const LeaveFeedback: React.FC = () => {
         id: `fb-${Date.now()}`,
         customerName: name,
         customerEmail: email || 'client@example.com',
+        position: position || undefined,
+        link: link || undefined,
+        image: image || undefined,
         rating: rating,
         comment: comment,
         status: 'pending',
@@ -167,32 +174,69 @@ const LeaveFeedback: React.FC = () => {
                 </p>
                 
                 <form onSubmit={handleSubmitInternal} className="space-y-4 text-left">
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Your Name</label>
-                    <input
-                      required
-                      type="text"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      placeholder="John Doe"
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-[#000080]/20 focus:border-[#000080] outline-none transition-all"
-                    />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Your Name *</label>
+                      <input
+                        required
+                        type="text"
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        placeholder="John Doe"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-[#000080]/20 focus:border-[#000080] outline-none transition-all"
+                      />
+                    </div>
+                    
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Email Address *</label>
+                      <input
+                        required
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder="john@example.com"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-[#000080]/20 focus:border-[#000080] outline-none transition-all"
+                      />
+                    </div>
                   </div>
-                  
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Position / Company (Optional)</label>
+                      <input
+                        type="text"
+                        value={position}
+                        onChange={(e) => setPosition(e.target.value)}
+                        placeholder="e.g. Founder, Tech Corp"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-[#000080]/20 focus:border-[#000080] outline-none transition-all"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Website / Project Link (Optional)</label>
+                      <input
+                        type="url"
+                        value={link}
+                        onChange={(e) => setLink(e.target.value)}
+                        placeholder="https://yourwebsite.com"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-[#000080]/20 focus:border-[#000080] outline-none transition-all"
+                      />
+                    </div>
+                  </div>
+
                   <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Email Address</label>
-                    <input
-                      required
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="john@example.com"
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-[#000080]/20 focus:border-[#000080] outline-none transition-all"
+                    <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block">Your Photo / Avatar (Optional)</label>
+                    <ImageUploader 
+                      value={image}
+                      onChange={(url) => setImage(url)}
+                      label=""
+                      placeholder="Upload photo, select from Media Library, or paste image URL..."
+                      helpText="Upload an image from device, choose from existing Media Library, or paste URL"
                     />
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Your Feedback / Review</label>
+                    <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Your Feedback / Review *</label>
                     <textarea
                       required
                       rows={4}
