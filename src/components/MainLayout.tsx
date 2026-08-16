@@ -4,6 +4,8 @@ import Header from './Header';
 import Footer from './Footer';
 import LiveChatWidget from './chat/LiveChatWidget';
 import ThemeCustomizerDrawer from './admin/ThemeCustomizerDrawer';
+import DevModeAdminBanner from './DevModeAdminBanner';
+import DevelopmentModeScreen from './DevelopmentModeScreen';
 import { useCMS } from '../lib/CMSProvider';
 import { useAuth } from '../lib/AuthContext';
 import { Settings, Edit3, Sliders, LogOut, UserCheck } from 'lucide-react';
@@ -14,6 +16,8 @@ export default function MainLayout() {
   const { isAdminOrEditor, role, logout } = useAuth();
   const [isCustomizerOpen, setIsCustomizerOpen] = useState(false);
   const location = useLocation();
+
+  const isDevModeActive = Boolean(content.siteSettings?.maintenanceMode?.enabled);
 
   useEffect(() => {
     const cleanPath = location.pathname === '/' ? '/' : location.pathname.replace(/\/+$/, '');
@@ -35,8 +39,23 @@ export default function MainLayout() {
     ogUrl.content = canonicalUrl;
   }, [location.pathname]);
 
+  // If Development Mode is active and visitor is not an Admin/Editor, render the custom development screen
+  if (isDevModeActive && !isAdminOrEditor) {
+    return (
+      <DevelopmentModeScreen
+        config={content.siteSettings?.maintenanceMode}
+        businessName={content.siteSettings?.businessName || 'ProFox Webdesigner'}
+      />
+    );
+  }
+
   return (
     <div className="site-typography min-h-screen bg-white selection:bg-blue-100 selection:text-blue-900 relative flex flex-col" style={{ '--site-font-family': content.theme?.fontFamily || 'Inter' } as CSSProperties}>
+      {/* If Admin is viewing while Dev Mode is Active, show sticky top warning & fast-toggle */}
+      {isDevModeActive && isAdminOrEditor && (
+        <DevModeAdminBanner />
+      )}
+
       <Header />
       <main className="flex-1">
         <Outlet />

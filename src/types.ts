@@ -295,6 +295,17 @@ export interface ColorSwatch {
   name: string;
 }
 
+export interface MaintenanceConfig {
+  enabled: boolean;
+  title?: string;
+  message?: string;
+  estimatedTime?: string;
+  contactEmail?: string;
+  badgeText?: string;
+  allowAdminBypass?: boolean;
+  updatedAt?: string;
+}
+
 export interface SiteSettings {
   businessName: string;
   website: string;
@@ -305,6 +316,7 @@ export interface SiteSettings {
   businessAddress: string;
   googleReviewUrl?: string;
   lastUpdated: string;
+  maintenanceMode?: MaintenanceConfig;
 }
 
 export interface FeedbackResolution {

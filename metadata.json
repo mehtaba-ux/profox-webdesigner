@@ -1,6 +1,6 @@
 {
   "name": "Profox Web Desiner -- app an website",
-  "description": "A high-performance digital agency landing page inspired by Dotlogics, featuring sections for services, technology solutions, and AI automation.",
+  "description": "A high-performance digital agency platform with CMS studio, live WordPress engine, custom pages, portfolio, and one-click Development Mode management.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"

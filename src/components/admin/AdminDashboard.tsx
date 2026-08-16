@@ -42,7 +42,8 @@ import {
   ExternalLink,
   Info,
   Sparkles,
-  HelpCircle
+  HelpCircle,
+  Hammer
 } from 'lucide-react';
 import { navItems, services, featuredCaseStudies, recentSuccess, articles, defaultCustomPages, defaultPortfolioItems, defaultPortfolioCategories } from '../../data';
 import { CustomPage, PortfolioItem, PortfolioCategory, Service } from '../../types';
@@ -784,6 +785,27 @@ export default function AdminDashboard() {
             <span className="text-[10px] bg-[#FF0E0E]/15 text-[#FF0E0E] font-mono px-2 py-0.5 rounded border border-[#FF0E0E]/30 font-bold uppercase tracking-wider">
               WordPress Live Engine
             </span>
+
+            {/* Development Mode Quick Indicator */}
+            {content.siteSettings?.maintenanceMode?.enabled ? (
+              <button
+                onClick={() => handleTabChange('siteSettings')}
+                className="px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-wider bg-amber-500 text-slate-950 flex items-center gap-1.5 shadow-sm hover:bg-amber-400 transition-all cursor-pointer animate-pulse"
+                title="Development Mode is ACTIVE. Click to configure message or disable."
+              >
+                <Hammer className="w-3 h-3" />
+                <span>Dev Mode: ACTIVE</span>
+              </button>
+            ) : (
+              <button
+                onClick={() => handleTabChange('siteSettings')}
+                className="px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20 flex items-center gap-1.5 hover:bg-emerald-500/20 transition-all cursor-pointer"
+                title="Site is LIVE to the public. Click to push to Development Mode."
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                <span>Site: Live</span>
+              </button>
+            )}
           </div>
         </div>
 

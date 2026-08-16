@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useCMS } from '../../lib/CMSProvider';
-import { SiteSettings } from '../../types';
+import { SiteSettings, MaintenanceConfig } from '../../types';
 import { SITE_SETTINGS_DEFAULTS } from '../../lib/siteSettings';
+import DevelopmentModeScreen from '../DevelopmentModeScreen';
 import { 
   Building2, 
   Globe, 
@@ -13,33 +14,64 @@ import {
   Save,
   Check,
   Loader2,
-  Clock
+  Clock,
+  Hammer,
+  AlertTriangle,
+  Eye,
+  X,
+  Sparkles,
+  ToggleLeft,
+  ToggleRight
 } from 'lucide-react';
 
 export default function SiteSettingsManager() {
   const { content, updateSection } = useCMS();
   const [isSaving, setIsSaving] = useState(false);
   const [showSaved, setShowSaved] = useState(false);
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
 
   const defaultSettings: SiteSettings = {
     ...SITE_SETTINGS_DEFAULTS,
     lastUpdated: new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
   };
 
-  const [settings, setSettings] = useState<SiteSettings>(content.siteSettings || defaultSettings);
+  const [settings, setSettings] = useState<SiteSettings>(() => {
+    const raw = content.siteSettings || defaultSettings;
+    return {
+      ...defaultSettings,
+      ...raw,
+      maintenanceMode: {
+        ...defaultSettings.maintenanceMode,
+        ...(raw.maintenanceMode || {}),
+      }
+    };
+  });
 
   useEffect(() => {
     if (content.siteSettings) {
-      setSettings(content.siteSettings);
+      setSettings({
+        ...defaultSettings,
+        ...content.siteSettings,
+        maintenanceMode: {
+          ...defaultSettings.maintenanceMode,
+          ...(content.siteSettings.maintenanceMode || {}),
+        }
+      });
     }
   }, [content.siteSettings]);
 
-  const handleSave = async () => {
+  const handleSave = async (overrideSettings?: SiteSettings) => {
     setIsSaving(true);
     try {
-      const updatedSettings = {
-        ...settings,
-        lastUpdated: new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+      const targetSettings = overrideSettings || settings;
+      const updatedSettings: SiteSettings = {
+        ...targetSettings,
+        lastUpdated: new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
+        maintenanceMode: {
+          ...defaultSettings.maintenanceMode,
+          ...(targetSettings.maintenanceMode || {}),
+          updatedAt: new Date().toISOString(),
+        }
       };
       await updateSection('siteSettings', updatedSettings);
       setSettings(updatedSettings);
@@ -52,42 +84,216 @@ export default function SiteSettingsManager() {
     }
   };
 
-  const handleChange = (field: keyof SiteSettings, value: string) => {
+  const handleChange = (field: keyof SiteSettings, value: any) => {
     setSettings(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleMaintenanceChange = (field: keyof MaintenanceConfig, value: any) => {
+    setSettings(prev => ({
+      ...prev,
+      maintenanceMode: {
+        ...defaultSettings.maintenanceMode,
+        ...(prev.maintenanceMode || {}),
+        [field]: value,
+      }
+    }));
+  };
+
+  const toggleDevelopmentMode = async () => {
+    const nextState = !settings.maintenanceMode?.enabled;
+    const updated: SiteSettings = {
+      ...settings,
+      maintenanceMode: {
+        ...defaultSettings.maintenanceMode,
+        ...(settings.maintenanceMode || {}),
+        enabled: nextState,
+      }
+    };
+    setSettings(updated);
+    await handleSave(updated);
   };
 
   const inputClass = "w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-[#000080] focus:ring-4 focus:ring-[#000080]/5 transition-all";
   const labelClass = "block text-xs font-bold text-slate-700 mb-2 uppercase tracking-wider flex items-center gap-2";
 
+  const isDevModeActive = Boolean(settings.maintenanceMode?.enabled);
+
   return (
-    <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="flex items-center justify-between mb-8">
+    <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-16">
+      {/* Top Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div>
           <h2 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-3">
             <Globe className="w-8 h-8 text-[#000080]" />
-            Site Settings & Identity
+            Site Settings & Development Mode
           </h2>
-          <p className="text-slate-500 text-sm mt-1">Manage your global business information and contact details across the entire website.</p>
+          <p className="text-slate-500 text-sm mt-1">Manage global business identity and toggle maintenance mode with custom announcements.</p>
         </div>
         
-        <button
-          onClick={handleSave}
-          disabled={isSaving}
-          className={`px-8 py-3 rounded-xl font-bold text-sm flex items-center gap-2 shadow-lg transition-all min-w-[160px] justify-center ${
-            showSaved 
-              ? 'bg-green-500 text-white shadow-green-200 scale-105' 
-              : 'bg-[#000080] hover:bg-[#000066] text-white hover:scale-105 active:scale-95'
-          } ${isSaving ? 'opacity-80 cursor-not-allowed' : ''}`}
-        >
-          {isSaving ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
-          ) : showSaved ? (
-            <Check className="w-4 h-4" />
-          ) : (
-            <Save className="w-4 h-4" />
-          )}
-          {isSaving ? 'Saving...' : showSaved ? 'Saved!' : 'Save Settings'}
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setShowPreviewModal(true)}
+            className="px-4 py-3 rounded-xl font-bold text-sm bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 transition-all flex items-center gap-2 cursor-pointer shadow-sm"
+            title="Preview Development Mode as seen by public visitors"
+          >
+            <Eye className="w-4 h-4 text-blue-600" />
+            <span>Preview Dev Screen</span>
+          </button>
+
+          <button
+            onClick={() => handleSave()}
+            disabled={isSaving}
+            className={`px-8 py-3 rounded-xl font-bold text-sm flex items-center gap-2 shadow-lg transition-all min-w-[160px] justify-center ${
+              showSaved 
+                ? 'bg-green-500 text-white shadow-green-200 scale-105' 
+                : 'bg-[#000080] hover:bg-[#000066] text-white hover:scale-105 active:scale-95'
+            } ${isSaving ? 'opacity-80 cursor-not-allowed' : ''}`}
+          >
+            {isSaving ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : showSaved ? (
+              <Check className="w-4 h-4" />
+            ) : (
+              <Save className="w-4 h-4" />
+            )}
+            {isSaving ? 'Saving...' : showSaved ? 'Saved!' : 'Save Settings'}
+          </button>
+        </div>
+      </div>
+
+      {/* PROMINENT DEVELOPMENT & MAINTENANCE MODE CARD */}
+      <div className={`rounded-2xl border-2 transition-all p-6 sm:p-8 shadow-sm ${
+        isDevModeActive 
+          ? 'bg-gradient-to-br from-amber-500/10 via-amber-500/5 to-orange-500/10 border-amber-500/60 ring-4 ring-amber-500/10' 
+          : 'bg-white border-slate-200'
+      }`}>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-200">
+          <div className="flex items-start gap-3.5">
+            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${
+              isDevModeActive 
+                ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/20 animate-pulse' 
+                : 'bg-slate-100 text-slate-600'
+            }`}>
+              <Hammer className="w-6 h-6" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2.5">
+                <h3 className="text-lg font-black text-slate-900">
+                  Website Development Mode
+                </h3>
+                <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-black uppercase tracking-wider ${
+                  isDevModeActive
+                    ? 'bg-amber-500 text-slate-950 animate-pulse shadow-sm'
+                    : 'bg-emerald-100 text-emerald-800'
+                }`}>
+                  {isDevModeActive ? 'Active (Public Restricted)' : 'Live to Public'}
+                </span>
+              </div>
+              <p className="text-slate-500 text-xs mt-1 max-w-xl">
+                Push your website to development mode whenever you are making updates. Public visitors will see your custom announcement, while logged-in Admins bypass it to inspect and edit the live site.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 shrink-0">
+            <button
+              onClick={toggleDevelopmentMode}
+              disabled={isSaving}
+              className={`px-5 py-3 rounded-xl font-bold text-xs flex items-center gap-2.5 transition-all shadow-md active:scale-95 cursor-pointer ${
+                isDevModeActive
+                  ? 'bg-amber-500 hover:bg-amber-600 text-slate-950 shadow-amber-500/20'
+                  : 'bg-slate-900 hover:bg-slate-800 text-white'
+              }`}
+            >
+              {isDevModeActive ? (
+                <>
+                  <ToggleRight className="w-5 h-5 text-slate-950" />
+                  <span>Dev Mode is ON (Turn OFF)</span>
+                </>
+              ) : (
+                <>
+                  <ToggleLeft className="w-5 h-5 text-slate-400" />
+                  <span>Push to Dev Mode</span>
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+
+        {/* Development Mode Customization Inputs */}
+        <div className="pt-6 space-y-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div>
+              <label className={labelClass}>
+                <Hammer className="w-3.5 h-3.5 text-amber-500" /> Particular Headline / Title
+              </label>
+              <input
+                type="text"
+                value={settings.maintenanceMode?.title || ''}
+                onChange={(e) => handleMaintenanceChange('title', e.target.value)}
+                placeholder="e.g. We're Currently Enhancing Our Platform"
+                className={inputClass}
+              />
+              <p className="text-[11px] text-slate-400 mt-1">Main title displayed to visitors on the maintenance screen.</p>
+            </div>
+
+            <div>
+              <label className={labelClass}>
+                <Clock className="w-3.5 h-3.5 text-blue-500" /> Expected Return Time or Status
+              </label>
+              <input
+                type="text"
+                value={settings.maintenanceMode?.estimatedTime || ''}
+                onChange={(e) => handleMaintenanceChange('estimatedTime', e.target.value)}
+                placeholder="e.g. Expected back online: Today at 5:00 PM EST"
+                className={inputClass}
+              />
+              <p className="text-[11px] text-slate-400 mt-1">Informs visitors about when the site will be fully accessible again.</p>
+            </div>
+          </div>
+
+          <div>
+            <label className={labelClass}>
+              <Mail className="w-3.5 h-3.5 text-emerald-500" /> Particular Announcement Message
+            </label>
+            <textarea
+              rows={3}
+              value={settings.maintenanceMode?.message || ''}
+              onChange={(e) => handleMaintenanceChange('message', e.target.value)}
+              placeholder="Write the specific message or update you want your visitors and clients to see while development is ongoing..."
+              className={`${inputClass} resize-y min-h-[90px]`}
+            />
+            <p className="text-[11px] text-slate-400 mt-1">This specific message is rendered on the public screen.</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-1">
+            <div>
+              <label className={labelClass}>
+                <Mail className="w-3.5 h-3.5 text-purple-500" /> Emergency / Direct Support Email
+              </label>
+              <input
+                type="email"
+                value={settings.maintenanceMode?.contactEmail || ''}
+                onChange={(e) => handleMaintenanceChange('contactEmail', e.target.value)}
+                placeholder="contact@profoxwebdesigner.com"
+                className={inputClass}
+              />
+            </div>
+
+            <div>
+              <label className={labelClass}>
+                <Sparkles className="w-3.5 h-3.5 text-amber-500" /> Badge Label
+              </label>
+              <input
+                type="text"
+                value={settings.maintenanceMode?.badgeText || ''}
+                onChange={(e) => handleMaintenanceChange('badgeText', e.target.value)}
+                placeholder="Development & Maintenance Mode"
+                className={inputClass}
+              />
+            </div>
+          </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -252,17 +458,32 @@ export default function SiteSettingsManager() {
         </div>
       </div>
 
-      <div className="bg-[#000080]/5 border border-[#000080]/10 rounded-2xl p-6 flex gap-4">
-        <div className="w-10 h-10 bg-[#000080] text-white rounded-full flex items-center justify-center shrink-0">
-          <Globe className="w-5 h-5" />
+      {/* Modal: Live Preview of Development Mode */}
+      {showPreviewModal && (
+        <div className="fixed inset-0 z-[1000] bg-black/80 backdrop-blur-md flex flex-col items-center justify-center p-4">
+          <div className="w-full max-w-5xl bg-slate-950 rounded-3xl border border-slate-800 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="p-4 bg-slate-900 border-b border-slate-800 flex items-center justify-between">
+              <div className="flex items-center gap-2 text-xs font-bold text-slate-300">
+                <Eye className="w-4 h-4 text-blue-400" />
+                <span>Simulated Visitor Preview: Development Mode Screen</span>
+              </div>
+              <button
+                onClick={() => setShowPreviewModal(false)}
+                className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto">
+              <DevelopmentModeScreen
+                config={settings.maintenanceMode}
+                businessName={settings.businessName}
+                isPreview={true}
+              />
+            </div>
+          </div>
         </div>
-        <div>
-          <h4 className="font-bold text-slate-900">Dynamic Synchronization Active</h4>
-          <p className="text-sm text-slate-600 mt-1">
-            The information saved here is the single source of truth for public business identity, address, region, email and phone details across the Footer, Contact, About, Legal and shared page sections.
-          </p>
-        </div>
-      </div>
+      )}
     </div>
   );
 }
