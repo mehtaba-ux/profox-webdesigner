@@ -1,0 +1,212 @@
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import { useLocation } from 'react-router-dom';
+import { supabase, dbProcedure } from './supabase';
+import { defaultPortfolioItems, defaultPortfolioCategories } from '../data';
+
+const CMS_CACHE_KEY = 'cms_content_cache';
+const CMS_CACHE_TIME_KEY = 'cms_content_cache_saved_at';
+const PUBLIC_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
+const PUBLIC_SHARED_SECTIONS = [
+  'theme', 'header', 'footer', 'siteSettings', 'hero', 'services', 'servicePackages',
+  'caseStudies', 'growth', 'insights', 'cta', 'faq_section', 'feedback_submissions',
+  'dynamicSections', 'portfolio_items', 'portfolio_categories', 'loadingScreen',
+  'process_header', 'process_steps', 'ourProcess'
+];
+
+function filterPortfolioItems(items: any[]) {
+  if (!Array.isArray(items) || items.length === 0) return defaultPortfolioItems;
+
+  const defaultById = new Map(defaultPortfolioItems.map((p) => [p.id, p]));
+  const defaultBySlug = new Map(defaultPortfolioItems.map((p) => [p.slug, p]));
+
+  // Merge items so that data.ts default updates (category, title, client, etc.) always take precedence for default items
+  const mergedItems = items.map((item) => {
+    const def = defaultById.get(item.id) || defaultBySlug.get(item.slug);
+    if (def) {
+      return {
+        ...item,
+        ...def,
+        // Keep status if explicitly set in stored item
+        status: item.status || def.status || 'published',
+      };
+    }
+    return item;
+  });
+
+  // Ensure any default items not yet in items are added
+  const existingKeys = new Set(mergedItems.flatMap((i) => [i.id, i.slug].filter(Boolean)));
+  const missingDefaults = defaultPortfolioItems.filter((d) => !existingKeys.has(d.id) && !existingKeys.has(d.slug));
+
+  const combined = [...mergedItems, ...missingDefaults];
+
+  const validIds = new Set(defaultPortfolioItems.map((p) => p.id));
+  const validSlugs = new Set(defaultPortfolioItems.map((p) => p.slug));
+
+  const filtered = combined.filter((p) => 
+    validIds.has(p.id) || validSlugs.has(p.slug) || p.createdAt?.startsWith('2026-08-15')
+  );
+
+  return filtered.length > 0 ? filtered : defaultPortfolioItems;
+}
+
+function publicSectionsForPath(pathname: string) {
+  const sections = new Set(PUBLIC_SHARED_SECTIONS);
+  if (pathname !== '/') sections.add('customPages');
+  if (/^\/(services|about-us|careers|contact-us|privacy|terms|cookie|pricing)(\/|$)/.test(pathname)) sections.add('template_blueprints');
+  if (pathname.startsWith('/portfolio')) sections.add('portfolio_items');
+  return [...sections];
+}
+
+function readCachedContent() {
+  try {
+    const cached = localStorage.getItem(CMS_CACHE_KEY);
+    const parsed = cached ? JSON.parse(cached) : {};
+    parsed.portfolio_items = filterPortfolioItems(parsed.portfolio_items);
+    parsed.portfolio_categories = defaultPortfolioCategories;
+    return parsed;
+  } catch {
+    return {
+      portfolio_items: defaultPortfolioItems,
+      portfolio_categories: defaultPortfolioCategories
+    };
+  }
+}
+
+function cacheContent(value: Record<string, any>) {
+  try {
+    localStorage.setItem(CMS_CACHE_KEY, JSON.stringify(value));
+    localStorage.setItem(CMS_CACHE_TIME_KEY, String(Date.now()));
+  } catch (error) {
+    console.error('Error caching CMS content', error);
+  }
+}
+
+interface CMSContextType {
+  content: Record<string, any>;
+  loading: boolean;
+  updateSection: (section: string, data: any) => Promise<void>;
+  isLiveEditing?: boolean;
+  setIsLiveEditing?: (active: boolean) => void;
+}
+
+const CMSContext = createContext<CMSContextType>({
+  content: {},
+  loading: true,
+  updateSection: async () => {},
+  isLiveEditing: false,
+  setIsLiveEditing: () => {},
+});
+
+export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { pathname } = useLocation();
+  const [content, setContent] = useState<Record<string, any>>(readCachedContent);
+  const [loading, setLoading] = useState(true);
+  const [isLiveEditing, setIsLiveEditing] = useState(false);
+
+  useEffect(() => {
+    const isAdminRoute = pathname.startsWith('/admin');
+    const requiredSections = publicSectionsForPath(pathname);
+    const cachedAt = Number(localStorage.getItem(CMS_CACHE_TIME_KEY) || 0);
+    const hasRequiredSections = requiredSections.every((section) => Object.prototype.hasOwnProperty.call(content, section));
+    const hasUsablePublicCache = !isAdminRoute && hasRequiredSections && Date.now() - cachedAt < PUBLIC_CACHE_TTL_MS;
+
+    // Initial fetch using stored procedure
+    const fetchContent = async () => {
+      try {
+        const { data, error } = isAdminRoute
+          ? await dbProcedure.getAllContent()
+          : await dbProcedure.getContentSections(requiredSections);
+        if (!error && data) {
+          const newContent: Record<string, any> = {};
+          data.forEach((item: any) => {
+            newContent[item.id] = item.data;
+          });
+
+          if (!newContent.portfolio_items) {
+            const { data: pData } = await dbProcedure.getPublishedPortfolioItems();
+            if (pData && pData.length > 0) {
+              newContent.portfolio_items = pData.map((p: any) => ({
+                id: p.id,
+                slug: p.slug,
+                title: p.title,
+                client: p.client,
+                category: p.category,
+                coverImage: p.cover_image,
+                shortDescription: p.short_description,
+                status: p.status
+              }));
+            } else {
+              newContent.portfolio_items = defaultPortfolioItems;
+            }
+          }
+
+          newContent.portfolio_items = filterPortfolioItems(newContent.portfolio_items);
+
+          setContent(newContent);
+          cacheContent(newContent);
+        }
+      } catch (err) {
+        console.error('Error fetching CMS content via stored procedure', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (hasUsablePublicCache) setLoading(false);
+    else fetchContent();
+
+    // Public visitors use the versioned local cache instead of keeping a Realtime
+    // connection open. Admin routes stay live so editing behavior is unchanged.
+    if (!isAdminRoute) return;
+
+    const channel = supabase
+      .channel('public:content')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'content' }, (payload) => {
+        if (payload.eventType === 'DELETE') {
+          setContent((prev) => {
+            const next = { ...prev };
+            delete next[payload.old.id];
+            cacheContent(next);
+            return next;
+          });
+        } else {
+          setContent((prev) => {
+            const next = {
+              ...prev,
+              [payload.new.id]: payload.new.data,
+            };
+            cacheContent(next);
+            return next;
+          });
+        }
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [pathname]);
+
+  const handleUpdate = async (section: string, data: any) => {
+    const { error } = await dbProcedure.upsertContentItem(section, data);
+    
+    if (error) {
+      console.error('Error updating content via stored procedure:', error);
+      throw error;
+    }
+
+    setContent((prev) => {
+      const next = { ...prev, [section]: data };
+      cacheContent(next);
+      return next;
+    });
+  };
+
+  return (
+    <CMSContext.Provider value={{ content, loading, updateSection: handleUpdate, isLiveEditing, setIsLiveEditing }}>
+      {children}
+    </CMSContext.Provider>
+  );
+};
+
+export const useCMS = () => useContext(CMSContext);

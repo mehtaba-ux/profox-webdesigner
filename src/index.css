@@ -1,0 +1,333 @@
+@import "tailwindcss";
+
+:root {
+    --site-font-family: "Inter";
+    --brand-primary: #000080;
+    --brand-primary-hover: #000066;
+    --brand-accent: #5c5cff;
+    --brand-ink: #0f172a;
+    --brand-muted: #475569;
+    --brand-surface: #f4f5fb;
+    --site-container: 80rem;
+}
+
+html,
+body,
+#root {
+    font-family: var(--site-font-family), system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+html {
+    scroll-behavior: smooth;
+    text-size-adjust: 100%;
+    -webkit-text-size-adjust: 100%;
+}
+
+body {
+    margin: 0;
+    min-width: 320px;
+    color: var(--brand-ink);
+    background: #fff;
+    font-size: 16px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+img,
+svg,
+video {
+    max-width: 100%;
+}
+
+.site-typography,
+.site-typography h1,
+.site-typography h2,
+.site-typography h3,
+.site-typography h4,
+.site-typography h5,
+.site-typography h6,
+.site-typography p,
+.site-typography a,
+.site-typography button,
+.site-typography input,
+.site-typography textarea,
+.site-typography select,
+.site-typography label,
+.site-typography blockquote,
+.site-typography .font-sans,
+.site-typography .font-serif {
+    font-family: var(--site-font-family), system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+}
+
+/* Monospace remains intentional for technical identifiers, URLs and code. */
+.site-typography .font-mono,
+.site-typography code,
+.site-typography pre {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace !important;
+}
+
+/* Shared public-site rhythm and accessible interaction states. */
+.site-typography :where(h1, h2, h3, h4) {
+    text-wrap: balance;
+}
+
+.site-typography :where(p, li) {
+    text-wrap: pretty;
+}
+
+.site-typography :where(a, button, input, textarea, select):focus-visible {
+    outline: 3px solid color-mix(in srgb, var(--brand-accent) 55%, white);
+    outline-offset: 3px;
+}
+
+.pf-container {
+    width: min(100% - 2.5rem, var(--site-container));
+    margin-inline: auto;
+}
+
+
+.pf-eyebrow {
+    font-size: 0.75rem;
+    font-weight: 800;
+    line-height: 1.35;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+}
+
+.pf-display {
+    font-size: clamp(2.5rem, 6vw, 4.5rem);
+    font-weight: 750;
+    line-height: 0.98;
+    letter-spacing: -0.055em;
+}
+
+.pf-section-title {
+    font-size: clamp(2rem, 4vw, 3.25rem);
+    font-weight: 650;
+    line-height: 1.05;
+    letter-spacing: -0.045em;
+}
+
+.pf-card-title {
+    font-size: clamp(1rem, 1.4vw, 1.125rem);
+    font-weight: 650;
+    line-height: 1.3;
+    letter-spacing: -0.02em;
+}
+
+.pf-article-content,
+.article-editor-content {
+    color: #334155;
+    font-size: 1rem;
+    line-height: 1.8;
+}
+
+.pf-article-content > :first-child,
+.article-editor-content > :first-child {
+    margin-top: 0;
+}
+
+.pf-article-content :where(h2, h3, h4),
+.article-editor-content :where(h2, h3, h4) {
+    color: #0f172a;
+    font-weight: 700;
+    line-height: 1.15;
+    letter-spacing: -0.035em;
+    scroll-margin-top: 7rem;
+}
+
+.pf-article-content :where(h2, h3) {
+    pointer-events: auto;
+}
+
+.pf-article-content h2,
+.article-editor-content h2 {
+    margin: 3.5rem 0 1.25rem;
+    font-size: clamp(1.65rem, 3vw, 2.15rem);
+}
+
+.pf-article-content h3,
+.article-editor-content h3 {
+    margin: 2.5rem 0 1rem;
+    font-size: clamp(1.25rem, 2vw, 1.5rem);
+}
+
+.pf-article-content :where(p, ul, ol, blockquote, figure, .article-table-wrap),
+.article-editor-content :where(p, ul, ol, blockquote, figure, .article-table-wrap) {
+    margin-block: 1.35rem;
+}
+
+.pf-article-content :where(ul, ol),
+.article-editor-content :where(ul, ol) {
+    padding-left: 1.5rem;
+}
+
+.pf-article-content ul,
+.article-editor-content ul {
+    list-style: disc;
+}
+
+.pf-article-content ol,
+.article-editor-content ol {
+    list-style: decimal;
+}
+
+.pf-article-content li,
+.article-editor-content li {
+    margin-block: 0.45rem;
+    padding-left: 0.25rem;
+}
+
+.pf-article-content a,
+.article-editor-content a {
+    color: var(--brand-primary);
+    font-weight: 700;
+    text-decoration: underline;
+    text-underline-offset: 0.18em;
+}
+
+.pf-article-content blockquote,
+.article-editor-content blockquote {
+    border-left: 4px solid var(--brand-primary);
+    background: var(--brand-surface);
+    padding: 1.25rem 1.5rem;
+    color: #1e293b;
+    font-weight: 600;
+}
+
+.pf-article-content figure,
+.article-editor-content figure {
+    margin-inline: 0;
+}
+
+.pf-article-content img,
+.article-editor-content img {
+    width: 100%;
+    height: auto;
+    border-radius: 0.75rem;
+}
+
+.pf-article-content figcaption,
+.article-editor-content figcaption {
+    margin-top: 0.65rem;
+    color: #64748b;
+    font-size: 0.8rem;
+    line-height: 1.5;
+    text-align: center;
+}
+
+.pf-article-content .article-table-wrap,
+.article-editor-content .article-table-wrap {
+    max-width: 100%;
+    overflow-x: auto;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.65rem;
+}
+
+.pf-article-content table,
+.article-editor-content table {
+    width: 100%;
+    min-width: 32rem;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+}
+
+.pf-article-content :where(th, td),
+.article-editor-content :where(th, td) {
+    border-bottom: 1px solid #e2e8f0;
+    padding: 0.8rem 1rem;
+    text-align: left;
+}
+
+.pf-article-content th,
+.article-editor-content th {
+    background: #111827;
+    color: white;
+    font-weight: 700;
+}
+
+.pf-article-content hr,
+.article-editor-content hr {
+    margin-block: 3rem;
+    border: 0;
+    border-top: 1px solid #e2e8f0;
+}
+
+.pf-article-content .article-video,
+.article-editor-content .article-video {
+    position: relative;
+    width: 100%;
+    margin-block: 2rem;
+    overflow: hidden;
+    border-radius: 0.75rem;
+    background: #0f172a;
+    aspect-ratio: 16 / 9;
+}
+
+.pf-article-content .article-video :where(iframe, video),
+.article-editor-content .article-video :where(iframe, video) {
+    width: 100%;
+    height: 100%;
+    border: 0;
+}
+
+.article-editor-content:empty::before {
+    color: #94a3b8;
+    content: attr(data-placeholder);
+    pointer-events: none;
+}
+
+/* Protect public templates from legacy micro-copy utilities that became unreadable. */
+.site-typography [class~="text-[8px]"],
+.site-typography [class~="text-[9px]"] {
+    font-size: 0.6875rem;
+    line-height: 1.35;
+}
+
+.site-typography [class~="text-[10px]"],
+.site-typography [class~="text-[11px]"] {
+    font-size: 0.75rem;
+    line-height: 1.4;
+}
+
+@media (max-width: 767px) {
+    .pf-container {
+        width: min(100% - 2rem, var(--site-container));
+    }
+
+    .site-typography :where(input, textarea, select) {
+        font-size: 16px;
+    }
+
+    .site-typography [class~="text-7xl"],
+    .site-typography [class~="text-8xl"],
+    .site-typography [class~="text-9xl"] {
+        font-size: clamp(2.75rem, 13vw, 3.75rem);
+        line-height: 1.02;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    html {
+        scroll-behavior: auto;
+    }
+
+    .site-typography *,
+    .site-typography *::before,
+    .site-typography *::after {
+        scroll-behavior: auto !important;
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+@keyframes scroll-logos {
+    0% { transform: translateX(0%); }
+    100% { transform: translateX(-100%); }
+}
+
+.animate-scroll-logos {
+    animation: scroll-logos 30s linear infinite;
+}
