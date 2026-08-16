@@ -3,6 +3,10 @@ compatibility_date = "2024-09-23"
 compatibility_flags = ["nodejs_compat"]
 main = "worker/index.ts"
 
+# Automatically compile Vite build into ./dist before deploy
+[build]
+command = "npm run build"
+
 # Cloudflare Dynamic Worker + Static Assets (100% Free Plan Tier)
 [assets]
 directory = "./dist"
@@ -11,3 +15,4 @@ binding = "ASSETS"
 
 [vars]
 ENVIRONMENT = "production"
+
