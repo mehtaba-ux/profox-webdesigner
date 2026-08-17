@@ -102,7 +102,7 @@ export default function ProcessManager() {
       // 1. Try fetching from process_steps table via stored procedure
       const { data, error } = await dbProcedure.getProcessSteps();
 
-      if (!error && data && data.length > 0) {
+      if (!error && data && data.length> 0) {
         setDbConnected(true);
         const mappedData: ProcessStep[] = data.map((item: any, idx: number) => ({
           id: item.id,
@@ -370,21 +370,21 @@ export default function ProcessManager() {
             </div>
           )}
 
-          <ConfirmButton
+          <button 
             onClick={fetchSteps}
             disabled={loading}
             className="p-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all border border-slate-300 flex items-center gap-1.5 cursor-pointer"
             title="Reload from database"
-          >
+>
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-          </ConfirmButton>
+          </button>
 
-          <ConfirmButton
+          <button 
             onClick={handleOpenAddModal}
             className="px-5 py-2.5 bg-[#000080] hover:bg-[#000066] text-white rounded-xl text-xs font-bold transition-all shadow-md flex items-center gap-2 cursor-pointer"
-          >
+>
             <Plus className="w-4 h-4" /> Add Process Step
-          </ConfirmButton>
+          </button>
         </div>
       </div>
 
@@ -411,13 +411,13 @@ export default function ProcessManager() {
         </div>
 
         {steps.length === 0 && (
-          <ConfirmButton
+          <button 
             onClick={handleSeedDefaultsToSupabase}
             disabled={saving}
             className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold text-xs shadow-sm transition-all whitespace-nowrap cursor-pointer"
           >
             Seed Standard 4 Steps to DB
-          </ConfirmButton>
+          </button>
         )}
       </div>
 
@@ -427,13 +427,12 @@ export default function ProcessManager() {
           <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-[#000080]" /> Section Header Customization
           </h3>
-          <ConfirmButton
+          <button 
             onClick={handleSaveHeader}
             disabled={saving}
-            className="px-4 py-1.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 cursor-pointer"
-          >
+            className="px-4 py-1.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 cursor-pointer">
             <Save className="w-3.5 h-3.5" /> Save Section Titles
-          </ConfirmButton>
+          </button>
         </div>
 
         <div className="grid md:grid-cols-2 gap-4">
@@ -486,18 +485,18 @@ export default function ProcessManager() {
               </p>
             </div>
             <div className="flex items-center justify-center gap-3">
-              <ConfirmButton
+              <button 
                 onClick={handleSeedDefaultsToSupabase}
                 className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs rounded-xl transition-all border border-slate-300"
               >
                 Seed Default Steps
-              </ConfirmButton>
-              <ConfirmButton
+              </button>
+              <button 
                 onClick={handleOpenAddModal}
                 className="px-4 py-2 bg-[#000080] hover:bg-[#000066] text-white font-bold text-xs rounded-xl shadow-md transition-all"
               >
                 + Add Custom Step
-              </ConfirmButton>
+              </button>
             </div>
           </div>
         ) : (
@@ -507,8 +506,7 @@ export default function ProcessManager() {
               return (
                 <div 
                   key={stepItem.id || idx}
-                  className="bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all overflow-hidden flex flex-col justify-between group"
-                >
+                  className="bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all overflow-hidden flex flex-col justify-between group">
                   <div className="relative h-48 bg-slate-900 overflow-hidden">
                     {stepItem.image ? (
                       <img 
@@ -527,22 +525,18 @@ export default function ProcessManager() {
                       </span>
 
                       <div className="flex items-center gap-1 bg-black/50 backdrop-blur-md rounded-xl p-1 border border-white/20">
-                        <ConfirmButton
-                          onClick={() => handleMoveOrder(idx, 'up')}
+                        <button onClick={() => handleMoveOrder(idx, 'up')}
                           disabled={idx === 0}
                           className="p-1.5 text-white/80 hover:text-white disabled:opacity-30 transition-colors"
-                          title="Move up"
-                        >
+                          title="Move up" >
                           <ArrowUp className="w-3.5 h-3.5" />
-                        </ConfirmButton>
-                        <ConfirmButton
-                          onClick={() => handleMoveOrder(idx, 'down')}
+                        </button>
+                        <button onClick={() => handleMoveOrder(idx, 'down')}
                           disabled={idx === steps.length - 1}
                           className="p-1.5 text-white/80 hover:text-white disabled:opacity-30 transition-colors"
-                          title="Move down"
-                        >
+                          title="Move down" >
                           <ArrowDown className="w-3.5 h-3.5" />
-                        </ConfirmButton>
+                        </button>
                       </div>
                     </div>
 
@@ -564,16 +558,17 @@ export default function ProcessManager() {
                       </div>
 
                       <div className="flex items-center gap-2">
-                        <ConfirmButton
+                        <button 
                           onClick={() => handleOpenEditModal(stepItem)}
-                          className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
+                          className="px-3 py-1 bg-white border border-slate-200 rounded-lg text-[11px] font-bold text-slate-600 hover:bg-slate-50 transition-all flex items-center gap-1"
                         >
                           <Edit2 className="w-3.5 h-3.5" /> Edit
-                        </ConfirmButton>
-                        <ConfirmButton
-                          onClick={() => handleDeleteStep(stepItem.id!)}
-                          className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
-                          title="Delete step"
+                        </button>
+                        <ConfirmButton 
+                          onConfirm={() => handleDeleteStep(stepItem.id)}
+                          confirmTitle="Delete Process Step"
+                          confirmMessage={`Are you sure you want to delete step ${stepItem.step}: ${stepItem.title}? This cannot be undone.`}
+                          className="p-1.5 bg-red-50/50 hover:bg-red-50 text-red-500 rounded-lg border border-red-100 transition-all"
                         >
                           <Trash2 className="w-4 h-4" />
                         </ConfirmButton>
@@ -603,12 +598,9 @@ export default function ProcessManager() {
                   <p className="text-xs text-slate-400">Configure step title, detailed description, background image, and CTA button.</p>
                 </div>
               </div>
-              <ConfirmButton
-                onClick={() => setIsModalOpen(false)}
-                className="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-white/10 transition-colors"
-              >
+              <button onClick={() => setIsModalOpen(false)} className="p-1.5 hover:bg-white/10 rounded-lg transition-colors">
                 <X className="w-5 h-5" />
-              </ConfirmButton>
+              </button>
             </div>
 
             <form onSubmit={handleSaveStepModal} className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
@@ -681,20 +673,20 @@ export default function ProcessManager() {
               </div>
 
               <div className="pt-4 border-t border-slate-100 flex items-center justify-end gap-3">
-                <ConfirmButton
+                <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all"
+                  className="px-4 py-2.5 border border-slate-200 text-slate-500 hover:bg-slate-50 rounded-xl text-xs font-bold transition-all"
                 >
                   Cancel
-                </ConfirmButton>
-                <ConfirmButton
+                </button>
+                <button 
                   type="submit"
                   disabled={saving}
                   className="px-6 py-2.5 bg-[#000080] hover:bg-[#000066] text-white rounded-xl text-xs font-bold shadow-lg transition-all flex items-center gap-2"
                 >
                   <Save className="w-4 h-4" /> Save Process Step
-                </ConfirmButton>
+                </button>
               </div>
             </form>
           </div>

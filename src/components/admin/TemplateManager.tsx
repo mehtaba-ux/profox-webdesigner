@@ -83,19 +83,17 @@ function ImageUploaderButton({ value, onChange }: { value: string; onChange: (ur
         accept="image/*" 
         className="hidden" 
       />
-      <ConfirmButton 
-        type="button"
+      <button type="button"
         onClick={() => fileInputRef.current?.click()}
         disabled={uploading}
         className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-xs font-bold transition-all flex items-center gap-1 shrink-0 h-8 self-end"
-        title="Upload Image"
-      >
+        title="Upload Image" >
         {uploading ? (
           <Loader2 className="w-3.5 h-3.5 animate-spin text-[#000080]" />
         ) : (
           <Upload className="w-3.5 h-3.5" />
         )}
-      </ConfirmButton>
+      </button>
     </div>
   );
 }
@@ -109,19 +107,19 @@ function DynamicAboutContentEditor({ value, onChange, fieldKey = 'aboutPage', de
       <div className="space-y-3">
         {value.map((item, index) => (
           <div key={index} className="relative rounded-2xl border border-slate-200 bg-white p-4">
-            <ConfirmButton type="button" onClick={() => onChange(value.filter((_: any, itemIndex: number) => itemIndex !== index))} className="absolute right-3 top-3 z-10 text-slate-300 hover:text-red-500" aria-label={`Remove ${formatContentLabel(fieldKey)} item`}><Trash2 className="h-4 w-4" /></ConfirmButton>
+            <button type="button" onClick={() => onChange(value.filter((_: any, itemIndex: number) => itemIndex !== index))} className="absolute right-3 top-3 z-10 text-slate-300 hover:text-red-500" aria-label={`Remove ${formatContentLabel(fieldKey)} item`}><Trash2 className="h-4 w-4" /></button>
             <div className="mb-3 text-[10px] font-black uppercase tracking-widest text-[#000080]">{formatContentLabel(fieldKey)} {index + 1}</div>
             <DynamicAboutContentEditor value={item} fieldKey={`${fieldKey}Item`} depth={depth + 1} onChange={(nextItem) => onChange(value.map((current: any, itemIndex: number) => itemIndex === index ? nextItem : current))} />
           </div>
         ))}
-        <ConfirmButton type="button" onClick={() => onChange([...value, value.length ? JSON.parse(JSON.stringify(value[value.length - 1])) : ''])} className="inline-flex items-center gap-2 rounded-xl bg-[#000080]/10 px-4 py-2.5 text-xs font-bold text-[#000080] hover:bg-[#000080]/15"><Plus className="h-4 w-4" /> Add {formatContentLabel(fieldKey)}</ConfirmButton>
+        <button type="button" onClick={() => onChange([...value, value.length ? JSON.parse(JSON.stringify(value[value.length - 1])) : ''])} className="inline-flex items-center gap-2 rounded-xl bg-[#000080]/10 px-4 py-2.5 text-xs font-bold text-[#000080] hover:bg-[#000080]/15" ><Plus className="h-4 w-4" /> Add {formatContentLabel(fieldKey)}</button>
       </div>
     );
   }
 
   if (value && typeof value === 'object') {
     return (
-      <div className={cn('grid gap-4', depth > 0 && 'sm:grid-cols-2')}>
+      <div className={cn('grid gap-4', depth> 0 && 'sm:grid-cols-2')}>
         {Object.entries(value).map(([key, childValue]) => (
           <div key={key} className={cn((childValue && typeof childValue === 'object') && 'sm:col-span-2', depth === 0 && 'rounded-3xl border border-slate-200 bg-slate-50 p-5')}>
             <label className="mb-2 block text-[10px] font-black uppercase tracking-widest text-slate-500">{formatContentLabel(key)}</label>
@@ -145,7 +143,7 @@ function DynamicAboutContentEditor({ value, onChange, fieldKey = 'aboutPage', de
   if (isImageContentKey(fieldKey)) {
     return <ImageUploader label="" value={stringValue} onChange={onChange} />;
   }
-  const useTextarea = /description|subtitle|body|text|quote|detail|intro|paragraph/i.test(fieldKey) || stringValue.length > 90;
+  const useTextarea = /description|subtitle|body|text|quote|detail|intro|paragraph/i.test(fieldKey) || stringValue.length> 90;
   return useTextarea
     ? <textarea rows={3} value={stringValue} onChange={(event) => onChange(event.target.value)} className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-xs leading-5 focus:border-[#000080] focus:outline-none" />
     : <input type="text" value={stringValue} onChange={(event) => onChange(event.target.value)} className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-medium focus:border-[#000080] focus:outline-none" />;
@@ -1536,7 +1534,7 @@ export default function TemplateManager() {
         return page;
       });
       
-      if (updatedCount > 0) {
+      if (updatedCount> 0) {
          await updateSection('customPages', updatedPages);
       }
       
@@ -1572,26 +1570,20 @@ export default function TemplateManager() {
                 onChange={(e) => setNewTemplateName(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleCreateTemplate()}
               />
-              <ConfirmButton 
+              <button 
                 onClick={handleCreateTemplate}
                 className="bg-[#000080] text-white p-2 rounded-xl hover:bg-[#000066]"
-              >
+>
                 <Check className="w-4 h-4" />
-              </ConfirmButton>
-              <ConfirmButton 
-                onClick={() => setIsAddingTemplate(false)}
-                className="bg-slate-100 text-slate-500 p-2 rounded-xl hover:bg-slate-200"
-              >
+              </button>
+              <button>
                 <Trash2 className="w-4 h-4" />
-              </ConfirmButton>
+              </button>
             </div>
           ) : (
-            <ConfirmButton 
-              onClick={() => setIsAddingTemplate(true)}
-              className="bg-white border border-slate-200 hover:border-[#000080] text-[#000080] px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all shadow-sm"
-            >
+            <button>
               <Plus className="w-4 h-4" /> Create New Template
-            </ConfirmButton>
+            </button>
           )}
           
           {savedMessage && (
@@ -1609,21 +1601,18 @@ export default function TemplateManager() {
             <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">Available Layouts</h3>
             <div className="space-y-2">
               {blueprints.map((template: any) => (
-                <ConfirmButton
-                  key={template.id}
+                <button key={template.id}
                   onClick={() => setSelectedTemplateId(template.id)}
                   className={cn(
                     "w-full text-left p-3 rounded-xl border transition-all group relative",
                     selectedTemplateId === template.id
                       ? "bg-[#000080] border-[#000080] text-white shadow-md shadow-blue-900/10"
                       : "bg-slate-50 border-slate-100 text-slate-600 hover:bg-white hover:border-slate-300"
-                  )}
-                >
+                  )} >
                   <div className="font-bold text-xs flex items-center justify-between">
                     <span className="truncate pr-4">{template.name}</span>
                     <div className="flex items-center gap-1">
-                      <ConfirmButton 
-                        onClick={(e) => {
+                      <button onClick={(e) => {
                           e.stopPropagation();
                           handleDuplicateTemplate(template);
                         }}
@@ -1631,13 +1620,11 @@ export default function TemplateManager() {
                           "opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-slate-200 hover:text-slate-700 transition-all",
                           selectedTemplateId === template.id ? "hover:bg-[#000066] hover:text-white text-white/70" : "text-slate-400"
                         )}
-                        title="Duplicate Template"
-                      >
+                        title="Duplicate Template">
                         <Copy className="w-3.5 h-3.5" />
-                      </ConfirmButton>
+                      </button>
                       {template.id !== 'service-detail' && (
-                        <ConfirmButton 
-                          onClick={(e) => {
+                        <button onClick={(e) => {
                             e.stopPropagation();
                             handleDeleteTemplate(template.id);
                           }}
@@ -1645,10 +1632,9 @@ export default function TemplateManager() {
                             "opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-red-50 hover:text-red-500 transition-all",
                             selectedTemplateId === template.id ? "hover:bg-[#000066] hover:text-white text-white/70" : "text-slate-400"
                           )}
-                          title="Delete Template"
-                        >
+                          title="Delete Template">
                           <Trash2 className="w-3.5 h-3.5" />
-                        </ConfirmButton>
+                        </button>
                       )}
                     </div>
                   </div>
@@ -1658,7 +1644,7 @@ export default function TemplateManager() {
                   )}>
                     {template.description}
                   </p>
-                </ConfirmButton>
+                </button>
               ))}
             </div>
           </div>
@@ -1706,17 +1692,15 @@ export default function TemplateManager() {
                         className="text-lg font-bold text-slate-900 border-b-2 border-[#000080] outline-none bg-transparent min-w-[300px]"
                         autoFocus
                       />
-                      <ConfirmButton 
-                        onClick={() => {
+                      <button onClick={() => {
                           if (editingNameValue !== selectedTemplate.name) {
                             handleRenameTemplate(selectedTemplate.id, editingNameValue);
                           }
                           setIsEditingName(false);
                         }}
-                        className="text-[#000080] hover:text-[#000066]"
-                      >
+                        className="text-[#000080] hover:text-[#000066]" >
                         <Check className="w-5 h-5" />
-                      </ConfirmButton>
+                      </button>
                     </div>
                   ) : (
                     <h3 
@@ -1725,8 +1709,7 @@ export default function TemplateManager() {
                         setEditingNameValue(selectedTemplate.name);
                         setIsEditingName(true);
                       }}
-                      title="Click to rename"
-                    >
+                      title="Click to rename">
                       {selectedTemplate.name.replace(/ Blueprint$/, '')} Blueprint
                       <Settings className="w-4 h-4 opacity-0 group-hover:opacity-100 text-slate-400 transition-opacity" />
                     </h3>
@@ -1734,45 +1717,35 @@ export default function TemplateManager() {
                   <p className="text-xs text-slate-500 mt-1">{selectedTemplate.description}</p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                  <ConfirmButton 
-                    type="button"
+                  <button type="button"
                     onClick={() => setTemplateSubTab('Preview')}
                     className={cn(
                       "px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 border transition-all shadow-sm",
                       templateSubTab === 'Preview' 
                         ? "bg-slate-900 text-teal-300 border-slate-900 shadow-md" 
                         : "bg-slate-100 hover:bg-slate-200 text-slate-800 border-slate-200"
-                    )}
-                  >
+                    )} >
                     <Eye className="w-4 h-4 text-teal-500" />
                     <span>Preview Mode</span>
-                  </ConfirmButton>
+                  </button>
 
-                  <ConfirmButton 
-                    type="button"
+                  <button type="button"
                     onClick={() => setIsFullScreenPreview(true)}
                     className="p-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all border border-slate-200"
-                    title="Open Full Screen Preview Modal"
-                  >
+                    title="Open Full Screen Preview Modal" >
                     <Maximize2 className="w-4 h-4 text-slate-700" />
-                  </ConfirmButton>
+                  </button>
 
                   
-                  <ConfirmButton
-                    onClick={() => handleForceSync(data)}
+                  <button onClick={() => handleForceSync(data)}
                     disabled={saving}
                     className="bg-amber-600 hover:bg-amber-700 disabled:bg-slate-400 text-white px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 shadow-lg transition-all disabled:cursor-not-allowed"
-                    title="Force overwrite all pages using this template"
-                  >
+                    title="Force overwrite all pages using this template" >
                     <RefreshCw className="w-4 h-4" />
                     <span>Force Sync Pages</span>
-                  </ConfirmButton>
+                  </button>
 
-<ConfirmButton 
-                    onClick={() => handleSaveBlueprint(data)}
-                    disabled={saving}
-                    className="bg-[#000080] hover:bg-[#000066] disabled:bg-slate-400 text-white px-6 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 shadow-lg transition-all disabled:cursor-not-allowed min-w-[180px] justify-center"
-                  >
+<button>
                     {saving ? (
                       <>
                         <RefreshCw className="w-4 h-4 animate-spin" />
@@ -1789,7 +1762,7 @@ export default function TemplateManager() {
                         <span>Save Blueprint Updates</span>
                       </>
                     )}
-                  </ConfirmButton>
+                  </button>
                 </div>
               </div>
 
@@ -1807,18 +1780,16 @@ export default function TemplateManager() {
                   ? ['Hero & Trust', 'Pricing Promise', 'Packages', 'Comparison', 'Process', 'Scope & Payment', 'Care Plans', 'Recommendation', 'FAQ', 'Closing CTA', 'Preview']
                   : ['Hero', 'Value Prop', 'Evidence', 'Technical', 'Our Process', 'Conversion', 'Pricing', 'Dynamic Feeds', 'Preview']
                 ).map((tab) => (
-                  <ConfirmButton
-                    key={tab}
+                  <button key={tab}
                     onClick={() => setTemplateSubTab(tab)}
                     className={cn(
                       "px-5 py-2.5 text-xs font-bold rounded-xl transition-all",
                       templateSubTab === tab 
                         ? "bg-white text-[#000080] shadow-sm" 
                         : "text-slate-500 hover:text-slate-900"
-                    )}
-                  >
+                    )} >
                     {tab}
-                  </ConfirmButton>
+                  </button>
                 ))}
               </div>
 
@@ -2028,15 +1999,13 @@ export default function TemplateManager() {
                         <div className="grid grid-cols-1 gap-4">
                           {(data.contactInfo?.locations || []).map((loc: any, idx: number) => (
                             <div key={idx} className="bg-white border border-slate-200 p-5 rounded-2xl space-y-3 relative group">
-                              <ConfirmButton 
-                                onClick={() => {
+                              <button onClick={() => {
                                   const next = data.contactInfo.locations.filter((_: any, i: number) => i !== idx);
                                   setDraftData({ ...data, contactInfo: { ...data.contactInfo, locations: next } });
                                 }}
-                                className="absolute top-4 right-4 text-slate-300 hover:text-red-500"
-                              >
+                                className="absolute top-4 right-4 text-slate-300 hover:text-red-500">
                                 <Trash2 className="w-4 h-4" />
-                              </ConfirmButton>
+                              </button>
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
                                   <label className="block text-[9px] font-bold text-slate-400 uppercase mb-1">City / Office Name</label>
@@ -2094,15 +2063,13 @@ export default function TemplateManager() {
                             </div>
                           ))}
                         </div>
-                        <ConfirmButton 
-                          onClick={() => {
+                        <button onClick={() => {
                             const current = data.contactInfo?.locations || [];
                             setDraftData({ ...data, contactInfo: { ...data.contactInfo, locations: [...current, { city: 'New Office', address: '', email: '', phone: '' }] } });
                           }}
-                          className="py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-[#000080] font-bold text-xs rounded-xl flex items-center gap-2 transition-all"
-                        >
+                          className="py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-[#000080] font-bold text-xs rounded-xl flex items-center gap-2 transition-all" >
                           <Plus className="w-4 h-4" /> Add Office Location
-                        </ConfirmButton>
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -2151,18 +2118,16 @@ export default function TemplateManager() {
                         <h4 className="text-sm font-bold text-slate-900">Trusted By Brand Slider</h4>
                         <div className="flex items-center gap-2">
                           <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Show Slider</label>
-                          <ConfirmButton 
-                            onClick={() => setDraftData({ ...data, trustedBy: { ...data.trustedBy, showSlider: !data.trustedBy?.showSlider } })}
+                          <button onClick={() => setDraftData({ ...data, trustedBy: { ...data.trustedBy, showSlider: !data.trustedBy?.showSlider } })}
                             className={cn(
                               "w-10 h-5 rounded-full transition-colors relative",
                               data.trustedBy?.showSlider ? "bg-teal-500" : "bg-slate-300"
-                            )}
-                          >
+                            )} >
                             <div className={cn(
                               "absolute top-1 w-3 h-3 rounded-full bg-white transition-all",
                               data.trustedBy?.showSlider ? "right-1" : "left-1"
                             )} />
-                          </ConfirmButton>
+                          </button>
                         </div>
                       </div>
 
@@ -2215,48 +2180,38 @@ export default function TemplateManager() {
                       <div className="flex items-center gap-2.5">
                         {/* Device Viewport Toggle */}
                         <div className="flex items-center bg-slate-800 p-1 rounded-xl border border-slate-700">
-                          <ConfirmButton 
-                            type="button"
+                          <button type="button"
                             onClick={() => setPreviewDevice('desktop')}
                             className={cn(
                               "px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all",
                               previewDevice === 'desktop' ? "bg-white text-slate-900 shadow-sm" : "text-slate-400 hover:text-white"
                             )}
-                            title="Desktop View (100%)"
-                          >
+                            title="Desktop View (100%)" >
                             <Monitor className="w-3.5 h-3.5" /> Desktop
-                          </ConfirmButton>
-                          <ConfirmButton 
-                            type="button"
+                          </button>
+                          <button type="button"
                             onClick={() => setPreviewDevice('tablet')}
                             className={cn(
                               "px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all",
                               previewDevice === 'tablet' ? "bg-white text-slate-900 shadow-sm" : "text-slate-400 hover:text-white"
                             )}
-                            title="Tablet View (768px)"
-                          >
+                            title="Tablet View (768px)" >
                             <Tablet className="w-3.5 h-3.5" /> Tablet
-                          </ConfirmButton>
-                          <ConfirmButton 
-                            type="button"
+                          </button>
+                          <button type="button"
                             onClick={() => setPreviewDevice('mobile')}
                             className={cn(
                               "px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all",
                               previewDevice === 'mobile' ? "bg-white text-slate-900 shadow-sm" : "text-slate-400 hover:text-white"
                             )}
-                            title="Mobile View (375px)"
-                          >
+                            title="Mobile View (375px)" >
                             <Smartphone className="w-3.5 h-3.5" /> Mobile
-                          </ConfirmButton>
+                          </button>
                         </div>
 
-                        <ConfirmButton 
-                          type="button"
-                          onClick={() => setIsFullScreenPreview(true)}
-                          className="bg-teal-500 hover:bg-teal-400 text-slate-950 px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-lg hover:scale-105"
-                        >
+                        <button>
                           <Maximize2 className="w-3.5 h-3.5" /> Full Screen
-                        </ConfirmButton>
+                        </button>
                       </div>
                     </div>
 
@@ -2467,15 +2422,13 @@ export default function TemplateManager() {
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                         {(data.hero?.stats || []).map((st: any, idx: number) => (
                           <div key={idx} className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-3 relative">
-                            <ConfirmButton 
-                              onClick={() => {
+                            <button onClick={() => {
                                 const next = data.hero.stats.filter((_: any, i: number) => i !== idx);
                                 setDraftData({ ...data, hero: { ...data.hero, stats: next } });
                               }}
-                              className="absolute top-3 right-3 text-slate-300 hover:text-red-500"
-                            >
+                              className="absolute top-3 right-3 text-slate-300 hover:text-red-500">
                               <Trash2 className="w-3.5 h-3.5" />
-                            </ConfirmButton>
+                            </button>
                             <div>
                               <label className="block text-[9px] font-bold text-slate-400 uppercase mb-1">Metric Number</label>
                               <input 
@@ -2505,15 +2458,13 @@ export default function TemplateManager() {
                           </div>
                         ))}
                       </div>
-                      <ConfirmButton 
-                        onClick={() => {
+                      <button onClick={() => {
                           const currentStats = data.hero?.stats || [];
                           setDraftData({ ...data, hero: { ...data.hero, stats: [...currentStats, { number: '100+', label: 'New Metric', icon: 'Sparkles' }] } });
                         }}
-                        className="py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-[#000080] font-bold text-xs rounded-xl flex items-center gap-2 transition-all"
-                      >
+                        className="py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-[#000080] font-bold text-xs rounded-xl flex items-center gap-2 transition-all" >
                         <Plus className="w-4 h-4" /> Add Stat Metric
-                      </ConfirmButton>
+                      </button>
                     </div>
                   </div>
                 )}
@@ -2601,27 +2552,23 @@ export default function TemplateManager() {
                                   }}
                                 />
                               </div>
-                              <ConfirmButton 
-                                onClick={() => {
+                              <button onClick={() => {
                                   const next = data.computerShowcase.features.filter((_: any, i: number) => i !== idx);
                                   setDraftData({ ...data, computerShowcase: { ...data.computerShowcase, features: next } });
                                 }}
-                                className="text-slate-300 hover:text-red-500 p-2"
-                              >
+                                className="text-slate-300 hover:text-red-500 p-2">
                                 <Trash2 className="w-4 h-4" />
-                              </ConfirmButton>
+                              </button>
                             </div>
                           ))}
                         </div>
-                        <ConfirmButton 
-                          onClick={() => {
+                        <button onClick={() => {
                             const current = data.computerShowcase?.features || [];
                             setDraftData({ ...data, computerShowcase: { ...data.computerShowcase, features: [...current, { title: 'New Feature', desc: 'Feature description', icon: 'Sparkles' }] } });
                           }}
-                          className="py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-[#000080] font-bold text-xs rounded-xl flex items-center gap-2 transition-all"
-                        >
+                          className="py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-[#000080] font-bold text-xs rounded-xl flex items-center gap-2 transition-all" >
                           <Plus className="w-4 h-4" /> Add Feature Highlight
-                        </ConfirmButton>
+                        </button>
                       </div>
 
                     </div>
@@ -2701,15 +2648,13 @@ export default function TemplateManager() {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {(data.values || []).map((val: any, idx: number) => (
                           <div key={idx} className="bg-white border border-slate-200 p-5 rounded-2xl space-y-3 relative">
-                            <ConfirmButton 
-                              onClick={() => {
+                            <button onClick={() => {
                                 const next = data.values.filter((_: any, i: number) => i !== idx);
                                 setDraftData({ ...data, values: next });
                               }}
-                              className="absolute top-4 right-4 text-slate-300 hover:text-red-500"
-                            >
+                              className="absolute top-4 right-4 text-slate-300 hover:text-red-500">
                               <Trash2 className="w-4 h-4" />
-                            </ConfirmButton>
+                            </button>
                             <div>
                               <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Value Title</label>
                               <input 
@@ -2739,15 +2684,13 @@ export default function TemplateManager() {
                           </div>
                         ))}
                       </div>
-                      <ConfirmButton 
-                        onClick={() => {
+                      <button onClick={() => {
                           const current = data.values || [];
                           setDraftData({ ...data, values: [...current, { title: 'New Core Value', desc: 'Description of value', icon: 'Sparkles', iconColor: 'bg-blue-500' }] });
                         }}
-                        className="py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-[#000080] font-bold text-xs rounded-xl flex items-center gap-2 transition-all"
-                      >
+                        className="py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-[#000080] font-bold text-xs rounded-xl flex items-center gap-2 transition-all" >
                         <Plus className="w-4 h-4" /> Add Core Value Card
-                      </ConfirmButton>
+                      </button>
                     </div>
                   </div>
                 )}
@@ -2781,15 +2724,13 @@ export default function TemplateManager() {
                         <div className="space-y-4">
                           {(data.timeline?.milestones || []).map((m: any, idx: number) => (
                             <div key={idx} className="bg-white border border-slate-200 p-5 rounded-2xl space-y-3 relative">
-                              <ConfirmButton 
-                                onClick={() => {
+                              <button onClick={() => {
                                   const next = data.timeline.milestones.filter((_: any, i: number) => i !== idx);
                                   setDraftData({ ...data, timeline: { ...data.timeline, milestones: next } });
                                 }}
-                                className="absolute top-4 right-4 text-slate-300 hover:text-red-500"
-                              >
+                                className="absolute top-4 right-4 text-slate-300 hover:text-red-500">
                                 <Trash2 className="w-4 h-4" />
-                              </ConfirmButton>
+                              </button>
                               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                                 <div>
                                   <label className="block text-[9px] font-bold text-slate-400 uppercase mb-1">Year</label>
@@ -2847,15 +2788,13 @@ export default function TemplateManager() {
                             </div>
                           ))}
                         </div>
-                        <ConfirmButton 
-                          onClick={() => {
+                        <button onClick={() => {
                             const current = data.timeline?.milestones || [];
                             setDraftData({ ...data, timeline: { ...data.timeline, milestones: [...current, { year: '2027', title: 'New Achievement', description: 'Milestone description', badge: 'Future' }] } });
                           }}
-                          className="py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-[#000080] font-bold text-xs rounded-xl flex items-center gap-2 transition-all"
-                        >
+                          className="py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-[#000080] font-bold text-xs rounded-xl flex items-center gap-2 transition-all" >
                           <Plus className="w-4 h-4" /> Add Timeline Milestone
-                        </ConfirmButton>
+                        </button>
                       </div>
 
                     </div>
@@ -2891,15 +2830,13 @@ export default function TemplateManager() {
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                           {(data.team?.members || []).map((m: any, idx: number) => (
                             <div key={idx} className="bg-white border border-slate-200 p-5 rounded-2xl space-y-3 relative">
-                              <ConfirmButton 
-                                onClick={() => {
+                              <button onClick={() => {
                                   const next = data.team.members.filter((_: any, i: number) => i !== idx);
                                   setDraftData({ ...data, team: { ...data.team, members: next } });
                                 }}
-                                className="absolute top-4 right-4 text-slate-300 hover:text-red-500"
-                              >
+                                className="absolute top-4 right-4 text-slate-300 hover:text-red-500">
                                 <Trash2 className="w-4 h-4" />
-                              </ConfirmButton>
+                              </button>
                               <div>
                                 <label className="block text-[9px] font-bold text-slate-400 uppercase mb-1">Full Name</label>
                                 <input 
@@ -2951,15 +2888,13 @@ export default function TemplateManager() {
                             </div>
                           ))}
                         </div>
-                        <ConfirmButton 
-                          onClick={() => {
+                        <button onClick={() => {
                             const current = data.team?.members || [];
                             setDraftData({ ...data, team: { ...data.team, members: [...current, { name: 'New Executive', role: 'Director', bio: 'Short bio', image: '' }] } });
                           }}
-                          className="py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-[#000080] font-bold text-xs rounded-xl flex items-center gap-2 transition-all"
-                        >
+                          className="py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-[#000080] font-bold text-xs rounded-xl flex items-center gap-2 transition-all" >
                           <Plus className="w-4 h-4" /> Add Team Member
-                        </ConfirmButton>
+                        </button>
                       </div>
 
                     </div>
@@ -3127,23 +3062,18 @@ export default function TemplateManager() {
                                 setDraftData({ ...data, subnav: next });
                               }}
                             />
-                            <ConfirmButton 
-                              onClick={() => {
+                            <button onClick={() => {
                                 const next = data.subnav.filter((_: any, i: number) => i !== idx);
                                 setDraftData({ ...data, subnav: next });
                               }}
-                              className="p-2 text-slate-300 hover:text-red-500 transition-colors"
-                            >
+                              className="p-2 text-slate-300 hover:text-red-500 transition-colors">
                               <Trash2 className="w-4 h-4" />
-                            </ConfirmButton>
+                            </button>
                           </div>
                         ))}
-                        <ConfirmButton 
-                          onClick={() => setDraftData({ ...data, subnav: [...(data.subnav || []), { label: 'New Link', id: 'section' }] })}
-                          className="px-4 py-2 border-2 border-dashed border-slate-200 rounded-xl text-xs font-bold text-slate-400 hover:text-[#000080] hover:border-[#000080] transition-all flex items-center gap-2 mt-2"
-                        >
+                        <button>
                           <Plus className="w-4 h-4" /> Add Navigation Link
-                        </ConfirmButton>
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -3238,15 +3168,13 @@ export default function TemplateManager() {
                       <div className="grid grid-cols-1 gap-4">
                         {(data.howWeHelp || []).map((item: any, idx: number) => (
                           <div key={idx} className="bg-slate-50 border border-slate-200 rounded-2xl p-6 relative group">
-                            <ConfirmButton 
-                              onClick={() => {
+                            <button onClick={() => {
                                 const next = data.howWeHelp.filter((_: any, i: number) => i !== idx);
                                 setDraftData({ ...data, howWeHelp: next });
                               }}
-                              className="absolute top-4 right-4 p-2 text-slate-300 hover:text-red-500 transition-colors"
-                            >
+                              className="absolute top-4 right-4 p-2 text-slate-300 hover:text-red-500 transition-colors">
                               <Trash2 className="w-5 h-5" />
-                            </ConfirmButton>
+                            </button>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                               <div className="space-y-4">
                                 <input 
@@ -3330,34 +3258,29 @@ export default function TemplateManager() {
                                           setDraftData({ ...data, howWeHelp: next });
                                         }}
                                       />
-                                      <ConfirmButton onClick={() => {
+                                      <button onClick={() => {
                                         const next = [...data.howWeHelp];
                                         next[idx].features = next[idx].features.filter((_: any, i: number) => i !== fidx);
                                         setDraftData({ ...data, howWeHelp: next });
-                                      }} className="text-red-300 hover:text-red-500"><Trash2 className="w-3.5 h-3.5" /></ConfirmButton>
+                                      }} className="text-red-300 hover:text-red-500"><Trash2 className="w-3.5 h-3.5" /></button>
                                     </div>
                                   ))}
-                                  <ConfirmButton 
-                                    onClick={() => {
+                                  <button onClick={() => {
                                       const next = [...data.howWeHelp];
                                       next[idx].features = [...(next[idx].features || []), 'New Feature Point'];
                                       setDraftData({ ...data, howWeHelp: next });
                                     }}
-                                    className="text-[10px] font-bold text-[#000080] flex items-center gap-1"
-                                  >
+                                    className="text-[10px] font-bold text-[#000080] flex items-center gap-1" >
                                     <Plus className="w-3 h-3" /> Add Feature Point
-                                  </ConfirmButton>
+                                  </button>
                                 </div>
                               </div>
                             </div>
                           </div>
                         ))}
-                        <ConfirmButton 
-                          onClick={() => setDraftData({ ...data, howWeHelp: [...(data.howWeHelp || []), { title: 'New Service Capability', desc: 'Detail about this service.', features: ['Workflow Optimization'], iconColor: 'bg-blue-500' }] })}
-                          className="w-full py-4 border-2 border-dashed border-slate-200 rounded-2xl text-slate-400 hover:text-[#000080] transition-all flex items-center justify-center gap-2 font-bold text-xs"
-                        >
+                        <button>
                           <Plus className="w-5 h-5" /> Add New "How We Help" Card
-                        </ConfirmButton>
+                        </button>
                       </div>
                     </div>
 
@@ -3532,17 +3455,14 @@ export default function TemplateManager() {
                                 setDraftData({ ...data, challenges: next });
                               }}
                             />
-                            <ConfirmButton onClick={() => setDraftData({ ...data, challenges: data.challenges.filter((_: any, i: number) => i !== idx) })} className="p-1.5 text-slate-300 hover:text-red-500 rounded-lg">
+                            <button onClick={() => setDraftData({ ...data, challenges: data.challenges.filter((_: any, i: number) => i !== idx) })} className="p-1.5 text-slate-300 hover:text-red-500 rounded-lg">
                               <Trash2 className="w-4 h-4" />
-                            </ConfirmButton>
+                            </button>
                           </div>
                         ))}
-                        <ConfirmButton 
-                          onClick={() => setDraftData({ ...data, challenges: [...(data.challenges || []), 'New Challenge solved for partners'] })}
-                          className="w-full py-3 border-2 border-dashed border-slate-200 rounded-xl text-slate-400 hover:text-[#000080] transition-all flex items-center justify-center gap-2 font-bold text-xs"
-                        >
+                        <button>
                           <Plus className="w-4 h-4" /> Add Challenge Statement
-                        </ConfirmButton>
+                        </button>
                       </div>
                     </div>
 
@@ -3595,12 +3515,9 @@ export default function TemplateManager() {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {(data.caseStudies || []).map((cs: any, idx: number) => (
                           <div key={idx} className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-4 relative">
-                            <ConfirmButton 
-                              onClick={() => setDraftData({ ...data, caseStudies: data.caseStudies.filter((_: any, i: number) => i !== idx) })}
-                              className="absolute top-4 right-4 p-2 text-slate-300 hover:text-red-500 transition-colors"
-                            >
+                            <button>
                               <Trash2 className="w-4 h-4" />
-                            </ConfirmButton>
+                            </button>
                              <div className="space-y-2 pt-2">
                               <div>
                                 <label className="block text-[10px] font-bold text-slate-500 mb-1">Quick Select Post</label>
@@ -3625,7 +3542,7 @@ export default function TemplateManager() {
                                       setDraftData({ ...data, caseStudies: next });
                                     }
                                   }}
-                                >
+                               >
                                   <option value="">-- Choose testimonial / post --</option>
                                   {allPortfolioList.map((p: any) => (
                                     <option key={p.slug || p.id} value={p.slug || p.id}>
@@ -3679,13 +3596,10 @@ export default function TemplateManager() {
                             />
                           </div>
                         ))}
-                        <ConfirmButton 
-                          onClick={() => setDraftData({ ...data, caseStudies: [...(data.caseStudies || []), { client: 'Client Name', title: 'Case Study Title', image: '' }] })}
-                          className="border-2 border-dashed border-slate-200 rounded-2xl flex flex-col items-center justify-center py-12 text-slate-400 hover:text-[#000080] transition-all gap-2"
-                        >
+                        <button>
                           <Plus className="w-8 h-8" />
                           <span className="text-xs font-bold">Add Case Study</span>
-                        </ConfirmButton>
+                        </button>
                       </div>
                     </div>
 
@@ -3744,7 +3658,7 @@ export default function TemplateManager() {
                                     next[idx] = { ...next[idx], icon: e.target.value };
                                     setDraftData({ ...data, awards: next });
                                   }}
-                                >
+                               >
                                   <option value="">No Icon</option>
                                   <option value="Sparkles">Sparkles</option>
                                   <option value="Monitor">Monitor</option>
@@ -3758,8 +3672,7 @@ export default function TemplateManager() {
                                   <option value="Smartphone">Smartphone</option>
                                 </select>
                               </div>
-                              <ConfirmButton 
-                                onClick={() => {
+                              <button onClick={() => {
                                   const currentAwards = data.awards || [
                                     { text: 'CLUTCH', icon: 'Sparkles' },
                                     { text: 'DESIGNRUSH', icon: 'Monitor' },
@@ -3767,10 +3680,9 @@ export default function TemplateManager() {
                                   ];
                                   setDraftData({ ...data, awards: currentAwards.filter((_: any, i: number) => i !== idx) });
                                 }} 
-                                className="p-1.5 text-slate-300 hover:text-red-500 rounded-lg mt-4 sm:mt-0 self-end sm:self-center shrink-0"
-                              >
+                                className="p-1.5 text-slate-300 hover:text-red-500 rounded-lg mt-4 sm:mt-0 self-end sm:self-center shrink-0">
                                 <Trash2 className="w-4 h-4" />
-                              </ConfirmButton>
+                              </button>
                             </div>
                             <div className="border-t border-slate-100 pt-3">
                               <ImageUploader 
@@ -3789,8 +3701,7 @@ export default function TemplateManager() {
                             </div>
                           </div>
                         ))}
-                        <ConfirmButton 
-                          onClick={() => {
+                        <button onClick={() => {
                             const currentAwards = data.awards || [
                               { text: 'CLUTCH', icon: 'Sparkles' },
                               { text: 'DESIGNRUSH', icon: 'Monitor' },
@@ -3798,10 +3709,9 @@ export default function TemplateManager() {
                             ];
                             setDraftData({ ...data, awards: [...currentAwards, { text: 'New Badge', icon: '', image: '' }] });
                           }}
-                          className="w-full py-3 border-2 border-dashed border-slate-200 rounded-xl text-slate-400 hover:text-[#000080] transition-all flex items-center justify-center gap-2 font-bold text-xs"
-                        >
+                          className="w-full py-3 border-2 border-dashed border-slate-200 rounded-xl text-slate-400 hover:text-[#000080] transition-all flex items-center justify-center gap-2 font-bold text-xs" >
                           <Plus className="w-4 h-4" /> Add Award/Badge
-                        </ConfirmButton>
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -3877,15 +3787,13 @@ export default function TemplateManager() {
                       <div className="space-y-4">
                         {(data.techStack || []).map((stack: any, idx: number) => (
                           <div key={idx} className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-3 relative">
-                            <ConfirmButton 
-                              onClick={() => {
+                            <button onClick={() => {
                                 const next = data.techStack.filter((_: any, i: number) => i !== idx);
                                 setDraftData({ ...data, techStack: next });
                               }}
-                              className="absolute top-4 right-4 p-2 text-slate-300 hover:text-red-500 transition-colors"
-                            >
+                              className="absolute top-4 right-4 p-2 text-slate-300 hover:text-red-500 transition-colors">
                               <Trash2 className="w-4 h-4" />
-                            </ConfirmButton>
+                            </button>
                             <div className="max-w-md">
                               <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Category Header</label>
                               <input 
@@ -3908,16 +3816,14 @@ export default function TemplateManager() {
                                   const logoVal = isObj ? (iconItem.logo || '') : '';
                                   return (
                                     <div key={iidx} className="flex flex-col bg-slate-50 border border-slate-200 rounded-xl p-3 relative group hover:border-[#000080]/30 hover:bg-slate-50/50 transition-all">
-                                      <ConfirmButton 
-                                        onClick={() => {
+                                      <button onClick={() => {
                                           const next = [...data.techStack];
                                           next[idx].icons = next[idx].icons.filter((_: any, i: number) => i !== iidx);
                                           setDraftData({ ...data, techStack: next });
                                         }} 
-                                        className="absolute top-2 right-2 p-1 text-slate-300 hover:text-red-500 rounded-md hover:bg-slate-100 transition-all opacity-0 group-hover:opacity-100"
-                                      >
+                                        className="absolute top-2 right-2 p-1 text-slate-300 hover:text-red-500 rounded-md hover:bg-slate-100 transition-all opacity-0 group-hover:opacity-100">
                                         <Trash2 className="w-3.5 h-3.5" />
-                                      </ConfirmButton>
+                                      </button>
                                       
                                       <div className="space-y-2">
                                         <div>
@@ -3972,27 +3878,22 @@ export default function TemplateManager() {
                                   );
                                 })}
                                 
-                                <ConfirmButton 
-                                  onClick={() => {
+                                <button onClick={() => {
                                     const next = [...data.techStack];
                                     next[idx].icons = [...(next[idx].icons || []), { name: 'New Tech', logo: '' }];
                                     setDraftData({ ...data, techStack: next });
                                   }}
-                                  className="border-2 border-dashed border-slate-200 rounded-xl p-4 text-slate-400 hover:text-[#000080] hover:border-[#000080]/30 transition-all flex flex-col items-center justify-center gap-1 min-h-[110px] bg-white hover:bg-slate-50/20 w-full"
-                                >
+                                  className="border-2 border-dashed border-slate-200 rounded-xl p-4 text-slate-400 hover:text-[#000080] hover:border-[#000080]/30 transition-all flex flex-col items-center justify-center gap-1 min-h-[110px] bg-white hover:bg-slate-50/20 w-full" >
                                   <Plus className="w-5 h-5 text-slate-300" />
                                   <span className="text-[11px] font-bold">Add Tech & Logo</span>
-                                </ConfirmButton>
+                                </button>
                               </div>
                             </div>
                           </div>
                         ))}
-                        <ConfirmButton 
-                          onClick={() => setDraftData({ ...data, techStack: [...(data.techStack || []), { category: 'Core Stack', icons: [] }] })}
-                          className="w-full py-3 border-2 border-dashed border-slate-200 rounded-xl text-slate-400 hover:text-[#000080] transition-all flex items-center justify-center gap-2 font-bold text-xs"
-                        >
+                        <button>
                           <Plus className="w-4 h-4" /> Add Stack Category Blueprint
-                        </ConfirmButton>
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -4006,8 +3907,7 @@ export default function TemplateManager() {
                           <h4 className="text-sm font-bold text-slate-900">Our Process Section Configuration</h4>
                           <p className="text-xs text-slate-500">Manage the step-by-step methodology cards shown on your service pages.</p>
                         </div>
-                        <ConfirmButton 
-                          onClick={() => {
+                        <button onClick={() => {
                             const defaultSteps = [
                               {
                                 step: "01",
@@ -4044,10 +3944,9 @@ export default function TemplateManager() {
                             ];
                             setDraftData({ ...data, processTitle: 'Our Process', processBadge: 'How We Deliver Success', ourProcess: defaultSteps, engagement: defaultSteps });
                           }}
-                          className="text-xs font-bold text-[#000080] bg-white border border-[#000080]/30 hover:bg-[#000080] hover:text-white px-3 py-1.5 rounded-lg transition-all"
-                        >
+                          className="text-xs font-bold text-[#000080] bg-white border border-[#000080]/30 hover:bg-[#000080] hover:text-white px-3 py-1.5 rounded-lg transition-all" >
                           Reset to Standard 4 Steps
-                        </ConfirmButton>
+                        </button>
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -4076,7 +3975,7 @@ export default function TemplateManager() {
                       <div>
                         <div className="flex items-center justify-between mb-3">
                           <label className="text-xs font-bold text-slate-800 uppercase tracking-wider">Process Steps ({(data.ourProcess || data.engagement || []).length})</label>
-                          <ConfirmButton 
+                          <button 
                             onClick={() => {
                               const processList = data.ourProcess || data.engagement || [];
                               const nextNum = processList.length + 1;
@@ -4091,10 +3990,9 @@ export default function TemplateManager() {
                               const next = [...processList, newStep];
                               setDraftData({ ...data, ourProcess: next, engagement: next });
                             }}
-                            className="text-xs font-bold text-white bg-[#000080] hover:bg-[#000066] px-3 py-1.5 rounded-lg flex items-center gap-1 shadow-sm"
-                          >
+                            className="text-xs font-bold text-white bg-[#000080] hover:bg-[#000066] px-3 py-1.5 rounded-lg flex items-center gap-1 shadow-sm">
                             <Plus className="w-3.5 h-3.5" /> Add Step
-                          </ConfirmButton>
+                          </button>
                         </div>
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -4116,17 +4014,15 @@ export default function TemplateManager() {
                                   />
                                   <span className="text-[10px] font-bold text-slate-400 uppercase">Step Number</span>
                                 </div>
-                                <ConfirmButton 
-                                  onClick={() => {
+                                <button onClick={() => {
                                     const processList = data.ourProcess || data.engagement || [];
                                     const next = processList.filter((_: any, i: number) => i !== idx);
                                     setDraftData({ ...data, ourProcess: next, engagement: next });
                                   }} 
                                   className="text-red-400 hover:text-red-600 p-1 transition-colors"
-                                  title="Delete step"
-                                >
+                                  title="Delete step">
                                   <Trash2 className="w-4 h-4" />
-                                </ConfirmButton>
+                                </button>
                               </div>
 
                               <div>
@@ -4219,15 +4115,13 @@ export default function TemplateManager() {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {(data.engagement || []).map((model: any, idx: number) => (
                           <div key={idx} className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-4 relative">
-                            <ConfirmButton 
-                              onClick={() => {
+                            <button onClick={() => {
                                 const next = data.engagement.filter((_: any, i: number) => i !== idx);
                                 setDraftData({ ...data, engagement: next });
                               }}
-                              className="absolute top-4 right-4 p-2 text-slate-300 hover:text-red-500 transition-colors"
-                            >
+                              className="absolute top-4 right-4 p-2 text-slate-300 hover:text-red-500 transition-colors">
                               <Trash2 className="w-4 h-4" />
-                            </ConfirmButton>
+                            </button>
                             <input 
                               type="text" 
                               placeholder="Engagement Title"
@@ -4260,13 +4154,10 @@ export default function TemplateManager() {
                             />
                           </div>
                         ))}
-                        <ConfirmButton 
-                          onClick={() => setDraftData({ ...data, engagement: [...(data.engagement || []), { title: 'Project-Based Model', desc: 'Clear scope and deliverables.', image: '' }] })}
-                          className="border-2 border-dashed border-slate-200 rounded-2xl flex flex-col items-center justify-center py-12 text-slate-400 hover:text-[#000080] transition-all gap-2"
-                        >
+                        <button>
                           <Plus className="w-8 h-8" />
                           <span className="text-xs font-bold">Add Engagement Model</span>
-                        </ConfirmButton>
+                        </button>
                       </div>
                     </div>
 
@@ -4324,15 +4215,13 @@ export default function TemplateManager() {
                                   setDraftData({ ...data, faqs: next });
                                 }}
                               />
-                              <ConfirmButton 
-                                onClick={() => {
+                              <button onClick={() => {
                                   const next = data.faqs.filter((_: any, i: number) => i !== idx);
                                   setDraftData({ ...data, faqs: next });
                                 }}
-                                className="p-2 text-red-300 hover:text-red-500 transition-colors"
-                              >
+                                className="p-2 text-red-300 hover:text-red-500 transition-colors">
                                 <Trash2 className="w-4 h-4" />
-                              </ConfirmButton>
+                              </button>
                             </div>
                             <textarea 
                               placeholder="Answer"
@@ -4350,12 +4239,9 @@ export default function TemplateManager() {
                             />
                           </div>
                         ))}
-                        <ConfirmButton 
-                          onClick={() => setDraftData({ ...data, faqs: [...(data.faqs || []), { question: 'New Question', answer: 'Detailed response here.' }] })}
-                          className="w-full py-3 border-2 border-dashed border-slate-200 rounded-xl text-slate-400 hover:text-[#000080] transition-all flex items-center justify-center gap-2 font-bold text-xs"
-                        >
+                        <button>
                           <Plus className="w-4 h-4" /> Add FAQ Entry Blueprint
-                        </ConfirmButton>
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -4373,27 +4259,22 @@ export default function TemplateManager() {
                         </div>
                         <div className="flex items-center gap-2">
                           <label className="text-sm font-semibold text-slate-700">Show Pricing Section</label>
-                          <ConfirmButton
-                            onClick={() => setDraftData({ ...data, hidePricing: !data.hidePricing })}
-                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${!data.hidePricing ? 'bg-[#000080]' : 'bg-slate-300'}`}
-                          >
+                          <button>
                             <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${!data.hidePricing ? 'translate-x-6' : 'translate-x-1'}`} />
-                          </ConfirmButton>
+                          </button>
                         </div>
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         {(data.pricing || []).map((plan: any, idx: number) => (
                           <div key={idx} className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-4 relative">
-                            <ConfirmButton 
-                              onClick={() => {
+                            <button onClick={() => {
                                 const next = data.pricing.filter((_: any, i: number) => i !== idx);
                                 setDraftData({ ...data, pricing: next });
                               }}
-                              className="absolute top-3 right-3 p-1.5 text-slate-300 hover:text-red-500 transition-colors"
-                            >
+                              className="absolute top-3 right-3 p-1.5 text-slate-300 hover:text-red-500 transition-colors">
                               <Trash2 className="w-4 h-4" />
-                            </ConfirmButton>
+                            </button>
                             <div>
                               <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Plan Name</label>
                               <input 
@@ -4451,39 +4332,32 @@ export default function TemplateManager() {
                                         setDraftData({ ...data, pricing: next });
                                       }}
                                     />
-                                    <ConfirmButton 
-                                      onClick={() => {
+                                    <button onClick={() => {
                                         const next = [...data.pricing];
                                         next[idx].features = next[idx].features.filter((_: any, i: number) => i !== fidx);
                                         setDraftData({ ...data, pricing: next });
                                       }}
-                                      className="text-red-300 hover:text-red-500"
-                                    >
+                                      className="text-red-300 hover:text-red-500">
                                       <Trash2 className="w-3.5 h-3.5" />
-                                    </ConfirmButton>
+                                    </button>
                                   </div>
                                 ))}
-                                <ConfirmButton 
-                                  onClick={() => {
+                                <button onClick={() => {
                                     const next = [...data.pricing];
                                     next[idx].features = [...(next[idx].features || []), 'New Plan Feature'];
                                     setDraftData({ ...data, pricing: next });
                                   }}
-                                  className="text-[10px] font-bold text-[#000080] flex items-center gap-1 mt-1"
-                                >
+                                  className="text-[10px] font-bold text-[#000080] flex items-center gap-1 mt-1" >
                                   <Plus className="w-3 h-3" /> Add Feature Point
-                                </ConfirmButton>
+                                </button>
                               </div>
                             </div>
                           </div>
                         ))}
-                        <ConfirmButton 
-                          onClick={() => setDraftData({ ...data, pricing: [...(data.pricing || []), { name: 'Growth', price: '4,999', period: 'project', features: ['Dedicated Team', '24/7 SLA'] }] })}
-                          className="border-2 border-dashed border-slate-200 rounded-2xl flex flex-col items-center justify-center p-8 text-slate-400 hover:text-[#000080] transition-all gap-2 min-h-[250px]"
-                        >
+                        <button>
                           <Plus className="w-8 h-8" />
                           <span className="text-xs font-bold">Add Pricing Plan</span>
-                        </ConfirmButton>
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -4578,8 +4452,7 @@ export default function TemplateManager() {
                         <h4 className="text-sm font-bold text-slate-900">Job Positions & Career Offers</h4>
                         <p className="text-xs text-slate-500">Manage the active career openings and job offers displayed on the Careers template.</p>
                       </div>
-                      <ConfirmButton
-                        onClick={() => {
+                      <button onClick={() => {
                           const newPos = {
                             id: `pos-${Date.now()}`,
                             title: "New Role Title",
@@ -4594,10 +4467,9 @@ export default function TemplateManager() {
                             positions: [...(data.positions || []), newPos]
                           });
                         }}
-                        className="bg-[#000080] hover:bg-[#000066] text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 shadow-sm transition-all"
-                      >
+                        className="bg-[#000080] hover:bg-[#000066] text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 shadow-sm transition-all" >
                         <Plus className="w-4 h-4" /> Add Position
-                      </ConfirmButton>
+                      </button>
                     </div>
 
                     <div className="space-y-4">
@@ -4621,16 +4493,14 @@ export default function TemplateManager() {
                                 />
                                 Active
                               </label>
-                              <ConfirmButton
-                                onClick={() => {
+                              <button onClick={() => {
                                   const next = data.positions.filter((_: any, i: number) => i !== idx);
                                   setDraftData({ ...data, positions: next });
                                 }}
                                 className="p-1.5 text-slate-400 hover:text-red-500 transition-colors"
-                                title="Remove position"
-                              >
+                                title="Remove position">
                                 <Trash2 className="w-4 h-4" />
-                              </ConfirmButton>
+                              </button>
                             </div>
                           </div>
 
@@ -4870,46 +4740,38 @@ export default function TemplateManager() {
             <div className="flex items-center gap-4">
               {/* Device Mode Switcher */}
               <div className="flex items-center bg-slate-800 p-1 rounded-xl border border-slate-700">
-                <ConfirmButton 
-                  type="button"
+                <button type="button"
                   onClick={() => setPreviewDevice('desktop')}
                   className={cn(
                     "px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all",
                     previewDevice === 'desktop' ? "bg-white text-slate-900 shadow-sm" : "text-slate-400 hover:text-white"
-                  )}
-                >
+                  )} >
                   <Monitor className="w-3.5 h-3.5" /> Desktop
-                </ConfirmButton>
-                <ConfirmButton 
-                  type="button"
+                </button>
+                <button type="button"
                   onClick={() => setPreviewDevice('tablet')}
                   className={cn(
                     "px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all",
                     previewDevice === 'tablet' ? "bg-white text-slate-900 shadow-sm" : "text-slate-400 hover:text-white"
-                  )}
-                >
+                  )} >
                   <Tablet className="w-3.5 h-3.5" /> Tablet
-                </ConfirmButton>
-                <ConfirmButton 
-                  type="button"
+                </button>
+                <button type="button"
                   onClick={() => setPreviewDevice('mobile')}
                   className={cn(
                     "px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all",
                     previewDevice === 'mobile' ? "bg-white text-slate-900 shadow-sm" : "text-slate-400 hover:text-white"
-                  )}
-                >
+                  )} >
                   <Smartphone className="w-3.5 h-3.5" /> Mobile
-                </ConfirmButton>
+                </button>
               </div>
 
-              <ConfirmButton 
-                type="button"
+              <button type="button"
                 onClick={() => setIsFullScreenPreview(false)}
                 className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-xl transition-all border border-slate-700"
-                title="Exit Preview Modal"
-              >
+                title="Exit Preview Modal" >
                 <X className="w-5 h-5" />
-              </ConfirmButton>
+              </button>
             </div>
           </div>
 

@@ -579,6 +579,26 @@ export default function PortfolioDetailView() {
             <h1 className="text-3xl md:text-5xl lg:text-6xl font-extrabold tracking-tight text-white leading-[1.12] max-w-5xl">
               {item.title}
             </h1>
+
+            {item.websiteUrl && (
+              <motion.div 
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.4 }}
+                className="pt-4"
+              >
+                <a 
+                  href={item.websiteUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-3 px-8 py-4 bg-white/10 hover:bg-white text-white hover:text-[#000080] font-bold rounded-2xl border border-white/20 hover:border-white transition-all backdrop-blur-md group"
+                >
+                  <Globe className="w-5 h-5 group-hover:rotate-12 transition-transform" />
+                  Visit Live Website
+                  <ArrowUpRight className="w-5 h-5 opacity-50 group-hover:opacity-100 transition-opacity" />
+                </a>
+              </motion.div>
+            )}
           </motion.div>
 
           {/* Outcome Highlight Columns at the bottom of 100vh Hero */}
@@ -785,6 +805,25 @@ export default function PortfolioDetailView() {
                 <div>
                   <div className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1">About the company</div>
                   <div className="text-slate-700 text-xs leading-relaxed">{item.aboutCompany}</div>
+                </div>
+              )}
+
+              {/* Website Link Button */}
+              {item.websiteUrl && (
+                <div className="pt-4">
+                  <a 
+                    href={item.websiteUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full inline-flex items-center justify-center gap-2 px-6 py-3.5 bg-[#000080] hover:bg-[#000066] text-white font-bold rounded-2xl shadow-lg shadow-blue-900/20 transition-all hover:scale-[1.02] active:scale-95 group"
+                  >
+                    <Globe className="w-4 h-4 group-hover:rotate-12 transition-transform" />
+                    Visit Live Website
+                    <ArrowUpRight className="w-4 h-4 opacity-70" />
+                  </a>
+                  <p className="text-[10px] text-slate-400 text-center mt-2 font-medium tracking-wide">
+                    External Link • Opens in new tab
+                  </p>
                 </div>
               )}
 

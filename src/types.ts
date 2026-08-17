@@ -264,6 +264,7 @@ export interface PortfolioItem {
   // Sidebar meta
   industry?: string;
   companySize?: string;
+  websiteUrl?: string;
   painPoint?: string;
   solutionsProvided?: string[];
   aboutCompany?: string;

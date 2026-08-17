@@ -61,6 +61,7 @@ const emptyItem: PortfolioItem = {
   resultsBullets: [],
   industry: '',
   companySize: '',
+  websiteUrl: '',
   painPoint: '',
   solutionsProvided: [],
   aboutCompany: '',
@@ -86,7 +87,7 @@ export default function PortfolioManager({ items, categories: propsCategories, o
   const [customTechInput, setCustomTechInput] = useState('');
 
   // Category management state
-  const availableCategories = propsCategories && propsCategories.length > 0 ? propsCategories : defaultPortfolioCategories;
+  const availableCategories = propsCategories && propsCategories.length> 0 ? propsCategories : defaultPortfolioCategories;
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [catName, setCatName] = useState('');
   const [catSlug, setCatSlug] = useState('');
@@ -304,12 +305,12 @@ export default function PortfolioManager({ items, categories: propsCategories, o
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <ConfirmButton
+          <button 
             onClick={() => setIsEditing(false)}
-            className="flex items-center gap-2 text-slate-500 hover:text-slate-900 transition-colors"
+            className="flex items-center gap-2 text-slate-500 hover:text-slate-900 font-bold text-xs transition-colors py-2 px-1"
           >
             <ArrowLeft className="w-4 h-4" /> Back to Portfolio
-          </ConfirmButton>
+          </button>
           <div className="flex items-center gap-3">
             {editingItem.slug && (
               <a
@@ -317,8 +318,7 @@ export default function PortfolioManager({ items, categories: propsCategories, o
                 target="_blank"
                 rel="noopener noreferrer"
                 className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl text-xs flex items-center gap-1.5 transition-all"
-                title="View Live Portfolio Item"
-              >
+                title="View Live Portfolio Item">
                 <Eye className="w-4 h-4 text-slate-500" />
                 <span>View Live</span>
               </a>
@@ -328,14 +328,13 @@ export default function PortfolioManager({ items, categories: propsCategories, o
                 <Check className="w-4 h-4" /> {savedMessage}
               </span>
             )}
-            <ConfirmButton
+            <button 
               onClick={handleSave}
               disabled={saving}
-              className="px-5 py-2.5 bg-[#000080] hover:bg-[#000066] text-white font-bold rounded-xl text-xs flex items-center gap-2 shadow-lg transition-all"
-            >
+              className="px-5 py-2.5 bg-[#000080] hover:bg-[#000066] text-white font-bold rounded-xl text-xs flex items-center gap-2 shadow-lg transition-all">
               {saving ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Save className="w-4 h-4" />}
               Save Item
-            </ConfirmButton>
+            </button>
           </div>
         </div>
 
@@ -375,13 +374,9 @@ export default function PortfolioManager({ items, categories: propsCategories, o
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="block text-xs font-bold text-slate-700">Category</label>
-                <ConfirmButton
-                  type="button"
-                  onClick={() => setShowCategoryModal(true)}
-                  className="text-[11px] font-bold text-[#000080] hover:text-[#000066] hover:underline flex items-center gap-1 cursor-pointer"
-                >
+                <button>
                   <Tag className="w-3 h-3" /> Manage Categories
-                </ConfirmButton>
+                </button>
               </div>
               {!isCustomCategoryInput ? (
                 <div className="flex gap-2">
@@ -394,8 +389,7 @@ export default function PortfolioManager({ items, categories: propsCategories, o
                         setEditingItem({ ...editingItem, category: e.target.value });
                       }
                     }}
-                    className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-sm focus:border-[#000080] focus:ring-1 focus:ring-[#000080] outline-none font-semibold text-slate-900 cursor-pointer"
-                  >
+                    className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-sm focus:border-[#000080] focus:ring-1 focus:ring-[#000080] outline-none font-semibold text-slate-900 cursor-pointer">
                     {availableCategories.map(c => (
                       <option key={c.id} value={c.name}>{c.name}</option>
                     ))}
@@ -415,13 +409,9 @@ export default function PortfolioManager({ items, categories: propsCategories, o
                     className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-sm focus:border-[#000080] outline-none"
                     placeholder="e.g. AI & Robotics"
                   />
-                  <ConfirmButton
-                    type="button"
-                    onClick={() => setIsCustomCategoryInput(false)}
-                    className="px-3 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold rounded-lg transition-colors cursor-pointer"
-                  >
+                  <button>
                     Select From List
-                  </ConfirmButton>
+                  </button>
                 </div>
               )}
             </div>
@@ -430,8 +420,7 @@ export default function PortfolioManager({ items, categories: propsCategories, o
               <select
                 value={editingItem.status || 'published'}
                 onChange={e => setEditingItem({ ...editingItem, status: e.target.value as 'published' | 'draft' })}
-                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-sm focus:border-[#000080] focus:ring-1 focus:ring-[#000080] outline-none font-semibold text-slate-900"
-              >
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-sm focus:border-[#000080] focus:ring-1 focus:ring-[#000080] outline-none font-semibold text-slate-900">
                 <option value="published">Published</option>
                 <option value="draft">Draft</option>
               </select>
@@ -455,8 +444,7 @@ export default function PortfolioManager({ items, categories: propsCategories, o
                 {['Featured', 'E-Commerce', 'Digital Experience', 'B2B Enterprise', 'Healthcare', 'Fintech', 'SaaS', 'High-Growth'].map(tagPreset => {
                   const isApplied = (editingItem.tags || []).includes(tagPreset);
                   return (
-                    <ConfirmButton
-                      type="button"
+                    <button type="button"
                       key={tagPreset}
                       onClick={() => {
                         const current = editingItem.tags || [];
@@ -471,9 +459,9 @@ export default function PortfolioManager({ items, categories: propsCategories, o
                           ? 'bg-[#000080] text-white' 
                           : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200'
                       }`}
-                    >
+                   >
                       {isApplied ? '✓ ' : '+ '}{tagPreset}
-                    </ConfirmButton>
+                    </button>
                   );
                 })}
               </div>
@@ -501,70 +489,54 @@ export default function PortfolioManager({ items, categories: propsCategories, o
 
         <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
           <div className="flex items-center gap-1 border-b border-slate-200 p-2 bg-slate-50/50 overflow-x-auto">
-            <ConfirmButton
-              onClick={() => setEditorTab('sections')}
+            <button onClick={() => setEditorTab('sections')}
               className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
                 editorTab === 'sections' ? 'bg-[#000080] text-white shadow' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
-              }`}
-            >
+              }`}>
               <Layers className="w-4 h-4" /> Case Study Story
-            </ConfirmButton>
-            <ConfirmButton
-              onClick={() => setEditorTab('sidebar')}
+            </button>
+            <button onClick={() => setEditorTab('sidebar')}
               className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
                 editorTab === 'sidebar' ? 'bg-[#000080] text-white shadow' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
-              }`}
-            >
+              }`}>
               <Building2 className="w-4 h-4" /> Sidebar Meta
-            </ConfirmButton>
-            <ConfirmButton
-              onClick={() => setEditorTab('results')}
+            </button>
+            <button onClick={() => setEditorTab('results')}
               className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
                 editorTab === 'results' ? 'bg-[#000080] text-white shadow' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
-              }`}
-            >
+              }`}>
               <BarChart className="w-4 h-4" /> Hero Highlights
-            </ConfirmButton>
-            <ConfirmButton
-              onClick={() => setEditorTab('content')}
+            </button>
+            <button onClick={() => setEditorTab('content')}
               className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
                 editorTab === 'content' ? 'bg-[#000080] text-white shadow' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
-              }`}
-            >
+              }`}>
               <FileText className="w-4 h-4" /> Extra HTML/Content
-            </ConfirmButton>
-            <ConfirmButton
-              onClick={() => setEditorTab('testimonial')}
+            </button>
+            <button onClick={() => setEditorTab('testimonial')}
               className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
                 editorTab === 'testimonial' ? 'bg-[#000080] text-white shadow' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
-              }`}
-            >
+              }`}>
               <MessageSquare className="w-4 h-4" /> Testimonial
-            </ConfirmButton>
-            <ConfirmButton
-              onClick={() => setEditorTab('seo')}
+            </button>
+            <button onClick={() => setEditorTab('seo')}
               className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
                 editorTab === 'seo' ? 'bg-[#000080] text-white shadow' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
-              }`}
-            >
+              }`}>
               <Settings className="w-4 h-4" /> SEO Data
-            </ConfirmButton>
-            <ConfirmButton
-              onClick={() => setEditorTab('design')}
+            </button>
+            <button onClick={() => setEditorTab('design')}
               className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
                 editorTab === 'design' ? 'bg-[#000080] text-white shadow' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
-              }`}
-            >
+              }`}>
               <Palette className="w-4 h-4 text-sky-300" /> Visual & UI/UX Showcase
-            </ConfirmButton>
-            <ConfirmButton
-              onClick={() => setEditorTab('tech')}
+            </button>
+            <button onClick={() => setEditorTab('tech')}
               className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
                 editorTab === 'tech' ? 'bg-[#000080] text-white shadow' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
-              }`}
-            >
+              }`}>
               <Cpu className="w-4 h-4 text-emerald-400" /> Tech Stack & Tools (34+)
-            </ConfirmButton>
+            </button>
           </div>
 
           <div className="p-6">
@@ -595,16 +567,14 @@ export default function PortfolioManager({ items, categories: propsCategories, o
                   <div>
                     <div className="flex items-center justify-between mb-2">
                       <label className="block text-xs font-bold text-slate-700">Problem Bullet Points</label>
-                      <ConfirmButton
-                        type="button"
+                      <button type="button"
                         onClick={() => {
                           const updated = [...(editingItem.problemBullets || []), ''];
                           setEditingItem({ ...editingItem, problemBullets: updated });
                         }}
-                        className="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-700 text-xs font-bold rounded border border-slate-200 flex items-center gap-1 cursor-pointer"
-                      >
+                        className="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-700 text-xs font-bold rounded border border-slate-200 flex items-center gap-1 cursor-pointer">
                         <Plus className="w-3.5 h-3.5" /> Add Bullet
-                      </ConfirmButton>
+                      </button>
                     </div>
                     <div className="space-y-2">
                       {(editingItem.problemBullets || []).map((bullet, idx) => (
@@ -620,16 +590,14 @@ export default function PortfolioManager({ items, categories: propsCategories, o
                             className="flex-1 bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-sm outline-none focus:border-[#000080]"
                             placeholder="Bullet point..."
                           />
-                          <ConfirmButton
-                            type="button"
+                          <button type="button"
                             onClick={() => {
                               const updated = (editingItem.problemBullets || []).filter((_, i) => i !== idx);
                               setEditingItem({ ...editingItem, problemBullets: updated });
                             }}
-                            className="p-1.5 text-red-500 hover:bg-red-50 rounded transition-colors cursor-pointer"
-                          >
+                            className="p-1.5 text-red-500 hover:bg-red-50 rounded transition-colors cursor-pointer">
                             <Trash2 className="w-4 h-4" />
-                          </ConfirmButton>
+                          </button>
                         </div>
                       ))}
                       {(!editingItem.problemBullets || editingItem.problemBullets.length === 0) && (
@@ -664,16 +632,14 @@ export default function PortfolioManager({ items, categories: propsCategories, o
                   <div>
                     <div className="flex items-center justify-between mb-2">
                       <label className="block text-xs font-bold text-slate-700">Solution Key Highlights / Bullets</label>
-                      <ConfirmButton
-                        type="button"
+                      <button type="button"
                         onClick={() => {
                           const updated = [...(editingItem.solutionBullets || []), ''];
                           setEditingItem({ ...editingItem, solutionBullets: updated });
                         }}
-                        className="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-700 text-xs font-bold rounded border border-slate-200 flex items-center gap-1 cursor-pointer"
-                      >
+                        className="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-700 text-xs font-bold rounded border border-slate-200 flex items-center gap-1 cursor-pointer">
                         <Plus className="w-3.5 h-3.5" /> Add Bullet
-                      </ConfirmButton>
+                      </button>
                     </div>
                     <div className="space-y-2">
                       {(editingItem.solutionBullets || []).map((bullet, idx) => (
@@ -689,16 +655,14 @@ export default function PortfolioManager({ items, categories: propsCategories, o
                             className="flex-1 bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-sm outline-none focus:border-[#000080]"
                             placeholder="e.g. Strategic brand development: Restructured key messaging..."
                           />
-                          <ConfirmButton
-                            type="button"
+                          <button type="button"
                             onClick={() => {
                               const updated = (editingItem.solutionBullets || []).filter((_, i) => i !== idx);
                               setEditingItem({ ...editingItem, solutionBullets: updated });
                             }}
-                            className="p-1.5 text-red-500 hover:bg-red-50 rounded transition-colors cursor-pointer"
-                          >
+                            className="p-1.5 text-red-500 hover:bg-red-50 rounded transition-colors cursor-pointer">
                             <Trash2 className="w-4 h-4" />
-                          </ConfirmButton>
+                          </button>
                         </div>
                       ))}
                       {(!editingItem.solutionBullets || editingItem.solutionBullets.length === 0) && (
@@ -733,16 +697,14 @@ export default function PortfolioManager({ items, categories: propsCategories, o
                   <div>
                     <div className="flex items-center justify-between mb-2">
                       <label className="block text-xs font-bold text-slate-700">Results Key Bullets</label>
-                      <ConfirmButton
-                        type="button"
+                      <button type="button"
                         onClick={() => {
                           const updated = [...(editingItem.resultsBullets || []), ''];
                           setEditingItem({ ...editingItem, resultsBullets: updated });
                         }}
-                        className="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-700 text-xs font-bold rounded border border-slate-200 flex items-center gap-1 cursor-pointer"
-                      >
+                        className="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-700 text-xs font-bold rounded border border-slate-200 flex items-center gap-1 cursor-pointer">
                         <Plus className="w-3.5 h-3.5" /> Add Bullet
-                      </ConfirmButton>
+                      </button>
                     </div>
                     <div className="space-y-2">
                       {(editingItem.resultsBullets || []).map((bullet, idx) => (
@@ -758,16 +720,14 @@ export default function PortfolioManager({ items, categories: propsCategories, o
                             className="flex-1 bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-sm outline-none focus:border-[#000080]"
                             placeholder="Bullet point..."
                           />
-                          <ConfirmButton
-                            type="button"
+                          <button type="button"
                             onClick={() => {
                               const updated = (editingItem.resultsBullets || []).filter((_, i) => i !== idx);
                               setEditingItem({ ...editingItem, resultsBullets: updated });
                             }}
-                            className="p-1.5 text-red-500 hover:bg-red-50 rounded transition-colors cursor-pointer"
-                          >
+                            className="p-1.5 text-red-500 hover:bg-red-50 rounded transition-colors cursor-pointer">
                             <Trash2 className="w-4 h-4" />
-                          </ConfirmButton>
+                          </button>
                         </div>
                       ))}
                       {(!editingItem.resultsBullets || editingItem.resultsBullets.length === 0) && (
@@ -804,6 +764,20 @@ export default function PortfolioManager({ items, categories: propsCategories, o
                       placeholder="e.g. 200 – 500 employees"
                     />
                   </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-1.5">
+                      <Globe className="w-3.5 h-3.5 text-slate-400" />
+                      Live Website Link (Optional)
+                    </label>
+                    <input
+                      type="url"
+                      value={editingItem.websiteUrl || ''}
+                      onChange={e => setEditingItem({ ...editingItem, websiteUrl: e.target.value })}
+                      className="w-full bg-white border border-slate-200 rounded-lg px-4 py-2 text-sm focus:border-[#000080] outline-none font-medium text-[#000080]"
+                      placeholder="https://example.com"
+                    />
+                    <p className="text-[10px] text-slate-500 mt-1">If provided, a &quot;Visit Website&quot; button will appear on the case study page.</p>
+                  </div>
                 </div>
 
                 <div>
@@ -825,16 +799,14 @@ export default function PortfolioManager({ items, categories: propsCategories, o
                 <div>
                   <div className="flex items-center justify-between mb-2">
                     <label className="block text-xs font-bold text-slate-700">Profox web designer Solution Provided (List)</label>
-                    <ConfirmButton
-                      type="button"
+                    <button type="button"
                       onClick={() => {
                         const updated = [...(editingItem.solutionsProvided || []), ''];
                         setEditingItem({ ...editingItem, solutionsProvided: updated });
                       }}
-                      className="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-700 text-xs font-bold rounded border border-slate-200 flex items-center gap-1 cursor-pointer"
-                    >
+                      className="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-700 text-xs font-bold rounded border border-slate-200 flex items-center gap-1 cursor-pointer">
                       <Plus className="w-3.5 h-3.5" /> Add Solution
-                    </ConfirmButton>
+                    </button>
                   </div>
                   <div className="space-y-2">
                     {(editingItem.solutionsProvided || []).map((sol, idx) => (
@@ -850,16 +822,14 @@ export default function PortfolioManager({ items, categories: propsCategories, o
                           className="flex-1 bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-sm outline-none focus:border-[#000080]"
                           placeholder="e.g. Brand and messaging strategy"
                         />
-                        <ConfirmButton
-                          type="button"
+                        <button type="button"
                           onClick={() => {
                             const updated = (editingItem.solutionsProvided || []).filter((_, i) => i !== idx);
                             setEditingItem({ ...editingItem, solutionsProvided: updated });
                           }}
-                          className="p-1.5 text-red-500 hover:bg-red-50 rounded transition-colors cursor-pointer"
-                        >
+                          className="p-1.5 text-red-500 hover:bg-red-50 rounded transition-colors cursor-pointer">
                           <Trash2 className="w-4 h-4" />
-                        </ConfirmButton>
+                        </button>
                       </div>
                     ))}
                     {(!editingItem.solutionsProvided || editingItem.solutionsProvided.length === 0) && (
@@ -899,15 +869,13 @@ export default function PortfolioManager({ items, categories: propsCategories, o
                     <label className="block text-xs font-bold text-slate-700">Hero Highlights / Metrics (Appears at bottom of 100vh Header)</label>
                     <p className="text-xs text-slate-500">Each highlight displays a label, a title value, and a description text.</p>
                   </div>
-                  <ConfirmButton
-                    onClick={() => {
+                  <button onClick={() => {
                       const newResults = [...(editingItem.results || []), { label: '', value: '', description: '' }];
                       setEditingItem({ ...editingItem, results: newResults });
                     }}
-                    className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-lg text-xs font-bold transition-colors flex items-center gap-1 cursor-pointer"
-                  >
+                    className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-lg text-xs font-bold transition-colors flex items-center gap-1 cursor-pointer">
                     <Plus className="w-3.5 h-3.5" /> Add Metric Highlight
-                  </ConfirmButton>
+                  </button>
                 </div>
                 {(editingItem.results || []).map((res, idx) => (
                   <div key={idx} className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2">
@@ -944,15 +912,13 @@ export default function PortfolioManager({ items, categories: propsCategories, o
                     <div>
                       <div className="flex items-center justify-between">
                         <label className="block text-[11px] font-bold text-slate-500 mb-1">Description</label>
-                        <ConfirmButton
-                          onClick={() => {
+                        <button onClick={() => {
                             const updated = editingItem.results.filter((_, i) => i !== idx);
                             setEditingItem({ ...editingItem, results: updated });
                           }}
-                          className="p-1 text-red-500 hover:bg-red-50 rounded transition-colors text-xs font-semibold flex items-center gap-1 cursor-pointer"
-                        >
+                          className="p-1 text-red-500 hover:bg-red-50 rounded transition-colors text-xs font-semibold flex items-center gap-1 cursor-pointer">
                           <Trash2 className="w-3.5 h-3.5" /> Remove Metric
-                        </ConfirmButton>
+                        </button>
                       </div>
                       <input
                         type="text"
@@ -1082,8 +1048,7 @@ export default function PortfolioManager({ items, categories: propsCategories, o
                       </h4>
                       <p className="text-[11px] text-slate-500">Add UI screens, wireframe flows, mobile viewports, and design system components.</p>
                     </div>
-                    <ConfirmButton
-                      type="button"
+                    <button type="button"
                       onClick={() => {
                         const currentVisuals = editingItem.designShowcase?.visuals || [];
                         const updatedVisuals = [
@@ -1100,10 +1065,9 @@ export default function PortfolioManager({ items, categories: propsCategories, o
                           designShowcase: { ...(editingItem.designShowcase || {}), visuals: updatedVisuals }
                         });
                       }}
-                      className="px-3 py-1.5 bg-[#000080] hover:bg-[#000066] text-white rounded-lg text-xs font-bold flex items-center gap-1 shadow cursor-pointer"
-                    >
+                      className="px-3 py-1.5 bg-[#000080] hover:bg-[#000066] text-white rounded-lg text-xs font-bold flex items-center gap-1 shadow cursor-pointer">
                       <Plus className="w-3.5 h-3.5" /> Add Visual Screen
-                    </ConfirmButton>
+                    </button>
                   </div>
 
                   <div className="space-y-4">
@@ -1114,8 +1078,7 @@ export default function PortfolioManager({ items, categories: propsCategories, o
                             <span className="w-5 h-5 rounded-full bg-[#000080]/10 text-[#000080] flex items-center justify-center text-[10px] font-extrabold">{idx + 1}</span>
                             <span>{vis.title || `Visual Screen #${idx + 1}`}</span>
                           </span>
-                          <ConfirmButton
-                            type="button"
+                          <button type="button"
                             onClick={() => {
                               const updatedVisuals = (editingItem.designShowcase?.visuals || []).filter((_, i) => i !== idx);
                               setEditingItem({
@@ -1123,10 +1086,9 @@ export default function PortfolioManager({ items, categories: propsCategories, o
                                 designShowcase: { ...(editingItem.designShowcase || {}), visuals: updatedVisuals }
                               });
                             }}
-                            className="text-xs text-red-500 hover:text-red-700 font-bold flex items-center gap-1"
-                          >
+                            className="text-xs text-red-500 hover:text-red-700 font-bold flex items-center gap-1">
                             <Trash2 className="w-3.5 h-3.5" /> Remove
-                          </ConfirmButton>
+                          </button>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -1159,8 +1121,7 @@ export default function PortfolioManager({ items, categories: propsCategories, o
                                   designShowcase: { ...(editingItem.designShowcase || {}), visuals: updated }
                                 });
                               }}
-                              className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-bold focus:border-[#000080] outline-none"
-                            >
+                              className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-bold focus:border-[#000080] outline-none">
                               <option value="UI Screens">UI Screens</option>
                               <option value="UX & Wireframes">UX & Wireframes</option>
                               <option value="Mobile Views">Mobile Views</option>
@@ -1225,13 +1186,12 @@ export default function PortfolioManager({ items, categories: propsCategories, o
                           </label>
                           
                           {/* List of existing images */}
-                          {vis.images && vis.images.length > 0 && (
+                          {vis.images && vis.images.length> 0 && (
                             <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-2 pb-1">
                               {vis.images.map((imgUrl, imgIdx) => (
                                 <div key={imgIdx} className="relative aspect-video rounded-lg overflow-hidden border border-slate-200 bg-slate-50 group">
                                   <img src={imgUrl} alt="" className="w-full h-full object-cover" />
-                                  <ConfirmButton
-                                    type="button"
+                                  <button type="button"
                                     onClick={() => {
                                       const updated = [...(editingItem.designShowcase?.visuals || [])];
                                       updated[idx].images = (updated[idx].images || []).filter((_, i) => i !== imgIdx);
@@ -1240,10 +1200,9 @@ export default function PortfolioManager({ items, categories: propsCategories, o
                                         designShowcase: { ...(editingItem.designShowcase || {}), visuals: updated }
                                       });
                                     }}
-                                    className="absolute inset-0 bg-red-600/90 text-white opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-[10px] font-bold"
-                                  >
+                                    className="absolute inset-0 bg-red-600/90 text-white opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-[10px] font-bold">
                                     <Trash2 className="w-3.5 h-3.5" />
-                                  </ConfirmButton>
+                                  </button>
                                 </div>
                               ))}
                             </div>
@@ -1275,7 +1234,7 @@ export default function PortfolioManager({ items, categories: propsCategories, o
                           </label>
 
                           {/* List of existing documents */}
-                          {vis.documents && vis.documents.length > 0 && (
+                          {vis.documents && vis.documents.length> 0 && (
                             <div className="space-y-1.5 pb-1">
                               {vis.documents.map((doc, docIdx) => (
                                 <div key={docIdx} className="flex items-center justify-between p-2 rounded-lg bg-slate-50 border border-slate-200 text-xs">
@@ -1285,8 +1244,7 @@ export default function PortfolioManager({ items, categories: propsCategories, o
                                     <span className="text-[10px] bg-slate-200 px-1.5 py-0.5 rounded text-slate-500 shrink-0 uppercase font-extrabold">{doc.type || 'file'}</span>
                                     <a href={doc.url} target="_blank" rel="noopener noreferrer" className="text-[#000080] hover:underline font-bold text-[10px] truncate">{doc.url}</a>
                                   </div>
-                                  <ConfirmButton
-                                    type="button"
+                                  <button type="button"
                                     onClick={() => {
                                       const updated = [...(editingItem.designShowcase?.visuals || [])];
                                       updated[idx].documents = (updated[idx].documents || []).filter((_, i) => i !== docIdx);
@@ -1295,10 +1253,9 @@ export default function PortfolioManager({ items, categories: propsCategories, o
                                         designShowcase: { ...(editingItem.designShowcase || {}), visuals: updated }
                                       });
                                     }}
-                                    className="text-red-500 hover:text-red-700 font-bold p-1 hover:bg-red-50 rounded transition-colors"
-                                  >
+                                    className="text-red-500 hover:text-red-700 font-bold p-1 hover:bg-red-50 rounded transition-colors">
                                     <Trash2 className="w-3.5 h-3.5" />
-                                  </ConfirmButton>
+                                  </button>
                                 </div>
                               ))}
                             </div>
@@ -1321,15 +1278,13 @@ export default function PortfolioManager({ items, categories: propsCategories, o
                             <div className="flex gap-2">
                               <select
                                 id={`doc-type-${idx}`}
-                                className="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-xs font-bold focus:border-[#000080] outline-none"
-                              >
+                                className="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-xs font-bold focus:border-[#000080] outline-none">
                                 <option value="pdf">PDF</option>
                                 <option value="figma">Figma</option>
                                 <option value="doc">Doc</option>
                                 <option value="other">Other</option>
                               </select>
-                              <ConfirmButton
-                                type="button"
+                              <button type="button"
                                 onClick={() => {
                                   const nameInput = document.getElementById(`doc-name-${idx}`) as HTMLInputElement;
                                   const urlInput = document.getElementById(`doc-url-${idx}`) as HTMLInputElement;
@@ -1349,11 +1304,10 @@ export default function PortfolioManager({ items, categories: propsCategories, o
                                     urlInput.value = '';
                                   }
                                 }}
-                                className="px-3 py-1.5 bg-[#000080] hover:bg-blue-900 text-white font-bold text-xs rounded-lg shadow-sm transition-colors flex items-center gap-1 shrink-0"
-                              >
+                                className="px-3 py-1.5 bg-[#000080] hover:bg-blue-900 text-white font-bold text-xs rounded-lg shadow-sm transition-colors flex items-center gap-1 shrink-0">
                                 <Plus className="w-3.5 h-3.5" />
                                 <span>Add File</span>
-                              </ConfirmButton>
+                              </button>
                             </div>
                           </div>
                         </div>
@@ -1407,8 +1361,7 @@ export default function PortfolioManager({ items, categories: propsCategories, o
                         </select>
                       </div>
                       <div className="flex items-end pb-0.5">
-                        <ConfirmButton
-                          type="button"
+                        <button type="button"
                           onClick={() => {
                             const nameEl = document.getElementById('proj-doc-name') as HTMLInputElement;
                             const urlEl = document.getElementById('proj-doc-url') as HTMLInputElement;
@@ -1426,10 +1379,9 @@ export default function PortfolioManager({ items, categories: propsCategories, o
                               urlEl.value = '';
                             }
                           }}
-                          className="w-full sm:w-auto px-4 py-2 bg-[#000080] hover:bg-blue-900 text-white rounded-lg transition-colors flex items-center justify-center"
-                        >
+                          className="w-full sm:w-auto px-4 py-2 bg-[#000080] hover:bg-blue-900 text-white rounded-lg transition-colors flex items-center justify-center">
                           <Plus className="w-4 h-4" />
-                        </ConfirmButton>
+                        </button>
                       </div>
                     </div>
 
@@ -1445,8 +1397,7 @@ export default function PortfolioManager({ items, categories: propsCategories, o
                               <p className="text-[9px] text-slate-400 truncate font-medium">{doc.url}</p>
                             </div>
                           </div>
-                          <ConfirmButton
-                            type="button"
+                          <button type="button"
                             onClick={() => {
                               const updated = (editingItem.designShowcase?.projectDocuments || []).filter((_, i) => i !== dIdx);
                               setEditingItem({
@@ -1454,10 +1405,9 @@ export default function PortfolioManager({ items, categories: propsCategories, o
                                 designShowcase: { ...(editingItem.designShowcase || {}), projectDocuments: updated }
                               });
                             }}
-                            className="p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
-                          >
+                            className="p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all">
                             <Trash2 className="w-4 h-4" />
-                          </ConfirmButton>
+                          </button>
                         </div>
                       ))}
                     </div>
@@ -1473,8 +1423,7 @@ export default function PortfolioManager({ items, categories: propsCategories, o
                       </h4>
                       <p className="text-[11px] text-slate-500">Key pillars like accessibility, micro-interactions, responsive frameworks, or design systems.</p>
                     </div>
-                    <ConfirmButton
-                      type="button"
+                    <button type="button"
                       onClick={() => {
                         const currentHls = editingItem.designShowcase?.uiUxHighlights || [];
                         const updatedHls = [
@@ -1490,10 +1439,9 @@ export default function PortfolioManager({ items, categories: propsCategories, o
                           designShowcase: { ...(editingItem.designShowcase || {}), uiUxHighlights: updatedHls }
                         });
                       }}
-                      className="px-3 py-1.5 bg-[#000080] hover:bg-[#000066] text-white rounded-lg text-xs font-bold flex items-center gap-1 shadow cursor-pointer"
-                    >
+                      className="px-3 py-1.5 bg-[#000080] hover:bg-[#000066] text-white rounded-lg text-xs font-bold flex items-center gap-1 shadow cursor-pointer">
                       <Plus className="w-3.5 h-3.5" /> Add UI/UX Highlight
-                    </ConfirmButton>
+                    </button>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1501,8 +1449,7 @@ export default function PortfolioManager({ items, categories: propsCategories, o
                       <div key={idx} className="bg-white p-4 rounded-xl border border-slate-200 space-y-2">
                         <div className="flex items-center justify-between border-b border-slate-100 pb-2">
                           <span className="text-xs font-bold text-slate-800">Highlight #{idx + 1}</span>
-                          <ConfirmButton
-                            type="button"
+                          <button type="button"
                             onClick={() => {
                               const updatedHls = (editingItem.designShowcase?.uiUxHighlights || []).filter((_, i) => i !== idx);
                               setEditingItem({
@@ -1510,10 +1457,9 @@ export default function PortfolioManager({ items, categories: propsCategories, o
                                 designShowcase: { ...(editingItem.designShowcase || {}), uiUxHighlights: updatedHls }
                               });
                             }}
-                            className="text-xs text-red-500 hover:text-red-700 font-bold flex items-center gap-1"
-                          >
+                            className="text-xs text-red-500 hover:text-red-700 font-bold flex items-center gap-1">
                             <Trash2 className="w-3.5 h-3.5" /> Remove
-                          </ConfirmButton>
+                          </button>
                         </div>
                         <input
                           type="text"
@@ -1570,8 +1516,7 @@ export default function PortfolioManager({ items, categories: propsCategories, o
                         <Palette className="w-4 h-4" /> Brand Color Palette Swatches
                       </h4>
                     </div>
-                    <ConfirmButton
-                      type="button"
+                    <button type="button"
                       onClick={() => {
                         const currentColors = editingItem.designShowcase?.colorPalette || [];
                         const updatedColors = [
@@ -1583,10 +1528,9 @@ export default function PortfolioManager({ items, categories: propsCategories, o
                           designShowcase: { ...(editingItem.designShowcase || {}), colorPalette: updatedColors }
                         });
                       }}
-                      className="px-3 py-1.5 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer"
-                    >
+                      className="px-3 py-1.5 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer">
                       <Plus className="w-3.5 h-3.5" /> Add Color Swatch
-                    </ConfirmButton>
+                    </button>
                   </div>
 
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -1634,8 +1578,7 @@ export default function PortfolioManager({ items, categories: propsCategories, o
                           placeholder="Color Name"
                           className="w-full bg-slate-50 border border-slate-200 rounded px-2 py-1 text-xs font-bold"
                         />
-                        <ConfirmButton
-                          type="button"
+                        <button type="button"
                           onClick={() => {
                             const updated = (editingItem.designShowcase?.colorPalette || []).filter((_, i) => i !== idx);
                             setEditingItem({
@@ -1643,10 +1586,9 @@ export default function PortfolioManager({ items, categories: propsCategories, o
                               designShowcase: { ...(editingItem.designShowcase || {}), colorPalette: updated }
                             });
                           }}
-                          className="text-[10px] text-red-500 font-bold hover:underline cursor-pointer"
-                        >
+                          className="text-[10px] text-red-500 font-bold hover:underline cursor-pointer">
                           Remove Swatch
-                        </ConfirmButton>
+                        </button>
                       </div>
                     ))}
                   </div>
@@ -1717,7 +1659,7 @@ export default function PortfolioManager({ items, categories: propsCategories, o
                   </div>
 
                   {/* Badges List */}
-                  {((editingItem.techStack || editingItem.technologies) || []).length > 0 ? (
+                  {((editingItem.techStack || editingItem.technologies) || []).length> 0 ? (
                     <div className="flex flex-wrap gap-2 pt-1">
                       {((editingItem.techStack || editingItem.technologies) || []).map((techName: string, idx: number) => {
                         const matched = PREDEFINED_TECH_STACK.find(t => t.name.toLowerCase() === techName.toLowerCase() || t.id === techName.toLowerCase());
@@ -1726,8 +1668,7 @@ export default function PortfolioManager({ items, categories: propsCategories, o
                             key={idx}
                             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-slate-200 shadow-sm text-xs font-bold text-slate-800 hover:border-red-300 hover:bg-red-50 hover:text-red-700 transition-all cursor-pointer group"
                             onClick={() => toggleTechStack(techName)}
-                            title="Click to remove"
-                          >
+                            title="Click to remove">
                             <span className="text-[#000080]">
                               {renderTechIconAdmin(matched?.iconName || 'Code2')}
                             </span>
@@ -1758,13 +1699,13 @@ export default function PortfolioManager({ items, categories: propsCategories, o
                       placeholder="e.g. Kubernetes, Supabase, FastAPI, Tailwind, etc."
                       className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-sm focus:border-[#000080] outline-none"
                     />
-                    <ConfirmButton
+                    <button 
                       type="button"
                       onClick={handleAddCustomTech}
                       className="px-4 py-2 bg-[#000080] hover:bg-blue-900 text-white font-bold text-xs rounded-xl shadow transition-colors flex items-center gap-1.5 shrink-0"
                     >
                       <Plus className="w-4 h-4" /> Add Tag
-                    </ConfirmButton>
+                    </button>
                   </div>
                 </div>
 
@@ -1791,8 +1732,7 @@ export default function PortfolioManager({ items, categories: propsCategories, o
 
                       <div className="flex items-center gap-1 overflow-x-auto custom-scrollbar">
                         {['All', 'Languages & Frameworks', 'CMS & E-Commerce', 'Backend & APIs', 'Database & Cloud', 'Frontend & Design'].map(cat => (
-                          <ConfirmButton
-                            key={cat}
+                          <button key={cat}
                             type="button"
                             onClick={() => setTechCatFilter(cat)}
                             className={`px-2.5 py-1 text-[11px] font-bold rounded-lg transition-all whitespace-nowrap cursor-pointer ${
@@ -1800,9 +1740,9 @@ export default function PortfolioManager({ items, categories: propsCategories, o
                                 ? 'bg-[#000080] text-white shadow'
                                 : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
                             }`}
-                          >
+                         >
                             {cat}
-                          </ConfirmButton>
+                          </button>
                         ))}
                       </div>
                     </div>
@@ -1825,7 +1765,7 @@ export default function PortfolioManager({ items, categories: propsCategories, o
                               ? 'bg-blue-50/90 border-[#000080] shadow-md ring-2 ring-[#000080]/20'
                               : 'bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50'
                           }`}
-                        >
+                       >
                           <div className="flex items-center justify-between">
                             <div className={`p-2 rounded-xl border ${isSelected ? 'bg-[#000080] text-white border-blue-900' : 'bg-slate-50 text-slate-700 border-slate-200'}`}>
                               {renderTechIconAdmin(option.iconName)}
@@ -1873,18 +1813,16 @@ export default function PortfolioManager({ items, categories: propsCategories, o
                   <p className="text-xs text-slate-500">Add, edit, or reorganize project categories for your portfolio</p>
                 </div>
               </div>
-              <ConfirmButton 
-                onClick={() => {
+              <button onClick={() => {
                   setShowCategoryModal(false);
                   setCatEditingId(null);
                   setCatName('');
                   setCatSlug('');
                   setCatDesc('');
                 }}
-                className="p-1.5 hover:bg-slate-200 rounded-lg text-slate-500 transition-colors cursor-pointer"
-              >
+                className="p-1.5 hover:bg-slate-200 rounded-lg text-slate-500 transition-colors cursor-pointer">
                 <X className="w-5 h-5" />
-              </ConfirmButton>
+              </button>
             </div>
 
             <div className="p-6 overflow-y-auto space-y-6">
@@ -1941,8 +1879,7 @@ export default function PortfolioManager({ items, categories: propsCategories, o
 
                 <div className="flex items-center justify-end gap-2 pt-1">
                   {catEditingId && (
-                    <ConfirmButton
-                      type="button"
+                    <button type="button"
                       onClick={() => {
                         setCatEditingId(null);
                         setCatName('');
@@ -1951,18 +1888,16 @@ export default function PortfolioManager({ items, categories: propsCategories, o
                         setCatError('');
                         setIsSlugManuallyEdited(false);
                       }}
-                      className="px-3.5 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg text-xs font-bold transition-colors cursor-pointer"
-                    >
+                      className="px-3.5 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg text-xs font-bold transition-colors cursor-pointer">
                       Cancel Edit
-                    </ConfirmButton>
+                    </button>
                   )}
-                  <ConfirmButton
+                  <button 
                     type="submit"
-                    className="px-4 py-2 bg-[#000080] hover:bg-[#000066] text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow transition-all cursor-pointer"
-                  >
+                    className="px-4 py-2 bg-[#000080] hover:bg-[#000066] text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow transition-all cursor-pointer">
                     <Plus className="w-4 h-4" />
                     {catEditingId ? 'Update Category' : 'Save Category'}
-                  </ConfirmButton>
+                  </button>
                 </div>
               </form>
 
@@ -2000,20 +1935,12 @@ export default function PortfolioManager({ items, categories: propsCategories, o
                             </td>
                             <td className="px-4 py-3 text-right">
                               <div className="flex items-center justify-end gap-1">
-                                <ConfirmButton
-                                  onClick={() => handleCatEdit(cat)}
-                                  className="p-1.5 text-slate-600 hover:text-[#000080] hover:bg-slate-100 rounded transition-colors cursor-pointer"
-                                  title="Edit Category"
-                                >
+                                <button>
                                   <Edit2 className="w-3.5 h-3.5" />
-                                </ConfirmButton>
-                                <ConfirmButton
-                                  onClick={() => handleCatDelete(cat.id, cat.name)}
-                                  className="p-1.5 text-slate-600 hover:text-red-600 hover:bg-red-50 rounded transition-colors cursor-pointer"
-                                  title="Delete Category"
-                                >
+                                </button>
+                                <button>
                                   <Trash2 className="w-3.5 h-3.5" />
-                                </ConfirmButton>
+                                </button>
                               </div>
                             </td>
                           </tr>
@@ -2033,12 +1960,9 @@ export default function PortfolioManager({ items, categories: propsCategories, o
             </div>
 
             <div className="p-4 border-t border-slate-200 bg-slate-50 flex justify-end">
-              <ConfirmButton
-                onClick={() => setShowCategoryModal(false)}
-                className="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-xs transition-colors cursor-pointer"
-              >
+              <button>
                 Done
-              </ConfirmButton>
+              </button>
             </div>
           </div>
         </div>
@@ -2055,38 +1979,32 @@ export default function PortfolioManager({ items, categories: propsCategories, o
           <p className="text-xs text-slate-500">Manage case studies, client projects, and project categories</p>
         </div>
         <div className="flex items-center gap-3">
-          {selectedItems.length > 0 && onBulkDelete && (
-            <ConfirmButton
+          {selectedItems.length> 0 && onBulkDelete && (
+            <button 
               onClick={handleBulkDelete}
-              className="px-4 py-2 bg-red-50 hover:bg-red-100 text-red-600 font-bold rounded-xl text-xs flex items-center gap-2 border border-red-200 transition-all cursor-pointer"
-            >
+              className="px-4 py-2 bg-red-50 hover:bg-red-100 text-red-600 font-bold rounded-xl text-xs flex items-center gap-2 border border-red-200 transition-all cursor-pointer">
               <Trash2 className="w-4 h-4" /> Delete Selected ({selectedItems.length})
-            </ConfirmButton>
+            </button>
           )}
           {onRestoreDefaults && (
-            <ConfirmButton
-              onClick={async () => {
+            <button onClick={async () => {
                 if (await confirmAction('Restore Demo Content', 'Are you sure you want to restore missing demo case studies? This will not delete your existing case studies.')) {
                   await onRestoreDefaults();
                 }
               }}
-              className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold rounded-xl text-xs flex items-center gap-2 border border-slate-200 transition-all cursor-pointer"
-            >
+              className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold rounded-xl text-xs flex items-center gap-2 border border-slate-200 transition-all cursor-pointer">
               <RefreshCw className="w-4 h-4 text-slate-500" /> Restore Demos
-            </ConfirmButton>
+            </button>
           )}
-          <ConfirmButton
-            onClick={() => setShowCategoryModal(true)}
-            className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold rounded-xl text-xs flex items-center gap-2 border border-slate-200 transition-all cursor-pointer"
-          >
+          <button>
             <Tag className="w-4 h-4 text-[#000080]" /> Manage Categories ({availableCategories.length})
-          </ConfirmButton>
-          <ConfirmButton
+          </button>
+          <button 
             onClick={handleCreateNew}
             className="px-4 py-2 bg-[#000080] hover:bg-[#000066] text-white font-bold rounded-xl text-xs flex items-center gap-2 shadow-lg transition-all cursor-pointer"
-          >
+>
             <Plus className="w-4 h-4" /> Add Portfolio Item
-          </ConfirmButton>
+          </button>
         </div>
       </div>
 
@@ -2154,7 +2072,7 @@ export default function PortfolioManager({ items, categories: propsCategories, o
                   <input
                     type="checkbox"
                     className="rounded border-slate-300 text-[#000080] focus:ring-[#000080] cursor-pointer"
-                    checked={filteredItems.length > 0 && selectedItems.length === filteredItems.length}
+                    checked={filteredItems.length> 0 && selectedItems.length === filteredItems.length}
                     onChange={handleSelectAll}
                   />
                 </th>
@@ -2218,27 +2136,25 @@ export default function PortfolioManager({ items, categories: propsCategories, o
                           target="_blank"
                           rel="noopener noreferrer"
                           className="px-2.5 py-1.5 text-slate-600 hover:text-[#000080] hover:bg-[#000080]/10 rounded-lg transition-colors flex items-center gap-1 text-xs font-semibold"
-                          title="View Portfolio Item"
-                        >
+                          title="View Portfolio Item">
                           <Eye className="w-3.5 h-3.5" />
                           <span>View</span>
                         </a>
                       )}
-                      <ConfirmButton
+                      <button 
                         onClick={() => handleEdit(item)}
                         className="px-2.5 py-1.5 text-slate-600 hover:text-[#000080] hover:bg-[#000080]/10 rounded-lg transition-colors flex items-center gap-1 text-xs font-semibold"
-                        title="Edit Item"
                       >
                         <Edit2 className="w-3.5 h-3.5" />
                         <span>Edit</span>
-                      </ConfirmButton>
-                      <ConfirmButton
-                        onClick={() => handleDelete(item.id)}
-                        className="px-2.5 py-1.5 text-slate-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors flex items-center gap-1 text-xs font-semibold"
-                        title="Delete Item"
+                      </button>
+                      <ConfirmButton 
+                        onConfirm={() => handleDelete(item.id!)}
+                        confirmTitle="Delete Portfolio Item"
+                        confirmMessage={`Are you sure you want to delete "${item.title}"? This cannot be undone.`}
+                        className="p-1.5 bg-red-50/50 hover:bg-red-50 text-red-500 rounded-lg border border-red-100 transition-all"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
-                        <span>Delete</span>
                       </ConfirmButton>
                     </div>
                   </td>

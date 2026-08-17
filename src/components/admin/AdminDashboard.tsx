@@ -66,8 +66,7 @@ import { getPagePath, isServicePage } from '../../lib/seoUrls';
 
 function SaveButton({ onSave, isSaving, showSaved, label = "Save Changes" }: { onSave: () => void, isSaving: boolean, showSaved: boolean, label?: string }) {
   return (
-    <ConfirmButton
-      onConfirm={onSave}
+    <ConfirmButton onConfirm={onSave}
       disabled={isSaving}
       confirmTitle="Save Changes"
       confirmMessage="Are you sure you want to save these changes to the website? This action will update the live content."
@@ -75,8 +74,7 @@ function SaveButton({ onSave, isSaving, showSaved, label = "Save Changes" }: { o
         showSaved 
           ? 'bg-green-500 text-white shadow-green-200' 
           : 'bg-[#000080] hover:bg-[#000066] text-white'
-      } ${isSaving ? 'opacity-80 cursor-not-allowed' : ''}`}
-    >
+      } ${isSaving ? 'opacity-80 cursor-not-allowed' : ''}`}>
       {isSaving ? (
         <>
           <Loader2 className="w-4 h-4 animate-spin" />
@@ -131,11 +129,9 @@ function AdminDashboardInner() {
   const textHeading = isDarkMode ? 'text-slate-900' : 'text-slate-900';
   const borderCol = isDarkMode ? 'border-slate-200/80' : 'border-slate-200';
 
-  const handleTabChange = async (tab: typeof activeTab) => {
-    if (await confirmAction('Change Section', `Are you sure you want to navigate to the ${tab} section? Any unsaved changes in the current view will be lost.`)) {
-      setActiveTab(tab);
-      setSearchParams({ tab });
-    }
+  const handleTabChange = (tab: typeof activeTab) => {
+    setActiveTab(tab);
+    setSearchParams({ tab });
   };
 
   const [savedMsg, setSavedMsg] = useState('');
@@ -377,7 +373,7 @@ function AdminDashboardInner() {
     const teamMembers = content.team_members || [];
     const existingIndex = teamMembers.findIndex((m: any) => m.id === member.id || m.userId === member.userId);
     let updatedList;
-    if (existingIndex >= 0) {
+    if (existingIndex>= 0) {
       updatedList = [...teamMembers];
       updatedList[existingIndex] = member;
     } else {
@@ -389,7 +385,7 @@ function AdminDashboardInner() {
   const handleSavePortfolioItem = async (itemToSave: PortfolioItem) => {
     let updatedList;
     const existingIndex = portfolioItems.findIndex(p => p.id === itemToSave.id || p.slug === itemToSave.slug);
-    if (existingIndex >= 0) {
+    if (existingIndex>= 0) {
       updatedList = [...portfolioItems];
       updatedList[existingIndex] = itemToSave;
     } else {
@@ -420,7 +416,7 @@ function AdminDashboardInner() {
         restoredCount++;
       }
     }
-    if (restoredCount > 0) {
+    if (restoredCount> 0) {
       await updateSection('portfolio_items', updatedList);
       showSaveNotification(`${restoredCount} demo case studies restored to your portfolio.`);
     } else {
@@ -431,7 +427,7 @@ function AdminDashboardInner() {
   const handleSavePortfolioCategory = async (catToSave: PortfolioCategory) => {
     let updatedList;
     const existingIndex = portfolioCategories.findIndex(c => c.id === catToSave.id);
-    if (existingIndex >= 0) {
+    if (existingIndex>= 0) {
       updatedList = [...portfolioCategories];
       updatedList[existingIndex] = catToSave;
     } else {
@@ -451,7 +447,7 @@ function AdminDashboardInner() {
   const handleSaveCustomPage = async (pageToSave: CustomPage) => {
     const existingIndex = customPagesList.findIndex(p => p.id === pageToSave.id);
     let updatedList: CustomPage[];
-    if (existingIndex >= 0) {
+    if (existingIndex>= 0) {
       updatedList = [...customPagesList];
       updatedList[existingIndex] = pageToSave;
     } else {
@@ -506,7 +502,7 @@ function AdminDashboardInner() {
       <div className={`min-h-screen ${bgMain} flex flex-col items-center justify-center p-6 font-sans transition-colors duration-200`}>
         {/* Subtle Theme Toggle in Top Corner */}
         <div className="absolute top-6 right-6">
-          <ConfirmButton
+          <button 
             onClick={toggleDarkMode}
             className={`p-2.5 rounded-full border transition-all flex items-center justify-center shadow-sm ${
               isDarkMode 
@@ -515,8 +511,8 @@ function AdminDashboardInner() {
             }`}
             title="Toggle theme mode"
           >
-            {isDarkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-          </ConfirmButton>
+            {isDarkMode ? <Sun className="w-4 h-4"  /> : <Moon className="w-4 h-4" />}
+          </button>
         </div>
 
         <div className={`max-w-md w-full ${cardBg} rounded-2xl p-8 shadow-xl relative overflow-hidden transition-all duration-200`}>
@@ -538,26 +534,22 @@ function AdminDashboardInner() {
           <div className={`flex p-1 rounded-xl mb-6 border ${
             isDarkMode ? 'bg-[#080915] border-slate-200/80' : 'bg-slate-100/80 border-slate-200'
           }`}>
-            <ConfirmButton
-              onClick={() => { setAuthMode('login'); setAuthError(''); }}
+            <button onClick={() => { setAuthMode('login'); setAuthError(''); }}
               className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
                 authMode === 'login' 
                   ? 'bg-[#000080] text-white shadow' 
                   : `${textMuted} hover:text-slate-800 dark:hover:text-slate-900`
-              }`}
-            >
+              }`}>
               Sign In
-            </ConfirmButton>
-            <ConfirmButton
-              onClick={() => { setAuthMode('register'); setAuthError(''); }}
+            </button>
+            <button onClick={() => { setAuthMode('register'); setAuthError(''); }}
               className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
                 authMode === 'register' 
                   ? 'bg-[#000080] text-white shadow' 
                   : `${textMuted} hover:text-slate-800 dark:hover:text-slate-900`
-              }`}
-            >
+              }`}>
               Create Account
-            </ConfirmButton>
+            </button>
           </div>
 
           {/* Role Selection Selector */}
@@ -568,50 +560,42 @@ function AdminDashboardInner() {
               Select Auth Workspace:
             </label>
             <div className="grid grid-cols-2 gap-2">
-              <ConfirmButton
-                type="button"
+              <button type="button"
                 onClick={() => setSelectedRole('admin')}
                 className={`px-3 py-2 rounded-lg text-xs font-bold text-left transition-all border flex items-center gap-1.5 ${
                   selectedRole === 'admin'
                     ? 'bg-[#000080]/15 text-[#000080] dark:text-blue-300 border-[#000080]/50 shadow-sm'
                     : `bg-transparent ${textMuted} border-transparent hover:border-slate-300 dark:hover:border-slate-200`
-                }`}
-              >
+                }`}>
                 <span>👑</span> Admin
-              </ConfirmButton>
-              <ConfirmButton
-                type="button"
+              </button>
+              <button type="button"
                 onClick={() => setSelectedRole('site_manager')}
                 className={`px-3 py-2 rounded-lg text-xs font-bold text-left transition-all border flex items-center gap-1.5 ${
                   selectedRole === 'site_manager'
                     ? 'bg-[#000080]/15 text-[#000080] dark:text-blue-300 border-[#000080]/50 shadow-sm'
                     : `bg-transparent ${textMuted} border-transparent hover:border-slate-300 dark:hover:border-slate-200`
-                }`}
-              >
+                }`}>
                 <span>🛠️</span> Site Manager
-              </ConfirmButton>
-              <ConfirmButton
-                type="button"
+              </button>
+              <button type="button"
                 onClick={() => setSelectedRole('editor')}
                 className={`px-3 py-2 rounded-lg text-xs font-bold text-left transition-all border flex items-center gap-1.5 ${
                   selectedRole === 'editor'
                     ? 'bg-[#000080]/15 text-[#000080] dark:text-blue-300 border-[#000080]/50 shadow-sm'
                     : `bg-transparent ${textMuted} border-transparent hover:border-slate-300 dark:hover:border-slate-200`
-                }`}
-              >
+                }`}>
                 <span>📝</span> Editor
-              </ConfirmButton>
-              <ConfirmButton
-                type="button"
+              </button>
+              <button type="button"
                 onClick={() => setSelectedRole('customer')}
                 className={`px-3 py-2 rounded-lg text-xs font-bold text-left transition-all border flex items-center gap-1.5 ${
                   selectedRole === 'customer'
                     ? 'bg-[#FF0E0E]/15 text-[#FF0E0E] border-[#FF0E0E]/45 shadow-sm'
                     : `bg-transparent ${textMuted} border-transparent hover:border-slate-300 dark:hover:border-slate-200`
-                }`}
-              >
+                }`}>
                 <span>👤</span> Customer
-              </ConfirmButton>
+              </button>
             </div>
           </div>
 
@@ -652,11 +636,10 @@ function AdminDashboardInner() {
               </div>
             </div>
 
-            <ConfirmButton
+            <button 
               type="submit"
               disabled={authLoading}
-              className="w-full py-3 bg-[#000080] hover:bg-[#000066] text-white font-bold rounded-lg text-sm transition-colors shadow flex items-center justify-center gap-2 mt-2 cursor-pointer"
-            >
+              className="w-full py-3 bg-[#000080] hover:bg-[#000066] text-white font-bold rounded-lg text-sm transition-colors shadow flex items-center justify-center gap-2 mt-2 cursor-pointer">
               {authLoading ? (
                 <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
               ) : authMode === 'login' ? (
@@ -668,7 +651,7 @@ function AdminDashboardInner() {
                   <UserPlus className="w-4 h-4" /> Create {selectedRole.replace('_', ' ').toUpperCase()} Account
                 </>
               )}
-            </ConfirmButton>
+            </button>
           </form>
 
           <div className="relative my-6">
@@ -680,7 +663,7 @@ function AdminDashboardInner() {
             </div>
           </div>
 
-          <ConfirmButton
+          <button 
             onClick={handleGoogleAuth}
             disabled={authLoading}
             className={`w-full py-2.5 border font-semibold rounded-lg text-xs transition-colors flex items-center justify-center gap-2 cursor-pointer ${
@@ -688,7 +671,7 @@ function AdminDashboardInner() {
                 ? 'bg-[#080915] text-slate-800 border-slate-200 hover:bg-white' 
                 : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
             }`}
-          >
+>
             <svg className="w-4 h-4" viewBox="0 0 24 24">
               <path fill="#EA4335" d="M12 5c1.6 0 3 .6 4.1 1.6l3.1-3.1C17.3 1.7 14.8 1 12 1 7.5 1 3.7 3.6 1.9 7.3l3.7 2.9C6.5 7.2 9 5 12 5z"/>
               <path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.7-.2-2.3H12v4.6h6.5c-.3 1.5-1.1 2.8-2.4 3.7l3.7 2.9c2.2-2 3.7-5 3.7-8.9z"/>
@@ -696,15 +679,12 @@ function AdminDashboardInner() {
               <path fill="#34A853" d="M12 23c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3 0-5.5-2.2-6.4-5.2L1.9 16C3.7 19.7 7.5 23 12 23z"/>
             </svg>
             Sign in with Google
-          </ConfirmButton>
+          </button>
 
           <div className="mt-6 text-center">
-            <ConfirmButton 
-              onClick={() => navigate('/')}
-              className={`text-xs transition-colors flex items-center justify-center gap-1 mx-auto bg-transparent border-none cursor-pointer ${textMuted} hover:text-slate-800 dark:hover:text-slate-800`}
-            >
+            <button>
               <ArrowLeft className="w-3 h-3" /> Return to Website
-            </ConfirmButton>
+            </button>
           </div>
         </div>
       </div>
@@ -732,24 +712,18 @@ function AdminDashboardInner() {
           </p>
 
           <div className="pt-2 space-y-3">
-            <ConfirmButton
-              onClick={() => setRoleForUser('admin')}
-              className="w-full py-2.5 bg-[#000080] hover:bg-[#000080] text-white font-bold rounded-xl text-xs transition-all shadow-lg flex items-center justify-center gap-2"
-            >
+            <button>
               <UserCheck className="w-4 h-4" /> Switch Account Role to Admin
-            </ConfirmButton>
-            <ConfirmButton
-              onClick={() => navigate('/')}
-              className="w-full py-2.5 bg-slate-100 hover:bg-slate-700 text-slate-800 font-semibold rounded-xl text-xs transition-all border border-slate-300 flex items-center justify-center gap-2"
-            >
+            </button>
+            <button>
               <ArrowLeft className="w-4 h-4" /> Return to Website
-            </ConfirmButton>
-            <ConfirmButton
+            </button>
+            <button 
               onClick={handleSignOut}
               className="w-full py-2.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 font-semibold rounded-xl text-xs transition-all border border-red-500/20 flex items-center justify-center gap-2"
-            >
+>
               <LogOut className="w-4 h-4" /> Sign Out
-            </ConfirmButton>
+            </button>
           </div>
         </div>
       </div>
@@ -761,16 +735,14 @@ function AdminDashboardInner() {
       {/* Top Navigation */}
       <header className={`${headerBg} border-b ${borderCol} px-6 py-4 flex items-center justify-between sticky top-0 z-50 transition-colors duration-200`}>
         <div className="flex items-center gap-4">
-          <ConfirmButton 
-            onClick={() => navigate('/')}
+          <button onClick={() => navigate('/')}
             className={`p-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 border cursor-pointer ${
               isDarkMode 
                 ? 'bg-slate-100 hover:bg-slate-700 text-slate-800 border-slate-300' 
                 : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200 shadow-sm'
-            }`}
-          >
+            }`}>
             <ArrowLeft className="w-3.5 h-3.5" /> View Site
-          </ConfirmButton>
+          </button>
           <div className={`flex items-center gap-3 pl-4 border-l ${borderCol}`}>
             <Globe className="w-5 h-5 text-[#000080] dark:text-blue-400 animate-pulse" />
             <span className={`font-black text-base tracking-tight ${textHeading}`}>ProFox CMS Studio</span>
@@ -780,23 +752,15 @@ function AdminDashboardInner() {
 
             {/* Development Mode Quick Indicator */}
             {content.siteSettings?.maintenanceMode?.enabled ? (
-              <ConfirmButton
-                onClick={() => handleTabChange('siteSettings')}
-                className="px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-wider bg-amber-500 text-slate-950 flex items-center gap-1.5 shadow-sm hover:bg-amber-400 transition-all cursor-pointer animate-pulse"
-                title="Development Mode is ACTIVE. Click to configure message or disable."
-              >
+              <button>
                 <Hammer className="w-3 h-3" />
                 <span>Dev Mode: ACTIVE</span>
-              </ConfirmButton>
+              </button>
             ) : (
-              <ConfirmButton
-                onClick={() => handleTabChange('siteSettings')}
-                className="px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20 flex items-center gap-1.5 hover:bg-emerald-500/20 transition-all cursor-pointer"
-                title="Site is LIVE to the public. Click to push to Development Mode."
-              >
+              <button>
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                 <span>Site: Live</span>
-              </ConfirmButton>
+              </button>
             )}
           </div>
         </div>
@@ -809,7 +773,7 @@ function AdminDashboardInner() {
           )}
 
           {/* Theme Mode Toggle Button */}
-          <ConfirmButton
+          <button 
             onClick={toggleDarkMode}
             className={`p-2 rounded-lg border transition-all flex items-center justify-center cursor-pointer ${
               isDarkMode 
@@ -818,8 +782,8 @@ function AdminDashboardInner() {
             }`}
             title={isDarkMode ? "Switch to Light Mode" : "Switch to Night Mode"}
           >
-            {isDarkMode ? <Sun className="w-4.5 h-4.5" /> : <Moon className="w-4.5 h-4.5" />}
-          </ConfirmButton>
+            {isDarkMode ? <Sun className="w-4.5 h-4.5"  /> : <Moon className="w-4.5 h-4.5" />}
+          </button>
 
           {/* User Role Switcher Dropdown & Sign out */}
           <div className={`flex items-center gap-3 pl-3 border-l ${borderCol}`}>
@@ -832,8 +796,7 @@ function AdminDashboardInner() {
                     ? 'bg-slate-100 text-blue-300 border-slate-300 focus:border-[#FF0E0E]' 
                     : 'bg-white text-[#000080] border-slate-200 focus:border-[#000080] shadow-sm'
                 }`}
-                title="Switch Active Auth Role"
-              >
+                title="Switch Active Auth Role">
                 <option value="admin">👑 Admin</option>
                 <option value="site_manager">🛠️ Site Manager</option>
                 <option value="editor">📝 Editor</option>
@@ -846,13 +809,12 @@ function AdminDashboardInner() {
               <div className="text-[#FF0E0E] text-[10px] font-mono uppercase tracking-wider font-bold">Supabase Auth</div>
             </div>
 
-            <ConfirmButton
+            <button 
               onClick={handleSignOut}
               className="p-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 dark:text-red-400 rounded-lg border border-red-500/20 transition-colors cursor-pointer"
-              title="Sign Out"
-            >
+              title="Sign Out">
               <LogOut className="w-4 h-4" />
-            </ConfirmButton>
+            </button>
           </div>
         </div>
       </header>
@@ -866,14 +828,12 @@ function AdminDashboardInner() {
             <span className="bg-[#FF0E0E]/10 text-[#FF0E0E] text-[9px] px-2 py-0.5 rounded font-bold border border-[#FF0E0E]/20">New</span>
           </div>
 
-          <ConfirmButton
-            onClick={() => handleTabChange('pages')}
+          <button onClick={() => handleTabChange('pages')}
             className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
               activeTab === 'pages' 
                 ? 'bg-[#000080] text-white shadow shadow-blue-900/10' 
                 : `${isDarkMode ? 'text-slate-700 hover:bg-slate-100/80 hover:text-slate-900' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'}`
-            }`}
-          >
+            }`}>
             <div className="flex items-center gap-2.5">
               <FileText className="w-4 h-4" /> Pages & SEO
             </div>
@@ -882,87 +842,75 @@ function AdminDashboardInner() {
             }`}>
               {customPagesList.length}
             </span>
-          </ConfirmButton>
+          </button>
 
-          <ConfirmButton
-            onClick={() => handleTabChange('blog')}
+          <button onClick={() => handleTabChange('blog')}
             className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
               activeTab === 'blog' 
                 ? 'bg-[#000080] text-white shadow shadow-blue-900/10' 
                 : `${isDarkMode ? 'text-slate-700 hover:bg-slate-100/80 hover:text-slate-900' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'}`
-            }`}
-          >
+            }`}>
             <div className="flex items-center gap-2.5">
               <Plus className="w-4 h-4" /> Blog & Articles
             </div>
-          </ConfirmButton>
-          <ConfirmButton
-            onClick={() => handleTabChange('portfolio')}
+          </button>
+          <button onClick={() => handleTabChange('portfolio')}
             className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
               activeTab === 'portfolio' 
                 ? 'bg-[#000080] text-white shadow shadow-blue-900/10' 
                 : `${isDarkMode ? 'text-slate-700 hover:bg-slate-100/80 hover:text-slate-900' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'}`
-            }`}
-          >
+            }`}>
             <div className="flex items-center gap-2.5">
               <Briefcase className="w-4 h-4" /> Portfolio
             </div>
-          </ConfirmButton>
+          </button>
 
 
-          <ConfirmButton
-            onClick={() => handleTabChange('feedback')}
+          <button onClick={() => handleTabChange('feedback')}
             className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
               activeTab === 'feedback' 
                 ? 'bg-[#000080] text-white shadow shadow-blue-900/10' 
                 : `${isDarkMode ? 'text-slate-700 hover:bg-slate-100/80 hover:text-slate-900' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'}`
-            }`}
-          >
+            }`}>
             <div className="flex items-center gap-2.5">
               <MessageSquare className="w-4 h-4" /> Feedback Inbox
             </div>
-            {content.feedback_submissions?.filter((f: any) => f.status === 'pending').length > 0 && (
+            {content.feedback_submissions?.filter((f: any) => f.status === 'pending').length> 0 && (
               <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse shadow-sm shadow-amber-200" />
             )}
-          </ConfirmButton>
+          </button>
 
-          <ConfirmButton
-            onClick={() => handleTabChange('media')}
+          <button onClick={() => handleTabChange('media')}
             className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
               activeTab === 'media' 
                 ? 'bg-[#000080] text-white shadow shadow-blue-900/10' 
                 : `${isDarkMode ? 'text-slate-700 hover:bg-slate-100/80 hover:text-slate-900' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'}`
-            }`}
-          >
+            }`}>
             <div className="flex items-center gap-2.5">
               <ImageIcon className="w-4 h-4" /> Media Library
             </div>
-          </ConfirmButton>
+          </button>
 
           {!isDevUser && !isSalesUser && (
-            <ConfirmButton
-              onClick={() => handleTabChange('templates')}
+            <button onClick={() => handleTabChange('templates')}
               className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                 activeTab === 'templates' 
                   ? 'bg-[#000080] text-white shadow shadow-blue-900/10' 
                   : `${isDarkMode ? 'text-slate-700 hover:bg-slate-100/80 hover:text-slate-900' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'}`
-              }`}
-            >
+              }`}>
               <div className="flex items-center gap-2.5">
                 <Layers className="w-4 h-4" /> Template Manager
               </div>
-            </ConfirmButton>
+            </button>
           )}
 
           {!isDevUser && !isSalesUser && (
-            <ConfirmButton
-              onClick={() => handleTabChange('siteSettings')}
+            <button onClick={() => handleTabChange('siteSettings')}
               className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                 activeTab === 'siteSettings' 
                   ? 'bg-[#000080] text-white shadow shadow-blue-900/10' 
                   : `${isDarkMode ? 'text-slate-700 hover:bg-slate-100/80 hover:text-slate-900' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'}`
-              }`}
-            >
+              }`}>
               <div className="flex items-center gap-2.5">
                 <Globe className="w-4 h-4" /> Site Settings
               </div>
@@ -971,32 +919,28 @@ function AdminDashboardInner() {
               }`}>
                 ID
               </span>
-            </ConfirmButton>
+            </button>
           )}
 
           {!isDevUser && !isSalesUser && role === 'admin' && (
             <>
-              <ConfirmButton
-                onClick={() => handleTabChange('projects')}
+              <button onClick={() => handleTabChange('projects')}
                 className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                   activeTab === 'projects' 
                     ? 'bg-[#000080] text-white shadow shadow-blue-900/10' 
                     : `${isDarkMode ? 'text-slate-700 hover:bg-slate-100/80 hover:text-slate-900' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'}`
-                }`}
-              >
+                }`}>
                 <div className="flex items-center gap-2.5">
                   <Briefcase className="w-4 h-4" /> Client Projects
                 </div>
-              </ConfirmButton>
+              </button>
               
-              <ConfirmButton
-                onClick={() => handleTabChange('team')}
+              <button onClick={() => handleTabChange('team')}
                 className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                   activeTab === 'team' 
                     ? 'bg-[#000080] text-white shadow shadow-blue-900/10' 
                     : `${isDarkMode ? 'text-slate-700 hover:bg-slate-100/80 hover:text-slate-900' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'}`
-                }`}
-              >
+                }`}>
                 <div className="flex items-center gap-2.5">
                   <UserCheck className="w-4 h-4" /> Team & Users
                 </div>
@@ -1005,19 +949,17 @@ function AdminDashboardInner() {
                 }`}>
                   {(content.team_members || []).length}
                 </span>
-              </ConfirmButton>
+              </button>
             </>
           )}
 
           {!isDevUser && !isSalesUser && (
-            <ConfirmButton
-            onClick={() => handleTabChange('process')}
+            <button onClick={() => handleTabChange('process')}
             className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
               activeTab === 'process' 
                 ? 'bg-[#000080] text-white shadow shadow-blue-900/10' 
                 : `${isDarkMode ? 'text-slate-700 hover:bg-slate-100/80 hover:text-slate-900' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'}`
-            }`}
-          >
+            }`}>
             <div className="flex items-center gap-2.5">
               <Sparkles className="w-4 h-4" /> Our Process
             </div>
@@ -1026,56 +968,48 @@ function AdminDashboardInner() {
             }`}>
               DB
             </span>
-          </ConfirmButton>
+          </button>
           )}
 
           <div className={`px-3 py-2 mt-3 text-[10px] font-bold uppercase tracking-widest ${textMuted}`}>
             Management
           </div>
 
-          <ConfirmButton
-            onClick={() => setActiveTab('homepageSections')}
+          <button onClick={() => setActiveTab('homepageSections')}
             className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
               activeTab === 'homepageSections' 
                 ? 'bg-[#000080]/10 text-[#000080] dark:text-blue-300 border border-[#000080]/30 shadow-sm' 
                 : `border border-transparent ${isDarkMode ? 'text-slate-500 hover:bg-slate-100/50 hover:text-slate-800' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`
-            }`}
-          >
+            }`}>
             <Home className="w-4 h-4" /> Homepage Sections
-          </ConfirmButton>
+          </button>
 
-          <ConfirmButton
-            onClick={() => setActiveTab('header')}
+          <button onClick={() => setActiveTab('header')}
             className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
               activeTab === 'header' 
                 ? 'bg-[#000080]/10 text-[#000080] dark:text-blue-300 border border-[#000080]/30 shadow-sm' 
                 : `border border-transparent ${isDarkMode ? 'text-slate-500 hover:bg-slate-100/50 hover:text-slate-800' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`
-            }`}
-          >
+            }`}>
             <Layout className="w-4 h-4" /> Navigation & Header
-          </ConfirmButton>
+          </button>
 
-          <ConfirmButton
-            onClick={() => setActiveTab('servicePackages')}
+          <button onClick={() => setActiveTab('servicePackages')}
             className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
               activeTab === 'servicePackages' 
                 ? 'bg-[#000080]/10 text-[#000080] dark:text-blue-300 border border-[#000080]/30 shadow-sm' 
                 : `border border-transparent ${isDarkMode ? 'text-slate-500 hover:bg-slate-100/50 hover:text-slate-800' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`
-            }`}
-          >
+            }`}>
             <DollarSign className="w-4 h-4" /> Services Packages
-          </ConfirmButton>
+          </button>
 
-          <ConfirmButton
-            onClick={() => setActiveTab('footer')}
+          <button onClick={() => setActiveTab('footer')}
             className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
               activeTab === 'footer' 
                 ? 'bg-[#000080]/10 text-[#000080] dark:text-blue-300 border border-[#000080]/30 shadow-sm' 
                 : `border border-transparent ${isDarkMode ? 'text-slate-500 hover:bg-slate-100/50 hover:text-slate-800' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`
-            }`}
-          >
+            }`}>
             <Settings className="w-4 h-4" /> Footer Settings
-          </ConfirmButton>
+          </button>
         </aside>
 
         {/* Editor Main */}
@@ -1276,14 +1210,12 @@ function HeroEditor({ initialData, onSave }: { initialData: any, onSave: (data: 
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <ConfirmButton
-            onClick={() => setForm({ ...form, enabled: !form.enabled })}
+          <button onClick={() => setForm({ ...form, enabled: !form.enabled })}
             className={`px-4 py-2 rounded-lg text-xs font-bold border transition-all ${
               form.enabled !== false ? 'bg-white text-slate-600 border-slate-200' : 'bg-[#000080] text-white border-transparent'
-            }`}
-          >
+            }`}>
             {form.enabled !== false ? 'Disable Section' : 'Enable Section'}
-          </ConfirmButton>
+          </button>
           <SaveButton 
             onSave={handleSave} 
             isSaving={isSaving} 
@@ -1365,12 +1297,9 @@ function HeroEditor({ initialData, onSave }: { initialData: any, onSave: (data: 
               <h3 className="text-xs font-bold uppercase tracking-widest text-slate-500">Trusted By Slider</h3>
               <div className="flex items-center gap-2">
                 <span className="text-[10px] font-bold text-slate-400">ENABLED</span>
-                <ConfirmButton
-                  onClick={() => setForm({ ...form, trustedByEnabled: !form.trustedByEnabled })}
-                  className={`w-10 h-5 rounded-full transition-all relative ${form.trustedByEnabled !== false ? 'bg-[#000080]' : 'bg-slate-300'}`}
-                >
+                <button>
                   <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${form.trustedByEnabled !== false ? 'right-1' : 'left-1'}`} />
-                </ConfirmButton>
+                </button>
               </div>
             </div>
 
@@ -1387,23 +1316,20 @@ function HeroEditor({ initialData, onSave }: { initialData: any, onSave: (data: 
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wide">Brands / Logos</label>
-                <ConfirmButton
+                <button 
                   onClick={addLogo}
                   className="flex items-center gap-1.5 px-3 py-1 bg-[#000080] text-white rounded-lg hover:bg-[#000066] text-[10px] font-bold transition-colors"
-                >
+>
                   <Plus className="w-3.5 h-3.5" /> ADD BRAND
-                </ConfirmButton>
+                </button>
               </div>
 
               <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
                 {(form.trustedLogos || []).map((logo: any, idx: number) => (
                   <div key={idx} className="group relative bg-slate-50 p-4 rounded-xl border border-slate-100 hover:border-slate-300 transition-all">
-                    <ConfirmButton
-                      onClick={() => removeLogo(idx)}
-                      className="absolute -top-2 -right-2 p-1.5 bg-white text-slate-400 hover:text-red-500 rounded-full border border-slate-200 shadow-sm opacity-0 group-hover:opacity-100 transition-all z-10"
-                    >
+                    <button>
                       <X className="w-3 h-3" />
-                    </ConfirmButton>
+                    </button>
 
                     <div className="grid grid-cols-3 gap-4">
                       <div className="col-span-1">
@@ -1411,8 +1337,7 @@ function HeroEditor({ initialData, onSave }: { initialData: any, onSave: (data: 
                         <select
                           value={logo.type || 'text'}
                           onChange={(e) => updateLogo(idx, 'type', e.target.value)}
-                          className="w-full bg-white border border-slate-200 rounded-lg px-2 py-2 text-[11px] font-bold focus:outline-none focus:border-[#000080]"
-                        >
+                          className="w-full bg-white border border-slate-200 rounded-lg px-2 py-2 text-[11px] font-bold focus:outline-none focus:border-[#000080]">
                           <option value="text">Typography</option>
                           <option value="image">Brand Image</option>
                           <option value="logo">Logo Box</option>
@@ -1457,8 +1382,7 @@ function HeroEditor({ initialData, onSave }: { initialData: any, onSave: (data: 
                           <select
                             value={logo.style || 'bold'}
                             onChange={(e) => updateLogo(idx, 'style', e.target.value)}
-                            className="w-full bg-white border border-slate-200 rounded-lg px-2 py-2 text-[11px] focus:outline-none focus:border-[#000080]"
-                          >
+                            className="w-full bg-white border border-slate-200 rounded-lg px-2 py-2 text-[11px] focus:outline-none focus:border-[#000080]">
                             <option value="bold">Bold Sans</option>
                             <option value="black">Heavy Black</option>
                             <option value="italic">Elegant Italic</option>
@@ -1522,12 +1446,9 @@ function HeaderEditor({
           <h1 className="text-2xl font-black tracking-tight">Navigation & Header Manager</h1>
           <p className="text-sm text-slate-500">Edit brand identity, active logo image, enterprise taglines, and menus</p>
         </div>
-        <ConfirmButton
-          onClick={() => onSave(form, footerUpdates)}
-          className="px-5 py-2.5 bg-[#000080] hover:bg-[#000066] text-white rounded-lg font-bold text-xs flex items-center gap-2 shadow-lg transition-all border-none cursor-pointer"
-        >
+        <button>
           <Save className="w-4 h-4" /> Save Header Changes
-        </ConfirmButton>
+        </button>
       </div>
 
       {/* Brand Identity Card with Upload Capability */}
@@ -1561,13 +1482,9 @@ function HeaderEditor({
                     alt="Custom Brand Logo" 
                     className="max-h-12 w-auto object-contain transition-all"
                   />
-                  <ConfirmButton
-                    onClick={() => handleLogoChange('')}
-                    className="absolute -top-2 -right-2 p-1 bg-red-600 hover:bg-red-700 text-slate-900 rounded-full transition-all opacity-0 group-hover/logo:opacity-100 shadow cursor-pointer flex items-center justify-center"
-                    title="Remove custom logo"
-                  >
+                  <button>
                     <X className="w-3 h-3" />
-                  </ConfirmButton>
+                  </button>
                 </div>
               ) : (
                 <div className="text-center">
@@ -1631,7 +1548,7 @@ function HeaderEditor({
         services={services}
         onChange={(updatedNavItems, locations) => {
           setForm({ ...form, navItems: updatedNavItems });
-          if (locations && locations.length > 0) {
+          if (locations && locations.length> 0) {
             const fUpdates: any = {};
             if (locations.includes('footerCompany')) fUpdates.companyLinks = updatedNavItems;
             if (locations.includes('footerServices')) fUpdates.servicesLinks = updatedNavItems;
@@ -1701,14 +1618,12 @@ function ServicesEditor({ initialData, servicePages = [], onSave }: { initialDat
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <ConfirmButton
-            onClick={() => setForm({ ...form, enabled: !form.enabled })}
+          <button onClick={() => setForm({ ...form, enabled: !form.enabled })}
             className={`px-4 py-2 rounded-lg text-xs font-bold border transition-all ${
               form.enabled !== false ? 'bg-white text-slate-600 border-slate-200' : 'bg-[#000080] text-white border-transparent'
-            }`}
-          >
+            }`}>
             {form.enabled !== false ? 'Disable Section' : 'Enable Section'}
-          </ConfirmButton>
+          </button>
           <SaveButton 
             onSave={handleSave} 
             isSaving={isSaving} 
@@ -1744,23 +1659,20 @@ function ServicesEditor({ initialData, servicePages = [], onSave }: { initialDat
               <Layers className="w-4 h-4 text-[#000080]" />
               Service Cards
             </h3>
-            <ConfirmButton
+            <button 
               onClick={addService}
               className="px-4 py-2 bg-white border border-slate-200 text-slate-900 rounded-xl text-xs font-bold hover:bg-slate-50 flex items-center gap-2 shadow-sm transition-all"
-            >
+>
               <Plus className="w-4 h-4" /> Add Service
-            </ConfirmButton>
+            </button>
           </div>
 
           <div className="grid md:grid-cols-2 gap-6">
             {(form.list || []).map((service: any, idx: number) => (
               <div key={idx} className="bg-white border border-slate-200 rounded-[2rem] p-8 relative group shadow-sm hover:shadow-xl transition-all border-l-4 border-l-[#000080]">
-                <ConfirmButton
-                  onClick={() => removeService(idx)}
-                  className="absolute top-6 right-6 p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
-                >
+                <button>
                   <Trash2 className="w-4 h-4" />
-                </ConfirmButton>
+                </button>
 
                 <div className="space-y-6">
                   {/* Image and Icon Selection Row */}
@@ -1769,17 +1681,16 @@ function ServicesEditor({ initialData, servicePages = [], onSave }: { initialDat
                       <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">Icon</label>
                       <div className="flex flex-wrap gap-2">
                         {iconOptions.map((opt) => (
-                          <ConfirmButton
-                            key={opt.value}
+                          <button key={opt.value}
                             onClick={() => updateService(idx, 'icon', opt.value)}
                             className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all ${
                               service.icon === opt.value 
                                 ? 'bg-[#000080] text-white shadow-lg scale-110' 
                                 : 'bg-slate-100 text-slate-400 hover:bg-slate-200'
                             }`}
-                          >
+                         >
                             <opt.icon className="w-5 h-5" />
-                          </ConfirmButton>
+                          </button>
                         ))}
                       </div>
                     </div>
@@ -1890,7 +1801,7 @@ function ServicePackagesEditor({ initialData, onSave }: { initialData: any, onSa
 
   const movePackage = (index: number, direction: 'up' | 'down') => {
     const newList = [...(form.list || [])];
-    if (direction === 'up' && index > 0) {
+    if (direction === 'up' && index> 0) {
       const temp = newList[index];
       newList[index] = newList[index - 1];
       newList[index - 1] = temp;
@@ -1943,20 +1854,15 @@ function ServicePackagesEditor({ initialData, onSave }: { initialData: any, onSa
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <ConfirmButton
-            onClick={() => setForm({ ...form, enabled: !form.enabled })}
+          <button onClick={() => setForm({ ...form, enabled: !form.enabled })}
             className={`px-4 py-2 rounded-lg text-xs font-bold border transition-all ${
               form.enabled === true ? 'bg-white text-slate-600 border-slate-200' : 'bg-[#000080] text-white border-transparent'
-            }`}
-          >
+            }`}>
             {form.enabled === true ? 'Disable Section' : 'Enable Section'}
-          </ConfirmButton>
-          <ConfirmButton
-            onClick={() => onSave(form)}
-            className="px-5 py-2.5 bg-[#000080] hover:bg-[#000066] text-white rounded-lg font-medium flex items-center gap-2 shadow-lg transition-colors border-none cursor-pointer"
-          >
+          </button>
+          <button>
             <Save className="w-4 h-4" /> Save Packages
-          </ConfirmButton>
+          </button>
         </div>
       </div>
 
@@ -1987,12 +1893,12 @@ function ServicePackagesEditor({ initialData, onSave }: { initialData: any, onSa
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-semibold text-slate-900">Service Packages ({form.list?.length || 0})</h3>
-          <ConfirmButton
+          <button 
             onClick={handleAddPackage}
             className="px-4 py-2 bg-[#000080] hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors shadow-md border-none cursor-pointer"
-          >
+>
             <Plus className="w-4 h-4" /> Add Package
-          </ConfirmButton>
+          </button>
         </div>
 
         <div className="grid gap-6">
@@ -2014,29 +1920,21 @@ function ServicePackagesEditor({ initialData, onSave }: { initialData: any, onSa
                   )}
                 </div>
                 <div className="flex items-center gap-2">
-                  <ConfirmButton
-                    onClick={() => movePackage(idx, 'up')}
+                  <button onClick={() => movePackage(idx, 'up')}
                     disabled={idx === 0}
                     className="p-1.5 bg-slate-50 hover:bg-slate-100 disabled:opacity-30 text-slate-500 hover:text-slate-900 rounded-lg transition-colors border border-slate-200 cursor-pointer"
-                    title="Move Up"
-                  >
+                    title="Move Up">
                     <ArrowLeft className="w-3.5 h-3.5 rotate-90" />
-                  </ConfirmButton>
-                  <ConfirmButton
-                    onClick={() => movePackage(idx, 'down')}
+                  </button>
+                  <button onClick={() => movePackage(idx, 'down')}
                     disabled={idx === (form.list?.length - 1)}
                     className="p-1.5 bg-slate-50 hover:bg-slate-100 disabled:opacity-30 text-slate-500 hover:text-slate-900 rounded-lg transition-colors border border-slate-200 cursor-pointer"
-                    title="Move Down"
-                  >
+                    title="Move Down">
                     <ArrowLeft className="w-3.5 h-3.5 -rotate-90" />
-                  </ConfirmButton>
-                  <ConfirmButton
-                    onClick={() => handleDeletePackage(idx)}
-                    className="p-1.5 bg-red-950/40 hover:bg-red-900/60 text-red-400 hover:text-red-200 rounded-lg transition-colors border border-red-900/30 cursor-pointer"
-                    title="Delete Package"
-                  >
+                  </button>
+                  <button>
                     <Trash2 className="w-3.5 h-3.5" />
-                  </ConfirmButton>
+                  </button>
                 </div>
               </div>
 
@@ -2136,13 +2034,9 @@ function ServicePackagesEditor({ initialData, onSave }: { initialData: any, onSa
               <div className="space-y-3 bg-slate-50/40 p-4 rounded-xl border border-slate-200/80">
                 <div className="flex items-center justify-between">
                   <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Included Features Bullets</label>
-                  <ConfirmButton
-                    type="button"
-                    onClick={() => handleAddFeature(idx)}
-                    className="text-xs text-[#000080] hover:text-[#000066] font-bold flex items-center gap-1 transition-colors border-none bg-transparent cursor-pointer"
-                  >
+                  <button>
                     <Plus className="w-3.5 h-3.5" /> Add Bullet
-                  </ConfirmButton>
+                  </button>
                 </div>
 
                 <div className="space-y-2">
@@ -2156,14 +2050,12 @@ function ServicePackagesEditor({ initialData, onSave }: { initialData: any, onSa
                         className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-[#000080]"
                         placeholder="Feature description"
                       />
-                      <ConfirmButton
-                        type="button"
+                      <button type="button"
                         onClick={() => handleDeleteFeature(idx, fIdx)}
                         className="p-1.5 bg-red-950/30 hover:bg-red-900/50 text-red-400 hover:text-red-200 rounded-lg transition-colors border border-red-900/20 cursor-pointer"
-                        title="Delete Feature"
-                      >
+                        title="Delete Feature">
                         <Trash2 className="w-3.5 h-3.5" />
-                      </ConfirmButton>
+                      </button>
                     </div>
                   ))}
                   {(!pkg.features || pkg.features.length === 0) && (
@@ -2210,14 +2102,12 @@ function CaseStudiesEditor({ initialData, onSave }: { initialData: any, onSave: 
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <ConfirmButton
-            onClick={() => setForm({ ...form, enabled: !form.enabled })}
+          <button onClick={() => setForm({ ...form, enabled: !form.enabled })}
             className={`px-4 py-2 rounded-lg text-xs font-bold border transition-all ${
               form.enabled !== false ? 'bg-white text-slate-600 border-slate-200' : 'bg-[#000080] text-white border-transparent'
-            }`}
-          >
+            }`}>
             {form.enabled !== false ? 'Disable Section' : 'Enable Section'}
-          </ConfirmButton>
+          </button>
           <SaveButton 
             onSave={handleSave} 
             isSaving={isSaving} 
@@ -2317,14 +2207,12 @@ function InsightsEditor({ initialData, onSave }: { initialData: any, onSave: (da
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <ConfirmButton
-            onClick={() => setForm({ ...form, enabled: !form.enabled })}
+          <button onClick={() => setForm({ ...form, enabled: !form.enabled })}
             className={`px-4 py-2 rounded-lg text-xs font-bold border transition-all ${
               form.enabled !== false ? 'bg-white text-slate-600 border-slate-200' : 'bg-[#000080] text-white border-transparent'
-            }`}
-          >
+            }`}>
             {form.enabled !== false ? 'Disable Section' : 'Enable Section'}
-          </ConfirmButton>
+          </button>
           <SaveButton 
             onSave={handleSave} 
             isSaving={isSaving} 
@@ -2414,14 +2302,12 @@ function FAQEditor({ initialData, onSave }: { initialData: any, onSave: (data: a
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <ConfirmButton
-            onClick={() => setForm({ ...form, enabled: !form.enabled })}
+          <button onClick={() => setForm({ ...form, enabled: !form.enabled })}
             className={`px-4 py-2 rounded-lg text-xs font-bold border transition-all ${
               form.enabled !== false ? 'bg-white text-slate-600 border-slate-200' : 'bg-[#000080] text-white border-transparent'
-            }`}
-          >
+            }`}>
             {form.enabled !== false ? 'Disable Section' : 'Enable Section'}
-          </ConfirmButton>
+          </button>
           <SaveButton 
             onSave={handleSave} 
             isSaving={isSaving} 
@@ -2466,23 +2352,20 @@ function FAQEditor({ initialData, onSave }: { initialData: any, onSave: (data: a
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-bold text-slate-900 uppercase tracking-widest">Questions & Answers</h3>
-          <ConfirmButton
+          <button 
             onClick={addFAQ}
             className="px-4 py-2 bg-[#000080] text-white rounded-xl text-xs font-bold hover:bg-[#000066] transition-all flex items-center gap-2 border-none cursor-pointer"
-          >
+>
             <Plus className="w-4 h-4" /> Add FAQ Item
-          </ConfirmButton>
+          </button>
         </div>
 
         <div className="grid gap-4">
           {(form.items || []).map((item: any, idx: number) => (
             <div key={item.id || idx} className="bg-white border border-slate-200 rounded-2xl p-6 relative group shadow-sm">
-              <ConfirmButton
-                onClick={() => removeFAQ(idx)}
-                className="absolute top-6 right-6 p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all border-none bg-transparent cursor-pointer"
-              >
+              <button>
                 <Trash2 className="w-4 h-4" />
-              </ConfirmButton>
+              </button>
               <div className="space-y-4">
                 <div className="space-y-2">
                   <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">Question</label>
@@ -2542,14 +2425,12 @@ function CTAEditor({ initialData, onSave }: { initialData: any, onSave: (data: a
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <ConfirmButton
-            onClick={() => setForm({ ...form, enabled: !form.enabled })}
+          <button onClick={() => setForm({ ...form, enabled: !form.enabled })}
             className={`px-4 py-2 rounded-lg text-xs font-bold border transition-all ${
               form.enabled !== false ? 'bg-white text-slate-600 border-slate-200' : 'bg-[#000080] text-white border-transparent'
-            }`}
-          >
+            }`}>
             {form.enabled !== false ? 'Disable Banner' : 'Enable Banner'}
-          </ConfirmButton>
+          </button>
           <SaveButton 
             onSave={handleSave} 
             isSaving={isSaving} 
@@ -2672,7 +2553,7 @@ function LoadingScreenEditor({ initialData, onSave }: { initialData: any, onSave
           </div>
         </div>
         <div className="flex flex-wrap gap-3">
-          <ConfirmButton onClick={replayPreview} className="rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50">Preview Animation</ConfirmButton>
+          <button onClick={replayPreview} className="rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50">Preview Animation</button>
           <SaveButton onSave={handleSave} isSaving={isSaving} showSaved={showSaved} label="Save Loader" />
         </div>
       </div>
@@ -2680,14 +2561,14 @@ function LoadingScreenEditor({ initialData, onSave }: { initialData: any, onSave
       <div className="grid gap-8 xl:grid-cols-[0.9fr_1.1fr]">
         <div className="space-y-6">
           <div className="grid gap-4 sm:grid-cols-2">
-            <ConfirmButton onClick={() => setForm({ ...form, enabled: !form.enabled })} className={`rounded-2xl border p-5 text-left transition-all ${form.enabled ? 'border-green-200 bg-green-50' : 'border-slate-200 bg-slate-50'}`}>
+            <button onClick={() => setForm({ ...form, enabled: !form.enabled })} className={`rounded-2xl border p-5 text-left transition-all ${form.enabled ? 'border-green-200 bg-green-50' : 'border-slate-200 bg-slate-50'}`}>
               <span className="block text-xs font-black uppercase tracking-widest text-slate-900">Loader Enabled</span>
               <span className="mt-2 block text-xs text-slate-500">{form.enabled ? 'Displayed on the homepage' : 'Homepage opens immediately'}</span>
-            </ConfirmButton>
-            <ConfirmButton onClick={() => setForm({ ...form, replayEveryVisit: !form.replayEveryVisit })} className={`rounded-2xl border p-5 text-left transition-all ${form.replayEveryVisit ? 'border-blue-200 bg-blue-50' : 'border-slate-200 bg-slate-50'}`}>
+            </button>
+            <button onClick={() => setForm({ ...form, replayEveryVisit: !form.replayEveryVisit })} className={`rounded-2xl border p-5 text-left transition-all ${form.replayEveryVisit ? 'border-blue-200 bg-blue-50' : 'border-slate-200 bg-slate-50'}`}>
               <span className="block text-xs font-black uppercase tracking-widest text-slate-900">Replay Every Visit</span>
               <span className="mt-2 block text-xs text-slate-500">{form.replayEveryVisit ? 'Plays whenever Home opens' : 'Plays once per browser session'}</span>
-            </ConfirmButton>
+            </button>
           </div>
 
           <div className="rounded-2xl border border-slate-200 bg-white p-6 space-y-5">
@@ -2785,18 +2666,17 @@ function HomepageSectionsManager({
 
       <div className="flex gap-2 p-1 bg-slate-100 rounded-2xl border border-slate-200 overflow-x-auto no-scrollbar">
         {subTabs.map((tab) => (
-          <ConfirmButton
-            key={tab.id}
+          <button key={tab.id}
             onClick={() => setActiveSubTab(tab.id as any)}
             className={`flex items-center gap-2 px-6 py-3 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
               activeSubTab === tab.id
                 ? 'bg-white text-[#000080] shadow-md border border-slate-200'
                 : 'text-slate-500 hover:text-slate-900'
             }`}
-          >
+         >
             <tab.icon className="w-4 h-4" />
             {tab.label}
-          </ConfirmButton>
+          </button>
         ))}
       </div>
 
@@ -2923,14 +2803,12 @@ function GrowthEditor({ initialData, onSave }: { initialData: any, onSave: (data
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <ConfirmButton
-            onClick={() => setForm({ ...form, enabled: !form.enabled })}
+          <button onClick={() => setForm({ ...form, enabled: !form.enabled })}
             className={`px-4 py-2 rounded-lg text-xs font-bold border transition-all ${
               form.enabled !== false ? 'bg-white text-slate-600 border-slate-200' : 'bg-[#000080] text-white border-transparent'
-            }`}
-          >
+            }`}>
             {form.enabled !== false ? 'Disable Section' : 'Enable Section'}
-          </ConfirmButton>
+          </button>
           <SaveButton 
             onSave={handleSave} 
             isSaving={isSaving} 
@@ -2974,23 +2852,20 @@ function GrowthEditor({ initialData, onSave }: { initialData: any, onSave: (data
         <div className="space-y-4">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-bold text-slate-900 uppercase tracking-widest">Manage Awards</h3>
-            <ConfirmButton
+            <button 
               onClick={addAward}
               className="p-2 bg-[#000080] text-white rounded-lg hover:bg-[#000066] transition-colors"
-            >
+>
               <Plus className="w-4 h-4" />
-            </ConfirmButton>
+            </button>
           </div>
           
           <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
             {form.awards?.map((award: any, idx: number) => (
               <div key={idx} className="p-4 bg-white border border-slate-200 rounded-xl space-y-3 relative group">
-                <ConfirmButton
-                  onClick={() => removeAward(idx)}
-                  className="absolute top-2 right-2 p-1 text-slate-400 hover:text-red-500 transition-colors"
-                >
+                <button>
                   <Trash2 className="w-3.5 h-3.5" />
-                </ConfirmButton>
+                </button>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="col-span-2">
                     <label className="block text-[10px] font-bold text-slate-400 mb-1">NAME / BRAND</label>
@@ -3015,8 +2890,7 @@ function GrowthEditor({ initialData, onSave }: { initialData: any, onSave: (data
                     <select
                       value={award.type}
                       onChange={(e) => updateAward(idx, 'type', e.target.value)}
-                      className="w-full border border-slate-100 rounded-lg p-2 text-xs font-bold"
-                    >
+                      className="w-full border border-slate-100 rounded-lg p-2 text-xs font-bold">
                       <option value="CLUTCH">Clutch Badge</option>
                       <option value="TEXT">Large Italic Text</option>
                       <option value="BORDERED">Bordered Tag</option>
@@ -3067,8 +2941,8 @@ function FooterEditor({ initialData, onSave }: { initialData: any, onSave: (data
   const updateLinks = (key: 'servicesLinks' | 'companyLinks' | 'legalLinks', index: number, field: 'label' | 'href', value: string) => setForm((current: any) => ({ ...current, [key]: current[key].map((item: any, itemIndex: number) => itemIndex === index ? { ...item, [field]: value } : item) }));
   const renderLinkEditor = (title: string, key: 'servicesLinks' | 'companyLinks' | 'legalLinks') => (
     <div className="rounded-xl border border-slate-200 bg-white p-6">
-      <div className="mb-4 flex items-center justify-between"><div><h2 className="font-bold text-slate-900">{title}</h2><p className="mt-1 text-xs text-slate-500">Only add real internal routes or complete external URLs. Empty and # links are not shown.</p></div><ConfirmButton type="button" onClick={() => setForm((current: any) => ({ ...current, [key]: [...current[key], { label: 'New Link', href: '/' }] }))} className="inline-flex items-center gap-2 rounded-lg bg-[#000080]/10 px-3 py-2 text-xs font-bold text-[#000080]"><Plus className="h-4 w-4" /> Add</ConfirmButton></div>
-      <div className="space-y-3">{form[key].map((item: any, index: number) => <div key={index} className="grid gap-3 rounded-xl border border-slate-100 bg-slate-50 p-3 sm:grid-cols-[1fr_1.35fr_auto]"><input value={item.label || ''} onChange={event => updateLinks(key, index, 'label', event.target.value)} placeholder="Link label" className={inputClass} /><input value={item.href || ''} onChange={event => updateLinks(key, index, 'href', event.target.value)} placeholder="/real-page-url" className={`${inputClass} font-mono text-xs`} /><ConfirmButton type="button" onClick={() => setForm((current: any) => ({ ...current, [key]: current[key].filter((_: any, itemIndex: number) => itemIndex !== index) }))} className="grid h-11 w-11 place-items-center rounded-lg text-slate-400 hover:bg-red-50 hover:text-red-500" aria-label="Remove link"><Trash2 className="h-4 w-4" /></ConfirmButton></div>)}</div>
+      <div className="mb-4 flex items-center justify-between"><div><h2 className="font-bold text-slate-900">{title}</h2><p className="mt-1 text-xs text-slate-500">Only add real internal routes or complete external URLs. Empty and # links are not shown.</p></div><button type="button" onClick={() => setForm((current: any) => ({ ...current, [key]: [...current[key], { label: 'New Link', href: '/' }] }))} className="inline-flex items-center gap-2 rounded-lg bg-[#000080]/10 px-3 py-2 text-xs font-bold text-[#000080]"><Plus className="h-4 w-4" /> Add</button></div>
+      <div className="space-y-3">{form[key].map((item: any, index: number) => <div key={index} className="grid gap-3 rounded-xl border border-slate-100 bg-slate-50 p-3 sm:grid-cols-[1fr_1.35fr_auto]"><input value={item.label || ''} onChange={event => updateLinks(key, index, 'label', event.target.value)} placeholder="Link label" className={inputClass} /><input value={item.href || ''} onChange={event => updateLinks(key, index, 'href', event.target.value)} placeholder="/real-page-url" className={`${inputClass} font-mono text-xs`} /><button type="button" onClick={() => setForm((current: any) => ({ ...current, [key]: current[key].filter((_: any, itemIndex: number) => itemIndex !== index) }))} className="grid h-11 w-11 place-items-center rounded-lg text-slate-400 hover:bg-red-50 hover:text-red-500" aria-label="Remove link"><Trash2 className="h-4 w-4" /></button></div>)}</div>
     </div>
   );
 
@@ -3079,12 +2953,9 @@ function FooterEditor({ initialData, onSave }: { initialData: any, onSave: (data
           <h1 className="text-2xl font-bold text-slate-900">Footer Settings</h1>
           <p className="text-sm text-slate-500">Control footer branding, verified links, social profiles, and conversion content</p>
         </div>
-        <ConfirmButton
-          onClick={() => onSave(form)}
-          className="px-5 py-2.5 bg-[#000080] hover:bg-[#000066] text-white rounded-lg font-medium flex items-center gap-2 shadow-lg transition-colors"
-        >
+        <button>
           <Save className="w-4 h-4" /> Save Footer
-        </ConfirmButton>
+        </button>
       </div>
 
       <div className="bg-white border border-slate-200 rounded-xl p-6 space-y-5">

@@ -79,17 +79,17 @@ export default function AdvancedArticleEditor({ value, onChange }: AdvancedArtic
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
       <div className="sticky top-0 z-10 flex flex-wrap items-center gap-1 border-b border-slate-200 bg-white/95 p-2.5 backdrop-blur">
-        {tools.map(({ title, icon: Icon, action }) => <ConfirmButton key={title} type="button" title={title} aria-label={title} onMouseDown={event => event.preventDefault()} onClick={action} className={buttonClass}><Icon className="h-4 w-4" /></ConfirmButton>)}
+        {tools.map(({ title, icon: Icon, action }) => <button key={title} type="button" title={title} aria-label={title} onMouseDown={event => event.preventDefault()} onClick={action} className={buttonClass}><Icon className="h-4 w-4" /></button>)}
         <span className="mx-1 h-6 w-px bg-slate-200" />
-        <ConfirmButton type="button" onClick={() => setShowImage(value => !value)} className={`${buttonClass} ${showImage ? 'bg-[#000080] text-white hover:text-white' : ''}`} title="Insert image"><ImagePlus className="h-4 w-4" /></ConfirmButton>
-        <ConfirmButton type="button" onClick={() => setSourceMode(mode => !mode)} className={`${buttonClass} ${sourceMode ? 'bg-slate-900 text-white hover:text-white' : ''}`} title="HTML source"><Code2 className="h-4 w-4" /></ConfirmButton>
+        <button type="button" onClick={() => setShowImage(value => !value)} className={`${buttonClass} ${showImage ? 'bg-[#000080] text-white hover:text-white' : ''}`} title="Insert image"><ImagePlus className="h-4 w-4" /></button>
+        <button type="button" onClick={() => setSourceMode(mode => !mode)} className={`${buttonClass} ${sourceMode ? 'bg-slate-900 text-white hover:text-white' : ''}`} title="HTML source"><Code2 className="h-4 w-4" /></button>
         <span className="ml-auto pr-2 text-xs font-semibold text-slate-400">Visual article editor</span>
       </div>
 
       {showImage && <div className="grid gap-4 border-b border-slate-200 bg-slate-50 p-5 lg:grid-cols-[1fr_1fr_auto] lg:items-end">
         <ImageUploader label="Upload or select article image" value={imageUrl} onChange={setImageUrl} />
         <label className="space-y-2"><span className="block text-xs font-bold uppercase tracking-wider text-slate-500">Alt text / caption</span><input value={imageAlt} onChange={event => setImageAlt(event.target.value)} className="min-h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm outline-none focus:border-[#000080]" placeholder="Describe the image for accessibility" /></label>
-        <ConfirmButton type="button" disabled={!imageUrl.trim()} onClick={addImage} className="min-h-11 rounded-xl bg-[#000080] px-5 text-sm font-bold text-white disabled:opacity-40">Insert Image</ConfirmButton>
+        <button type="button" disabled={!imageUrl.trim()} onClick={addImage} className="min-h-11 rounded-xl bg-[#000080] px-5 text-sm font-bold text-white disabled:opacity-40">Insert Image</button>
       </div>}
 
       {sourceMode ? <textarea value={value} onChange={event => onChange(event.target.value)} rows={24} spellCheck={false} className="min-h-[560px] w-full resize-y bg-slate-950 p-6 font-mono text-sm leading-7 text-slate-100 outline-none" /> : <div ref={editorRef} contentEditable suppressContentEditableWarning onInput={emit} onBlur={emit} data-placeholder="Start writing your insight…" className="article-editor-content min-h-[620px] p-7 text-base leading-7 text-slate-700 outline-none sm:p-10" />}

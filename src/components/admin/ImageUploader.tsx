@@ -84,49 +84,41 @@ export default function ImageUploader({
           <span className="text-[11px] font-bold text-slate-500">Image / File Source</span>
         )}
         <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200 text-[10px]">
-          <ConfirmButton
-            type="button"
+          <button type="button"
             onClick={() => setMode('upload')}
             className={`px-2 py-1 rounded transition-colors flex items-center gap-1 ${
               mode === 'upload' ? 'bg-[#000080] text-white font-bold shadow-xs' : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
+            }`}>
             <Upload className="w-3 h-3" />
             Upload
-          </ConfirmButton>
-          <ConfirmButton
-            type="button"
+          </button>
+          <button type="button"
             onClick={() => {
               setMode('database');
               setShowMediaLibrary(true);
             }}
             className={`px-2 py-1 rounded transition-colors flex items-center gap-1 ${
               mode === 'database' ? 'bg-[#000080] text-white font-bold shadow-xs' : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
+            }`}>
             <Database className="w-3 h-3" />
             Media Library
-          </ConfirmButton>
-          <ConfirmButton
-            type="button"
+          </button>
+          <button type="button"
             onClick={() => setMode('url')}
             className={`px-2 py-1 rounded transition-colors flex items-center gap-1 ${
               mode === 'url' ? 'bg-[#000080] text-white font-bold shadow-xs' : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
+            }`}>
             <LinkIcon className="w-3 h-3" />
             Paste Link
-          </ConfirmButton>
-          <ConfirmButton
-            type="button"
+          </button>
+          <button type="button"
             onClick={() => { setMode('presets'); setShowPresets(!showPresets); }}
             className={`px-2 py-1 rounded transition-colors flex items-center gap-1 ${
               mode === 'presets' ? 'bg-[#000080] text-white font-bold shadow-xs' : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
+            }`}>
             <ImageIcon className="w-3 h-3" />
             Stock
-          </ConfirmButton>
+          </button>
         </div>
       </div>
 
@@ -140,39 +132,33 @@ export default function ImageUploader({
             accept="image/jpeg,image/png,image/webp,image/gif,image/svg+xml,application/pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv"
             className="hidden"
           />
-          <ConfirmButton
-            type="button"
+          <button type="button"
             onClick={() => fileInputRef.current?.click()}
             disabled={uploading}
-            className="flex-1 w-full bg-slate-50 hover:bg-slate-100 border border-dashed border-slate-300 hover:border-[#000080] text-slate-700 rounded-xl py-2.5 px-4 text-xs font-bold transition-all flex items-center justify-center gap-2 group"
-          >
+            className="flex-1 w-full bg-slate-50 hover:bg-slate-100 border border-dashed border-slate-300 hover:border-[#000080] text-slate-700 rounded-xl py-2.5 px-4 text-xs font-bold transition-all flex items-center justify-center gap-2 group">
             {uploading ? (
               <div className="w-4 h-4 border-2 border-[#000066] border-t-transparent rounded-full animate-spin" />
             ) : (
               <Upload className="w-4 h-4 text-[#000080] group-hover:scale-110 transition-transform" />
             )}
             <span>{uploading ? 'Processing File...' : value ? 'Change File' : 'Click to Upload Local File'}</span>
-          </ConfirmButton>
+          </button>
 
-          <ConfirmButton
-            type="button"
+          <button type="button"
             onClick={() => setShowMediaLibrary(true)}
             className="w-full sm:w-auto bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-[#000080] rounded-xl py-2.5 px-4 text-xs font-bold transition-all flex items-center justify-center gap-2 shrink-0"
-            title="Pick from existing Media Library"
-          >
+            title="Pick from existing Media Library">
             <Database className="w-4 h-4" />
             <span>Media Library</span>
-          </ConfirmButton>
+          </button>
 
           {value && (
-            <ConfirmButton
-              type="button"
+            <button type="button"
               onClick={() => onChange('')}
               className="p-2.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 rounded-xl transition-colors shrink-0"
-              title="Remove Image"
-            >
+              title="Remove Image">
               <X className="w-4 h-4" />
-            </ConfirmButton>
+            </button>
           )}
         </div>
       )}
@@ -180,23 +166,17 @@ export default function ImageUploader({
       {/* Database Mode */}
       {mode === 'database' && (
         <div className="flex items-center gap-2">
-          <ConfirmButton
-            type="button"
-            onClick={() => setShowMediaLibrary(true)}
-            className="flex-1 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-[#000080] rounded-xl py-3 px-4 text-xs font-bold transition-all flex items-center justify-center gap-2 group shadow-xs"
-          >
+          <button>
             <Database className="w-4 h-4 text-[#000080] group-hover:scale-110 transition-transform" />
             <span>Select from Existing Media Library</span>
-          </ConfirmButton>
+          </button>
           {value && (
-            <ConfirmButton
-              type="button"
+            <button type="button"
               onClick={() => onChange('')}
               className="p-3 bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 rounded-xl transition-colors shrink-0"
-              title="Clear Selection"
-            >
+              title="Clear Selection">
               <X className="w-4 h-4" />
-            </ConfirmButton>
+            </button>
           )}
         </div>
       )}
@@ -215,13 +195,9 @@ export default function ImageUploader({
             />
           </div>
           {value && (
-            <ConfirmButton
-              type="button"
-              onClick={() => onChange('')}
-              className="p-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 rounded-xl transition-colors shrink-0"
-            >
+            <button>
               <X className="w-4 h-4" />
-            </ConfirmButton>
+            </button>
           )}
         </div>
       )}
@@ -230,20 +206,18 @@ export default function ImageUploader({
       {(mode === 'presets' || showPresets) && (
         <div className="grid grid-cols-3 gap-2 bg-slate-50 p-2 rounded-xl border border-slate-200 mt-2">
           {PRESET_IMAGES.map((preset, pIdx) => (
-            <ConfirmButton
-              key={pIdx}
+            <button key={pIdx}
               type="button"
               onClick={() => {
                 onChange(preset.url);
                 setShowPresets(false);
               }}
-              className="relative group rounded-lg overflow-hidden h-16 border border-slate-200 hover:border-[#000066] transition-all text-left"
-            >
+              className="relative group rounded-lg overflow-hidden h-16 border border-slate-200 hover:border-[#000066] transition-all text-left">
               <img src={preset.url} alt={preset.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
               <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-transparent to-transparent flex items-end p-1">
                 <span className="text-[9px] font-bold text-slate-900 truncate">{preset.name}</span>
               </div>
-            </ConfirmButton>
+            </button>
           ))}
         </div>
       )}
@@ -266,17 +240,12 @@ export default function ImageUploader({
               href={value}
               target="_blank"
               rel="noreferrer"
-              className="bg-white text-slate-900 text-[10px] font-bold px-2.5 py-1 rounded-lg border border-slate-300 hover:bg-slate-100 flex items-center gap-1"
-            >
+              className="bg-white text-slate-900 text-[10px] font-bold px-2.5 py-1 rounded-lg border border-slate-300 hover:bg-slate-100 flex items-center gap-1">
               <ImageIcon className="w-3 h-3 text-[#000080]" /> View/Download
             </a>
-            <ConfirmButton
-              type="button"
-              onClick={() => onChange('')}
-              className="bg-red-600 text-slate-900 text-[10px] font-bold px-2.5 py-1 rounded-lg hover:bg-red-500 flex items-center gap-1"
-            >
+            <button>
               <X className="w-3 h-3" /> Remove
-            </ConfirmButton>
+            </button>
           </div>
           <div className="absolute bottom-1 right-2 bg-white/80 backdrop-blur text-[9px] text-[#000080] px-1.5 py-0.5 rounded border border-slate-300 font-mono">
             {value.startsWith('blob:') ? 'Local Preview' : value.startsWith('data:') ? 'Base64 Upload' : 'Stored Asset'}

@@ -89,6 +89,10 @@ const FeedbackManager: React.FC = () => {
   const siteSettings = content.siteSettings || {};
   const [googleUrl, setGoogleUrl] = useState(siteSettings.googleReviewUrl || '');
   const [isSavingUrl, setIsSavingUrl] = useState(false);
+  
+  const feedbackConfig = content.feedback_config || { scrollSpeed: 40 };
+  const [scrollSpeed, setScrollSpeed] = useState(feedbackConfig.scrollSpeed || 40);
+  const [isSavingConfig, setIsSavingConfig] = useState(false);
 
   const feedbacks: FeedbackEntry[] = content.feedback_submissions || [];
 
@@ -131,6 +135,17 @@ const FeedbackManager: React.FC = () => {
       console.error(err);
     } finally {
       setIsSavingUrl(false);
+    }
+  };
+
+  const handleSaveConfig = async () => {
+    setIsSavingConfig(true);
+    try {
+      await updateSection('feedback_config', { scrollSpeed });
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsSavingConfig(false);
     }
   };
 
@@ -203,7 +218,7 @@ const FeedbackManager: React.FC = () => {
       if (fb.status === 'pending') {
         group.status = 'pending';
       }
-      if (new Date(fb.createdAt) > new Date(group.latestCreatedAt)) {
+      if (new Date(fb.createdAt)> new Date(group.latestCreatedAt)) {
         group.latestCreatedAt = fb.createdAt;
         group.customerName = fb.customerName || group.customerName;
       }
@@ -277,38 +292,59 @@ Management Team`);
         </div>
         
         <div className="flex items-center gap-2">
-           <input 
-             type="url" 
-             placeholder="Google Review URL"
-             value={googleUrl}
-             onChange={(e) => setGoogleUrl(e.target.value)}
-             className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-[#000080]/10 focus:border-[#000080] outline-none transition-all w-64"
-           />
-           <ConfirmButton
-             onClick={handleSaveGoogleUrl}
-             disabled={isSavingUrl}
-             className="px-4 py-2 bg-[#000080] text-white text-sm font-bold rounded-xl hover:bg-[#000066] transition-all disabled:opacity-50"
-           >
-             {isSavingUrl ? 'Saving...' : 'Save Link'}
-           </ConfirmButton>
+            <div className="flex flex-col">
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Scroll Speed (sec)</label>
+              <div className="flex items-center gap-2">
+                <input 
+                  type="number" 
+                  min="10"
+                  max="200"
+                  value={scrollSpeed}
+                  onChange={(e) => setScrollSpeed(parseInt(e.target.value) || 40)}
+                  className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-[#000080]/10 focus:border-[#000080] outline-none transition-all w-24"
+                />
+                <button 
+                  onClick={handleSaveConfig}
+                  disabled={isSavingConfig}
+                  className="px-4 py-2 bg-slate-900 text-white text-sm font-bold rounded-xl hover:bg-slate-800 transition-all disabled:opacity-50">
+                  {isSavingConfig ? '...' : 'Set Speed'}
+                </button>
+              </div>
+            </div>
+
+           <div className="flex flex-col">
+             <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Google Review Link</label>
+             <div className="flex items-center gap-2">
+                <input 
+                  type="url" 
+                  placeholder="Google Review URL"
+                  value={googleUrl}
+                  onChange={(e) => setGoogleUrl(e.target.value)}
+                  className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-[#000080]/10 focus:border-[#000080] outline-none transition-all w-64"
+                />
+                <button 
+                  onClick={handleSaveGoogleUrl}
+                  disabled={isSavingUrl}
+                  className="px-4 py-2 bg-[#000080] text-white text-sm font-bold rounded-xl hover:bg-[#000066] transition-all disabled:opacity-50">
+                  {isSavingUrl ? 'Saving...' : 'Save Link'}
+                </button>
+             </div>
+           </div>
         </div>
 
         <div className="flex items-center gap-3">
-          <ConfirmButton
-            onClick={() => setIsAddingFeedback(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-[#000080] text-white text-sm font-bold rounded-xl hover:bg-[#000066] transition-all"
-          >
+          <button>
             <Plus className="w-4 h-4" />
             Add Feedback
-          </ConfirmButton>
+          </button>
           
-          <ConfirmButton
+          <button 
             onClick={handleCopyLink}
             className="flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-bold rounded-xl transition-all"
           >
             {copied ? <CheckCircle2 className="w-4 h-4 text-emerald-600" /> : <Link className="w-4 h-4" />}
             {copied ? 'Copied!' : 'Copy Form Link'}
-          </ConfirmButton>
+          </button>
           
           <div className="relative">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -323,17 +359,16 @@ Management Team`);
 
           <div className="flex bg-slate-100 p-1 rounded-xl">
             {(['all', 'pending', 'resolved'] as const).map((f) => (
-              <ConfirmButton
-                key={f}
+              <button key={f}
                 onClick={() => setFilter(f)}
                 className={`px-4 py-1.5 rounded-lg text-xs font-bold capitalize transition-all ${
                   filter === f 
                     ? 'bg-white text-slate-900 shadow-sm' 
                     : 'text-slate-500 hover:text-slate-700'
                 }`}
-              >
+             >
                 {f}
-              </ConfirmButton>
+              </button>
             ))}
           </div>
         </div>
@@ -353,7 +388,7 @@ Management Team`);
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {filteredFeedbacks.length > 0 ? (
+              {filteredFeedbacks.length> 0 ? (
                 filteredFeedbacks.map((group) => (
                   <tr key={group.id} className="hover:bg-slate-50/30 transition-colors group">
                     <td className="px-6 py-4">
@@ -392,7 +427,7 @@ Management Team`);
                       <div className="flex items-center gap-2">
                         <div className="flex items-center gap-0.5">
                           {[1, 2, 3, 4, 5].map((s) => (
-                            <Star key={s} className={`w-3 h-3 ${Math.round(group.averageRating) >= s ? 'fill-yellow-400 text-yellow-400' : 'text-slate-200'}`} />
+                            <Star key={s} className={`w-3 h-3 ${Math.round(group.averageRating)>= s ? 'fill-yellow-400 text-yellow-400' : 'text-slate-200'}`} />
                           ))}
                         </div>
                         <span className="text-xs font-bold text-slate-500">{group.averageRating.toFixed(1)}</span>
@@ -432,38 +467,25 @@ Management Team`);
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-2">
                         {group.status === 'pending' ? (
-                          <ConfirmButton
-                            onClick={() => openResolutionModal(group)}
-                            className="px-4 py-2 bg-[#000080] text-white text-xs font-bold rounded-xl hover:bg-[#000066] transition-all shadow-sm shadow-[#000080]/10 flex items-center gap-2"
-                          >
+                          <button>
                             Resolve Issue
                             <ChevronRight className="w-3 h-3" />
-                          </ConfirmButton>
+                          </button>
                         ) : (
-                          <ConfirmButton
-                            onClick={() => {
+                          <button onClick={() => {
                               setSelectedGroup(group);
                               setIsResolving(true);
                             }}
-                            className="px-4 py-2 bg-slate-100 text-slate-600 text-xs font-bold rounded-xl hover:bg-slate-200 transition-all flex items-center gap-2"
-                          >
+                            className="px-4 py-2 bg-slate-100 text-slate-600 text-xs font-bold rounded-xl hover:bg-slate-200 transition-all flex items-center gap-2">
                             View Details
-                          </ConfirmButton>
+                          </button>
                         )}
-                        <ConfirmButton
-                          onClick={() => setEditingFeedback(group.feedbacks[0])}
-                          title="Edit feedback & reviewer image"
-                          className="p-2 text-slate-500 hover:text-[#000080] hover:bg-indigo-50 rounded-xl transition-colors"
-                        >
+                        <button>
                           <Pencil className="w-4 h-4" />
-                        </ConfirmButton>
-                        <ConfirmButton
-                          onClick={() => handleDeleteGroup(group)}
-                          title="Delete all feedback from this client"
-                          className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors"
-                        >
+                        </button>
+                        <button>
                           <Trash2 className="w-4 h-4" />
-                        </ConfirmButton>
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -502,8 +524,7 @@ Management Team`);
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="relative w-full max-w-2xl bg-white rounded-[2.5rem] shadow-2xl overflow-hidden border border-slate-100 flex flex-col max-h-[90vh]"
-            >
+              className="relative w-full max-w-2xl bg-white rounded-[2.5rem] shadow-2xl overflow-hidden border border-slate-100 flex flex-col max-h-[90vh]">
               <div className="flex items-center justify-between p-8 border-b border-slate-50 shrink-0">
                 <div>
                   <h3 className="text-xl font-bold text-slate-900">
@@ -511,15 +532,13 @@ Management Team`);
                   </h3>
                   <p className="text-slate-500 text-sm">Feedback from {selectedGroup.customerName}</p>
                 </div>
-                <ConfirmButton 
-                  onClick={() => {
+                <button onClick={() => {
                     setSelectedGroup(null);
                     setIsResolving(false);
                   }}
-                  className="p-2 hover:bg-slate-50 rounded-xl transition-colors text-slate-400"
-                >
+                  className="p-2 hover:bg-slate-50 rounded-xl transition-colors text-slate-400">
                   <X className="w-6 h-6" />
-                </ConfirmButton>
+                </button>
               </div>
 
               <div className="p-8 overflow-y-auto custom-scrollbar flex-1">
@@ -552,16 +571,12 @@ Management Team`);
                             <div className="flex items-center gap-2">
                               <div className="flex items-center gap-0.5">
                                 {[1, 2, 3, 4, 5].map((s) => (
-                                  <Star key={s} className={`w-3 h-3 ${fb.rating >= s ? 'fill-yellow-400 text-yellow-400' : 'text-slate-200'}`} />
+                                  <Star key={s} className={`w-3 h-3 ${fb.rating>= s ? 'fill-yellow-400 text-yellow-400' : 'text-slate-200'}`} />
                                 ))}
                               </div>
-                              <ConfirmButton
-                                onClick={() => setEditingFeedback(fb)}
-                                title="Edit review & image"
-                                className="p-1.5 text-slate-500 hover:text-[#000080] hover:bg-indigo-100/50 rounded-lg transition-colors ml-1"
-                              >
+                              <button>
                                 <Pencil className="w-3.5 h-3.5" />
-                              </ConfirmButton>
+                              </button>
                             </div>
                           </div>
                           <p className="text-sm text-slate-700 italic bg-white p-3 rounded-xl border border-slate-100">"{fb.comment || 'No comment'}"</p>
@@ -574,8 +589,7 @@ Management Team`);
                                 href={fb.link}
                                 target="_blank"
                                 rel="noreferrer"
-                                className="px-2 py-0.5 hover:bg-indigo-100 rounded text-[#000080] font-bold text-[11px] flex items-center gap-1 shrink-0"
-                              >
+                                className="px-2 py-0.5 hover:bg-indigo-100 rounded text-[#000080] font-bold text-[11px] flex items-center gap-1 shrink-0">
                                 Open <ExternalLink className="w-3 h-3" />
                               </a>
                             </div>
@@ -604,13 +618,9 @@ Management Team`);
                               </span>
                             </label>
 
-                            <ConfirmButton
-                              onClick={() => handleDeleteFeedback(fb.id)}
-                              title="Delete this feedback submission"
-                              className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                            >
+                            <button>
                               <Trash2 className="w-4 h-4" />
-                            </ConfirmButton>
+                            </button>
                           </div>
 
                           {fb.status === 'resolved' && fb.resolution && (
@@ -628,21 +638,18 @@ Management Team`);
                     <div className="space-y-3">
                       <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Quick Contact Actions</div>
                       <div className="flex flex-col gap-2">
-                        <ConfirmButton 
-                          onClick={() => sendEmailTemplate(selectedGroup)}
-                          className="flex items-center gap-3 p-3 rounded-xl bg-white border border-slate-100 hover:border-[#000080] hover:bg-[#000080]/5 text-sm font-bold text-slate-700 transition-all text-left"
-                        >
+                        <button>
                           <div className="w-8 h-8 bg-indigo-50 rounded-lg flex items-center justify-center text-[#000080]">
                             <Mail className="w-4 h-4" />
                           </div>
                           Send Apology Email
-                        </ConfirmButton>
-                        <ConfirmButton className="flex items-center gap-3 p-3 rounded-xl bg-white border border-slate-100 hover:border-[#000080] hover:bg-[#000080]/5 text-sm font-bold text-slate-700 transition-all text-left">
+                        </button>
+                        <button className="flex items-center gap-3 p-3 rounded-xl bg-white border border-slate-100 hover:border-[#000080] hover:bg-[#000080]/5 text-sm font-bold text-slate-700 transition-all text-left">
                           <div className="w-8 h-8 bg-emerald-50 rounded-lg flex items-center justify-center text-emerald-600">
                             <MessageCircle className="w-4 h-4" />
                           </div>
                           Send SMS Message
-                        </ConfirmButton>
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -721,23 +728,20 @@ Management Team`);
 
               {selectedGroup.status === 'pending' && (
                 <div className="p-8 bg-slate-50 border-t border-slate-100 flex items-center justify-end gap-4 shrink-0">
-                  <ConfirmButton 
-                    onClick={() => {
+                  <button onClick={() => {
                       setSelectedGroup(null);
                       setIsResolving(false);
                     }}
-                    className="px-6 py-3 text-sm font-bold text-slate-500 hover:text-slate-700 transition-colors"
-                  >
+                    className="px-6 py-3 text-sm font-bold text-slate-500 hover:text-slate-700 transition-colors">
                     Cancel
-                  </ConfirmButton>
-                  <ConfirmButton 
+                  </button>
+                  <button 
                     disabled={!resolutionNotes || !solutionConfirmed}
                     onClick={handleResolve}
-                    className="px-8 py-3 bg-[#000080] text-white font-bold rounded-xl hover:bg-[#000066] transition-all shadow-lg shadow-[#000080]/20 disabled:opacity-50 disabled:shadow-none flex items-center gap-2"
-                  >
+                    className="px-8 py-3 bg-[#000080] text-white font-bold rounded-xl hover:bg-[#000066] transition-all shadow-lg shadow-[#000080]/20 disabled:opacity-50 disabled:shadow-none flex items-center gap-2">
                     Mark as Resolved
                     <CheckCircle2 className="w-4 h-4" />
-                  </ConfirmButton>
+                  </button>
                 </div>
               )}
             </motion.div>
@@ -760,19 +764,15 @@ Management Team`);
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="relative w-full max-w-2xl bg-white rounded-[2.5rem] shadow-2xl overflow-hidden border border-slate-100 flex flex-col max-h-[90vh]"
-            >
+              className="relative w-full max-w-2xl bg-white rounded-[2.5rem] shadow-2xl overflow-hidden border border-slate-100 flex flex-col max-h-[90vh]">
               <div className="flex items-center justify-between p-8 border-b border-slate-50 shrink-0">
                 <div>
                   <h3 className="text-xl font-bold text-slate-900">Add Feedback</h3>
                   <p className="text-slate-500 text-sm">Manually add feedback for display on website.</p>
                 </div>
-                <ConfirmButton 
-                  onClick={() => setIsAddingFeedback(false)}
-                  className="p-2 hover:bg-slate-50 rounded-xl transition-colors text-slate-400"
-                >
+                <button>
                   <X className="w-6 h-6" />
-                </ConfirmButton>
+                </button>
               </div>
 
               <div className="p-8 overflow-y-auto custom-scrollbar flex-1 space-y-6">
@@ -812,13 +812,9 @@ Management Team`);
                     <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Rating</label>
                     <div className="flex items-center gap-2 h-[46px]">
                       {[1, 2, 3, 4, 5].map((s) => (
-                        <ConfirmButton
-                          key={s}
-                          onClick={() => setNewFeedback({...newFeedback, rating: s})}
-                          className={`p-1 transition-all ${(newFeedback.rating || 5) >= s ? 'text-yellow-400' : 'text-slate-200'}`}
-                        >
+                        <button>
                           <Star className="w-6 h-6 fill-current" />
-                        </ConfirmButton>
+                        </button>
                       ))}
                     </div>
                   </div>
@@ -877,20 +873,17 @@ Management Team`);
               </div>
 
               <div className="p-6 bg-slate-50 border-t border-slate-100 flex items-center justify-end gap-4 shrink-0">
-                <ConfirmButton 
-                  onClick={() => setIsAddingFeedback(false)}
-                  className="px-6 py-3 text-sm font-bold text-slate-500 hover:text-slate-700 transition-colors"
-                >
+                <button>
                   Cancel
-                </ConfirmButton>
-                <ConfirmButton 
+                </button>
+                <button 
                   disabled={!newFeedback.customerName || !newFeedback.comment}
                   onClick={handleAddFeedback}
                   className="px-8 py-3 bg-[#000080] text-white font-bold rounded-xl hover:bg-[#000066] transition-all shadow-lg shadow-[#000080]/20 disabled:opacity-50 flex items-center gap-2"
-                >
-                  Save Feedback
+                
+                  Save Feedback>
                   <CheckCircle2 className="w-4 h-4" />
-                </ConfirmButton>
+                </button>
               </div>
             </motion.div>
           </div>
@@ -913,19 +906,15 @@ Management Team`);
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="relative w-full max-w-2xl bg-white rounded-[2.5rem] shadow-2xl overflow-hidden border border-slate-100 flex flex-col max-h-[90vh]"
-            >
+              className="relative w-full max-w-2xl bg-white rounded-[2.5rem] shadow-2xl overflow-hidden border border-slate-100 flex flex-col max-h-[90vh]">
               <div className="flex items-center justify-between p-8 border-b border-slate-50 shrink-0">
                 <div>
                   <h3 className="text-xl font-bold text-slate-900">Edit Feedback & Reviewer Details</h3>
                   <p className="text-slate-500 text-sm">Update reviewer information, image, rating, or testimonial text.</p>
                 </div>
-                <ConfirmButton 
-                  onClick={() => setEditingFeedback(null)}
-                  className="p-2 hover:bg-slate-50 rounded-xl transition-colors text-slate-400"
-                >
+                <button>
                   <X className="w-6 h-6" />
-                </ConfirmButton>
+                </button>
               </div>
 
               <div className="p-8 overflow-y-auto custom-scrollbar flex-1 space-y-6">
@@ -996,14 +985,13 @@ Management Team`);
                     <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Rating</label>
                     <div className="flex items-center gap-2 h-[46px]">
                       {[1, 2, 3, 4, 5].map((s) => (
-                        <ConfirmButton
-                          key={s}
+                        <button key={s}
                           type="button"
                           onClick={() => setEditingFeedback({...editingFeedback, rating: s})}
-                          className={`p-1 transition-all ${editingFeedback.rating >= s ? 'text-yellow-400' : 'text-slate-200'}`}
-                        >
+                          className={`p-1 transition-all ${editingFeedback.rating>= s ? 'text-yellow-400' : 'text-slate-200'}`}
+                       >
                           <Star className="w-6 h-6 fill-current" />
-                        </ConfirmButton>
+                        </button>
                       ))}
                     </div>
                   </div>
@@ -1037,8 +1025,7 @@ Management Team`);
                     <select
                       value={editingFeedback.status}
                       onChange={(e) => setEditingFeedback({...editingFeedback, status: e.target.value as 'pending' | 'resolved'})}
-                      className="bg-white border border-slate-200 rounded-lg text-xs font-bold px-3 py-1.5 focus:ring-2 focus:ring-[#000080]/20 focus:border-[#000080] outline-none"
-                    >
+                      className="bg-white border border-slate-200 rounded-lg text-xs font-bold px-3 py-1.5 focus:ring-2 focus:ring-[#000080]/20 focus:border-[#000080] outline-none">
                       <option value="resolved">Resolved</option>
                       <option value="pending">Pending</option>
                     </select>
@@ -1047,20 +1034,16 @@ Management Team`);
               </div>
 
               <div className="p-6 bg-slate-50 border-t border-slate-100 flex items-center justify-end gap-4 shrink-0">
-                <ConfirmButton 
-                  onClick={() => setEditingFeedback(null)}
-                  className="px-6 py-3 text-sm font-bold text-slate-500 hover:text-slate-700 transition-colors"
-                >
+                <button>
                   Cancel
-                </ConfirmButton>
-                <ConfirmButton 
+                </button>
+                <button 
                   disabled={!editingFeedback.customerName || !editingFeedback.comment}
                   onClick={handleSaveEditedFeedback}
-                  className="px-8 py-3 bg-[#000080] text-white font-bold rounded-xl hover:bg-[#000066] transition-all shadow-lg shadow-[#000080]/20 disabled:opacity-50 flex items-center gap-2"
-                >
+                  className="px-8 py-3 bg-[#000080] text-white font-bold rounded-xl hover:bg-[#000066] transition-all shadow-lg shadow-[#000080]/20 disabled:opacity-50 flex items-center gap-2">
                   Save Changes
                   <Save className="w-4 h-4" />
-                </ConfirmButton>
+                </button>
               </div>
             </motion.div>
           </div>

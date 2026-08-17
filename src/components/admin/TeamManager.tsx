@@ -116,13 +116,9 @@ export default function TeamManager({ portfolioItems }: { portfolioItems: Portfo
 
     return (
       <div key={member.id} className="bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 relative group">
-        <ConfirmButton
-          onClick={() => handleDelete(member.id)}
-          className="absolute top-4 right-4 p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
-          title="Remove Member"
-        >
+        <button>
           <Trash2 className="w-4 h-4" />
-        </ConfirmButton>
+        </button>
 
         <div className="flex items-center gap-4 mb-6">
           <img 
@@ -149,7 +145,7 @@ export default function TeamManager({ portfolioItems }: { portfolioItems: Portfo
               <Briefcase className="w-4 h-4" />
               <span className="font-semibold text-slate-900 dark:text-white">{memberPortfolios.length}</span> Total
             </div>
-            {pendingCount > 0 && (
+            {pendingCount> 0 && (
               <div className="flex items-center gap-1 text-amber-600 dark:text-amber-400 text-xs font-semibold">
                 <Clock className="w-3.5 h-3.5" />
                 {pendingCount} Pending
@@ -203,24 +199,16 @@ export default function TeamManager({ portfolioItems }: { portfolioItems: Portfo
                 onChange={(e) => setInviteEmails(prev => ({ ...prev, developer_designer: e.target.value }))}
                 className="text-xs px-3 py-1.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:border-[#000080] dark:text-white w-48"
               />
-              <ConfirmButton
-                onClick={() => sendInviteEmail('developer_designer')}
-                disabled={!inviteEmails.developer_designer}
-                className="text-xs bg-[#000080] hover:bg-[#000066] text-white py-1.5 px-3 rounded-lg flex items-center gap-1.5 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer shadow-sm"
-              >
+              <button>
                 <Send className="w-3.5 h-3.5" /> Invite
-              </ConfirmButton>
-              <ConfirmButton
-                onClick={() => copyOnboardingLink('developer_designer')}
-                className="text-xs bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 py-1.5 px-3 rounded-lg flex items-center gap-1.5 transition-colors font-medium border border-slate-200 dark:border-slate-700 cursor-pointer"
-                title="Copy Invite Link"
-              >
+              </button>
+              <button>
                 {copiedLink === 'developer_designer' ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
-              </ConfirmButton>
+              </button>
             </div>
           </div>
           <div className="flex flex-col gap-4">
-            {designMembers.length > 0 ? (
+            {designMembers.length> 0 ? (
               designMembers.map(renderMemberCard)
             ) : (
               <div className="text-center py-8 text-sm text-slate-500 dark:text-slate-400">
@@ -237,12 +225,9 @@ export default function TeamManager({ portfolioItems }: { portfolioItems: Portfo
               📈 Sales Team
             </h3>
             <div className="flex items-center gap-2">
-              <ConfirmButton
-                onClick={() => setShowAddSalesModal(true)}
-                className="text-xs bg-emerald-600 hover:bg-emerald-700 text-white py-1.5 px-3 rounded-lg flex items-center gap-1 transition-colors font-medium cursor-pointer shadow-sm"
-              >
+              <button>
                 <Plus className="w-3.5 h-3.5" /> Add Sales Rep
-              </ConfirmButton>
+              </button>
               <input 
                 type="email"
                 placeholder="Enter email address..."
@@ -250,24 +235,16 @@ export default function TeamManager({ portfolioItems }: { portfolioItems: Portfo
                 onChange={(e) => setInviteEmails(prev => ({ ...prev, sales_team: e.target.value }))}
                 className="text-xs px-3 py-1.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:border-[#000080] dark:text-white w-40"
               />
-              <ConfirmButton
-                onClick={() => sendInviteEmail('sales_team')}
-                disabled={!inviteEmails.sales_team}
-                className="text-xs bg-[#000080] hover:bg-[#000066] text-white py-1.5 px-3 rounded-lg flex items-center gap-1.5 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer shadow-sm"
-              >
+              <button>
                 <Send className="w-3.5 h-3.5" /> Invite
-              </ConfirmButton>
-              <ConfirmButton
-                onClick={() => copyOnboardingLink('sales_team')}
-                className="text-xs bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 py-1.5 px-3 rounded-lg flex items-center gap-1.5 transition-colors font-medium border border-slate-200 dark:border-slate-700 cursor-pointer"
-                title="Copy Invite Link"
-              >
+              </button>
+              <button>
                 {copiedLink === 'sales_team' ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
-              </ConfirmButton>
+              </button>
             </div>
           </div>
           <div className="flex flex-col gap-4">
-            {salesMembers.length > 0 ? (
+            {salesMembers.length> 0 ? (
               salesMembers.map(renderMemberCard)
             ) : (
               <div className="text-center py-8 text-sm text-slate-500 dark:text-slate-400">
@@ -278,7 +255,7 @@ export default function TeamManager({ portfolioItems }: { portfolioItems: Portfo
         </div>
       </div>
 
-      {otherMembers.length > 0 && (
+      {otherMembers.length> 0 && (
         <div className="mt-8 bg-white dark:bg-slate-800/20 border border-slate-200 dark:border-slate-700 rounded-2xl p-6">
           <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-200 dark:border-slate-700">
             <h3 className="font-bold text-lg text-slate-900 dark:text-white flex items-center gap-2">
@@ -299,12 +276,9 @@ export default function TeamManager({ portfolioItems }: { portfolioItems: Portfo
               <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
                 <Plus className="w-5 h-5 text-emerald-600" /> Add Sales Representative
               </h3>
-              <ConfirmButton 
-                onClick={() => setShowAddSalesModal(false)}
-                className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-white rounded-lg transition-colors"
-              >
+              <button>
                 <X className="w-5 h-5" />
-              </ConfirmButton>
+              </button>
             </div>
 
             <form onSubmit={handleAddSalesMember} className="space-y-4">
@@ -388,19 +362,14 @@ export default function TeamManager({ portfolioItems }: { portfolioItems: Portfo
               </div>
 
               <div className="flex justify-end gap-3 pt-2">
-                <ConfirmButton
-                  type="button"
-                  onClick={() => setShowAddSalesModal(false)}
-                  className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors"
-                >
+                <button>
                   Cancel
-                </ConfirmButton>
-                <ConfirmButton
+                </button>
+                <button 
                   type="submit"
-                  className="px-4 py-2 text-xs font-semibold bg-[#000080] hover:bg-[#000066] text-white rounded-xl shadow-md transition-all"
-                >
+                  className="px-4 py-2 text-xs font-semibold bg-[#000080] hover:bg-[#000066] text-white rounded-xl shadow-md transition-all">
                   Create Sales Member
-                </ConfirmButton>
+                </button>
               </div>
             </form>
           </div>

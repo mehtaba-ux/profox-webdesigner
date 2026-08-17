@@ -133,24 +133,18 @@ export default function SiteSettingsManager() {
         </div>
         
         <div className="flex items-center gap-3">
-          <ConfirmButton
-            onClick={() => setShowPreviewModal(true)}
-            className="px-4 py-3 rounded-xl font-bold text-sm bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 transition-all flex items-center gap-2 cursor-pointer shadow-sm"
-            title="Preview Development Mode as seen by public visitors"
-          >
+          <button>
             <Eye className="w-4 h-4 text-blue-600" />
             <span>Preview Dev Screen</span>
-          </ConfirmButton>
+          </button>
 
-          <ConfirmButton
-            onClick={() => handleSave()}
+          <button onClick={() => handleSave()}
             disabled={isSaving}
             className={`px-8 py-3 rounded-xl font-bold text-sm flex items-center gap-2 shadow-lg transition-all min-w-[160px] justify-center ${
               showSaved 
                 ? 'bg-green-500 text-white shadow-green-200 scale-105' 
                 : 'bg-[#000080] hover:bg-[#000066] text-white hover:scale-105 active:scale-95'
-            } ${isSaving ? 'opacity-80 cursor-not-allowed' : ''}`}
-          >
+            } ${isSaving ? 'opacity-80 cursor-not-allowed' : ''}`} >
             {isSaving ? (
               <Loader2 className="w-4 h-4 animate-spin" />
             ) : showSaved ? (
@@ -159,7 +153,7 @@ export default function SiteSettingsManager() {
               <Save className="w-4 h-4" />
             )}
             {isSaving ? 'Saving...' : showSaved ? 'Saved!' : 'Save Settings'}
-          </ConfirmButton>
+          </button>
         </div>
       </div>
 
@@ -198,7 +192,7 @@ export default function SiteSettingsManager() {
           </div>
 
           <div className="flex items-center gap-3 shrink-0">
-            <ConfirmButton
+            <button 
               onClick={toggleDevelopmentMode}
               disabled={isSaving}
               className={`px-5 py-3 rounded-xl font-bold text-xs flex items-center gap-2.5 transition-all shadow-md active:scale-95 cursor-pointer ${
@@ -218,7 +212,7 @@ export default function SiteSettingsManager() {
                   <span>Push to Dev Mode</span>
                 </>
               )}
-            </ConfirmButton>
+            </button>
           </div>
         </div>
 
@@ -469,12 +463,9 @@ export default function SiteSettingsManager() {
                 <Eye className="w-4 h-4 text-blue-400" />
                 <span>Simulated Visitor Preview: Development Mode Screen</span>
               </div>
-              <ConfirmButton
-                onClick={() => setShowPreviewModal(false)}
-                className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors"
-              >
+              <button>
                 <X className="w-5 h-5" />
-              </ConfirmButton>
+              </button>
             </div>
             <div className="flex-1 overflow-y-auto">
               <DevelopmentModeScreen

@@ -57,8 +57,7 @@ export default function VisualEditable({
           setCurrentVal(value);
           setIsOpen(true);
         }}
-        className="relative border-2 border-dashed border-[#000080]/0 group-hover/editable:border-[#000080]/80 rounded-lg transition-all duration-200 group-hover/editable:bg-[#000080]/5 group-hover/editable:shadow-lg p-1"
-      >
+        className="relative border-2 border-dashed border-[#000080]/0 group-hover/editable:border-[#000080]/80 rounded-lg transition-all duration-200 group-hover/editable:bg-[#000080]/5 group-hover/editable:shadow-lg p-1">
         {children}
 
         {/* Floating 1-Click Pencil Trigger Badge */}
@@ -72,8 +71,7 @@ export default function VisualEditable({
       {isOpen && (
         <div 
           onClick={(e) => e.stopPropagation()} 
-          className="fixed inset-0 z-[100] bg-slate-50/70 backdrop-blur-md flex items-center justify-center p-4 text-slate-900"
-        >
+          className="fixed inset-0 z-[100] bg-slate-50/70 backdrop-blur-md flex items-center justify-center p-4 text-slate-900">
           <div className="bg-white border border-slate-300 text-slate-900 rounded-2xl shadow-2xl w-full max-w-lg p-6 space-y-5 animate-in fade-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between border-b border-slate-200 pb-4">
               <div className="flex items-center gap-2">
@@ -84,12 +82,13 @@ export default function VisualEditable({
                   Edit {label || field}
                 </h3>
               </div>
-              <ConfirmButton 
+              <button 
+                type="button"
                 onClick={() => setIsOpen(false)}
-                className="text-slate-500 hover:text-slate-900 p-1 rounded-lg hover:bg-slate-100"
+                className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-600 transition-colors"
               >
                 <X className="w-5 h-5" />
-              </ConfirmButton>
+              </button>
             </div>
 
             <div className="space-y-2">
@@ -126,19 +125,18 @@ export default function VisualEditable({
             </div>
 
             <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-200">
-              <ConfirmButton
+              <button
                 type="button"
                 onClick={() => setIsOpen(false)}
-                className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-100 transition-colors"
+                className="px-4 py-2 border border-slate-200 text-slate-500 hover:bg-slate-50 rounded-xl text-xs font-bold transition-all"
               >
                 Cancel
-              </ConfirmButton>
-              <ConfirmButton
+              </button>
+              <button 
                 type="button"
                 onClick={handleSave}
                 disabled={isSaving}
-                className="bg-[#000080] hover:bg-[#000066] text-white font-bold px-5 py-2 rounded-xl text-xs transition-all flex items-center gap-1.5 shadow-lg"
-              >
+                className="bg-[#000080] hover:bg-[#000066] text-white font-bold px-5 py-2 rounded-xl text-xs transition-all flex items-center gap-1.5 shadow-lg">
                 {isSaving ? (
                   <span>Saving...</span>
                 ) : (
@@ -146,7 +144,7 @@ export default function VisualEditable({
                     <Check className="w-4 h-4" /> Save 1-Click
                   </>
                 )}
-              </ConfirmButton>
+              </button>
             </div>
           </div>
         </div>

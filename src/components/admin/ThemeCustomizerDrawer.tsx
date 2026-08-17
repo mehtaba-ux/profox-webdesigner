@@ -212,7 +212,7 @@ export default function ThemeCustomizerDrawer({ isOpen, onClose, isLiveEditing, 
   const handleMoveSection = async (index: number, direction: 'up' | 'down') => {
     const newSecs = [...dynamicSections];
     const targetIdx = direction === 'up' ? index - 1 : index + 1;
-    if (targetIdx < 0 || targetIdx >= newSecs.length) return;
+    if (targetIdx < 0 || targetIdx>= newSecs.length) return;
     const temp = newSecs[index];
     newSecs[index] = newSecs[targetIdx];
     newSecs[targetIdx] = temp;
@@ -249,12 +249,12 @@ export default function ThemeCustomizerDrawer({ isOpen, onClose, isLiveEditing, 
           </div>
         </div>
 
-        <ConfirmButton 
+        <button 
           onClick={onClose}
           className="text-slate-500 hover:text-slate-900 p-1.5 rounded-lg hover:bg-slate-100 transition-colors"
-        >
-          <X className="w-5 h-5" />
-        </ConfirmButton>
+>
+          <X className="w-5 h-5"  />
+        </button>
       </div>
 
       {/* Live Front-End 1-Click Editing Toggle Banner */}
@@ -265,60 +265,48 @@ export default function ThemeCustomizerDrawer({ isOpen, onClose, isLiveEditing, 
           </span>
           <p className="text-[10px] text-slate-700">Hover over any text or image to edit</p>
         </div>
-        <ConfirmButton
-          onClick={() => onToggleLiveEditing && onToggleLiveEditing(!isLiveEditing)}
+        <button onClick={() => onToggleLiveEditing && onToggleLiveEditing(!isLiveEditing)}
           className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all ${
             isLiveEditing 
               ? 'bg-[#000080] text-white shadow-lg shadow-[#000080]/30' 
               : 'bg-slate-100 text-slate-700 hover:bg-slate-700'
-          }`}
-        >
+          }`} >
           {isLiveEditing ? 'Active' : 'Enable'}
-        </ConfirmButton>
+        </button>
       </div>
 
       {/* Navigation Customizer Tabs */}
       <div className="flex items-center gap-1 p-2 bg-slate-50 border-b border-slate-200 overflow-x-auto">
-        <ConfirmButton
-          onClick={() => setActiveTab('typography')}
+        <button onClick={() => setActiveTab('typography')}
           className={`py-2 px-2.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1 ${
             activeTab === 'typography' ? 'bg-[#000080] text-white' : 'text-slate-500 hover:text-white hover:bg-slate-100'
-          }`}
-        >
+          }`} >
           <Type className="w-3.5 h-3.5" /> Fonts
-        </ConfirmButton>
-        <ConfirmButton
-          onClick={() => setActiveTab('colors')}
+        </button>
+        <button onClick={() => setActiveTab('colors')}
           className={`py-2 px-2.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1 ${
             activeTab === 'colors' ? 'bg-[#000080] text-white' : 'text-slate-500 hover:text-white hover:bg-slate-100'
-          }`}
-        >
+          }`} >
           <Palette className="w-3.5 h-3.5" /> Color
-        </ConfirmButton>
-        <ConfirmButton
-          onClick={() => setActiveTab('skins')}
+        </button>
+        <button onClick={() => setActiveTab('skins')}
           className={`py-2 px-2.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1 ${
             activeTab === 'skins' ? 'bg-[#000080] text-white' : 'text-slate-500 hover:text-white hover:bg-slate-100'
-          }`}
-        >
+          }`} >
           <Download className="w-3.5 h-3.5" /> Skins
-        </ConfirmButton>
-        <ConfirmButton
-          onClick={() => setActiveTab('sections')}
+        </button>
+        <button onClick={() => setActiveTab('sections')}
           className={`py-2 px-2.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1 ${
             activeTab === 'sections' ? 'bg-[#000080] text-white' : 'text-slate-500 hover:text-white hover:bg-slate-100'
-          }`}
-        >
+          }`} >
           <Layers className="w-3.5 h-3.5" /> Builder
-        </ConfirmButton>
-        <ConfirmButton
-          onClick={() => setActiveTab('header')}
+        </button>
+        <button onClick={() => setActiveTab('header')}
           className={`py-2 px-2.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1 ${
             activeTab === 'header' ? 'bg-[#000080] text-white' : 'text-slate-500 hover:text-white hover:bg-slate-100'
-          }`}
-        >
+          }`} >
           <Menu className="w-3.5 h-3.5" /> Header
-        </ConfirmButton>
+        </button>
       </div>
 
       {/* Main Customizer Content Area */}
@@ -334,8 +322,7 @@ export default function ThemeCustomizerDrawer({ isOpen, onClose, isLiveEditing, 
               <select
                 value={theme.fontFamily}
                 onChange={(e) => handleUpdateTheme({ fontFamily: e.target.value as any, headingFontFamily: e.target.value as any })}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm text-slate-900 focus:outline-none focus:border-[#000080]"
-              >
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm text-slate-900 focus:outline-none focus:border-[#000080]">
                 {fontFamilies.map((font) => (
                   <option key={font} value={font}>{font}</option>
                 ))}
@@ -350,17 +337,15 @@ export default function ThemeCustomizerDrawer({ isOpen, onClose, isLiveEditing, 
               </label>
               <div className="grid grid-cols-3 gap-2">
                 {(['14px', '16px', '18px'] as const).map((size) => (
-                  <ConfirmButton
-                    key={size}
+                  <button key={size}
                     onClick={() => handleUpdateTheme({ baseFontSize: size })}
                     className={`py-2.5 rounded-xl text-xs font-bold border transition-all ${
                       theme.baseFontSize === size 
                         ? 'bg-[#000080] text-white border-[#000080]' 
                         : 'bg-slate-50 text-slate-500 border-slate-200 hover:border-slate-300'
-                    }`}
-                  >
+                    }`} >
                     {size}
-                  </ConfirmButton>
+                  </button>
                 ))}
               </div>
             </div>
@@ -383,21 +368,19 @@ export default function ThemeCustomizerDrawer({ isOpen, onClose, isLiveEditing, 
               </label>
               <div className="grid grid-cols-1 gap-2">
                 {colorPresets.map((preset) => (
-                  <ConfirmButton
-                    key={preset.name}
+                  <button key={preset.name}
                     onClick={() => handleUpdateTheme({ primaryColor: preset.primary, secondaryColor: preset.secondary })}
                     className={`flex items-center justify-between p-3 rounded-xl border text-left transition-all ${
                       theme.primaryColor === preset.primary 
                         ? 'border-[#000080] bg-slate-50 shadow-md' 
                         : 'border-slate-200 bg-slate-50/50 hover:bg-slate-50'
-                    }`}
-                  >
+                    }`} >
                     <div className="flex items-center gap-3">
                       <div className="w-5 h-5 rounded-full shadow-inner" style={{ backgroundColor: preset.primary }} />
                       <span className="text-xs font-bold text-slate-800">{preset.name}</span>
                     </div>
                     {theme.primaryColor === preset.primary && <Check className="w-4 h-4 text-[#000080]" />}
-                  </ConfirmButton>
+                  </button>
                 ))}
               </div>
             </div>
@@ -433,17 +416,15 @@ export default function ThemeCustomizerDrawer({ isOpen, onClose, isLiveEditing, 
                   { label: 'Standard LG', value: 'rounded-lg' },
                   { label: 'Square', value: 'rounded-none' }
                 ].map((rad) => (
-                  <ConfirmButton
-                    key={rad.value}
+                  <button key={rad.value}
                     onClick={() => handleUpdateTheme({ buttonRadius: rad.value as any })}
                     className={`py-2.5 px-3 text-xs font-bold border transition-all ${
                       theme.buttonRadius === rad.value 
                         ? 'bg-[#000080] text-white border-[#000080]' 
                         : 'bg-slate-50 text-slate-500 border-slate-200 hover:border-slate-300'
-                    }`}
-                  >
+                    }`} >
                     {rad.label}
-                  </ConfirmButton>
+                  </button>
                 ))}
               </div>
             </div>
@@ -472,12 +453,9 @@ export default function ThemeCustomizerDrawer({ isOpen, onClose, isLiveEditing, 
                     </div>
                   </div>
                   <p className="text-xs text-slate-500 leading-relaxed">{skin.description}</p>
-                  <ConfirmButton
-                    onClick={() => handleApplySkin(skin.id)}
-                    className="w-full py-2 bg-[#000080] hover:bg-[#000080] text-white font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-2"
-                  >
+                  <button>
                     <Download className="w-3.5 h-3.5" /> Apply Skin
-                  </ConfirmButton>
+                  </button>
                 </div>
               ))}
             </div>
@@ -495,55 +473,34 @@ export default function ThemeCustomizerDrawer({ isOpen, onClose, isLiveEditing, 
 
               <div className="grid grid-cols-2 gap-2">
                 
-                <ConfirmButton
-                  onClick={() => handleAddSection('portfolio')}
-                  className="flex items-center gap-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 p-2.5 rounded-xl text-xs font-bold text-slate-800 transition-all text-left"
-                >
+                <button>
                   <Briefcase className="w-4 h-4 text-[#000080]" />
                   <span>Portfolio Grid</span>
-                </ConfirmButton>
-<ConfirmButton
-                  onClick={() => handleAddSection('pricing')}
-                  className="flex items-center gap-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 p-2.5 rounded-xl text-xs font-bold text-slate-800 transition-all text-left"
-                >
+                </button>
+<button>
                   <DollarSign className="w-4 h-4 text-[#000080]" />
                   <span>Pricing Table</span>
-                </ConfirmButton>
-                <ConfirmButton
-                  onClick={() => handleAddSection('testimonials')}
-                  className="flex items-center gap-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 p-2.5 rounded-xl text-xs font-bold text-slate-800 transition-all text-left"
-                >
+                </button>
+                <button>
                   <MessageSquare className="w-4 h-4 text-[#000080]" />
                   <span>Testimonials</span>
-                </ConfirmButton>
-                <ConfirmButton
-                  onClick={() => handleAddSection('faq')}
-                  className="flex items-center gap-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 p-2.5 rounded-xl text-xs font-bold text-slate-800 transition-all text-left"
-                >
+                </button>
+                <button>
                   <HelpCircle className="w-4 h-4 text-teal-400" />
                   <span>FAQ Accordion</span>
-                </ConfirmButton>
-                <ConfirmButton
-                  onClick={() => handleAddSection('features')}
-                  className="flex items-center gap-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 p-2.5 rounded-xl text-xs font-bold text-slate-800 transition-all text-left"
-                >
+                </button>
+                <button>
                   <Award className="w-4 h-4 text-cyan-400" />
                   <span>Features Grid</span>
-                </ConfirmButton>
-                <ConfirmButton
-                  onClick={() => handleAddSection('counter')}
-                  className="flex items-center gap-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 p-2.5 rounded-xl text-xs font-bold text-slate-800 transition-all text-left"
-                >
+                </button>
+                <button>
                   <Grid className="w-4 h-4 text-amber-400" />
                   <span>Stats Counter</span>
-                </ConfirmButton>
-                <ConfirmButton
-                  onClick={() => handleAddSection('cta')}
-                  className="flex items-center gap-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 p-2.5 rounded-xl text-xs font-bold text-slate-800 transition-all text-left"
-                >
+                </button>
+                <button>
                   <Plus className="w-4 h-4 text-[#000080]" />
                   <span>CTA Banner</span>
-                </ConfirmButton>
+                </button>
               </div>
             </div>
 
@@ -556,18 +513,15 @@ export default function ThemeCustomizerDrawer({ isOpen, onClose, isLiveEditing, 
                 {dynamicSections.map((sec, idx) => (
                   <div
                     key={sec.id || idx}
-                    className="flex items-center justify-between bg-slate-50 border border-slate-200 p-3 rounded-xl"
-                  >
+                    className="flex items-center justify-between bg-slate-50 border border-slate-200 p-3 rounded-xl">
                     <div className="flex items-center gap-2.5">
-                      <ConfirmButton
-                        onClick={() => handleToggleSection(idx)}
+                      <button onClick={() => handleToggleSection(idx)}
                         className={`p-1 rounded-md transition-colors ${
                           sec.enabled ? 'text-[#000080] bg-[#000080]/10' : 'text-slate-500 bg-white'
                         }`}
-                        title={sec.enabled ? 'Disable section' : 'Enable section'}
-                      >
+                        title={sec.enabled ? 'Disable section' : 'Enable section'} >
                         {sec.enabled ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
-                      </ConfirmButton>
+                      </button>
                       <div className="space-y-0.5">
                         <span className="text-xs font-bold text-slate-900 block">{sec.title}</span>
                         <span className="text-[10px] text-slate-500 uppercase tracking-wider">{sec.type}</span>
@@ -575,26 +529,15 @@ export default function ThemeCustomizerDrawer({ isOpen, onClose, isLiveEditing, 
                     </div>
 
                     <div className="flex items-center gap-1">
-                      <ConfirmButton
-                        onClick={() => handleMoveSection(idx, 'up')}
-                        disabled={idx === 0}
-                        className="p-1 text-slate-500 hover:text-slate-900 disabled:opacity-30"
-                      >
+                      <button>
                         <ArrowUp className="w-3.5 h-3.5" />
-                      </ConfirmButton>
-                      <ConfirmButton
-                        onClick={() => handleMoveSection(idx, 'down')}
-                        disabled={idx === dynamicSections.length - 1}
-                        className="p-1 text-slate-500 hover:text-slate-900 disabled:opacity-30"
-                      >
+                      </button>
+                      <button>
                         <ArrowDown className="w-3.5 h-3.5" />
-                      </ConfirmButton>
-                      <ConfirmButton
-                        onClick={() => handleDeleteSection(idx)}
-                        className="p-1 text-red-400 hover:text-red-300 ml-1"
-                      >
+                      </button>
+                      <button>
                         <Trash2 className="w-3.5 h-3.5" />
-                      </ConfirmButton>
+                      </button>
                     </div>
                   </div>
                 ))}
@@ -665,7 +608,7 @@ export default function ThemeCustomizerDrawer({ isOpen, onClose, isLiveEditing, 
                   if (!locations || locations.includes('header')) {
                     updateSection('header', { ...(content.header || {}), navItems: updatedNavItems });
                   }
-                  if (locations && locations.length > 0) {
+                  if (locations && locations.length> 0) {
                     const footerObj = { ...(content.footer || {}) };
                     if (locations.includes('footerCompany')) footerObj.companyLinks = updatedNavItems;
                     if (locations.includes('footerServices')) footerObj.servicesLinks = updatedNavItems;
@@ -684,12 +627,12 @@ export default function ThemeCustomizerDrawer({ isOpen, onClose, isLiveEditing, 
         <span className="flex items-center gap-1.5 text-[#000080] font-bold">
           <Check className="w-4 h-4" /> Syncs Live to Supabase
         </span>
-        <ConfirmButton
+        <button 
           onClick={onClose}
           className="bg-[#000080] hover:bg-[#000066] text-white px-3.5 py-1.5 rounded-lg font-bold transition-all"
         >
           Done
-        </ConfirmButton>
+        </button>
       </div>
     </div>
   );

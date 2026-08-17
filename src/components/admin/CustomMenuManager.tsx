@@ -97,7 +97,7 @@ function DraggableSourceItem({ id, label, icon: Icon, data }: any) {
           ? 'bg-[#000080]/10 border-[#000080]/30 opacity-50 z-50' 
           : 'bg-white border-slate-200 hover:bg-slate-50 hover:border-[#000080]/30 text-slate-700'
       }`}
-    >
+   >
       <div className="flex items-center gap-2 min-w-0 pr-2">
         <Icon className="w-3.5 h-3.5 text-[#000080] shrink-0" />
         <span className="font-medium truncate">{label}</span>
@@ -149,14 +149,14 @@ function SortableMenuItem({
             : 'border-slate-200'
       } rounded-2xl p-3 shadow-sm hover:shadow-md transition-all space-y-2`}>
         <div className="flex items-center gap-2">
-          <ConfirmButton 
+          <button 
             type="button" 
             {...attributes} 
             {...listeners} 
             className="p-1 text-slate-400 hover:text-[#000080] cursor-grab active:cursor-grabbing"
-          >
+>
             <GripVertical className="w-4 h-4" />
-          </ConfirmButton>
+          </button>
 
           <div className="flex-1 grid grid-cols-2 gap-2">
             <div className="relative">
@@ -180,38 +180,28 @@ function SortableMenuItem({
           </div>
 
           <div className="flex items-center gap-1">
-            <ConfirmButton
-              type="button"
-              onClick={() => setIsExpanded(!isExpanded)}
-              className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
-            >
+            <button>
               {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-            </ConfirmButton>
-            <ConfirmButton
-              type="button"
-              onClick={() => onRemove(item.id)}
-              className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-            >
+            </button>
+            <button>
               <Trash2 className="w-4 h-4" />
-            </ConfirmButton>
+            </button>
           </div>
         </div>
 
         {isExpanded && (
           <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100 text-[11px] animate-in fade-in slide-in-from-top-1 duration-200">
             <div className="flex items-center gap-2">
-              <ConfirmButton
-                type="button"
+              <button type="button"
                 onClick={() => onToggleMega(item.id)}
                 className={`px-2 py-1 rounded-lg font-bold text-[10px] flex items-center gap-1.5 border transition-all ${
                   item.isMegaMenu 
                     ? 'bg-[#000080] text-white border-[#000080] shadow-sm' 
                     : 'bg-slate-50 text-slate-500 border-slate-200 hover:border-[#000080]/30 hover:text-slate-700'
-                }`}
-              >
+                }`}>
                 <Layers className="w-3.5 h-3.5" />
                 {item.isMegaMenu ? 'Mega Menu: ON' : 'Make Mega Menu'}
-              </ConfirmButton>
+              </button>
 
               <div className="relative group/badge">
                 <Tag className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-[#000080]" />
@@ -226,13 +216,9 @@ function SortableMenuItem({
             </div>
 
             {depth < 1 && (
-              <ConfirmButton
-                type="button"
-                onClick={() => onAddSub(item.id)}
-                className="text-[10px] font-bold text-[#000080] hover:text-white hover:bg-[#000080] flex items-center gap-1.5 bg-[#000080]/5 border border-[#000080]/10 px-3 py-1.5 rounded-lg transition-all"
-              >
+              <button>
                 <Plus className="w-3.5 h-3.5" /> Add Sub-Item
-              </ConfirmButton>
+              </button>
             )}
           </div>
         )}
@@ -243,8 +229,7 @@ function SortableMenuItem({
             <select
               value={currentParentId}
               onChange={(e) => onMoveToParent(item.id, e.target.value)}
-              className="flex-1 bg-slate-50 border border-slate-200 text-[10px] font-semibold text-slate-700 rounded-lg px-2 py-1 focus:outline-none focus:border-[#000080]"
-            >
+              className="flex-1 bg-slate-50 border border-slate-200 text-[10px] font-semibold text-slate-700 rounded-lg px-2 py-1 focus:outline-none focus:border-[#000080]">
               <option value="root">— None (Top Level) —</option>
               {eligibleParents.map((p: any) => (
                 <option key={p.id} value={p.id}>
@@ -268,7 +253,7 @@ function SortableMenuItem({
         )}
       </div>
 
-      {item.children && item.children.length > 0 && (
+      {item.children && item.children.length> 0 && (
         <div className="mt-2 space-y-2">
           {item.children.map((child: any) => (
             <SortableMenuItem
@@ -603,11 +588,11 @@ export default function CustomMenuManager({
     setItems(itemsWithIds);
     // Find checked location keys
     const locs = Object.keys(displayLocations).filter(k => displayLocations[k]);
-    onChange(itemsWithIds, locs.length > 0 ? locs : [activeLocation]);
+    onChange(itemsWithIds, locs.length> 0 ? locs : [activeLocation]);
   };
 
   // Get pages created & added in the Pages section
-  const pagesFromManager = customPages && customPages.length > 0 ? customPages : defaultCustomPages;
+  const pagesFromManager = customPages && customPages.length> 0 ? customPages : defaultCustomPages;
 
   // Combine portfolio items with defaults
   const availablePortfolioItems: PortfolioItem[] = [...portfolioItems];
@@ -937,7 +922,7 @@ export default function CustomMenuManager({
     const newLocs = { ...displayLocations, [locKey]: !displayLocations[locKey] };
     setDisplayLocations(newLocs);
     const activeKeys = Object.keys(newLocs).filter(k => newLocs[k]);
-    onChange(items, activeKeys.length > 0 ? activeKeys : [activeLocation]);
+    onChange(items, activeKeys.length> 0 ? activeKeys : [activeLocation]);
   };
 
   function DroppableZone({ children }: any) {
@@ -951,7 +936,7 @@ export default function CustomMenuManager({
         className={`min-h-[200px] p-2 rounded-2xl border-2 border-dashed transition-all ${
           isOver ? 'border-[#000080] bg-[#000080]/5 ring-4 ring-[#000080]/10' : 'border-slate-200 bg-white/50'
         }`}
-      >
+     >
         {children}
         {items.length === 0 && !isOver && (
           <div className="flex flex-col items-center justify-center py-12 text-slate-400">
@@ -971,7 +956,7 @@ export default function CustomMenuManager({
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
       modifiers={[restrictToWindowEdges]}
-    >
+   >
       <div className="space-y-6">
       {/* WordPress Menu Location Selector Header */}
       <div className="p-4 bg-white border border-slate-200 rounded-2xl space-y-3">
@@ -985,8 +970,7 @@ export default function CustomMenuManager({
             <select
               value={activeLocation}
               onChange={(e) => setActiveLocation(e.target.value as any)}
-              className="bg-slate-50 border border-[#000080]/50 text-[#000080] font-bold text-xs rounded-xl px-3 py-1.5 focus:outline-none"
-            >
+              className="bg-slate-50 border border-[#000080]/50 text-[#000080] font-bold text-xs rounded-xl px-3 py-1.5 focus:outline-none">
               <option value="header">Header Primary Navigation</option>
               <option value="footerCompany">Footer Company Links</option>
               <option value="footerServices">Footer Services Links</option>
@@ -1002,60 +986,38 @@ export default function CustomMenuManager({
         {/* Presets */}
         <div className="flex items-center gap-2 pt-1 overflow-x-auto">
           <span className="text-[11px] font-bold text-slate-500 shrink-0">Preset Templates:</span>
-          <ConfirmButton 
-            type="button"
-            onClick={() => handleLoadPresetMenu('agency')}
-            className="px-2.5 py-1 bg-slate-100 hover:bg-slate-700 text-xs text-slate-800 rounded-lg transition-colors shrink-0"
-          >
+          <button>
             Digital Agency
-          </ConfirmButton>
-          <ConfirmButton 
-            type="button"
-            onClick={() => handleLoadPresetMenu('saas')}
-            className="px-2.5 py-1 bg-slate-100 hover:bg-slate-700 text-xs text-slate-800 rounded-lg transition-colors shrink-0"
-          >
+          </button>
+          <button>
             SaaS & Product
-          </ConfirmButton>
-          <ConfirmButton 
-            type="button"
-            onClick={() => handleLoadPresetMenu('minimal')}
-            className="px-2.5 py-1 bg-slate-100 hover:bg-slate-700 text-xs text-slate-800 rounded-lg transition-colors shrink-0"
-          >
+          </button>
+          <button>
             Minimal Nav
-          </ConfirmButton>
+          </button>
         </div>
         
         <div className="flex justify-end pt-2">
           {!showRestoreConfirm ? (
-            <ConfirmButton 
-              type="button"
-              onClick={() => setShowRestoreConfirm(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-[#000080] hover:bg-[#000066] text-white text-[10px] font-bold rounded-lg transition-all shadow-sm shrink-0"
-            >
+            <button>
               <RefreshCw className="w-3 h-3" /> Restore Default Site Navigation
-            </ConfirmButton>
+            </button>
           ) : (
             <div className="flex items-center gap-2 animate-in fade-in slide-in-from-right-2 duration-300">
               <span className="text-[10px] font-bold text-red-600 bg-red-50 px-2 py-1 rounded border border-red-100">Are you sure?</span>
-              <ConfirmButton 
-                type="button"
+              <button type="button"
                 onClick={() => {
                   const defaultItems = ensureIds(DEFAULT_MAIN_NAVIGATION);
                   setItems(defaultItems);
                   onChange(defaultItems.map(({ id, ...rest }) => rest));
                   setShowRestoreConfirm(false);
                 }}
-                className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-[10px] font-bold rounded-lg transition-all shadow-sm"
-              >
+                className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-[10px] font-bold rounded-lg transition-all shadow-sm">
                 Yes, Restore
-              </ConfirmButton>
-              <ConfirmButton 
-                type="button"
-                onClick={() => setShowRestoreConfirm(false)}
-                className="px-3 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 text-[10px] font-bold rounded-lg transition-all"
-              >
+              </button>
+              <button>
                 Cancel
-              </ConfirmButton>
+              </button>
             </div>
           )}
         </div>
@@ -1071,24 +1033,20 @@ export default function CustomMenuManager({
                 <FileText className="w-3.5 h-3.5 text-[#000080]" /> Site Pages ({availablePagesList.length})
               </h4>
               <div className="flex items-center gap-1 bg-white p-0.5 rounded-lg border border-slate-200">
-                <ConfirmButton
-                  type="button"
+                <button type="button"
                   onClick={() => setPageFilter('available')}
                   className={`px-2 py-0.5 text-[10px] font-bold rounded ${
                     pageFilter === 'available' ? 'bg-[#000080] text-white' : 'text-slate-500 hover:text-slate-800'
-                  }`}
-                >
+                  }`}>
                   Available
-                </ConfirmButton>
-                <ConfirmButton
-                  type="button"
+                </button>
+                <button type="button"
                   onClick={() => setPageFilter('all')}
                   className={`px-2 py-0.5 text-[10px] font-bold rounded ${
                     pageFilter === 'all' ? 'bg-[#000080] text-white' : 'text-slate-500 hover:text-slate-800'
-                  }`}
-                >
+                  }`}>
                   All ({pagesFromManager.length + 1})
-                </ConfirmButton>
+                </button>
               </div>
             </div>
 
@@ -1106,13 +1064,11 @@ export default function CustomMenuManager({
                   const isChecked = selectedPages.includes(page.href);
                   return (
                     <div key={idx} className="flex items-center gap-2 group">
-                      <ConfirmButton
-                        type="button"
+                      <button type="button"
                         onClick={() => handleTogglePageSelect(page.href)}
                         className={`flex-1 flex items-center justify-between p-2 rounded-lg cursor-pointer text-xs transition-colors ${
                           isChecked ? 'bg-[#000080]/10 text-[#000066] border border-[#000080]/30' : 'hover:bg-slate-100/60 text-slate-700'
-                        }`}
-                      >
+                        }`}>
                         <div className="flex items-center gap-2">
                           {isChecked ? (
                             <CheckSquare className="w-4 h-4 text-[#000080] shrink-0" />
@@ -1124,7 +1080,7 @@ export default function CustomMenuManager({
                         <span className="text-[9px] bg-[#000080]/5 text-[#000080] px-1.5 py-0.5 rounded font-bold uppercase">
                           {page.status || 'Published'}
                         </span>
-                      </ConfirmButton>
+                      </button>
                       <DraggableSourceItem
                         id={`source-page-${idx}`}
                         label={page.title}
@@ -1142,8 +1098,7 @@ export default function CustomMenuManager({
               <select
                 value={targetParentForPages}
                 onChange={(e) => setTargetParentForPages(e.target.value)}
-                className="w-full bg-white border border-slate-200 text-xs font-semibold text-slate-700 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-[#000080]"
-              >
+                className="w-full bg-white border border-slate-200 text-xs font-semibold text-slate-700 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-[#000080]">
                 <option value="root">— None (Top Level) —</option>
                 {getAllPotentialParents(items).map(p => (
                   <option key={p.id} value={p.id}>
@@ -1153,15 +1108,15 @@ export default function CustomMenuManager({
               </select>
             </div>
 
-            <ConfirmButton
+            <button 
               type="button"
               disabled={selectedPages.length === 0}
               onClick={handleAddSelectedPagesToMenu}
               className="w-full py-2 bg-[#000080] hover:bg-[#000080] disabled:bg-slate-100 disabled:text-slate-600 text-white font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-2 shadow-md"
-            >
+>
               <Plus className="w-3.5 h-3.5" />
               Add Selected ({selectedPages.length}) Pages to Menu
-            </ConfirmButton>
+            </button>
           </div>
 
           {/* Portfolio & Case Studies Selector Panel */}
@@ -1170,14 +1125,14 @@ export default function CustomMenuManager({
               <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
                 <Briefcase className="w-3.5 h-3.5 text-[#000080]" /> Portfolio & Case Studies ({availablePortfolioItems.length})
               </h4>
-              <ConfirmButton
+              <button 
                 type="button"
                 onClick={handleAddPortfolioMainPageToMenu}
                 className="text-[10px] bg-[#000080]/10 hover:bg-[#000080]/20 text-[#000080] border border-[#000080]/30 font-bold px-2 py-1 rounded-lg transition-all flex items-center gap-1"
                 title="Add entire Portfolio Mega Menu to Navigation"
-              >
+>
                 <Plus className="w-3 h-3" /> Add Portfolio Section
-              </ConfirmButton>
+              </button>
             </div>
 
             <div className="flex items-center justify-between gap-2">
@@ -1185,8 +1140,7 @@ export default function CustomMenuManager({
               <select
                 value={portfolioTagFilter}
                 onChange={(e) => setPortfolioTagFilter(e.target.value)}
-                className="bg-white border border-slate-200 text-xs font-bold text-slate-800 rounded-lg px-2 py-1 focus:outline-none focus:border-[#000080]"
-              >
+                className="bg-white border border-slate-200 text-xs font-bold text-slate-800 rounded-lg px-2 py-1 focus:outline-none focus:border-[#000080]">
                 <option value="all">All Categories ({availablePortfolioItems.length})</option>
                 {availablePortfolioCategories.map(cat => (
                   <option key={cat.id} value={cat.name}>{cat.name}</option>
@@ -1206,13 +1160,11 @@ export default function CustomMenuManager({
                   const isChecked = selectedCaseStudies.includes(key);
                   return (
                     <div key={key} className="flex items-center gap-2 group">
-                      <ConfirmButton
-                        type="button"
+                      <button type="button"
                         onClick={() => handleToggleCaseStudySelect(key)}
                         className={`flex-1 flex items-center justify-between p-2 rounded-lg cursor-pointer text-xs transition-colors ${
                           isChecked ? 'bg-[#000080]/10 text-[#000066] border border-[#000080]/30' : 'hover:bg-slate-100/60 text-slate-700'
-                        }`}
-                      >
+                        }`}>
                         <div className="flex items-center gap-2 min-w-0 pr-2">
                           {isChecked ? (
                             <CheckSquare className="w-4 h-4 text-[#000080] shrink-0" />
@@ -1224,7 +1176,7 @@ export default function CustomMenuManager({
                         <span className="text-[9px] bg-[#000080]/5 text-[#000080] px-1.5 py-0.5 rounded font-bold uppercase shrink-0">
                           {item.category || 'CASE STUDY'}
                         </span>
-                      </ConfirmButton>
+                      </button>
                       <DraggableSourceItem
                         id={`source-portfolio-${idx}`}
                         label={item.title}
@@ -1248,8 +1200,7 @@ export default function CustomMenuManager({
               <select
                 value={targetParentForPortfolio}
                 onChange={(e) => setTargetParentForPortfolio(e.target.value)}
-                className="w-full bg-white border border-slate-200 text-xs font-semibold text-slate-700 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-[#000080]"
-              >
+                className="w-full bg-white border border-slate-200 text-xs font-semibold text-slate-700 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-[#000080]">
                 <option value="root">— None (Top Level) —</option>
                 {getAllPotentialParents(items).map(p => (
                   <option key={p.id} value={p.id}>
@@ -1259,15 +1210,15 @@ export default function CustomMenuManager({
               </select>
             </div>
 
-            <ConfirmButton
+            <button 
               type="button"
               disabled={selectedCaseStudies.length === 0}
               onClick={handleAddSelectedCaseStudiesToMenu}
               className="w-full py-2 bg-[#000080] hover:bg-[#000080] disabled:bg-slate-100 disabled:text-slate-600 text-white font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-2 shadow-md"
-            >
+>
               <Plus className="w-3.5 h-3.5" />
               Add Selected ({selectedCaseStudies.length}) Case Studies to Menu
-            </ConfirmButton>
+            </button>
 
             {/* Services Selector Panel */}
             <div className="pt-2 border-t border-slate-200/80 space-y-2">
@@ -1279,13 +1230,11 @@ export default function CustomMenuManager({
                   const isChecked = selectedServices.includes(service.id);
                   return (
                     <div key={service.id} className="flex items-center gap-2 group">
-                      <ConfirmButton
-                        type="button"
+                      <button type="button"
                         onClick={() => handleToggleServiceSelect(service.id)}
                         className={`flex-1 flex items-center justify-between p-2 rounded-lg cursor-pointer text-xs transition-colors ${
                           isChecked ? 'bg-[#000080]/10 text-[#000066] border border-[#000080]/30' : 'hover:bg-slate-100/60 text-slate-700'
-                        }`}
-                      >
+                        }`}>
                         <div className="flex items-center gap-2 min-w-0 pr-2">
                           {isChecked ? (
                             <CheckSquare className="w-4 h-4 text-[#000080] shrink-0" />
@@ -1294,7 +1243,7 @@ export default function CustomMenuManager({
                           )}
                           <span className="font-semibold truncate text-[11px]">{service.title}</span>
                         </div>
-                      </ConfirmButton>
+                      </button>
                       <DraggableSourceItem
                         id={`source-service-${idx}`}
                         label={service.title}
@@ -1316,8 +1265,7 @@ export default function CustomMenuManager({
                 <select
                   value={targetParentForServices}
                   onChange={(e) => setTargetParentForServices(e.target.value)}
-                  className="w-full bg-white border border-slate-200 text-xs font-semibold text-slate-700 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-[#000080]"
-                >
+                  className="w-full bg-white border border-slate-200 text-xs font-semibold text-slate-700 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-[#000080]">
                   <option value="root">— None (Top Level) —</option>
                   {getAllPotentialParents(items).map(p => (
                     <option key={p.id} value={p.id}>
@@ -1327,15 +1275,15 @@ export default function CustomMenuManager({
                 </select>
               </div>
 
-              <ConfirmButton
+              <button 
                 type="button"
                 disabled={selectedServices.length === 0}
                 onClick={handleAddSelectedServicesToMenu}
                 className="w-full py-2 bg-[#000080] hover:bg-[#000080] disabled:bg-slate-100 disabled:text-slate-600 text-white font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-2 shadow-md"
-              >
+>
                 <Plus className="w-3.5 h-3.5" />
                 Add Selected ({selectedServices.length}) Services to Menu
-              </ConfirmButton>
+              </button>
             </div>
 
             {/* Portfolio Categories / Tags Sub-Section */}
@@ -1348,31 +1296,29 @@ export default function CustomMenuManager({
                 {availablePortfolioCategories.map(cat => {
                   const isChecked = selectedCats.includes(cat.name);
                   return (
-                    <ConfirmButton
-                      type="button"
+                    <button type="button"
                       key={cat.id}
                       onClick={() => handleToggleCatSelect(cat.name)}
                       className={`px-2 py-1 rounded-lg text-xs font-semibold border transition-all flex items-center gap-1 cursor-pointer ${
                         isChecked 
                           ? 'bg-[#000080] text-white border-[#000080]' 
                           : 'bg-white text-slate-700 border-slate-200 hover:border-[#000080]'
-                      }`}
-                    >
+                      }`}>
                       {isChecked && <Check className="w-3 h-3" />}
                       <span>{cat.name}</span>
-                    </ConfirmButton>
+                    </button>
                   );
                 })}
               </div>
 
-              {selectedCats.length > 0 && (
-                <ConfirmButton
+              {selectedCats.length> 0 && (
+                <button 
                   type="button"
                   onClick={handleAddSelectedCategoriesToMenu}
                   className="w-full py-1.5 bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-2"
-                >
+>
                   <Plus className="w-3 h-3" /> Add Selected Tag Pages ({selectedCats.length}) to Menu
-                </ConfirmButton>
+                </button>
               )}
             </div>
           </div>
@@ -1410,8 +1356,7 @@ export default function CustomMenuManager({
               <select
                 value={targetParentForCustom}
                 onChange={(e) => setTargetParentForCustom(e.target.value)}
-                className="w-full bg-white border border-slate-200 text-xs font-semibold text-slate-700 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-[#000080]"
-              >
+                className="w-full bg-white border border-slate-200 text-xs font-semibold text-slate-700 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-[#000080]">
                 <option value="root">— None (Top Level) —</option>
                 {getAllPotentialParents(items).map(p => (
                   <option key={p.id} value={p.id}>
@@ -1421,13 +1366,12 @@ export default function CustomMenuManager({
               </select>
             </div>
 
-            <ConfirmButton
+            <button 
               type="submit"
               disabled={!customLabel.trim()}
-              className="w-full py-2 bg-[#000080]/10 hover:bg-[#000080] hover:text-white disabled:opacity-50 text-[#000080] border border-[#000080]/20 font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-2"
-            >
+              className="w-full py-2 bg-[#000080]/10 hover:bg-[#000080] hover:text-white disabled:opacity-50 text-[#000080] border border-[#000080]/20 font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-2">
               <Plus className="w-3.5 h-3.5" /> Add Custom Link
-            </ConfirmButton>
+            </button>
           </form>
         </div>
 

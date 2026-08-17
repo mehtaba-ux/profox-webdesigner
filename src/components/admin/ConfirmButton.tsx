@@ -21,7 +21,7 @@ export const ConfirmButton: React.FC<ConfirmButtonProps> = ({
   const { confirm } = useConfirmContext();
 
   const handleClick = async (e: React.MouseEvent<HTMLButtonElement>) => {
-    // If noConfirm is true, skip confirmation
+    // If is true, skip confirmation
     if (noConfirm) {
       onClick?.(e);
       onConfirm?.(e);

@@ -239,7 +239,7 @@ export default function BlogManager() {
 
   useEffect(() => {
     const editId = searchParams.get('edit');
-    if (editId && posts.length > 0) {
+    if (editId && posts.length> 0) {
       const postToEdit = posts.find(p => p.id === editId);
       if (postToEdit) {
         handleEdit(postToEdit);
@@ -830,24 +830,21 @@ export default function BlogManager() {
           <p className="text-slate-500 text-sm mt-1">Manage your website's articles and insights</p>
         </div>
         <div className="flex items-center gap-3">
-          <ConfirmButton onClick={handleSeedPost} className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 transition-all shadow-sm">
+          <button onClick={handleSeedPost} className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 transition-all shadow-sm">
       <Check className="w-5 h-5" />
       Publish Demo Post
-    </ConfirmButton>
-    <ConfirmButton 
-            onClick={() => setShowCategoriesModal(true)}
-            className="bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 transition-all"
-          >
+    </button>
+    <button>
             <Tag className="w-4 h-4 text-[#000080]" />
             Manage Categories
-          </ConfirmButton>
-          <ConfirmButton 
+          </button>
+          <button 
             onClick={handleCreateNew}
             className="bg-[#000080] hover:bg-emerald-700 text-white px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 transition-all shadow-lg shadow-[#000080]/20"
-          >
+>
             <Plus className="w-5 h-5" />
             Add New Post
-          </ConfirmButton>
+          </button>
         </div>
       </div>
 
@@ -867,8 +864,7 @@ export default function BlogManager() {
           <select 
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as any)}
-            className="bg-white border border-slate-200 rounded-xl px-4 py-2 text-sm text-slate-900 focus:outline-none focus:border-[#000080]"
-          >
+            className="bg-white border border-slate-200 rounded-xl px-4 py-2 text-sm text-slate-900 focus:outline-none focus:border-[#000080]">
             <option value="all">All Status</option>
             <option value="published">Published</option>
             <option value="draft">Draft</option>
@@ -947,32 +943,21 @@ export default function BlogManager() {
                         target="_blank"
                         rel="noopener noreferrer"
                         className="p-2 text-slate-500 hover:text-[#000080] hover:bg-[#000066]/10 rounded-lg transition-all"
-                        title="View Live"
-                      >
+                        title="View Live">
                         <Eye className="w-4 h-4" />
                       </a>
-                      <ConfirmButton 
-                        onClick={() => handleEdit(post)}
-                        className="p-2 text-slate-500 hover:text-[#000080] hover:bg-[#000066]/10 rounded-lg transition-all"
-                        title="Edit"
-                      >
+                      <button>
                         <Edit2 className="w-4 h-4" />
-                      </ConfirmButton>
-                      <ConfirmButton
-                        onClick={() => handleDuplicate(post)}
+                      </button>
+                      <button onClick={() => handleDuplicate(post)}
                         className="p-2 text-slate-500 hover:text-[#000080] hover:bg-[#000066]/10 rounded-lg transition-all"
                         title="Duplicate as draft"
-                        aria-label={`Duplicate ${post.title} as a draft`}
-                      >
+                        aria-label={`Duplicate ${post.title} as a draft`}>
                         <CopyPlus className="w-4 h-4" />
-                      </ConfirmButton>
-                      <ConfirmButton 
-                        onClick={() => handleDelete(post.id)}
-                        className="p-2 text-slate-500 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-all"
-                        title="Delete"
-                      >
+                      </button>
+                      <button>
                         <Trash2 className="w-4 h-4" />
-                      </ConfirmButton>
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -992,8 +977,7 @@ export default function BlogManager() {
                 <Tag className="w-5 h-5 text-[#000080]" />
                 <h2 className="text-lg font-bold text-slate-900">Manage Blog Categories</h2>
               </div>
-              <ConfirmButton 
-                onClick={() => {
+              <button onClick={() => {
                   setShowCategoriesModal(false);
                   setCatEditingId(null);
                   setCatName('');
@@ -1002,10 +986,9 @@ export default function BlogManager() {
                   setCatError('');
                   setIsSlugManuallyEdited(false);
                 }}
-                className="text-slate-500 hover:text-slate-900 p-1 rounded-lg hover:bg-slate-100 transition-colors"
-              >
+                className="text-slate-500 hover:text-slate-900 p-1 rounded-lg hover:bg-slate-100 transition-colors">
                 <X className="w-5 h-5" />
-              </ConfirmButton>
+              </button>
             </div>
 
             <div className="flex-1 overflow-y-auto p-6 grid md:grid-cols-5 gap-6">
@@ -1054,8 +1037,7 @@ export default function BlogManager() {
 
                   <div className="flex gap-2 pt-2">
                     {catEditingId && (
-                      <ConfirmButton 
-                        type="button"
+                      <button type="button"
                         onClick={() => {
                           setCatEditingId(null);
                           setCatName('');
@@ -1064,18 +1046,16 @@ export default function BlogManager() {
                           setCatError('');
                           setIsSlugManuallyEdited(false);
                         }}
-                        className="flex-1 px-4 py-2.5 bg-slate-100 hover:bg-slate-700 text-slate-700 rounded-xl text-xs font-bold transition-colors"
-                      >
+                        className="flex-1 px-4 py-2.5 bg-slate-100 hover:bg-slate-700 text-slate-700 rounded-xl text-xs font-bold transition-colors">
                         Cancel
-                      </ConfirmButton>
+                      </button>
                     )}
-                    <ConfirmButton 
+                    <button 
                       type="submit"
                       disabled={catSubmitting}
-                      className="flex-1 px-4 py-2.5 bg-[#000080] hover:bg-emerald-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition-colors"
-                    >
+                      className="flex-1 px-4 py-2.5 bg-[#000080] hover:bg-emerald-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition-colors">
                       {catSubmitting ? 'Saving...' : (catEditingId ? 'Update' : 'Add Category')}
-                    </ConfirmButton>
+                    </button>
                   </div>
                 </form>
               </div>
@@ -1117,20 +1097,12 @@ export default function BlogManager() {
                           <td className="px-4 py-3 text-slate-500 font-mono">{cat.slug}</td>
                           <td className="px-4 py-3 text-right">
                             <div className="flex items-center justify-end gap-1.5">
-                              <ConfirmButton 
-                                onClick={() => handleEditCategory(cat)}
-                                className="p-1.5 text-slate-500 hover:text-[#000080] hover:bg-[#000066]/10 rounded-lg transition-colors"
-                                title="Edit"
-                              >
+                              <button>
                                 <Edit2 className="w-3.5 h-3.5" />
-                              </ConfirmButton>
-                              <ConfirmButton 
-                                onClick={() => handleDeleteCategory(cat.id, cat.name)}
-                                className="p-1.5 text-slate-500 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-colors"
-                                title="Delete"
-                              >
+                              </button>
+                              <button>
                                 <X className="w-3.5 h-3.5" />
-                              </ConfirmButton>
+                              </button>
                             </div>
                           </td>
                         </tr>
@@ -1142,8 +1114,7 @@ export default function BlogManager() {
             </div>
             
             <div className="p-4 border-t border-slate-200 bg-slate-50/20 flex justify-end">
-              <ConfirmButton 
-                onClick={() => {
+              <button onClick={() => {
                   setShowCategoriesModal(false);
                   setCatEditingId(null);
                   setCatName('');
@@ -1152,10 +1123,9 @@ export default function BlogManager() {
                   setCatError('');
                   setIsSlugManuallyEdited(false);
                 }}
-                className="px-5 py-2.5 bg-slate-850 hover:bg-slate-100 border border-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-colors"
-              >
+                className="px-5 py-2.5 bg-slate-850 hover:bg-slate-100 border border-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-colors">
                 Close
-              </ConfirmButton>
+              </button>
             </div>
           </div>
         </div>
@@ -1261,12 +1231,12 @@ function PostEditor({
       {/* Editor Header */}
       <div className="sticky top-0 z-10 flex items-center justify-between px-8 py-4 bg-slate-50 border-b border-slate-900 shadow-lg">
         <div className="flex items-center gap-6">
-          <ConfirmButton 
+          <button 
             onClick={onCancel}
             className="p-2 text-slate-500 hover:text-slate-900 hover:bg-white rounded-xl transition-all"
-          >
+>
             <ArrowLeft className="w-5 h-5" />
-          </ConfirmButton>
+          </button>
           <div className="h-8 w-px bg-white" />
           <div>
             <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
@@ -1285,34 +1255,28 @@ function PostEditor({
               href={`/blog/${post.slug}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="px-4 py-2 text-sm font-bold text-[#000080] hover:text-[#000080] hover:bg-[#000080]/10 rounded-xl transition-all flex items-center gap-2"
-            >
+              className="px-4 py-2 text-sm font-bold text-[#000080] hover:text-[#000080] hover:bg-[#000080]/10 rounded-xl transition-all flex items-center gap-2">
               <Eye className="w-4 h-4" />
               View {post.status === 'published' ? 'Live' : 'Preview'}
             </a>
           )}
-          <ConfirmButton 
-            onClick={() => setShowPreview(true)}
-            className="px-4 py-2 text-sm font-bold text-slate-500 hover:text-slate-900 hover:bg-white rounded-xl transition-all flex items-center gap-2"
-          >
+          <button>
             <Eye className="w-4 h-4" />
             Preview
-          </ConfirmButton>
+          </button>
           <select
             value={post.status}
             onChange={(e) => setPost({ ...post, status: e.target.value as any })}
-            className="bg-white border border-slate-200 rounded-xl px-4 py-2 text-sm text-slate-900 focus:outline-none"
-          >
+            className="bg-white border border-slate-200 rounded-xl px-4 py-2 text-sm text-slate-900 focus:outline-none">
             <option value="draft">Draft</option>
             <option value="published">Published</option>
           </select>
-          <ConfirmButton 
+          <button 
             onClick={onSave}
-            className="bg-[#000080] hover:bg-emerald-700 text-white px-8 py-2 rounded-xl font-bold flex items-center gap-2 transition-all shadow-lg shadow-[#000080]/20"
-          >
+            className="bg-[#000080] hover:bg-emerald-700 text-white px-8 py-2 rounded-xl font-bold flex items-center gap-2 transition-all shadow-lg shadow-[#000080]/20">
             <Save className="w-4 h-4" />
             {post.id ? 'Update Post' : 'Publish Post'}
-          </ConfirmButton>
+          </button>
         </div>
       </div>
 
@@ -1324,13 +1288,10 @@ function PostEditor({
               <span className="bg-[#000080] text-white text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-widest">Preview Mode</span>
               <h3 className="text-sm font-bold truncate max-w-md">{post.title || 'Untitled Post'}</h3>
             </div>
-            <ConfirmButton 
-              onClick={() => setShowPreview(false)}
-              className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-xl text-sm font-bold transition-all"
-            >
+            <button>
               <X className="w-4 h-4" />
               Close Preview
-            </ConfirmButton>
+            </button>
           </div>
 
           <div className="min-h-screen pb-20 bg-white">
@@ -1364,7 +1325,7 @@ function PostEditor({
 
             <main className="max-w-4xl mx-auto px-6 py-20">
               {/* Highlights Section */}
-              {post.highlights && post.highlights.length > 0 && (
+              {post.highlights && post.highlights.length> 0 && (
                 <section className="mb-16 bg-slate-50 border border-slate-100 rounded-[32px] p-8 md:p-12">
                   <h2 className="text-2xl font-bold text-slate-900 mb-8">Key Highlights</h2>
                   <ul className="grid grid-cols-1 gap-6">
@@ -1388,7 +1349,7 @@ function PostEditor({
               />
 
               {/* FAQ Section */}
-              {post.faq && post.faq.length > 0 && (
+              {post.faq && post.faq.length> 0 && (
                 <section className="mt-24 pt-24 border-t border-slate-100">
                   <h2 className="text-3xl font-bold text-slate-900 mb-12">Frequently Asked Questions</h2>
                   <div className="space-y-4 text-slate-950">
@@ -1427,18 +1388,17 @@ function PostEditor({
                 { id: 'seo', label: 'SEO Settings', icon: Globe },
                 { id: 'settings', label: 'Post Settings', icon: Settings }
               ].map((tab) => (
-                <ConfirmButton
-                  key={tab.id}
+                <button key={tab.id}
                   onClick={() => setActiveTab(tab.id as any)}
                   className={`flex items-center gap-2 px-6 py-4 text-sm font-bold transition-all border-b-2 ${
                     activeTab === tab.id 
                       ? 'text-[#000080] border-[#000080]' 
                       : 'text-slate-500 border-transparent hover:text-slate-700'
                   }`}
-                >
+               >
                   <tab.icon className="w-4 h-4" />
                   {tab.label}
-                </ConfirmButton>
+                </button>
               ))}
             </div>
 
@@ -1471,12 +1431,12 @@ function PostEditor({
                       <Check className="w-5 h-5 text-[#000080]" />
                       Key Highlights
                     </h3>
-                    <ConfirmButton 
+                    <button 
                       onClick={addHighlight}
                       className="text-xs font-bold text-[#000080] hover:text-[#000080] flex items-center gap-1 uppercase tracking-widest"
-                    >
+>
                       <Plus className="w-4 h-4" /> Add Highlight
-                    </ConfirmButton>
+                    </button>
                   </div>
                   <div className="space-y-3">
                     {post.highlights?.map((highlight, index) => (
@@ -1488,12 +1448,9 @@ function PostEditor({
                           placeholder="Enter a key highlight..."
                           className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 focus:outline-none focus:border-[#000080]"
                         />
-                        <ConfirmButton 
-                          onClick={() => removeHighlight(index)}
-                          className="p-3 text-slate-500 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all"
-                        >
+                        <button>
                           <Trash2 className="w-4 h-4" />
-                        </ConfirmButton>
+                        </button>
                       </div>
                     ))}
                   </div>
@@ -1506,22 +1463,19 @@ function PostEditor({
                       <MessageSquare className="w-5 h-5 text-[#000080]" />
                       Frequently Asked Questions
                     </h3>
-                    <ConfirmButton 
+                    <button 
                       onClick={addFAQ}
                       className="text-xs font-bold text-[#000080] hover:text-[#000080] flex items-center gap-1 uppercase tracking-widest"
-                    >
+>
                       <Plus className="w-4 h-4" /> Add FAQ Item
-                    </ConfirmButton>
+                    </button>
                   </div>
                   <div className="space-y-6">
                     {post.faq?.map((item, index) => (
                       <div key={index} className="bg-slate-50 border border-slate-200 rounded-2xl p-6 space-y-4 relative group">
-                        <ConfirmButton 
-                          onClick={() => removeFAQ(index)}
-                          className="absolute top-4 right-4 p-2 text-slate-500 hover:text-red-500 transition-all opacity-0 group-hover:opacity-100"
-                        >
+                        <button>
                           <X className="w-4 h-4" />
-                        </ConfirmButton>
+                        </button>
                         <div className="space-y-2">
                           <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Question</label>
                           <input 
@@ -1599,7 +1553,7 @@ function PostEditor({
                   />
                   <div className="flex justify-between">
                     <span className="text-[10px] text-slate-500">Recommended: 150-160 characters</span>
-                    <span className={`text-[10px] ${post.seo.metaDescription.length > 160 ? 'text-red-500' : 'text-slate-500'}`}>
+                    <span className={`text-[10px] ${post.seo.metaDescription.length> 160 ? 'text-red-500' : 'text-slate-500'}`}>
                       {post.seo.metaDescription.length} characters
                     </span>
                   </div>
@@ -1626,14 +1580,10 @@ function PostEditor({
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Category</label>
-                      <ConfirmButton 
-                        type="button"
-                        onClick={() => setShowQuickAddCategory(!showQuickAddCategory)}
-                        className="text-xs text-[#000080] hover:text-[#000066] font-bold flex items-center gap-1 transition-colors"
-                      >
+                      <button>
                         <Plus className="w-3.5 h-3.5" />
                         Quick Add
-                      </ConfirmButton>
+                      </button>
                     </div>
 
                     {showQuickAddCategory && (
@@ -1646,14 +1596,13 @@ function PostEditor({
                             onChange={(e) => setQuickCatName(e.target.value)}
                             className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-[#000080]"
                           />
-                          <ConfirmButton 
+                          <button 
                             type="button"
                             onClick={handleQuickAddCategorySubmit}
                             disabled={quickCatSubmitting}
-                            className="bg-[#000080] hover:bg-emerald-700 disabled:opacity-50 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-colors"
-                          >
+                            className="bg-[#000080] hover:bg-emerald-700 disabled:opacity-50 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-colors">
                             {quickCatSubmitting ? 'Adding...' : 'Add'}
-                          </ConfirmButton>
+                          </button>
                         </div>
                         {quickCatError && (
                           <p className="text-[10px] text-red-400 font-medium">{quickCatError}</p>
@@ -1664,8 +1613,7 @@ function PostEditor({
                     <select 
                       value={post.category}
                       onChange={(e) => setPost({ ...post, category: e.target.value })}
-                      className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-slate-900 focus:outline-none focus:border-[#000080]"
-                    >
+                      className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-slate-900 focus:outline-none focus:border-[#000080]">
                       <option value="Uncategorized">Uncategorized</option>
                       {categories.map(cat => (
                         <option key={cat.id} value={cat.name}>{cat.name}</option>

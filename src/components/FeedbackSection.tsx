@@ -10,12 +10,125 @@ interface FeedbackSectionProps {
   isLiveEditing?: boolean;
 }
 
+interface MarqueeRowProps {
+  feedbacks: FeedbackEntry[];
+  direction: 'left' | 'right';
+  speed: number;
+}
+
+function MarqueeRow({ feedbacks, direction, speed }: MarqueeRowProps) {
+  // Ensure we have enough items to fill the screen by repeating if count is low
+  const repeatCount = feedbacks.length < 5 ? 5 : 3;
+  const items: FeedbackEntry[] = Array(repeatCount).fill(feedbacks).flat();
+  
+  if (feedbacks.length === 0) return null;
+
+  return (
+    <div className="flex w-full overflow-hidden group h-full">
+      <motion.div
+        className="flex items-stretch gap-8 whitespace-nowrap min-w-full px-4 h-full"
+        animate={{
+          x: direction === 'left' ? [0, -100 / repeatCount + '%'] : [-100 / repeatCount + '%', 0],
+        }}
+        transition={{
+          duration: speed,
+          repeat: Infinity,
+          ease: "linear",
+        }}
+        whileHover={{ animationPlayState: 'paused' }}
+        style={{ width: 'fit-content' }}
+      >
+        {items.map((fb, idx) => (
+          <div key={`${fb.id}-${idx}`} className="flex-shrink-0 h-full flex">
+            <FeedbackCard fb={fb} />
+          </div>
+        ))}
+      </motion.div>
+    </div>
+  );
+}
+
+function FeedbackCard({ fb }: { fb: FeedbackEntry }) {
+  return (
+    <div
+      className="inline-block w-[400px] h-full shrink-0 p-8 rounded-3xl bg-white border border-slate-200/80 shadow-sm hover:shadow-xl hover:border-[#000080]/20 transition-all duration-300 relative group/card flex flex-col"
+    >
+      <div className="space-y-6 flex-1">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1">
+            {[1, 2, 3, 4, 5].map((s) => (
+              <Star
+                key={s}
+                className={`w-4 h-4 ${
+                  fb.rating >= s
+                    ? 'fill-yellow-400 text-yellow-400'
+                    : 'text-slate-200'
+                }`}
+              />
+            ))}
+          </div>
+          <Quote className="w-8 h-8 text-[#000080]/15 group-hover/card:text-[#000080]/30 transition-colors" />
+        </div>
+
+        <p className="text-slate-700 text-base leading-relaxed italic font-serif whitespace-normal">
+          "{fb.comment}"
+        </p>
+      </div>
+
+      <div className="flex items-center gap-4 pt-6 mt-6 border-t border-slate-100">
+        {fb.image ? (
+          <img
+            src={fb.image}
+            alt={fb.customerName}
+            className="w-12 h-12 rounded-full object-cover border-2 border-[#000080]/30"
+          />
+        ) : (
+          <div className="w-12 h-12 rounded-full bg-[#000080]/10 text-[#000080] font-bold text-lg flex items-center justify-center border-2 border-[#000080]/20 uppercase">
+            {fb.customerName ? fb.customerName.charAt(0) : 'U'}
+          </div>
+        )}
+
+        <div className="overflow-hidden">
+          <h4 className="font-bold text-slate-900 text-base truncate">
+            {fb.customerName || 'Valued Client'}
+          </h4>
+          {fb.position ? (
+            <p className="text-xs text-slate-500 truncate">{fb.position}</p>
+          ) : (
+            <p className="text-xs text-slate-400 truncate">
+              {new Date(fb.createdAt).toLocaleDateString(undefined, {
+                month: 'short',
+                year: 'numeric',
+              })}
+            </p>
+          )}
+          {fb.link && (
+            <a
+              href={fb.link}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-1 inline-flex items-center gap-1 text-[11px] font-bold text-[#000080] hover:underline"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <ExternalLink className="w-3 h-3" />
+              Visit Link
+            </a>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function FeedbackSection({ isLiveEditing = false }: FeedbackSectionProps) {
   const { content } = useCMS();
   
   const feedbacks: FeedbackEntry[] = Array.isArray(content.feedback_submissions) 
     ? content.feedback_submissions 
     : [];
+
+  const feedbackConfig = content.feedback_config || { scrollSpeed: 40 };
+  const scrollSpeed = feedbackConfig.scrollSpeed || 40;
 
   // Filter ONLY feedbacks approved by admin to show on the website
   const approvedFeedbacks = feedbacks.filter(
@@ -53,86 +166,26 @@ export default function FeedbackSection({ isLiveEditing = false }: FeedbackSecti
           </Link>
         </div>
 
-        {/* Feedback Grid */}
+        {/* Feedback Marquee */}
         {approvedFeedbacks.length > 0 ? (
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {approvedFeedbacks.map((fb, idx) => (
-              <motion.div
-                key={fb.id || idx}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: idx * 0.1, duration: 0.5 }}
-                className="p-8 rounded-3xl bg-white border border-slate-200/80 shadow-sm hover:shadow-xl hover:border-[#000080]/20 transition-all duration-300 relative flex flex-col justify-between group"
-              >
-                <div className="space-y-6">
-                  <div className="flex items-center justify-between">
-                    {/* Star Rating */}
-                    <div className="flex items-center gap-1">
-                      {[1, 2, 3, 4, 5].map((s) => (
-                        <Star
-                          key={s}
-                          className={`w-4 h-4 ${
-                            fb.rating >= s
-                              ? 'fill-yellow-400 text-yellow-400'
-                              : 'text-slate-200'
-                          }`}
-                        />
-                      ))}
-                    </div>
-                    <Quote className="w-8 h-8 text-[#000080]/15 group-hover:text-[#000080]/30 transition-colors" />
-                  </div>
-
-                  {/* Comment */}
-                  <p className="text-slate-700 text-base leading-relaxed italic font-serif">
-                    "{fb.comment}"
-                  </p>
-                </div>
-
-                {/* Author Info */}
-                <div className="flex items-center gap-4 pt-6 mt-6 border-t border-slate-100">
-                  {fb.image ? (
-                    <img
-                      src={fb.image}
-                      alt={fb.customerName}
-                      className="w-12 h-12 rounded-full object-cover border-2 border-[#000080]/30"
-                    />
-                  ) : (
-                    <div className="w-12 h-12 rounded-full bg-[#000080]/10 text-[#000080] font-bold text-lg flex items-center justify-center border-2 border-[#000080]/20 uppercase">
-                      {fb.customerName ? fb.customerName.charAt(0) : 'U'}
-                    </div>
-                  )}
-
-                  <div className="overflow-hidden">
-                    <h4 className="font-bold text-slate-900 text-base truncate">
-                      {fb.customerName || 'Valued Client'}
-                    </h4>
-                    {fb.position ? (
-                      <p className="text-xs text-slate-500 truncate">{fb.position}</p>
-                    ) : (
-                      <p className="text-xs text-slate-400 truncate">
-                        {new Date(fb.createdAt).toLocaleDateString(undefined, {
-                          month: 'short',
-                          year: 'numeric',
-                        })}
-                      </p>
-                    )}
-                    {fb.link && (
-                      <a
-                        href={fb.link}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="mt-1 inline-flex items-center gap-1 text-[11px] font-bold text-[#000080] hover:underline"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <ExternalLink className="w-3 h-3" />
-                        Visit Link
-                      </a>
-                    )}
-                  </div>
-                </div>
-              </motion.div>
-            ))}
+          <div className="space-y-8 -mx-6 overflow-hidden">
+            {/* Row 1: Slide Left */}
+            <div className="h-full min-h-[320px]">
+              <MarqueeRow 
+                feedbacks={approvedFeedbacks.filter((_, idx) => idx % 2 === 0)} 
+                direction="left" 
+                speed={scrollSpeed}
+              />
+            </div>
+            
+            {/* Row 2: Slide Right */}
+            <div className="h-full min-h-[320px]">
+              <MarqueeRow 
+                feedbacks={approvedFeedbacks.filter((_, idx) => idx % 2 !== 0)} 
+                direction="right" 
+                speed={scrollSpeed + 5} // Slightly different for visual rhythm
+              />
+            </div>
           </div>
         ) : (
           /* Empty / Unapproved State */

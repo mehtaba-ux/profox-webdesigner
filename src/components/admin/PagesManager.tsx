@@ -87,21 +87,17 @@ function ImageUploaderButton({ value, onChange }: { value: string; onChange: (ur
         accept="image/*" 
         className="hidden" 
       />
-      <ConfirmButton 
-        type="button"
+      <button type="button"
         onClick={() => fileInputRef.current?.click()}
         disabled={uploading}
-        confirmTitle="Upload Media"
-        confirmMessage="Are you sure you want to open the file picker to upload media?"
         className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-xs font-bold transition-all flex items-center gap-1 shrink-0 h-8 self-end"
-        title="Upload Image"
-      >
+        title="Upload Image">
         {uploading ? (
           <Loader2 className="w-3.5 h-3.5 animate-spin text-[#000080]" />
         ) : (
           <Upload className="w-3.5 h-3.5" />
         )}
-      </ConfirmButton>
+      </button>
     </div>
   );
 }
@@ -225,7 +221,7 @@ export default function PagesManager({ pages, onSavePage, onDeletePage, onRestor
     const checks = [];
 
     // Check 1: Focus keyword set
-    if (kw.length > 0) {
+    if (kw.length> 0) {
       score += 10;
       checks.push({ label: 'Focus keyword specified', pass: true });
     } else {
@@ -266,7 +262,7 @@ export default function PagesManager({ pages, onSavePage, onDeletePage, onRestor
 
     // Check 6: Title length
     const titleLen = page.seo.metaTitle?.length || 0;
-    if (titleLen >= 30 && titleLen <= 65) {
+    if (titleLen>= 30 && titleLen <= 65) {
       score += 10;
       checks.push({ label: `Meta Title length optimal (${titleLen}/60 chars)`, pass: true });
     } else {
@@ -275,7 +271,7 @@ export default function PagesManager({ pages, onSavePage, onDeletePage, onRestor
 
     // Check 7: Meta Description length
     const descLen = page.seo.metaDescription?.length || 0;
-    if (descLen >= 100 && descLen <= 160) {
+    if (descLen>= 100 && descLen <= 160) {
       score += 10;
       checks.push({ label: `Meta Description length optimal (${descLen}/160 chars)`, pass: true });
     } else {
@@ -429,7 +425,7 @@ export default function PagesManager({ pages, onSavePage, onDeletePage, onRestor
     if (!selectedPage || !selectedPage.blocks) return;
     const blocks = [...selectedPage.blocks];
     const targetIndex = direction === 'up' ? index - 1 : index + 1;
-    if (targetIndex < 0 || targetIndex >= blocks.length) return;
+    if (targetIndex < 0 || targetIndex>= blocks.length) return;
 
     const temp = blocks[index];
     blocks[index] = blocks[targetIndex];
@@ -471,24 +467,22 @@ export default function PagesManager({ pages, onSavePage, onDeletePage, onRestor
 
           <div className="flex items-center gap-3 shrink-0">
             {onRestoreDefaults && (
-              <ConfirmButton
-                onClick={async () => {
+              <button onClick={async () => {
                   if (await confirmAction('Restore Standard Pages', 'Are you sure you want to restore and synchronize all standard pages (Pricing, About Us, Careers, Contact Us, Services, Policies)? Existing content will be preserved.')) {
                     await onRestoreDefaults();
                   }
                 }}
                 className="inline-flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold px-4 py-2.5 rounded-xl text-sm transition-all border border-slate-200"
-                title="Restore all standard pages if any are missing"
-              >
+                title="Restore all standard pages if any are missing">
                 <RefreshCw className="w-4 h-4" /> Restore Standard Pages
-              </ConfirmButton>
+              </button>
             )}
-            <ConfirmButton
+            <button 
               onClick={handleCreateNewPage}
               className="inline-flex items-center gap-2 bg-[#000080] hover:bg-[#000066] text-white font-bold px-5 py-2.5 rounded-xl text-sm transition-all shadow-lg hover:scale-[1.02]"
             >
               <Plus className="w-4 h-4" /> Add New Page
-            </ConfirmButton>
+            </button>
           </div>
         </div>
 
@@ -556,13 +550,13 @@ export default function PagesManager({ pages, onSavePage, onDeletePage, onRestor
                             <div className="w-16 bg-slate-100 h-2 rounded-full overflow-hidden">
                               <div 
                                 className={`h-full ${
-                                  score >= 80 ? 'bg-[#000066]' : score >= 50 ? 'bg-amber-400' : 'bg-red-400'
+                                  score>= 80 ? 'bg-[#000066]' : score>= 50 ? 'bg-amber-400' : 'bg-red-400'
                                 }`} 
                                 style={{ width: `${score}%` }}
                               />
                             </div>
                             <span className={`text-xs font-bold ${
-                              score >= 80 ? 'text-[#000080]' : score >= 50 ? 'text-amber-400' : 'text-red-400'
+                              score>= 80 ? 'text-[#000080]' : score>= 50 ? 'text-amber-400' : 'text-red-400'
                             }`}>
                               {score}/100
                             </span>
@@ -578,20 +572,23 @@ export default function PagesManager({ pages, onSavePage, onDeletePage, onRestor
                               target="_blank"
                               rel="noreferrer"
                               className="p-2 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
-                              title="View Page Live"
-                            >
+                              title="View Page Live">
                               <ExternalLink className="w-4 h-4" />
                             </a>
-                            <ConfirmButton
+                            <button 
                               onClick={() => handleEditPage(page)}
-                              className="inline-flex items-center gap-1 px-3 py-1.5 bg-slate-100 hover:bg-slate-700 text-slate-900 rounded-lg text-xs font-semibold transition-colors border border-slate-300"
+                              className="p-2 text-slate-500 hover:text-[#000080] hover:bg-slate-100 rounded-lg transition-colors flex items-center gap-1.5"
+                              title="Edit Page Content"
                             >
-                              <Edit3 className="w-3.5 h-3.5" /> Edit Page
-                            </ConfirmButton>
-                            <ConfirmButton
-                              onClick={() => handleDelete(page.id)}
-                              className="p-2 text-red-400 hover:bg-red-500/20 rounded-lg transition-colors"
-                              title="Delete Page"
+                              <Edit3 className="w-3.5 h-3.5" /> 
+                              <span className="text-[10px] font-bold">Edit</span>
+                            </button>
+                            <ConfirmButton 
+                              onConfirm={() => handleDelete(page.id)}
+                              confirmTitle="Delete Page"
+                              confirmMessage={`Are you sure you want to delete "${page.title}"? This cannot be undone.`}
+                              className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                              title="Move to Trash"
                             >
                               <Trash2 className="w-4 h-4" />
                             </ConfirmButton>
@@ -627,12 +624,9 @@ export default function PagesManager({ pages, onSavePage, onDeletePage, onRestor
       {/* Top Navigation & Action Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white border border-slate-200 p-4 rounded-2xl shadow-lg sticky top-20 z-30 backdrop-blur-md bg-opacity-95">
         <div className="flex items-center gap-3">
-          <ConfirmButton
-            onClick={() => setIsEditing(false)}
-            className="p-2 bg-slate-100 hover:bg-slate-700 text-slate-700 hover:text-slate-900 rounded-xl transition-colors border border-slate-300"
-          >
+          <button>
             <ArrowLeft className="w-4 h-4" />
-          </ConfirmButton>
+          </button>
           <div>
             <div className="flex items-center gap-2">
               <span className="text-xs text-slate-500">Editing Page:</span>
@@ -655,16 +649,14 @@ export default function PagesManager({ pages, onSavePage, onDeletePage, onRestor
             href={getPagePath(selectedPage)}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex items-center gap-1.5 bg-slate-100 hover:bg-slate-700 text-slate-800 border border-slate-300 px-4 py-2 rounded-xl text-xs font-bold transition-all"
-          >
+            className="inline-flex items-center gap-1.5 bg-slate-100 hover:bg-slate-700 text-slate-800 border border-slate-300 px-4 py-2 rounded-xl text-xs font-bold transition-all">
             <Eye className="w-3.5 h-3.5" /> Live Preview
           </a>
 
-          <ConfirmButton
+          <button 
             onClick={handleSave}
             disabled={saving}
-            className="inline-flex items-center gap-1.5 bg-[#000080] hover:bg-[#000066] disabled:bg-slate-400 text-white font-bold px-6 py-2 rounded-xl text-xs transition-all shadow-lg hover:scale-[1.02] disabled:cursor-not-allowed min-w-[120px] justify-center"
-          >
+            className="inline-flex items-center gap-1.5 bg-[#000080] hover:bg-[#000066] disabled:bg-slate-400 text-white font-bold px-6 py-2 rounded-xl text-xs transition-all shadow-lg hover:scale-[1.02] disabled:cursor-not-allowed min-w-[120px] justify-center">
             {saving ? (
               <>
                 <RefreshCw className="w-3.5 h-3.5 animate-spin" />
@@ -681,7 +673,7 @@ export default function PagesManager({ pages, onSavePage, onDeletePage, onRestor
                 <span>Save Changes</span>
               </>
             )}
-          </ConfirmButton>
+          </button>
         </div>
       </div>
 
@@ -692,64 +684,52 @@ export default function PagesManager({ pages, onSavePage, onDeletePage, onRestor
           <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xl">
             {/* Editor Tab Switcher */}
             <div className="flex border-b border-slate-200 bg-slate-50/60 p-1.5 gap-1 overflow-x-auto">
-              <ConfirmButton
-                onClick={() => setEditorTab('content')}
+              <button onClick={() => setEditorTab('content')}
                 className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-xl transition-all shrink-0 ${
                   editorTab === 'content' ? 'bg-[#000080] text-white shadow' : 'text-slate-500 hover:text-white hover:bg-slate-100'
-                }`}
-              >
+                }`}>
                 <Edit3 className="w-3.5 h-3.5" /> Page Content & Hero
-              </ConfirmButton>
+              </button>
               
               {!isServiceDetail && (
-                <ConfirmButton
-                  onClick={() => setEditorTab('blocks')}
+                <button onClick={() => setEditorTab('blocks')}
                   className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-xl transition-all shrink-0 ${
                     editorTab === 'blocks' ? 'bg-[#000080] text-white shadow' : 'text-slate-500 hover:text-white hover:bg-slate-100'
-                  }`}
-                >
+                  }`}>
                   <Layers className="w-3.5 h-3.5" /> Content Blocks ({selectedPage.blocks?.length || 0})
-                </ConfirmButton>
+                </button>
               )}
               {(isServiceDetail || bp || hasTemplate) && (
-                <ConfirmButton
-                  onClick={() => setEditorTab('template')}
+                <button onClick={() => setEditorTab('template')}
                   className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-xl transition-all shrink-0 ${
                     editorTab === 'template' ? 'bg-[#000080] text-white shadow' : 'text-slate-500 hover:text-white hover:bg-slate-100'
-                  }`}
-                >
+                  }`}>
                   <Layout className="w-3.5 h-3.5" /> Template Sections
-                </ConfirmButton>
+                </button>
               )}
-              <ConfirmButton
-                onClick={() => setEditorTab('seo')}
+              <button onClick={() => setEditorTab('seo')}
                 className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-xl transition-all shrink-0 ${
                   editorTab === 'seo' ? 'bg-[#000080] text-white shadow' : 'text-slate-500 hover:text-white hover:bg-slate-100'
-                }`}
-              >
+                }`}>
                 <Globe className="w-3.5 h-3.5" /> Google SEO & SERP
                 <span className={`px-1.5 py-0.2 text-[10px] rounded-full font-bold ${
-                  currentSeoScore >= 80 ? 'bg-[#000066]/20 text-[#000066]' : 'bg-amber-400/20 text-amber-300'
+                  currentSeoScore>= 80 ? 'bg-[#000066]/20 text-[#000066]' : 'bg-amber-400/20 text-amber-300'
                 }`}>
                   {currentSeoScore}%
                 </span>
-              </ConfirmButton>
-              <ConfirmButton
-                onClick={() => setEditorTab('social')}
+              </button>
+              <button onClick={() => setEditorTab('social')}
                 className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-xl transition-all shrink-0 ${
                   editorTab === 'social' ? 'bg-[#000080] text-white shadow' : 'text-slate-500 hover:text-white hover:bg-slate-100'
-                }`}
-              >
+                }`}>
                 <Share2 className="w-3.5 h-3.5" /> Social (OpenGraph)
-              </ConfirmButton>
-              <ConfirmButton
-                onClick={() => setEditorTab('schema')}
+              </button>
+              <button onClick={() => setEditorTab('schema')}
                 className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-xl transition-all shrink-0 ${
                   editorTab === 'schema' ? 'bg-[#000080] text-white shadow' : 'text-slate-500 hover:text-white hover:bg-slate-100'
-                }`}
-              >
+                }`}>
                 <Code className="w-3.5 h-3.5" /> Schema.org JSON
-              </ConfirmButton>
+              </button>
             </div>
 
             <div className="p-6">
@@ -819,8 +799,7 @@ export default function PagesManager({ pages, onSavePage, onDeletePage, onRestor
                             setEditorTab('content');
                           }
                         }}
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-[#000080]"
-                      >
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-[#000080]">
                         <option value="default">Default Page Template</option>
                         {blueprints.map((b: any) => (
                           <option key={b.id} value={b.id}>{b.name}</option>
@@ -926,136 +905,88 @@ export default function PagesManager({ pages, onSavePage, onDeletePage, onRestor
                           Click any block type below to insert new dynamic sections directly into this page.
                         </p>
                       </div>
-                      <ConfirmButton
-                        type="button"
-                        onClick={() => setEditorTab('blocks')}
-                        className="text-xs font-bold text-[#000080] hover:underline flex items-center gap-1"
-                      >
+                      <button>
                         <Layers className="w-3.5 h-3.5" /> Manage All ({selectedPage.blocks?.length || 0}) Blocks →
-                      </ConfirmButton>
+                      </button>
                     </div>
 
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5 pt-1">
-                      <ConfirmButton
-                        type="button"
-                        onClick={() => { addBlock('features'); setEditorTab('blocks'); }}
-                        className="p-3 bg-slate-50 hover:bg-slate-100/80 border border-slate-200 hover:border-[#000080]/50 rounded-xl text-left transition-all group"
-                      >
+                      <button>
                         <div className="flex items-center gap-2 text-[#000080] font-bold text-xs mb-1">
                           <Plus className="w-3.5 h-3.5 group-hover:scale-125 transition-transform" /> Features Grid
                         </div>
                         <p className="text-[10px] text-slate-500">Cards for key benefits</p>
-                      </ConfirmButton>
+                      </button>
 
-                      <ConfirmButton
-                        type="button"
-                        onClick={() => { addBlock('text'); setEditorTab('blocks'); }}
-                        className="p-3 bg-slate-50 hover:bg-slate-100/80 border border-slate-200 hover:border-[#000080]/50 rounded-xl text-left transition-all group"
-                      >
+                      <button>
                         <div className="flex items-center gap-2 text-[#000080] font-bold text-xs mb-1">
                           <AlignLeft className="w-3.5 h-3.5 group-hover:scale-125 transition-transform" /> Text & Media
                         </div>
                         <p className="text-[10px] text-slate-500">Two-column image text</p>
-                      </ConfirmButton>
+                      </button>
 
-                      <ConfirmButton
-                        type="button"
-                        onClick={() => { addBlock('image'); setEditorTab('blocks'); }}
-                        className="p-3 bg-slate-50 hover:bg-slate-100/80 border border-slate-200 hover:border-[#000080]/50 rounded-xl text-left transition-all group"
-                      >
+                      <button>
                         <div className="flex items-center gap-2 text-[#000080] font-bold text-xs mb-1">
                           <ImageIcon className="w-3.5 h-3.5 group-hover:scale-125 transition-transform" /> Image Banner
                         </div>
                         <p className="text-[10px] text-slate-500">Full-width visual banner</p>
-                      </ConfirmButton>
+                      </button>
 
-                      <ConfirmButton
-                        type="button"
-                        onClick={() => { addBlock('gallery'); setEditorTab('blocks'); }}
-                        className="p-3 bg-slate-50 hover:bg-slate-100/80 border border-slate-200 hover:border-[#000080]/50 rounded-xl text-left transition-all group"
-                      >
+                      <button>
                         <div className="flex items-center gap-2 text-[#000080] font-bold text-xs mb-1">
                           <Grid className="w-3.5 h-3.5 group-hover:scale-125 transition-transform" /> Photo Gallery
                         </div>
                         <p className="text-[10px] text-slate-500">High-res image showcase</p>
-                      </ConfirmButton>
+                      </button>
 
-                      <ConfirmButton
-                        type="button"
-                        onClick={() => { addBlock('quote'); setEditorTab('blocks'); }}
-                        className="p-3 bg-slate-50 hover:bg-slate-100/80 border border-slate-200 hover:border-[#000080]/50 rounded-xl text-left transition-all group"
-                      >
+                      <button>
                         <div className="flex items-center gap-2 text-[#000080] font-bold text-xs mb-1">
                           <MessageSquare className="w-3.5 h-3.5 group-hover:scale-125 transition-transform" /> Testimonial
                         </div>
                         <p className="text-[10px] text-slate-500">Quotes & review banner</p>
-                      </ConfirmButton>
+                      </button>
 
-                      <ConfirmButton
-                        type="button"
-                        onClick={() => { addBlock('cta'); setEditorTab('blocks'); }}
-                        className="p-3 bg-slate-50 hover:bg-slate-100/80 border border-slate-200 hover:border-[#000080]/50 rounded-xl text-left transition-all group"
-                      >
+                      <button>
                         <div className="flex items-center gap-2 text-[#000080] font-bold text-xs mb-1">
                           <Zap className="w-3.5 h-3.5 group-hover:scale-125 transition-transform" /> Call To Action
                         </div>
                         <p className="text-[10px] text-slate-500">Action banner & button</p>
-                      </ConfirmButton>
+                      </button>
 
-                      <ConfirmButton
-                        type="button"
-                        onClick={() => { addBlock('faq'); setEditorTab('blocks'); }}
-                        className="p-3 bg-slate-50 hover:bg-slate-100/80 border border-slate-200 hover:border-[#000080]/50 rounded-xl text-left transition-all group"
-                      >
+                      <button>
                         <div className="flex items-center gap-2 text-[#000080] font-bold text-xs mb-1">
                           <HelpCircle className="w-3.5 h-3.5 group-hover:scale-125 transition-transform" /> FAQ Accordion
                         </div>
                         <p className="text-[10px] text-slate-500">Questions & answers</p>
-                      </ConfirmButton>
+                      </button>
 
-                      <ConfirmButton
-                        type="button"
-                        onClick={() => { addBlock('pricing'); setEditorTab('blocks'); }}
-                        className="p-3 bg-slate-50 hover:bg-slate-100/80 border border-slate-200 hover:border-[#000080]/50 rounded-xl text-left transition-all group"
-                      >
+                      <button>
                         <div className="flex items-center gap-2 text-[#000080] font-bold text-xs mb-1">
                           <DollarSign className="w-3.5 h-3.5 group-hover:scale-125 transition-transform" /> Pricing Plans
                         </div>
                         <p className="text-[10px] text-slate-500">Tiered pricing tables</p>
-                      </ConfirmButton>
+                      </button>
 
-                      <ConfirmButton
-                        type="button"
-                        onClick={() => { addBlock('team'); setEditorTab('blocks'); }}
-                        className="p-3 bg-slate-50 hover:bg-slate-100/80 border border-slate-200 hover:border-[#000080]/50 rounded-xl text-left transition-all group"
-                      >
+                      <button>
                         <div className="flex items-center gap-2 text-[#000080] font-bold text-xs mb-1">
                           <Users className="w-3.5 h-3.5 group-hover:scale-125 transition-transform" /> Team Members
                         </div>
                         <p className="text-[10px] text-slate-500">Profiles & bios</p>
-                      </ConfirmButton>
+                      </button>
 
-                      <ConfirmButton
-                        type="button"
-                        onClick={() => { addBlock('stats'); setEditorTab('blocks'); }}
-                        className="p-3 bg-slate-50 hover:bg-slate-100/80 border border-slate-200 hover:border-[#000080]/50 rounded-xl text-left transition-all group"
-                      >
+                      <button>
                         <div className="flex items-center gap-2 text-[#000080] font-bold text-xs mb-1">
                           <BarChart2 className="w-3.5 h-3.5 group-hover:scale-125 transition-transform" /> Key Metrics
                         </div>
                         <p className="text-[10px] text-slate-500">Stats & achievements</p>
-                      </ConfirmButton>
+                      </button>
 
-                      <ConfirmButton
-                        type="button"
-                        onClick={() => { addBlock('video'); setEditorTab('blocks'); }}
-                        className="p-3 bg-slate-50 hover:bg-slate-100/80 border border-slate-200 hover:border-[#000080]/50 rounded-xl text-left transition-all group"
-                      >
+                      <button>
                         <div className="flex items-center gap-2 text-[#000080] font-bold text-xs mb-1">
                           <Video className="w-3.5 h-3.5 group-hover:scale-125 transition-transform" /> Video Embed
                         </div>
                         <p className="text-[10px] text-slate-500">YouTube / Vimeo player</p>
-                      </ConfirmButton>
+                      </button>
                     </div>
                   </div>
                 </>
@@ -1080,17 +1011,16 @@ export default function PagesManager({ pages, onSavePage, onDeletePage, onRestor
                   {/* Template Section Switcher */}
                   <div className="flex flex-wrap gap-2 p-1.5 bg-slate-100 rounded-xl border border-slate-200">
                     {['Hero', 'Value Prop', 'Evidence', 'Technical', 'Our Process', 'Conversion', 'Pricing', 'Dynamic Feeds'].map((tab) => (
-                      <ConfirmButton
-                        key={tab}
+                      <button key={tab}
                         onClick={() => setTemplateSubTab(tab)}
                         className={`px-4 py-2 text-xs font-bold rounded-lg transition-all ${
                           templateSubTab === tab 
                             ? 'bg-[#000080] text-white shadow-sm' 
                             : 'text-slate-500 hover:text-slate-900'
                         }`}
-                      >
+                     >
                         {tab}
-                      </ConfirmButton>
+                      </button>
                     ))}
                   </div>
 
@@ -1223,23 +1153,18 @@ export default function PagesManager({ pages, onSavePage, onDeletePage, onRestor
                                         updateData({ ...data, subnav: next });
                                       }}
                                     />
-                                    <ConfirmButton 
-                                      onClick={() => {
+                                    <button onClick={() => {
                                         const next = (data.subnav || []).filter((_: any, i: number) => i !== idx);
                                         updateData({ ...data, subnav: next });
                                       }}
-                                      className="p-1.5 text-red-400 hover:bg-red-50 rounded"
-                                    >
+                                      className="p-1.5 text-red-400 hover:bg-red-50 rounded">
                                       <Trash2 className="w-3.5 h-3.5" />
-                                    </ConfirmButton>
+                                    </button>
                                   </div>
                                 ))}
-                                <ConfirmButton 
-                                  onClick={() => updateData({ ...data, subnav: [...(data.subnav || []), { label: 'New Link', id: 'section' }] })}
-                                  className="text-[10px] font-bold text-[#000080] hover:underline flex items-center gap-1 mt-2"
-                                >
+                                <button>
                                   <Plus className="w-3 h-3" /> Add Navigation Link
-                                </ConfirmButton>
+                                </button>
                               </div>
                             </div>
                           </div>
@@ -1331,15 +1256,13 @@ export default function PagesManager({ pages, onSavePage, onDeletePage, onRestor
                               <div className="grid grid-cols-1 gap-4">
                                 {(data.howWeHelp || []).map((item: any, idx: number) => (
                                   <div key={idx} className="bg-slate-50 border border-slate-200 rounded-xl p-4 relative group">
-                                    <ConfirmButton 
-                                      onClick={() => {
+                                    <button onClick={() => {
                                         const next = (data.howWeHelp || []).filter((_: any, i: number) => i !== idx);
                                         updateData({ ...data, howWeHelp: next });
                                       }}
-                                      className="absolute top-2 right-2 p-1 text-slate-300 hover:text-red-500 transition-colors"
-                                    >
+                                      className="absolute top-2 right-2 p-1 text-slate-300 hover:text-red-500 transition-colors">
                                       <Trash2 className="w-4 h-4" />
-                                    </ConfirmButton>
+                                    </button>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                       <div>
                                         <input 
@@ -1403,39 +1326,32 @@ export default function PagesManager({ pages, onSavePage, onDeletePage, onRestor
                                                   updateData({ ...data, howWeHelp: next });
                                                 }}
                                               />
-                                              <ConfirmButton 
-                                                onClick={() => {
+                                              <button onClick={() => {
                                                   const next = [...data.howWeHelp];
                                                   next[idx].features = next[idx].features.filter((_: any, i: number) => i !== fidx);
                                                   updateData({ ...data, howWeHelp: next });
                                                 }}
-                                                className="text-red-300 hover:text-red-500"
-                                              >
+                                                className="text-red-300 hover:text-red-500">
                                                 <Trash2 className="w-3 h-3" />
-                                              </ConfirmButton>
+                                              </button>
                                             </div>
                                           ))}
-                                          <ConfirmButton 
-                                            onClick={() => {
+                                          <button onClick={() => {
                                               const next = [...data.howWeHelp];
                                               next[idx].features = [...(next[idx].features || []), 'New feature point'];
                                               updateData({ ...data, howWeHelp: next });
                                             }}
-                                            className="text-[9px] font-bold text-[#000080] flex items-center gap-0.5"
-                                          >
+                                            className="text-[9px] font-bold text-[#000080] flex items-center gap-0.5">
                                             <Plus className="w-2.5 h-2.5" /> Add Point
-                                          </ConfirmButton>
+                                          </button>
                                         </div>
                                       </div>
                                     </div>
                                   </div>
                                 ))}
-                                <ConfirmButton 
-                                  onClick={() => updateData({ ...data, howWeHelp: [...(data.howWeHelp || []), { title: 'New Category', desc: 'Description', features: [], iconColor: 'bg-green-400' }] })}
-                                  className="w-full py-3 border-2 border-dashed border-slate-200 rounded-xl text-slate-400 hover:text-[#000080] hover:border-[#000080]/30 transition-all flex items-center justify-center gap-2 font-bold text-xs"
-                                >
+                                <button>
                                   <Plus className="w-4 h-4" /> Add Value Proposition Card
-                                </ConfirmButton>
+                                </button>
                               </div>
                             </div>
 
@@ -1609,17 +1525,14 @@ export default function PagesManager({ pages, onSavePage, onDeletePage, onRestor
                                         updateData({ ...data, challenges: next });
                                       }}
                                     />
-                                    <ConfirmButton onClick={() => updateData({ ...data, challenges: data.challenges.filter((_: any, i: number) => i !== idx) })} className="ml-1 text-slate-400 hover:text-red-500">
+                                    <button onClick={() => updateData({ ...data, challenges: data.challenges.filter((_: any, i: number) => i !== idx) })} className="ml-1 text-slate-400 hover:text-red-500">
                                       <Trash2 className="w-3 h-3" />
-                                    </ConfirmButton>
+                                    </button>
                                   </div>
                                 ))}
-                                <ConfirmButton 
-                                  onClick={() => updateData({ ...data, challenges: [...(data.challenges || []), 'New Challenge'] })}
-                                  className="px-3 py-1 border border-dashed border-slate-300 rounded-full text-[10px] font-bold text-slate-500 hover:border-[#000080]"
-                                >
+                                <button>
                                   + Add Item
-                                </ConfirmButton>
+                                </button>
                               </div>
                             </div>
 
@@ -1670,12 +1583,9 @@ export default function PagesManager({ pages, onSavePage, onDeletePage, onRestor
                               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 {(data.caseStudies || []).map((cs: any, idx: number) => (
                                   <div key={idx} className="bg-slate-50 border border-slate-200 rounded-xl overflow-hidden group relative">
-                                    <ConfirmButton 
-                                      onClick={() => updateData({ ...data, caseStudies: data.caseStudies.filter((_: any, i: number) => i !== idx) })}
-                                      className="absolute top-2 right-2 z-10 bg-white/80 p-1.5 rounded-lg text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                                    >
+                                    <button>
                                       <Trash2 className="w-3.5 h-3.5" />
-                                    </ConfirmButton>
+                                    </button>
                                     <div className="aspect-video bg-slate-200">
                                       <img src={cs.image} className="w-full h-full object-cover" />
                                     </div>
@@ -1703,7 +1613,7 @@ export default function PagesManager({ pages, onSavePage, onDeletePage, onRestor
                                               updateData({ ...data, caseStudies: next });
                                             }
                                           }}
-                                        >
+                                       >
                                           <option value="">-- Choose testimonial / post --</option>
                                           {allPortfolioList.map((p: any) => (
                                             <option key={p.slug || p.id} value={p.slug || p.id}>
@@ -1759,12 +1669,9 @@ export default function PagesManager({ pages, onSavePage, onDeletePage, onRestor
                                     </div>
                                   </div>
                                 ))}
-                                <ConfirmButton 
-                                  onClick={() => updateData({ ...data, caseStudies: [...(data.caseStudies || []), { client: 'Client', title: 'Success Story', image: '' }] })}
-                                  className="aspect-video border-2 border-dashed border-slate-200 rounded-xl flex items-center justify-center text-slate-400 hover:text-[#000080]"
-                                >
+                                <button>
                                   <Plus className="w-6 h-6" />
-                                </ConfirmButton>
+                                </button>
                               </div>
                             </div>
 
@@ -1823,7 +1730,7 @@ export default function PagesManager({ pages, onSavePage, onDeletePage, onRestor
                                               next[idx] = { ...next[idx], icon: e.target.value };
                                               updateData({ ...data, awards: next });
                                             }}
-                                          >
+                                         >
                                             <option value="">No Icon</option>
                                             <option value="Sparkles">Sparkles</option>
                                             <option value="Monitor">Monitor</option>
@@ -1837,8 +1744,7 @@ export default function PagesManager({ pages, onSavePage, onDeletePage, onRestor
                                             <option value="Smartphone">Smartphone</option>
                                           </select>
                                         </div>
-                                        <ConfirmButton 
-                                          onClick={() => {
+                                        <button onClick={() => {
                                             const currentAwards = data.awards || [
                                               { text: 'CLUTCH', icon: 'Sparkles' },
                                               { text: 'DESIGNRUSH', icon: 'Monitor' },
@@ -1846,10 +1752,9 @@ export default function PagesManager({ pages, onSavePage, onDeletePage, onRestor
                                             ];
                                             updateData({ ...data, awards: currentAwards.filter((_: any, i: number) => i !== idx) });
                                           }} 
-                                          className="p-1.5 text-slate-400 hover:text-red-500 rounded-lg mt-4 sm:mt-0 self-end sm:self-center shrink-0"
-                                        >
+                                          className="p-1.5 text-slate-400 hover:text-red-500 rounded-lg mt-4 sm:mt-0 self-end sm:self-center shrink-0">
                                           <Trash2 className="w-4 h-4" />
-                                        </ConfirmButton>
+                                        </button>
                                       </div>
                                       <div className="border-t border-slate-200/60 pt-3">
                                         <ImageUploader 
@@ -1868,8 +1773,7 @@ export default function PagesManager({ pages, onSavePage, onDeletePage, onRestor
                                       </div>
                                     </div>
                                   ))}
-                                  <ConfirmButton 
-                                    onClick={() => {
+                                  <button onClick={() => {
                                       const currentAwards = data.awards || [
                                         { text: 'CLUTCH', icon: 'Sparkles' },
                                         { text: 'DESIGNRUSH', icon: 'Monitor' },
@@ -1877,10 +1781,9 @@ export default function PagesManager({ pages, onSavePage, onDeletePage, onRestor
                                       ];
                                       updateData({ ...data, awards: [...currentAwards, { text: 'New Badge', icon: '', image: '' }] });
                                     }}
-                                    className="w-full py-2 border border-dashed border-slate-300 rounded-xl text-slate-500 hover:border-[#000080] transition-all flex items-center justify-center gap-2 font-bold text-xs"
-                                  >
+                                    className="w-full py-2 border border-dashed border-slate-300 rounded-xl text-slate-500 hover:border-[#000080] transition-all flex items-center justify-center gap-2 font-bold text-xs">
                                     <Plus className="w-4 h-4" /> Add Award/Badge
-                                  </ConfirmButton>
+                                  </button>
                                 </div>
                             </div>
                           </div>
@@ -1962,9 +1865,9 @@ export default function PagesManager({ pages, onSavePage, onDeletePage, onRestor
                                           updateData({ ...data, techStack: next });
                                         }}
                                       />
-                                      <ConfirmButton onClick={() => updateData({ ...data, techStack: data.techStack.filter((_: any, i: number) => i !== idx) })} className="text-red-400 hover:text-red-600">
+                                      <button onClick={() => updateData({ ...data, techStack: data.techStack.filter((_: any, i: number) => i !== idx) })} className="text-red-400 hover:text-red-600">
                                         <Trash2 className="w-3.5 h-3.5" />
-                                      </ConfirmButton>
+                                      </button>
                                     </div>
                                     <div className="space-y-3 w-full mt-3">
                                       <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Technologies & Logos</label>
@@ -1975,16 +1878,14 @@ export default function PagesManager({ pages, onSavePage, onDeletePage, onRestor
                                           const logoVal = isObj ? (iconItem.logo || '') : '';
                                           return (
                                             <div key={iidx} className="flex flex-col bg-white border border-slate-200 rounded-xl p-3 relative group hover:border-[#000080]/30 hover:shadow-sm transition-all">
-                                              <ConfirmButton 
-                                                onClick={() => {
+                                              <button onClick={() => {
                                                   const next = [...data.techStack];
                                                   next[idx].icons = next[idx].icons.filter((_: any, i: number) => i !== iidx);
                                                   updateData({ ...data, techStack: next });
                                                 }} 
-                                                className="absolute top-2 right-2 p-1 text-slate-300 hover:text-red-500 rounded-md hover:bg-slate-100 transition-all opacity-0 group-hover:opacity-100"
-                                              >
+                                                className="absolute top-2 right-2 p-1 text-slate-300 hover:text-red-500 rounded-md hover:bg-slate-100 transition-all opacity-0 group-hover:opacity-100">
                                                 <Trash2 className="w-3 h-3" />
-                                              </ConfirmButton>
+                                              </button>
                                               
                                               <div className="space-y-2">
                                                 <div>
@@ -2039,27 +1940,22 @@ export default function PagesManager({ pages, onSavePage, onDeletePage, onRestor
                                           );
                                         })}
                                         
-                                        <ConfirmButton 
-                                          onClick={() => {
+                                        <button onClick={() => {
                                             const next = [...data.techStack];
                                             next[idx].icons = [...(next[idx].icons || []), { name: 'New Tech', logo: '' }];
                                             updateData({ ...data, techStack: next });
                                           }}
-                                          className="border-2 border-dashed border-slate-200 rounded-xl p-4 text-slate-400 hover:text-[#000080] hover:border-[#000080]/30 transition-all flex flex-col items-center justify-center gap-1 min-h-[110px] bg-white hover:bg-slate-50/20 w-full"
-                                        >
+                                          className="border-2 border-dashed border-slate-200 rounded-xl p-4 text-slate-400 hover:text-[#000080] hover:border-[#000080]/30 transition-all flex flex-col items-center justify-center gap-1 min-h-[110px] bg-white hover:bg-slate-50/20 w-full">
                                           <Plus className="w-5 h-5 text-slate-300" />
                                           <span className="text-[11px] font-bold">Add Tech & Logo</span>
-                                        </ConfirmButton>
+                                        </button>
                                       </div>
                                     </div>
                                   </div>
                                 ))}
-                                <ConfirmButton 
-                                  onClick={() => updateData({ ...data, techStack: [...(data.techStack || []), { category: 'New Category', icons: [] }] })}
-                                  className="w-full py-2 border border-dashed border-slate-300 rounded-lg text-[10px] font-bold text-slate-500 hover:border-[#000080]"
-                                >
+                                <button>
                                   + Add Stack Category
-                                </ConfirmButton>
+                                </button>
                               </div>
                             </div>
                           </div>
@@ -2110,8 +2006,7 @@ export default function PagesManager({ pages, onSavePage, onDeletePage, onRestor
                                   <h4 className="text-sm font-bold text-slate-900">Our Process Section Configuration</h4>
                                   <p className="text-xs text-slate-500">Manage the step-by-step methodology cards shown on your service pages.</p>
                                 </div>
-                                <ConfirmButton 
-                                  onClick={() => {
+                                <button onClick={() => {
                                     const defaultSteps = [
                                       {
                                         step: "01",
@@ -2148,10 +2043,9 @@ export default function PagesManager({ pages, onSavePage, onDeletePage, onRestor
                                     ];
                                     updateData({ ...data, processTitle: 'Our Process', processBadge: 'How We Deliver Success', ourProcess: defaultSteps, engagement: defaultSteps });
                                   }}
-                                  className="text-xs font-bold text-[#000080] bg-white border border-[#000080]/30 hover:bg-[#000080] hover:text-white px-3 py-1.5 rounded-lg transition-all"
-                                >
+                                  className="text-xs font-bold text-[#000080] bg-white border border-[#000080]/30 hover:bg-[#000080] hover:text-white px-3 py-1.5 rounded-lg transition-all">
                                   Reset to Standard 4 Steps
-                                </ConfirmButton>
+                                </button>
                               </div>
 
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -2180,7 +2074,7 @@ export default function PagesManager({ pages, onSavePage, onDeletePage, onRestor
                               <div>
                                 <div className="flex items-center justify-between mb-3">
                                   <label className="text-xs font-bold text-slate-800 uppercase tracking-wider">Process Steps ({processList.length})</label>
-                                  <ConfirmButton 
+                                  <button 
                                     onClick={() => {
                                       const nextNum = processList.length + 1;
                                       const newStep = {
@@ -2194,10 +2088,9 @@ export default function PagesManager({ pages, onSavePage, onDeletePage, onRestor
                                       const next = [...processList, newStep];
                                       updateData({ ...data, ourProcess: next, engagement: next });
                                     }}
-                                    className="text-xs font-bold text-white bg-[#000080] hover:bg-[#000066] px-3 py-1.5 rounded-lg flex items-center gap-1 shadow-sm"
-                                  >
+                                    className="text-xs font-bold text-white bg-[#000080] hover:bg-[#000066] px-3 py-1.5 rounded-lg flex items-center gap-1 shadow-sm">
                                     <Plus className="w-3.5 h-3.5" /> Add Step
-                                  </ConfirmButton>
+                                  </button>
                                 </div>
 
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -2218,16 +2111,14 @@ export default function PagesManager({ pages, onSavePage, onDeletePage, onRestor
                                           />
                                           <span className="text-[10px] font-bold text-slate-400 uppercase">Step Number</span>
                                         </div>
-                                        <ConfirmButton 
-                                          onClick={() => {
+                                        <button onClick={() => {
                                             const next = processList.filter((_: any, i: number) => i !== idx);
                                             updateData({ ...data, ourProcess: next, engagement: next });
                                           }} 
                                           className="text-red-400 hover:text-red-600 p-1 transition-colors"
-                                          title="Delete step"
-                                        >
+                                          title="Delete step">
                                           <Trash2 className="w-4 h-4" />
-                                        </ConfirmButton>
+                                        </button>
                                       </div>
 
                                       <div>
@@ -2347,16 +2238,14 @@ export default function PagesManager({ pages, onSavePage, onDeletePage, onRestor
                                         />
                                         <span className="text-[10px] font-bold text-slate-400 uppercase">Step Number</span>
                                       </div>
-                                      <ConfirmButton 
-                                        onClick={() => {
+                                      <button onClick={() => {
                                           const next = processList.filter((_: any, i: number) => i !== idx);
                                           updateData({ ...data, ourProcess: next, engagement: next });
                                         }} 
                                         className="text-red-400 hover:text-red-600 p-1 transition-colors"
-                                        title="Delete step"
-                                      >
+                                        title="Delete step">
                                         <Trash2 className="w-4 h-4" />
-                                      </ConfirmButton>
+                                      </button>
                                     </div>
 
                                     <div>
@@ -2431,7 +2320,7 @@ export default function PagesManager({ pages, onSavePage, onDeletePage, onRestor
                                     />
                                   </div>
                                 ))}
-                                <ConfirmButton 
+                                <button 
                                   onClick={() => {
                                     const nextNum = processList.length + 1;
                                     const newStep = {
@@ -2445,11 +2334,10 @@ export default function PagesManager({ pages, onSavePage, onDeletePage, onRestor
                                     const next = [...processList, newStep];
                                     updateData({ ...data, ourProcess: next, engagement: next });
                                   }}
-                                  className="border-2 border-dashed border-slate-300 rounded-xl flex flex-col items-center justify-center text-slate-400 hover:text-[#000080] hover:border-[#000080] transition-colors min-h-[220px] p-4 gap-2 bg-slate-50/50"
-                                >
+                                  className="border-2 border-dashed border-slate-300 rounded-xl flex flex-col items-center justify-center text-slate-400 hover:text-[#000080] hover:border-[#000080] transition-colors min-h-[220px] p-4 gap-2 bg-slate-50/50">
                                   <Plus className="w-8 h-8" />
                                   <span className="text-xs font-bold">+ Add Process Step</span>
-                                </ConfirmButton>
+                                </button>
                               </div>
                             </div>
 
@@ -2519,9 +2407,9 @@ export default function PagesManager({ pages, onSavePage, onDeletePage, onRestor
                                           updateData({ ...data, faqs: next });
                                         }}
                                       />
-                                      <ConfirmButton onClick={() => updateData({ ...data, faqs: data.faqs.filter((_: any, i: number) => i !== idx) })} className="text-red-400">
+                                      <button onClick={() => updateData({ ...data, faqs: data.faqs.filter((_: any, i: number) => i !== idx) })} className="text-red-400">
                                         <Trash2 className="w-3.5 h-3.5" />
-                                      </ConfirmButton>
+                                      </button>
                                     </div>
                                     <textarea 
                                       placeholder="Detailed Answer"
@@ -2539,12 +2427,9 @@ export default function PagesManager({ pages, onSavePage, onDeletePage, onRestor
                                     />
                                   </div>
                                 ))}
-                                <ConfirmButton 
-                                  onClick={() => updateData({ ...data, faqs: [...(data.faqs || []), { question: 'New Question', answer: 'New Answer' }] })}
-                                  className="w-full py-2 border border-dashed border-slate-300 rounded-lg text-[10px] font-bold text-slate-500"
-                                >
+                                <button>
                                   + Add FAQ Entry
-                                </ConfirmButton>
+                                </button>
                               </div>
                             </div>
 
@@ -2596,12 +2481,9 @@ export default function PagesManager({ pages, onSavePage, onDeletePage, onRestor
                               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                 {(data.pricing || []).map((plan: any, idx: number) => (
                                   <div key={idx} className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3 relative group">
-                                    <ConfirmButton 
-                                      onClick={() => updateData({ ...data, pricing: data.pricing.filter((_: any, i: number) => i !== idx) })}
-                                      className="absolute top-2 right-2 text-slate-300 hover:text-red-500 transition-colors"
-                                    >
+                                    <button>
                                       <Trash2 className="w-3.5 h-3.5" />
-                                    </ConfirmButton>
+                                    </button>
                                     <input 
                                       type="text" 
                                       placeholder="Plan Name"
@@ -2651,32 +2533,27 @@ export default function PagesManager({ pages, onSavePage, onDeletePage, onRestor
                                               updateData({ ...data, pricing: next });
                                             }}
                                           />
-                                          <ConfirmButton onClick={() => {
+                                          <button onClick={() => {
                                             const next = [...data.pricing];
                                             next[idx].features = next[idx].features.filter((_: any, i: number) => i !== fidx);
                                             updateData({ ...data, pricing: next });
-                                          }} className="text-red-300 hover:text-red-500"><Trash2 className="w-3 h-3" /></ConfirmButton>
+                                          }} className="text-red-300 hover:text-red-500"><Trash2 className="w-3 h-3" /></button>
                                         </div>
                                       ))}
-                                      <ConfirmButton 
-                                        onClick={() => {
+                                      <button onClick={() => {
                                           const next = [...data.pricing];
                                           next[idx].features = [...(next[idx].features || []), 'New feature'];
                                           updateData({ ...data, pricing: next });
                                         }}
-                                        className="text-[9px] font-bold text-[#000080]"
-                                      >
+                                        className="text-[9px] font-bold text-[#000080]">
                                         + Add Feature
-                                      </ConfirmButton>
+                                      </button>
                                     </div>
                                   </div>
                                 ))}
-                                <ConfirmButton 
-                                  onClick={() => updateData({ ...data, pricing: [...(data.pricing || []), { name: 'Growth', price: '4,999', period: 'project', features: ['Dedicated Team'] }] })}
-                                  className="border-2 border-dashed border-slate-200 rounded-xl flex items-center justify-center p-6 text-slate-400 hover:text-[#000080]"
-                                >
+                                <button>
                                   <Plus className="w-6 h-6" />
-                                </ConfirmButton>
+                                </button>
                               </div>
                             </div>
                           </div>
@@ -2746,16 +2623,14 @@ export default function PagesManager({ pages, onSavePage, onDeletePage, onRestor
                   <div className="bg-slate-900 rounded-2xl p-4 overflow-hidden border border-slate-800">
                     <div className="flex items-center justify-between mb-2">
                       <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Raw Advanced JSON Config</label>
-                      <ConfirmButton 
-                        onClick={() => {
+                      <button onClick={() => {
                           const data = selectedPage.serviceDetailData;
                           const json = JSON.stringify(data, null, 2);
                           navigator.clipboard.writeText(json);
                         }}
-                        className="text-[10px] text-slate-400 hover:text-white flex items-center gap-1"
-                      >
+                        className="text-[10px] text-slate-400 hover:text-white flex items-center gap-1">
                         <Copy className="w-3 h-3" /> Copy Config
-                      </ConfirmButton>
+                      </button>
                     </div>
                     <textarea
                       rows={5}
@@ -2782,72 +2657,39 @@ export default function PagesManager({ pages, onSavePage, onDeletePage, onRestor
 
                     {/* Block Type Creator Buttons */}
                     <div className="flex items-center gap-2 flex-wrap pt-2">
-                      <ConfirmButton
-                        onClick={() => addBlock('features')}
-                        className="px-3 py-1.5 bg-slate-100 hover:bg-slate-700 text-slate-800 border border-slate-300 rounded-xl text-xs font-semibold flex items-center gap-1.5 hover:border-[#000080]/50 transition-all"
-                      >
+                      <button>
                         <Plus className="w-3.5 h-3.5 text-[#000080]" /> Features Grid
-                      </ConfirmButton>
-                      <ConfirmButton
-                        onClick={() => addBlock('text')}
-                        className="px-3 py-1.5 bg-slate-100 hover:bg-slate-700 text-slate-800 border border-slate-300 rounded-xl text-xs font-semibold flex items-center gap-1.5 hover:border-[#000080]/50 transition-all"
-                      >
+                      </button>
+                      <button>
                         <AlignLeft className="w-3.5 h-3.5 text-[#000080]" /> Text & Media
-                      </ConfirmButton>
-                      <ConfirmButton
-                        onClick={() => addBlock('image')}
-                        className="px-3 py-1.5 bg-slate-100 hover:bg-slate-700 text-slate-800 border border-slate-300 rounded-xl text-xs font-semibold flex items-center gap-1.5 hover:border-[#000080]/50 transition-all"
-                      >
+                      </button>
+                      <button>
                         <ImageIcon className="w-3.5 h-3.5 text-[#000080]" /> Image Banner
-                      </ConfirmButton>
-                      <ConfirmButton
-                        onClick={() => addBlock('gallery')}
-                        className="px-3 py-1.5 bg-slate-100 hover:bg-slate-700 text-slate-800 border border-slate-300 rounded-xl text-xs font-semibold flex items-center gap-1.5 hover:border-[#000080]/50 transition-all"
-                      >
+                      </button>
+                      <button>
                         <Grid className="w-3.5 h-3.5 text-[#000080]" /> Photo Gallery
-                      </ConfirmButton>
-                      <ConfirmButton
-                        onClick={() => addBlock('quote')}
-                        className="px-3 py-1.5 bg-slate-100 hover:bg-slate-700 text-slate-800 border border-slate-300 rounded-xl text-xs font-semibold flex items-center gap-1.5 hover:border-[#000080]/50 transition-all"
-                      >
+                      </button>
+                      <button>
                         <MessageSquare className="w-3.5 h-3.5 text-[#000080]" /> Testimonial Quote
-                      </ConfirmButton>
-                      <ConfirmButton
-                        onClick={() => addBlock('cta')}
-                        className="px-3 py-1.5 bg-slate-100 hover:bg-slate-700 text-slate-800 border border-slate-300 rounded-xl text-xs font-semibold flex items-center gap-1.5 hover:border-[#000080]/50 transition-all"
-                      >
+                      </button>
+                      <button>
                         <Zap className="w-3.5 h-3.5 text-[#000080]" /> Call To Action
-                      </ConfirmButton>
-                      <ConfirmButton
-                        onClick={() => addBlock('faq')}
-                        className="px-3 py-1.5 bg-slate-100 hover:bg-slate-700 text-slate-800 border border-slate-300 rounded-xl text-xs font-semibold flex items-center gap-1.5 hover:border-[#000080]/50 transition-all"
-                      >
+                      </button>
+                      <button>
                         <HelpCircle className="w-3.5 h-3.5 text-[#000080]" /> FAQ Accordion
-                      </ConfirmButton>
-                      <ConfirmButton
-                        onClick={() => addBlock('pricing')}
-                        className="px-3 py-1.5 bg-slate-100 hover:bg-slate-700 text-slate-800 border border-slate-300 rounded-xl text-xs font-semibold flex items-center gap-1.5 hover:border-[#000080]/50 transition-all"
-                      >
+                      </button>
+                      <button>
                         <DollarSign className="w-3.5 h-3.5 text-[#000080]" /> Pricing Plans
-                      </ConfirmButton>
-                      <ConfirmButton
-                        onClick={() => addBlock('team')}
-                        className="px-3 py-1.5 bg-slate-100 hover:bg-slate-700 text-slate-800 border border-slate-300 rounded-xl text-xs font-semibold flex items-center gap-1.5 hover:border-[#000080]/50 transition-all"
-                      >
+                      </button>
+                      <button>
                         <Users className="w-3.5 h-3.5 text-[#000080]" /> Team Members
-                      </ConfirmButton>
-                      <ConfirmButton
-                        onClick={() => addBlock('stats')}
-                        className="px-3 py-1.5 bg-slate-100 hover:bg-slate-700 text-slate-800 border border-slate-300 rounded-xl text-xs font-semibold flex items-center gap-1.5 hover:border-[#000080]/50 transition-all"
-                      >
+                      </button>
+                      <button>
                         <BarChart2 className="w-3.5 h-3.5 text-[#000080]" /> Key Metrics
-                      </ConfirmButton>
-                      <ConfirmButton
-                        onClick={() => addBlock('video')}
-                        className="px-3 py-1.5 bg-slate-100 hover:bg-slate-700 text-slate-800 border border-slate-300 rounded-xl text-xs font-semibold flex items-center gap-1.5 hover:border-[#000080]/50 transition-all"
-                      >
+                      </button>
+                      <button>
                         <Video className="w-3.5 h-3.5 text-[#000080]" /> Video Embed
-                      </ConfirmButton>
+                      </button>
                     </div>
                   </div>
 
@@ -2874,40 +2716,32 @@ export default function PagesManager({ pages, onSavePage, onDeletePage, onRestor
 
                             {/* Control Actions: Move Up, Move Down, Duplicate, Delete */}
                             <div className="flex items-center gap-1">
-                              <ConfirmButton
-                                type="button"
+                              <button type="button"
                                 onClick={() => moveBlock(index, 'up')}
                                 disabled={index === 0}
                                 className="p-1.5 text-slate-500 hover:text-slate-900 hover:bg-white rounded-lg disabled:opacity-30 disabled:hover:bg-transparent"
-                                title="Move Block Up"
-                              >
+                                title="Move Block Up">
                                 <ArrowUp className="w-4 h-4" />
-                              </ConfirmButton>
-                              <ConfirmButton
-                                type="button"
+                              </button>
+                              <button type="button"
                                 onClick={() => moveBlock(index, 'down')}
                                 disabled={index === (selectedPage.blocks?.length || 0) - 1}
                                 className="p-1.5 text-slate-500 hover:text-slate-900 hover:bg-white rounded-lg disabled:opacity-30 disabled:hover:bg-transparent"
-                                title="Move Block Down"
-                              >
+                                title="Move Block Down">
                                 <ArrowDown className="w-4 h-4" />
-                              </ConfirmButton>
-                              <ConfirmButton
-                                type="button"
+                              </button>
+                              <button type="button"
                                 onClick={() => duplicateBlock(index)}
                                 className="p-1.5 text-slate-500 hover:text-slate-900 hover:bg-white rounded-lg"
-                                title="Duplicate Block"
-                              >
+                                title="Duplicate Block">
                                 <Copy className="w-4 h-4" />
-                              </ConfirmButton>
-                              <ConfirmButton
-                                type="button"
+                              </button>
+                              <button type="button"
                                 onClick={() => removeBlock(block.id)}
                                 className="p-1.5 text-red-400 hover:bg-red-500/10 rounded-lg transition-colors ml-1"
-                                title="Delete Block"
-                              >
+                                title="Delete Block">
                                 <Trash2 className="w-4 h-4" />
-                              </ConfirmButton>
+                              </button>
                             </div>
                           </div>
 
@@ -3014,8 +2848,7 @@ export default function PagesManager({ pages, onSavePage, onDeletePage, onRestor
                                     updated[index].bgColor = e.target.value as any;
                                     setSelectedPage({ ...selectedPage, blocks: updated });
                                   }}
-                                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900"
-                                >
+                                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900">
                                   <option value="emerald font-bold">Emerald Teal Gradient</option>
                                   <option value="dark">Slate Dark</option>
                                   <option value="light">Clean Light Gray</option>
@@ -3029,18 +2862,16 @@ export default function PagesManager({ pages, onSavePage, onDeletePage, onRestor
                             <div className="space-y-3 pt-2 border-t border-slate-200/80">
                               <div className="flex items-center justify-between">
                                 <label className="block text-xs font-bold text-slate-700">Gallery Photos ({(block.images || []).length})</label>
-                                <ConfirmButton
-                                  type="button"
+                                <button type="button"
                                   onClick={() => {
                                     const updated = [...(selectedPage.blocks || [])];
                                     const currentImages = updated[index].images || [];
                                     updated[index].images = [...currentImages, 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&q=80&w=800'];
                                     setSelectedPage({ ...selectedPage, blocks: updated });
                                   }}
-                                  className="px-2.5 py-1 bg-slate-100 hover:bg-slate-700 text-xs font-bold text-[#000080] rounded-lg flex items-center gap-1"
-                                >
+                                  className="px-2.5 py-1 bg-slate-100 hover:bg-slate-700 text-xs font-bold text-[#000080] rounded-lg flex items-center gap-1">
                                   <Plus className="w-3 h-3" /> Add Image
-                                </ConfirmButton>
+                                </button>
                               </div>
                               <div className="space-y-3">
                                 {(block.images || []).map((imgUrl, imgIdx) => (
@@ -3067,18 +2898,16 @@ export default function PagesManager({ pages, onSavePage, onDeletePage, onRestor
                             <div className="space-y-3 pt-2 border-t border-slate-200/80">
                               <div className="flex items-center justify-between">
                                 <label className="block text-xs font-bold text-slate-700">Feature Items ({(block.items || []).length})</label>
-                                <ConfirmButton
-                                  type="button"
+                                <button type="button"
                                   onClick={() => {
                                     const updated = [...(selectedPage.blocks || [])];
                                     const current = updated[index].items || [];
                                     updated[index].items = [...current, { title: 'New Feature', description: 'Feature description details.', icon: 'sparkles' }];
                                     setSelectedPage({ ...selectedPage, blocks: updated });
                                   }}
-                                  className="px-2.5 py-1 bg-slate-100 hover:bg-slate-700 text-xs font-bold text-[#000080] rounded-lg flex items-center gap-1"
-                                >
+                                  className="px-2.5 py-1 bg-slate-100 hover:bg-slate-700 text-xs font-bold text-[#000080] rounded-lg flex items-center gap-1">
                                   <Plus className="w-3 h-3" /> Add Item
-                                </ConfirmButton>
+                                </button>
                               </div>
 
                               <div className="space-y-2">
@@ -3086,17 +2915,15 @@ export default function PagesManager({ pages, onSavePage, onDeletePage, onRestor
                                   <div key={itemIdx} className="bg-white p-3 rounded-xl border border-slate-200 space-y-2">
                                     <div className="flex items-center justify-between">
                                       <span className="text-[11px] font-bold text-slate-500">Feature #{itemIdx + 1}</span>
-                                      <ConfirmButton
-                                        type="button"
+                                      <button type="button"
                                         onClick={() => {
                                           const updated = [...(selectedPage.blocks || [])];
                                           updated[index].items = updated[index].items?.filter((_, i) => i !== itemIdx);
                                           setSelectedPage({ ...selectedPage, blocks: updated });
                                         }}
-                                        className="text-red-400 text-[10px] hover:underline"
-                                      >
+                                        className="text-red-400 text-[10px] hover:underline">
                                         Remove
-                                      </ConfirmButton>
+                                      </button>
                                     </div>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                                       <input
@@ -3137,18 +2964,16 @@ export default function PagesManager({ pages, onSavePage, onDeletePage, onRestor
                             <div className="space-y-3 pt-2 border-t border-slate-200/80">
                               <div className="flex items-center justify-between">
                                 <label className="block text-xs font-bold text-slate-700">FAQ Questions ({(block.items || []).length})</label>
-                                <ConfirmButton
-                                  type="button"
+                                <button type="button"
                                   onClick={() => {
                                     const updated = [...(selectedPage.blocks || [])];
                                     const current = updated[index].items || [];
                                     updated[index].items = [...current, { title: 'Question phrase here?', description: 'Answer explanation goes here.' }];
                                     setSelectedPage({ ...selectedPage, blocks: updated });
                                   }}
-                                  className="px-2.5 py-1 bg-slate-100 hover:bg-slate-700 text-xs font-bold text-[#000080] rounded-lg flex items-center gap-1"
-                                >
+                                  className="px-2.5 py-1 bg-slate-100 hover:bg-slate-700 text-xs font-bold text-[#000080] rounded-lg flex items-center gap-1">
                                   <Plus className="w-3 h-3" /> Add Question
-                                </ConfirmButton>
+                                </button>
                               </div>
 
                               <div className="space-y-2">
@@ -3156,17 +2981,15 @@ export default function PagesManager({ pages, onSavePage, onDeletePage, onRestor
                                   <div key={itemIdx} className="bg-white p-3 rounded-xl border border-slate-200 space-y-2">
                                     <div className="flex items-center justify-between">
                                       <span className="text-[11px] font-bold text-slate-500">FAQ #{itemIdx + 1}</span>
-                                      <ConfirmButton
-                                        type="button"
+                                      <button type="button"
                                         onClick={() => {
                                           const updated = [...(selectedPage.blocks || [])];
                                           updated[index].items = updated[index].items?.filter((_, i) => i !== itemIdx);
                                           setSelectedPage({ ...selectedPage, blocks: updated });
                                         }}
-                                        className="text-red-400 text-[10px] hover:underline"
-                                      >
+                                        className="text-red-400 text-[10px] hover:underline">
                                         Remove
-                                      </ConfirmButton>
+                                      </button>
                                     </div>
                                     <input
                                       type="text"
@@ -3205,18 +3028,16 @@ export default function PagesManager({ pages, onSavePage, onDeletePage, onRestor
                             <div className="space-y-3 pt-2 border-t border-slate-200/80">
                               <div className="flex items-center justify-between">
                                 <label className="block text-xs font-bold text-slate-700">Pricing Tiers ({(block.items || []).length})</label>
-                                <ConfirmButton
-                                  type="button"
+                                <button type="button"
                                   onClick={() => {
                                     const updated = [...(selectedPage.blocks || [])];
                                     const current = updated[index].items || [];
                                     updated[index].items = [...current, { title: 'Pro Plan', price: '$299', description: 'Suitable for growing teams.', badge: '' }];
                                     setSelectedPage({ ...selectedPage, blocks: updated });
                                   }}
-                                  className="px-2.5 py-1 bg-slate-100 hover:bg-slate-700 text-xs font-bold text-[#000080] rounded-lg flex items-center gap-1"
-                                >
+                                  className="px-2.5 py-1 bg-slate-100 hover:bg-slate-700 text-xs font-bold text-[#000080] rounded-lg flex items-center gap-1">
                                   <Plus className="w-3 h-3" /> Add Tier
-                                </ConfirmButton>
+                                </button>
                               </div>
 
                               <div className="space-y-3">
@@ -3224,17 +3045,15 @@ export default function PagesManager({ pages, onSavePage, onDeletePage, onRestor
                                   <div key={itemIdx} className="bg-white p-3 rounded-xl border border-slate-200 space-y-2">
                                     <div className="flex items-center justify-between">
                                       <span className="text-[11px] font-bold text-slate-500">Plan Tier #{itemIdx + 1}</span>
-                                      <ConfirmButton
-                                        type="button"
+                                      <button type="button"
                                         onClick={() => {
                                           const updated = [...(selectedPage.blocks || [])];
                                           updated[index].items = updated[index].items?.filter((_, i) => i !== itemIdx);
                                           setSelectedPage({ ...selectedPage, blocks: updated });
                                         }}
-                                        className="text-red-400 text-[10px] hover:underline"
-                                      >
+                                        className="text-red-400 text-[10px] hover:underline">
                                         Remove
-                                      </ConfirmButton>
+                                      </button>
                                     </div>
                                     <div className="grid grid-cols-3 gap-2">
                                       <input
@@ -3301,18 +3120,16 @@ export default function PagesManager({ pages, onSavePage, onDeletePage, onRestor
                             <div className="space-y-3 pt-2 border-t border-slate-200/80">
                               <div className="flex items-center justify-between">
                                 <label className="block text-xs font-bold text-slate-700">Team Members ({(block.items || []).length})</label>
-                                <ConfirmButton
-                                  type="button"
+                                <button type="button"
                                   onClick={() => {
                                     const updated = [...(selectedPage.blocks || [])];
                                     const current = updated[index].items || [];
                                     updated[index].items = [...current, { title: 'Jane Doe', role: 'Lead Architect', description: 'Bio overview', image: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=400' }];
                                     setSelectedPage({ ...selectedPage, blocks: updated });
                                   }}
-                                  className="px-2.5 py-1 bg-slate-100 hover:bg-slate-700 text-xs font-bold text-[#000080] rounded-lg flex items-center gap-1"
-                                >
+                                  className="px-2.5 py-1 bg-slate-100 hover:bg-slate-700 text-xs font-bold text-[#000080] rounded-lg flex items-center gap-1">
                                   <Plus className="w-3 h-3" /> Add Member
-                                </ConfirmButton>
+                                </button>
                               </div>
 
                               <div className="space-y-3">
@@ -3320,17 +3137,15 @@ export default function PagesManager({ pages, onSavePage, onDeletePage, onRestor
                                   <div key={itemIdx} className="bg-white p-3 rounded-xl border border-slate-200 space-y-2">
                                     <div className="flex items-center justify-between">
                                       <span className="text-[11px] font-bold text-slate-500">Member #{itemIdx + 1}</span>
-                                      <ConfirmButton
-                                        type="button"
+                                      <button type="button"
                                         onClick={() => {
                                           const updated = [...(selectedPage.blocks || [])];
                                           updated[index].items = updated[index].items?.filter((_, i) => i !== itemIdx);
                                           setSelectedPage({ ...selectedPage, blocks: updated });
                                         }}
-                                        className="text-red-400 text-[10px] hover:underline"
-                                      >
+                                        className="text-red-400 text-[10px] hover:underline">
                                         Remove
-                                      </ConfirmButton>
+                                      </button>
                                     </div>
                                     <div className="grid grid-cols-2 gap-2">
                                       <input
@@ -3382,18 +3197,16 @@ export default function PagesManager({ pages, onSavePage, onDeletePage, onRestor
                             <div className="space-y-3 pt-2 border-t border-slate-200/80">
                               <div className="flex items-center justify-between">
                                 <label className="block text-xs font-bold text-slate-700">Key Stat Items ({(block.items || []).length})</label>
-                                <ConfirmButton
-                                  type="button"
+                                <button type="button"
                                   onClick={() => {
                                     const updated = [...(selectedPage.blocks || [])];
                                     const current = updated[index].items || [];
                                     updated[index].items = [...current, { statNumber: '100+', statLabel: 'Satisfied Enterprise Clients' }];
                                     setSelectedPage({ ...selectedPage, blocks: updated });
                                   }}
-                                  className="px-2.5 py-1 bg-slate-100 hover:bg-slate-700 text-xs font-bold text-[#000080] rounded-lg flex items-center gap-1"
-                                >
+                                  className="px-2.5 py-1 bg-slate-100 hover:bg-slate-700 text-xs font-bold text-[#000080] rounded-lg flex items-center gap-1">
                                   <Plus className="w-3 h-3" /> Add Stat
-                                </ConfirmButton>
+                                </button>
                               </div>
 
                               <div className="space-y-2">
@@ -3465,22 +3278,18 @@ export default function PagesManager({ pages, onSavePage, onDeletePage, onRestor
                         <Globe className="w-4 h-4 text-blue-400" /> Real-Time Google Search SERP Preview
                       </span>
                       <div className="flex bg-white rounded-lg p-1 border border-slate-200">
-                        <ConfirmButton
-                          onClick={() => setPreviewDevice('desktop')}
+                        <button onClick={() => setPreviewDevice('desktop')}
                           className={`px-2.5 py-1 text-[11px] font-semibold rounded ${
                             previewDevice === 'desktop' ? 'bg-blue-600 text-slate-900' : 'text-slate-500'
-                          }`}
-                        >
+                          }`}>
                           Desktop
-                        </ConfirmButton>
-                        <ConfirmButton
-                          onClick={() => setPreviewDevice('mobile')}
+                        </button>
+                        <button onClick={() => setPreviewDevice('mobile')}
                           className={`px-2.5 py-1 text-[11px] font-semibold rounded ${
                             previewDevice === 'mobile' ? 'bg-blue-600 text-slate-900' : 'text-slate-500'
-                          }`}
-                        >
+                          }`}>
                           Mobile
-                        </ConfirmButton>
+                        </button>
                       </div>
                     </div>
 
@@ -3690,8 +3499,7 @@ export default function PagesManager({ pages, onSavePage, onDeletePage, onRestor
                           ...selectedPage,
                           seo: { ...selectedPage.seo, schemaType: e.target.value as any }
                         })}
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-[#000080]"
-                      >
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-[#000080]">
                         <option value="WebPage">WebPage</option>
                         <option value="Article">Article</option>
                         <option value="Organization">Organization</option>
@@ -3744,8 +3552,7 @@ export default function PagesManager({ pages, onSavePage, onDeletePage, onRestor
                 <select
                   value={selectedPage.status}
                   onChange={(e) => setSelectedPage({ ...selectedPage, status: e.target.value as 'published' | 'draft' })}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-[#000080]"
-                >
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-[#000080]">
                   <option value="published">Published (Live on site)</option>
                   <option value="draft">Draft (Hidden from public)</option>
                 </select>
@@ -3756,11 +3563,10 @@ export default function PagesManager({ pages, onSavePage, onDeletePage, onRestor
                 <div>Updated: {selectedPage.updatedAt}</div>
               </div>
 
-              <ConfirmButton
+              <button 
                 onClick={handleSave}
                 disabled={saving}
-                className="w-full py-2.5 bg-[#000080] hover:bg-[#000066] disabled:bg-slate-400 text-white font-bold rounded-xl text-xs transition-colors shadow-lg flex items-center justify-center gap-2 mt-2 disabled:cursor-not-allowed"
-              >
+                className="w-full py-2.5 bg-[#000080] hover:bg-[#000066] disabled:bg-slate-400 text-white font-bold rounded-xl text-xs transition-colors shadow-lg flex items-center justify-center gap-2 mt-2 disabled:cursor-not-allowed">
                 {saving ? (
                   <>
                     <RefreshCw className="w-4 h-4 animate-spin" />
@@ -3777,7 +3583,7 @@ export default function PagesManager({ pages, onSavePage, onDeletePage, onRestor
                     <span>Save & Update Page</span>
                   </>
                 )}
-              </ConfirmButton>
+              </button>
             </div>
           </div>
 
@@ -3790,7 +3596,7 @@ export default function PagesManager({ pages, onSavePage, onDeletePage, onRestor
               </div>
               <div className="text-right">
                 <span className={`text-xl font-black ${
-                  currentSeoScore >= 80 ? 'text-[#000080]' : currentSeoScore >= 50 ? 'text-amber-400' : 'text-red-400'
+                  currentSeoScore>= 80 ? 'text-[#000080]' : currentSeoScore>= 50 ? 'text-amber-400' : 'text-red-400'
                 }`}>
                   {currentSeoScore}
                 </span>
@@ -3843,17 +3649,15 @@ export default function PagesManager({ pages, onSavePage, onDeletePage, onRestor
             href={getPagePath(selectedPage)}
             target="_blank"
             rel="noreferrer"
-            className="hidden sm:inline-flex items-center gap-1.5 bg-slate-100 hover:bg-slate-700 text-slate-800 border border-slate-300 px-3.5 py-2 rounded-xl text-xs font-bold transition-all"
-          >
+            className="hidden sm:inline-flex items-center gap-1.5 bg-slate-100 hover:bg-slate-700 text-slate-800 border border-slate-300 px-3.5 py-2 rounded-xl text-xs font-bold transition-all">
             <Eye className="w-3.5 h-3.5 text-[#000080]" /> Preview
           </a>
 
-          <ConfirmButton
+          <button 
             type="button"
             onClick={handleSave}
             disabled={saving}
-            className="px-5 py-2.5 bg-[#000080] hover:bg-[#000066] disabled:bg-slate-400 active:scale-95 text-white font-extrabold rounded-xl text-xs flex items-center gap-2 shadow-lg shadow-[#000080]/20 transition-all cursor-pointer disabled:cursor-not-allowed min-w-[120px] justify-center"
-          >
+            className="px-5 py-2.5 bg-[#000080] hover:bg-[#000066] disabled:bg-slate-400 active:scale-95 text-white font-extrabold rounded-xl text-xs flex items-center gap-2 shadow-lg shadow-[#000080]/20 transition-all cursor-pointer disabled:cursor-not-allowed min-w-[120px] justify-center">
             {saving ? (
               <>
                 <RefreshCw className="w-4 h-4 animate-spin" />
@@ -3870,7 +3674,7 @@ export default function PagesManager({ pages, onSavePage, onDeletePage, onRestor
                 <span>Save Page</span>
               </>
             )}
-          </ConfirmButton>
+          </button>
         </div>
       </div>
       

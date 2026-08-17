@@ -31,9 +31,9 @@ export default function ProjectManager() {
           <p className="text-slate-500 mt-1">Manage active deliverables, milestones, and client portals.</p>
         </div>
         
-        <ConfirmButton className="px-4 py-2.5 bg-[#000080] hover:bg-[#000066] text-white rounded-xl text-sm font-bold shadow-md transition-all flex items-center gap-2">
+        <button className="px-4 py-2.5 bg-[#000080] hover:bg-[#000066] text-white rounded-xl text-sm font-bold shadow-md transition-all flex items-center gap-2">
           <Plus className="w-4 h-4" /> New Project
-        </ConfirmButton>
+        </button>
       </div>
 
       <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
@@ -97,19 +97,15 @@ export default function ProjectManager() {
                       </div>
                     </td>
                     <td className="px-6 py-4 text-right space-x-2">
-                      <ConfirmButton 
-                        onClick={() => window.open(`/client-portal?email=${encodeURIComponent(project.clientEmail)}`, '_blank')}
-                        className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
-                        title="View Client Portal"
-                      >
+                      <button>
                         <ExternalLink className="w-4 h-4" />
-                      </ConfirmButton>
-                      <ConfirmButton className="p-2 text-slate-400 hover:text-[#000080] hover:bg-blue-50 rounded-lg transition-colors">
+                      </button>
+                      <button className="p-2 text-slate-400 hover:text-[#000080] hover:bg-blue-50 rounded-lg transition-colors">
                         <Edit2 className="w-4 h-4" />
-                      </ConfirmButton>
-                      <ConfirmButton className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                      </button>
+                      <button className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
                         <Trash2 className="w-4 h-4" />
-                      </ConfirmButton>
+                      </button>
                     </td>
                   </tr>
                 );

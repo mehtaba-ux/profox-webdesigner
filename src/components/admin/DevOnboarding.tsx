@@ -68,7 +68,7 @@ export default function DevOnboarding({
   };
 
   const handleComplete = async () => {
-    if ((needsPortfolios ? portfoliosAdded >= 4 : true) && user?.id) {
+    if ((needsPortfolios ? portfoliosAdded>= 4 : true) && user?.id) {
       setIsGrouping(true);
       await onSaveProfile({
         id: existingProfile?.id || crypto.randomUUID(),
@@ -122,12 +122,12 @@ export default function DevOnboarding({
         <div className="w-32 h-32 rounded-full border-4 border-emerald-500 flex items-center justify-center mb-16">
           <Check className="w-16 h-16 text-emerald-500" strokeWidth={1.5} />
         </div>
-        <ConfirmButton 
+        <button 
           onClick={completeOnboarding}
           className="bg-[#000080] hover:bg-[#000066] text-white px-8 py-3 rounded text-sm font-medium transition-colors flex items-center gap-2"
         >
           Proceed to Dashboard <ArrowRight className="w-4 h-4" />
-        </ConfirmButton>
+        </button>
       </div>
     );
   }
@@ -206,7 +206,7 @@ export default function DevOnboarding({
               </div>
 
               <div className="pt-8">
-                <ConfirmButton
+                <button 
                   onClick={handleNextStep}
                   disabled={!isProfileComplete}
                   className={`px-8 py-3.5 rounded text-sm font-medium flex items-center justify-center gap-2 transition-all ${
@@ -216,7 +216,7 @@ export default function DevOnboarding({
                   }`}
                 >
                   Save & go next
-                </ConfirmButton>
+                </button>
               </div>
             </div>
           </div>
@@ -237,7 +237,7 @@ export default function DevOnboarding({
                   className="absolute bottom-0 left-0 right-0 bg-[#000080] transition-all duration-500"
                   style={{ height: `${Math.min(100, (portfoliosAdded / 4) * 100)}%` }}
                 />
-                <Briefcase className={`w-6 h-6 z-10 ${portfoliosAdded > 0 ? 'text-white' : 'text-slate-400'}`} />
+                <Briefcase className={`w-6 h-6 z-10 ${portfoliosAdded> 0 ? 'text-white' : 'text-slate-400'}`} />
               </div>
               <div>
                 <h4 className="text-xl font-bold text-slate-900 mb-1">{portfoliosAdded} of 4 Required</h4>
@@ -263,17 +263,16 @@ export default function DevOnboarding({
             </div>
 
             <div className="mt-12 flex justify-end">
-              <ConfirmButton
+              <button 
                 onClick={handleComplete}
                 disabled={portfoliosAdded < 4}
                 className={`px-8 py-3.5 rounded text-sm font-medium flex items-center justify-center gap-2 transition-all ${
                   portfoliosAdded >= 4
                     ? 'bg-[#000080] hover:bg-[#000066] text-white' 
                     : 'bg-slate-200 text-slate-400 cursor-not-allowed'
-                }`}
-              >
+                }`}>
                 Complete Setup <Check className="w-4 h-4" />
-              </ConfirmButton>
+              </button>
             </div>
           </div>
         )}
@@ -286,8 +285,8 @@ export default function DevOnboarding({
         <div className="relative pl-[11px] border-l border-white/20 space-y-12 py-2">
           {/* Step 1 Item */}
           <div className="relative flex items-center gap-4">
-            <div className={`absolute -left-[16px] w-2.5 h-2.5 rounded-full ${step >= 1 ? 'bg-white' : 'bg-[#000080] border-2 border-white/50'}`} />
-            <span className={`font-medium ${step >= 1 ? 'text-white' : 'text-white/60'}`}>Profile setup</span>
+            <div className={`absolute -left-[16px] w-2.5 h-2.5 rounded-full ${step>= 1 ? 'bg-white' : 'bg-[#000080] border-2 border-white/50'}`} />
+            <span className={`font-medium ${step>= 1 ? 'text-white' : 'text-white/60'}`}>Profile setup</span>
             {step === 1 && (
               <span className="bg-white text-[#000080] text-[10px] px-2 py-0.5 rounded-full font-bold tracking-wide">
                 1 out of {needsPortfolios ? '2' : '1'}
@@ -298,8 +297,8 @@ export default function DevOnboarding({
           {/* Step 2 Item (Only if needed) */}
           {needsPortfolios && (
             <div className="relative flex items-center gap-4">
-              <div className={`absolute -left-[16px] w-2.5 h-2.5 rounded-full ${step >= 2 ? 'bg-white' : 'bg-[#000080] border-2 border-white/50'}`} />
-              <span className={`font-medium ${step >= 2 ? 'text-white' : 'text-white/60'}`}>Portfolio setup</span>
+              <div className={`absolute -left-[16px] w-2.5 h-2.5 rounded-full ${step>= 2 ? 'bg-white' : 'bg-[#000080] border-2 border-white/50'}`} />
+              <span className={`font-medium ${step>= 2 ? 'text-white' : 'text-white/60'}`}>Portfolio setup</span>
               {step === 2 && (
                 <span className="bg-white text-[#000080] text-[10px] px-2 py-0.5 rounded-full font-bold tracking-wide">
                   2 out of 2
