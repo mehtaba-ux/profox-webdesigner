@@ -1582,11 +1582,18 @@ export default function PagesManager({ pages, onSavePage, onDeletePage, onRestor
                               <label className="block text-xs font-bold text-slate-700 mb-2">Case Study Cards</label>
                               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 {(data.caseStudies || []).map((cs: any, idx: number) => (
-                                  <div key={idx} className="bg-slate-50 border border-slate-200 rounded-xl overflow-hidden group relative">
-                                    <button>
+                                  <div key={idx} className="bg-slate-50 border border-slate-200 rounded-xl overflow-hidden group relative p-4 pt-10">
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const next = data.caseStudies.filter((_: any, i: number) => i !== idx);
+                                        updateData({ ...data, caseStudies: next });
+                                      }}
+                                      className="absolute top-2 right-2 z-10 bg-white hover:bg-red-50 hover:text-red-600 text-slate-500 p-1.5 rounded-lg border border-slate-200 transition-colors cursor-pointer"
+                                    >
                                       <Trash2 className="w-3.5 h-3.5" />
                                     </button>
-                                    <div className="aspect-video bg-slate-200">
+                                    <div className="aspect-video bg-slate-200 rounded-lg overflow-hidden">
                                       <img src={cs.image} className="w-full h-full object-cover" />
                                     </div>
                                     <div className="p-3 space-y-2">
@@ -1669,8 +1676,22 @@ export default function PagesManager({ pages, onSavePage, onDeletePage, onRestor
                                     </div>
                                   </div>
                                 ))}
-                                <button>
-                                  <Plus className="w-6 h-6" />
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const next = [...(data.caseStudies || [])];
+                                    next.push({
+                                      client: '',
+                                      title: '',
+                                      image: 'https://images.unsplash.com/photo-1552566626-52f8b828add9?auto=format&fit=crop&q=80&w=800',
+                                      slug: ''
+                                    });
+                                    updateData({ ...data, caseStudies: next });
+                                  }}
+                                  className="flex flex-col items-center justify-center border-2 border-dashed border-slate-300 hover:border-[#000080] rounded-xl p-6 text-slate-400 hover:text-[#000080] transition-all bg-slate-50 hover:bg-slate-100 cursor-pointer aspect-video"
+                                >
+                                  <Plus className="w-6 h-6 mb-1" />
+                                  <span className="text-xs font-semibold">Add Card</span>
                                 </button>
                               </div>
                             </div>
@@ -2551,8 +2572,22 @@ export default function PagesManager({ pages, onSavePage, onDeletePage, onRestor
                                     </div>
                                   </div>
                                 ))}
-                                <button>
-                                  <Plus className="w-6 h-6" />
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const next = [...(data.caseStudies || [])];
+                                    next.push({
+                                      client: '',
+                                      title: '',
+                                      image: 'https://images.unsplash.com/photo-1552566626-52f8b828add9?auto=format&fit=crop&q=80&w=800',
+                                      slug: ''
+                                    });
+                                    updateData({ ...data, caseStudies: next });
+                                  }}
+                                  className="flex flex-col items-center justify-center border border-dashed border-slate-300 hover:border-[#000080] rounded-xl p-4 text-slate-400 hover:text-[#000080] transition-colors bg-slate-50 hover:bg-slate-100 cursor-pointer aspect-video"
+                                >
+                                  <Plus className="w-5 h-5 mb-1" />
+                                  <span className="text-[10px] font-bold text-slate-500">Add Case Study</span>
                                 </button>
                               </div>
                             </div>

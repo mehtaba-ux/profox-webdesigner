@@ -3529,7 +3529,14 @@ export default function TemplateManager() {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {(data.caseStudies || []).map((cs: any, idx: number) => (
                           <div key={idx} className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-4 relative">
-                            <button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const next = data.caseStudies.filter((_: any, i: number) => i !== idx);
+                                setDraftData({ ...data, caseStudies: next });
+                              }}
+                              className="absolute top-4 right-4 z-10 bg-slate-50 hover:bg-red-50 hover:text-red-600 text-slate-400 p-2 rounded-xl border border-slate-100 transition-colors cursor-pointer"
+                            >
                               <Trash2 className="w-4 h-4" />
                             </button>
                              <div className="space-y-2 pt-2">
@@ -3610,8 +3617,21 @@ export default function TemplateManager() {
                             />
                           </div>
                         ))}
-                        <button>
-                          <Plus className="w-8 h-8" />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const next = [...(data.caseStudies || [])];
+                            next.push({
+                              client: '',
+                              title: '',
+                              image: 'https://images.unsplash.com/photo-1552566626-52f8b828add9?auto=format&fit=crop&q=80&w=800',
+                              slug: ''
+                            });
+                            setDraftData({ ...data, caseStudies: next });
+                          }}
+                          className="flex flex-col items-center justify-center border-2 border-dashed border-slate-200 hover:border-[#000080] rounded-2xl p-6 text-slate-300 hover:text-[#000080] transition-colors bg-white hover:bg-slate-50 cursor-pointer min-h-[200px]"
+                        >
+                          <Plus className="w-8 h-8 mb-2" />
                           <span className="text-xs font-bold">Add Case Study</span>
                         </button>
                       </div>

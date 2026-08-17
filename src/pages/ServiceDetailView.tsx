@@ -1093,7 +1093,27 @@ export default function ServiceDetailView({ page }: { page?: any }) {
     }
   }
 
-  const dynamicCaseStudies = allPortfolioList.map((item: any) => ({
+  // Determine if the current page is Web Design & Development
+  const isWebDesignAndDev = 
+    blueprint?.id === 'digital-experience' || 
+    resolvedPage?.slug === 'website-design-and-development' ||
+    (resolvedPage?.title || '').toLowerCase().includes('web design') ||
+    (resolvedPage?.title || '').toLowerCase().includes('website design') ||
+    (blueprint?.name || '').toLowerCase().includes('web design') ||
+    (blueprint?.name || '').toLowerCase().includes('website design');
+
+  // Filter our portfolio source specifically for the page's service category
+  const filteredPortfolioSource = isWebDesignAndDev
+    ? allPortfolioList.filter((item: any) => {
+        const cat = (item.category || '').toLowerCase();
+        return cat.includes('digital experience') || 
+               cat.includes('design') || 
+               cat.includes('web') || 
+               cat.includes('development');
+      })
+    : allPortfolioList;
+
+  const dynamicCaseStudies = filteredPortfolioSource.map((item: any) => ({
     client: item.client || item.logoText || 'CLIENT PARTNER',
     title: item.title,
     image: item.coverImage || item.image || 'https://images.unsplash.com/photo-1552566626-52f8b828add9?auto=format&fit=crop&q=80&w=800',
@@ -1110,7 +1130,7 @@ export default function ServiceDetailView({ page }: { page?: any }) {
   const hasCustomizedTemplate = Array.isArray(content.template_blueprints) && content.template_blueprints.some((b: any) => b.id === blueprint?.id);
   let activeBlueprintCaseStudies = blueprintData.caseStudies;
 
-  const rawCaseStudies = (hasCustomizedTemplate && Array.isArray(activeBlueprintCaseStudies) && activeBlueprintCaseStudies.length > 0)
+  let chosenCaseStudies = (hasCustomizedTemplate && Array.isArray(activeBlueprintCaseStudies) && activeBlueprintCaseStudies.length > 0)
     ? activeBlueprintCaseStudies
     : ((Array.isArray(activePageCaseStudies) && activePageCaseStudies.length > 0)
     ? activePageCaseStudies
@@ -1118,7 +1138,26 @@ export default function ServiceDetailView({ page }: { page?: any }) {
         ? blueprintData.caseStudies
         : ((Array.isArray(data.caseStudies) && data.caseStudies.length > 0)
             ? data.caseStudies
-            : dynamicCaseStudies.slice(0, 2))));
+            : null)));
+
+  // Filter chosen custom case studies to make sure they actually exist in filteredPortfolioSource (and have not been deleted!)
+  let rawCaseStudies = Array.isArray(chosenCaseStudies)
+    ? chosenCaseStudies.filter((cs: any) => {
+        if (!cs) return false;
+        return filteredPortfolioSource.some((p: any) => {
+          if (cs.slug && (p.slug === cs.slug || p.id === cs.slug)) return true;
+          const pClient = (p.client || p.logoText || '').toLowerCase().trim();
+          const csClient = (cs.client || '').toLowerCase().trim();
+          if (csClient && pClient.includes(csClient)) return true;
+          return false;
+        });
+      })
+    : [];
+
+  // Fallback to active filtered portfolio items if no valid case studies are configured or if they were deleted
+  if (rawCaseStudies.length === 0) {
+    rawCaseStudies = dynamicCaseStudies.slice(0, 2);
+  }
 
   const displayCaseStudies = rawCaseStudies.map((cs: any, idx: number) => {
     // 1. Match portfolio item by explicit slug or id
@@ -1379,10 +1418,17 @@ export default function ServiceDetailView({ page }: { page?: any }) {
             ))}
           </div>
           <button 
-            onClick={() => scrollTo('cta')} 
+            onClick={() => {
+              const target = resolveContactCtaUrl(data.hero?.ctaText || "Get Started", data.hero?.ctaUrl, '#cta');
+              if (target.startsWith('/') || target.startsWith('http')) {
+                window.location.href = target;
+              } else {
+                scrollTo(target);
+              }
+            }} 
             className="bg-slate-900 text-white px-4 md:px-5 py-2 md:py-2.5 rounded-lg text-xs md:text-sm font-bold hover:bg-slate-800 transition-colors shrink-0 shadow-sm cursor-pointer"
           >
-            Get Started
+            {data.hero?.ctaText && data.hero.ctaText.length < 24 ? data.hero.ctaText : "Get Started"}
           </button>
         </div>
       </div>
