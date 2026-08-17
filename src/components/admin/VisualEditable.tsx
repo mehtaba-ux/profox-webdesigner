@@ -85,7 +85,7 @@ export default function VisualEditable({
               <button 
                 type="button"
                 onClick={() => setIsOpen(false)}
-                className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-600 transition-colors"
+                className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -128,7 +128,7 @@ export default function VisualEditable({
               <button
                 type="button"
                 onClick={() => setIsOpen(false)}
-                className="px-4 py-2 border border-slate-200 text-slate-500 hover:bg-slate-50 rounded-xl text-xs font-bold transition-all"
+                className="px-4 py-2 border border-slate-200 text-slate-500 hover:bg-slate-50 rounded-xl text-xs font-bold transition-all cursor-pointer"
               >
                 Cancel
               </button>
@@ -136,7 +136,8 @@ export default function VisualEditable({
                 type="button"
                 onClick={handleSave}
                 disabled={isSaving}
-                className="bg-[#000080] hover:bg-[#000066] text-white font-bold px-5 py-2 rounded-xl text-xs transition-all flex items-center gap-1.5 shadow-lg">
+                className="bg-[#000080] hover:bg-[#000066] text-white font-bold px-5 py-2 rounded-xl text-xs transition-all flex items-center gap-1.5 shadow-lg cursor-pointer"
+              >
                 {isSaving ? (
                   <span>Saving...</span>
                 ) : (

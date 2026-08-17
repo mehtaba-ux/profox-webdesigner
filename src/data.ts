@@ -29,7 +29,7 @@ export const services: Service[] = [
     id: 'ai',
     title: 'Automate workflows & secure your digital foundation',
     subtitle: '',
-    description: 'AI Agents and Automation',
+    description: 'Email Marketing & Business Automation',
     icon: 'sparkles',
     tags: [],
     link: '/services/email-marketing-and-business-automation',

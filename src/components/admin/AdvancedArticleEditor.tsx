@@ -9,7 +9,7 @@ interface AdvancedArticleEditorProps {
   onChange: (value: string) => void;
 }
 
-const buttonClass = 'grid h-9 w-9 place-items-center rounded-lg text-slate-600 transition-colors hover:bg-[#000080]/10 hover:text-[#000080]';
+const buttonClass = 'grid h-9 w-9 place-items-center rounded-lg text-slate-600 transition-colors hover:bg-[#000080]/10 hover:text-[#000080] cursor-pointer';
 
 export default function AdvancedArticleEditor({ value, onChange }: AdvancedArticleEditorProps) {
   const editorRef = useRef<HTMLDivElement>(null);
@@ -89,7 +89,7 @@ export default function AdvancedArticleEditor({ value, onChange }: AdvancedArtic
       {showImage && <div className="grid gap-4 border-b border-slate-200 bg-slate-50 p-5 lg:grid-cols-[1fr_1fr_auto] lg:items-end">
         <ImageUploader label="Upload or select article image" value={imageUrl} onChange={setImageUrl} />
         <label className="space-y-2"><span className="block text-xs font-bold uppercase tracking-wider text-slate-500">Alt text / caption</span><input value={imageAlt} onChange={event => setImageAlt(event.target.value)} className="min-h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm outline-none focus:border-[#000080]" placeholder="Describe the image for accessibility" /></label>
-        <button type="button" disabled={!imageUrl.trim()} onClick={addImage} className="min-h-11 rounded-xl bg-[#000080] px-5 text-sm font-bold text-white disabled:opacity-40">Insert Image</button>
+        <button type="button" disabled={!imageUrl.trim()} onClick={addImage} className="min-h-11 rounded-xl bg-[#000080] px-5 text-sm font-bold text-white disabled:opacity-40 cursor-pointer">Insert Image</button>
       </div>}
 
       {sourceMode ? <textarea value={value} onChange={event => onChange(event.target.value)} rows={24} spellCheck={false} className="min-h-[560px] w-full resize-y bg-slate-950 p-6 font-mono text-sm leading-7 text-slate-100 outline-none" /> : <div ref={editorRef} contentEditable suppressContentEditableWarning onInput={emit} onBlur={emit} data-placeholder="Start writing your insight…" className="article-editor-content min-h-[620px] p-7 text-base leading-7 text-slate-700 outline-none sm:p-10" />}

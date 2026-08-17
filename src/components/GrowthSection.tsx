@@ -46,11 +46,32 @@ export default function GrowthSection({ isLiveEditing = false }: GrowthSectionPr
   const headline = growthData.headline || 'We help you grow your business and make customers happy at the same time. We build experiences your customers love and use technology to make your operations effortless.';
   const bgImage = growthData.bgImage || 'https://images.unsplash.com/photo-1600880212340-02d956ea6188?auto=format&fit=crop&q=80&w=2000';
   const awardsTitle = growthData.awardsTitle || 'Awards & Recognition:';
-  const awards = growthData.awards || [];
+  
+  // sole source of truth for awards
+  const globalAwards = content.globalAwards || content.growth?.awards || [
+    { name: 'CLUTCH 2024', subtext: 'TOP DEVELOPER', type: 'CLUTCH', show: true },
+    { name: 'DESIGNRUSH', subtext: '', type: 'TEXT', show: true },
+    { name: 'BestDesign', subtext: '', type: 'BORDERED', show: true }
+  ];
+  const awards = globalAwards.filter((award: any) => award.show !== false);
 
   if (!isEnabled && !isLiveEditing) return null;
 
   const renderAward = (award: any, idx: number) => {
+    if (award.image) {
+      return (
+        <div key={idx} className="flex flex-col items-center gap-1.5">
+          <img 
+            src={award.image} 
+            alt={award.name} 
+            className="h-10 md:h-12 max-w-[140px] object-contain opacity-90 hover:opacity-100 transition-opacity" 
+            referrerPolicy="no-referrer"
+          />
+          {award.subtext && <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">{award.subtext}</span>}
+        </div>
+      );
+    }
+
     if (award.type === 'CLUTCH') {
       return (
         <div key={idx} className="flex flex-col items-center gap-2">
@@ -63,14 +84,20 @@ export default function GrowthSection({ isLiveEditing = false }: GrowthSectionPr
     }
     if (award.type === 'TEXT') {
       return (
-        <div key={idx} className="text-2xl font-black text-slate-900 italic tracking-tighter uppercase">
-          {award.name}
+        <div key={idx} className="flex flex-col items-center gap-1">
+          <div className="text-2xl font-black text-slate-900 italic tracking-tighter uppercase">
+            {award.name}
+          </div>
+          {award.subtext && <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">{award.subtext}</span>}
         </div>
       );
     }
     return (
-      <div key={idx} className="text-xl font-bold text-slate-900 tracking-widest border-y border-slate-300 py-2">
-        {award.name}
+      <div key={idx} className="flex flex-col items-center gap-1">
+        <div className="text-xl font-bold text-slate-900 tracking-widest border-y border-slate-300 py-2 uppercase">
+          {award.name}
+        </div>
+        {award.subtext && <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider mt-1">{award.subtext}</span>}
       </div>
     );
   };
@@ -98,16 +125,18 @@ export default function GrowthSection({ isLiveEditing = false }: GrowthSectionPr
             </VisualEditable>
           </h2>
 
-          <div className="flex flex-col gap-8">
-            <p className="text-[12px] font-bold text-slate-900/60 uppercase tracking-widest">
-              <VisualEditable section="growth" field="awardsTitle" value={awardsTitle} label="Awards Title" isLiveEditing={isLiveEditing}>
-                {awardsTitle}
-              </VisualEditable>
-            </p>
-            <div className="flex flex-wrap gap-12 items-center opacity-80">
-              {awards.map((award: any, idx: number) => renderAward(award, idx))}
+          {content.globalAwardsEnabled !== false && content.growth?.awardsEnabled !== false && (
+            <div className="flex flex-col gap-8">
+              <p className="text-[12px] font-bold text-slate-900/60 uppercase tracking-widest">
+                <VisualEditable section="growth" field="awardsTitle" value={awardsTitle} label="Awards Title" isLiveEditing={isLiveEditing}>
+                  {awardsTitle}
+                </VisualEditable>
+              </p>
+              <div className="flex flex-wrap gap-12 items-center opacity-80">
+                {awards.map((award: any, idx: number) => renderAward(award, idx))}
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </section>

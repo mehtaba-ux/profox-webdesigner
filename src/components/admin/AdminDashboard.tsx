@@ -42,7 +42,8 @@ import {
   Info,
   Sparkles,
   HelpCircle,
-  Hammer
+  Hammer,
+  Award
 } from 'lucide-react';
 import { navItems, services, featuredCaseStudies, recentSuccess, articles, defaultCustomPages, defaultPortfolioItems, defaultPortfolioCategories } from '../../data';
 import { CustomPage, PortfolioItem, PortfolioCategory, Service } from '../../types';
@@ -53,13 +54,13 @@ import FeedbackManager from './FeedbackManager';
 import MediaManager from './MediaManager';
 import TemplateManager from './TemplateManager';
 import SiteSettingsManager from './SiteSettingsManager';
-import ProcessManager from './ProcessManager';
 import CustomMenuManager from './CustomMenuManager';
 import ImageUploader from './ImageUploader';
 import SalesChatInbox from './SalesChatInbox';
 import DevOnboarding from './DevOnboarding';
 import TeamManager from './TeamManager';
 import ProjectManager from './ProjectManager';
+import AwardsManager from './AwardsManager';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth, UserRole } from '../../lib/AuthContext';
 import { getPagePath, isServicePage } from '../../lib/seoUrls';
@@ -106,7 +107,7 @@ function AdminDashboardInner() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   
-  const [activeTab, setActiveTab] = useState<'pages' | 'blog' | 'portfolio' | 'media' | 'process' | 'homepageSections' | 'header' | 'servicePackages' | 'footer' | 'templates' | 'siteSettings' | 'feedback' | 'team' | 'projects' | 'myProfile' | 'inbox'>(
+  const [activeTab, setActiveTab] = useState<'pages' | 'blog' | 'portfolio' | 'media' | 'homepageSections' | 'header' | 'servicePackages' | 'footer' | 'templates' | 'siteSettings' | 'feedback' | 'team' | 'projects' | 'myProfile' | 'inbox' | 'awards'>(
     (searchParams.get('tab') as any) || (role === 'developer_designer' ? 'portfolio' : 'pages')
   );
 
@@ -334,15 +335,29 @@ function AdminDashboardInner() {
       return defaultCustomPages;
     }
     const merged: CustomPage[] = stored.map((item: any) => {
-      if (item.id === 'ai-agents' && (!item.title || !item.title.includes('Email'))) {
+      if (item.id === 'ai-agents' || item.id === 'email-marketing-and-business-automation' || (item.slug && item.slug.includes('email-marketing-and-business-automation'))) {
         const def = defaultCustomPages.find(d => d.id === 'email-marketing-and-business-automation')!;
+        const cleanSeo = {
+          ...(def.seo || {}),
+          ...(item.seo || {}),
+          metaTitle: (item.seo?.metaTitle && !item.seo.metaTitle.toLowerCase().includes('ai agent')) 
+            ? item.seo.metaTitle 
+            : 'Email Marketing & Business Automation | ProFox Web Designer',
+          ogTitle: (item.seo?.ogTitle && !item.seo.ogTitle.toLowerCase().includes('ai agent'))
+            ? item.seo.ogTitle
+            : 'Email Marketing & Business Automation | ProFox Web Designer'
+        };
+        const cleanTitle = (item.title && !item.title.toLowerCase().includes('ai agent'))
+          ? item.title
+          : 'Email Marketing & Business Automation';
         return {
           ...def,
           ...item,
           id: 'email-marketing-and-business-automation',
-          title: 'Email Marketing & Business Automation',
+          title: cleanTitle,
           slug: 'services/email-marketing-and-business-automation',
-          template: 'ai-automation'
+          template: 'ai-automation',
+          seo: cleanSeo
         };
       }
       const def = defaultCustomPages.find(d => d.id === item.id || d.slug === item.slug);
@@ -682,7 +697,10 @@ function AdminDashboardInner() {
           </button>
 
           <div className="mt-6 text-center">
-            <button>
+            <button 
+              onClick={() => navigate('/')}
+              className="text-slate-400 hover:text-slate-600 text-xs font-bold inline-flex items-center gap-1.5 transition-colors cursor-pointer"
+            >
               <ArrowLeft className="w-3 h-3" /> Return to Website
             </button>
           </div>
@@ -712,10 +730,16 @@ function AdminDashboardInner() {
           </p>
 
           <div className="pt-2 space-y-3">
-            <button>
+            <button 
+              onClick={() => setRoleForUser('admin')}
+              className="w-full py-2.5 bg-[#000080] hover:bg-[#000066] text-white font-bold rounded-xl text-xs transition-all shadow flex items-center justify-center gap-2 cursor-pointer"
+            >
               <UserCheck className="w-4 h-4" /> Switch Account Role to Admin
             </button>
-            <button>
+            <button 
+              onClick={() => navigate('/')}
+              className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-2 cursor-pointer"
+            >
               <ArrowLeft className="w-4 h-4" /> Return to Website
             </button>
             <button 
@@ -752,13 +776,21 @@ function AdminDashboardInner() {
 
             {/* Development Mode Quick Indicator */}
             {content.siteSettings?.maintenanceMode?.enabled ? (
-              <button>
+              <button 
+                onClick={() => setActiveTab('settings')}
+                className="text-[10px] bg-amber-500/10 text-amber-600 font-mono px-2 py-0.5 rounded border border-amber-500/20 font-bold uppercase tracking-wider flex items-center gap-1 cursor-pointer hover:bg-amber-500/20 transition-all"
+                title="Click to view Settings"
+              >
                 <Hammer className="w-3 h-3" />
                 <span>Dev Mode: ACTIVE</span>
               </button>
             ) : (
-              <button>
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+              <button 
+                onClick={() => setActiveTab('settings')}
+                className="text-[10px] bg-emerald-500/10 text-emerald-600 font-mono px-2 py-0.5 rounded border border-emerald-500/20 font-bold uppercase tracking-wider flex items-center gap-1.5 cursor-pointer hover:bg-emerald-500/20 transition-all"
+                title="Click to view Settings"
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                 <span>Site: Live</span>
               </button>
             )}
@@ -953,24 +985,6 @@ function AdminDashboardInner() {
             </>
           )}
 
-          {!isDevUser && !isSalesUser && (
-            <button onClick={() => handleTabChange('process')}
-            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-              activeTab === 'process' 
-                ? 'bg-[#000080] text-white shadow shadow-blue-900/10' 
-                : `${isDarkMode ? 'text-slate-700 hover:bg-slate-100/80 hover:text-slate-900' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'}`
-            }`}>
-            <div className="flex items-center gap-2.5">
-              <Sparkles className="w-4 h-4" /> Our Process
-            </div>
-            <span className={`text-[10px] px-2 py-0.5 rounded font-bold ${
-              activeTab === 'process' ? 'bg-white/20 text-white' : 'bg-slate-100 text-[#000080] border border-slate-200'
-            }`}>
-              DB
-            </span>
-          </button>
-          )}
-
           <div className={`px-3 py-2 mt-3 text-[10px] font-bold uppercase tracking-widest ${textMuted}`}>
             Management
           </div>
@@ -982,6 +996,15 @@ function AdminDashboardInner() {
                 : `border border-transparent ${isDarkMode ? 'text-slate-500 hover:bg-slate-100/50 hover:text-slate-800' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`
             }`}>
             <Home className="w-4 h-4" /> Homepage Sections
+          </button>
+
+          <button onClick={() => setActiveTab('awards')}
+            className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              activeTab === 'awards' 
+                ? 'bg-[#000080]/10 text-[#000080] dark:text-blue-300 border border-[#000080]/30 shadow-sm' 
+                : `border border-transparent ${isDarkMode ? 'text-slate-500 hover:bg-slate-100/50 hover:text-slate-800' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`
+            }`}>
+            <Award className="w-4 h-4 text-[#000080] dark:text-blue-300" /> Award Section
           </button>
 
           <button onClick={() => setActiveTab('header')}
@@ -1029,7 +1052,6 @@ function AdminDashboardInner() {
             <BlogManager />
           )}
 
-          
           {activeTab === 'portfolio' && (
             <PortfolioManager 
               items={portfolioItems}
@@ -1042,7 +1064,8 @@ function AdminDashboardInner() {
               onDeleteCategory={handleDeletePortfolioCategory}
             />
           )}
-{/* TAB MEDIA: MEDIA LIBRARY */}
+
+          {/* TAB MEDIA: MEDIA LIBRARY */}
           {activeTab === 'media' && (
             <div className="h-full bg-slate-50 rounded-2xl border border-slate-900 shadow-xl overflow-hidden">
               <MediaManager />
@@ -1062,11 +1085,6 @@ function AdminDashboardInner() {
           {/* TAB SITE SETTINGS: SITE SETTINGS MANAGER */}
           {activeTab === 'siteSettings' && (
             <SiteSettingsManager />
-          )}
-
-          {/* TAB PROCESS: OUR PROCESS MANAGER */}
-          {activeTab === 'process' && (
-            <ProcessManager />
           )}
 
           {activeTab === 'projects' && (
@@ -1150,6 +1168,11 @@ function AdminDashboardInner() {
                 showSaveNotification('Footer updated in real-time!');
               }} 
             />
+          )}
+
+          {/* TAB 8: AWARD SECTION */}
+          {activeTab === 'awards' && (
+            <AwardsManager />
           )}
       </main>
       </div>
@@ -1297,7 +1320,11 @@ function HeroEditor({ initialData, onSave }: { initialData: any, onSave: (data: 
               <h3 className="text-xs font-bold uppercase tracking-widest text-slate-500">Trusted By Slider</h3>
               <div className="flex items-center gap-2">
                 <span className="text-[10px] font-bold text-slate-400">ENABLED</span>
-                <button>
+                <button 
+                  type="button"
+                  onClick={() => setForm({ ...form, trustedByEnabled: form.trustedByEnabled === false ? true : false })}
+                  className={`relative w-9 h-5 rounded-full transition-colors cursor-pointer ${form.trustedByEnabled !== false ? 'bg-[#000080]' : 'bg-slate-300'}`}
+                >
                   <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${form.trustedByEnabled !== false ? 'right-1' : 'left-1'}`} />
                 </button>
               </div>
@@ -1318,8 +1345,8 @@ function HeroEditor({ initialData, onSave }: { initialData: any, onSave: (data: 
                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wide">Brands / Logos</label>
                 <button 
                   onClick={addLogo}
-                  className="flex items-center gap-1.5 px-3 py-1 bg-[#000080] text-white rounded-lg hover:bg-[#000066] text-[10px] font-bold transition-colors"
->
+                  className="flex items-center gap-1.5 px-3 py-1 bg-[#000080] text-white rounded-lg hover:bg-[#000066] text-[10px] font-bold transition-colors cursor-pointer"
+                >
                   <Plus className="w-3.5 h-3.5" /> ADD BRAND
                 </button>
               </div>
@@ -1327,7 +1354,12 @@ function HeroEditor({ initialData, onSave }: { initialData: any, onSave: (data: 
               <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
                 {(form.trustedLogos || []).map((logo: any, idx: number) => (
                   <div key={idx} className="group relative bg-slate-50 p-4 rounded-xl border border-slate-100 hover:border-slate-300 transition-all">
-                    <button>
+                    <button 
+                      type="button"
+                      onClick={() => removeLogo(idx)}
+                      className="absolute top-2 right-2 p-1 text-slate-400 hover:text-red-500 rounded-lg hover:bg-slate-200 transition-colors cursor-pointer"
+                      title="Remove Brand"
+                    >
                       <X className="w-3 h-3" />
                     </button>
 
@@ -1446,7 +1478,11 @@ function HeaderEditor({
           <h1 className="text-2xl font-black tracking-tight">Navigation & Header Manager</h1>
           <p className="text-sm text-slate-500">Edit brand identity, active logo image, enterprise taglines, and menus</p>
         </div>
-        <button>
+        <button 
+          type="button"
+          onClick={() => onSave(form, footerUpdates)}
+          className="px-4 py-2 bg-[#000080] hover:bg-[#000066] text-white rounded-lg text-xs font-bold flex items-center gap-2 shadow-md transition-all cursor-pointer"
+        >
           <Save className="w-4 h-4" /> Save Header Changes
         </button>
       </div>
@@ -1482,7 +1518,12 @@ function HeaderEditor({
                     alt="Custom Brand Logo" 
                     className="max-h-12 w-auto object-contain transition-all"
                   />
-                  <button>
+                  <button 
+                    type="button"
+                    onClick={() => handleLogoChange('')}
+                    className="absolute -top-2 -right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 transition-all cursor-pointer shadow-sm"
+                    title="Remove Logo"
+                  >
                     <X className="w-3 h-3" />
                   </button>
                 </div>
@@ -1670,7 +1711,12 @@ function ServicesEditor({ initialData, servicePages = [], onSave }: { initialDat
           <div className="grid md:grid-cols-2 gap-6">
             {(form.list || []).map((service: any, idx: number) => (
               <div key={idx} className="bg-white border border-slate-200 rounded-[2rem] p-8 relative group shadow-sm hover:shadow-xl transition-all border-l-4 border-l-[#000080]">
-                <button>
+                <button 
+                  type="button"
+                  onClick={() => removeService(idx)}
+                  className="absolute top-6 right-6 p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all opacity-0 group-hover:opacity-100 cursor-pointer"
+                  title="Delete Service"
+                >
                   <Trash2 className="w-4 h-4" />
                 </button>
 
@@ -1860,7 +1906,10 @@ function ServicePackagesEditor({ initialData, onSave }: { initialData: any, onSa
             }`}>
             {form.enabled === true ? 'Disable Section' : 'Enable Section'}
           </button>
-          <button>
+          <button 
+            onClick={() => onSave(form)}
+            className="px-4 py-2 bg-[#000080] hover:bg-[#000066] text-white rounded-lg text-xs font-bold flex items-center gap-2 shadow-md transition-all cursor-pointer"
+          >
             <Save className="w-4 h-4" /> Save Packages
           </button>
         </div>
@@ -1932,7 +1981,12 @@ function ServicePackagesEditor({ initialData, onSave }: { initialData: any, onSa
                     title="Move Down">
                     <ArrowLeft className="w-3.5 h-3.5 -rotate-90" />
                   </button>
-                  <button>
+                  <button 
+                    type="button"
+                    onClick={() => handleDeletePackage(idx)}
+                    className="p-1.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg transition-colors border border-red-100 cursor-pointer"
+                    title="Delete Package"
+                  >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>
@@ -2034,7 +2088,11 @@ function ServicePackagesEditor({ initialData, onSave }: { initialData: any, onSa
               <div className="space-y-3 bg-slate-50/40 p-4 rounded-xl border border-slate-200/80">
                 <div className="flex items-center justify-between">
                   <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Included Features Bullets</label>
-                  <button>
+                  <button 
+                    type="button"
+                    onClick={() => handleAddFeature(idx)}
+                    className="px-2.5 py-1 bg-[#000080] hover:bg-[#000066] text-white rounded text-[10px] font-bold flex items-center gap-1 transition-colors cursor-pointer"
+                  >
                     <Plus className="w-3.5 h-3.5" /> Add Bullet
                   </button>
                 </div>
@@ -2363,7 +2421,12 @@ function FAQEditor({ initialData, onSave }: { initialData: any, onSave: (data: a
         <div className="grid gap-4">
           {(form.items || []).map((item: any, idx: number) => (
             <div key={item.id || idx} className="bg-white border border-slate-200 rounded-2xl p-6 relative group shadow-sm">
-              <button>
+              <button 
+                type="button"
+                onClick={() => removeFAQ(idx)}
+                className="absolute top-6 right-6 p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all opacity-0 group-hover:opacity-100 cursor-pointer"
+                title="Delete FAQ Item"
+              >
                 <Trash2 className="w-4 h-4" />
               </button>
               <div className="space-y-4">
@@ -2863,7 +2926,12 @@ function GrowthEditor({ initialData, onSave }: { initialData: any, onSave: (data
           <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
             {form.awards?.map((award: any, idx: number) => (
               <div key={idx} className="p-4 bg-white border border-slate-200 rounded-xl space-y-3 relative group">
-                <button>
+                <button 
+                  type="button"
+                  onClick={() => removeAward(idx)}
+                  className="absolute top-2 right-2 p-1 text-slate-300 hover:text-red-500 rounded-lg transition-colors cursor-pointer"
+                  title="Remove Award"
+                >
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
                 <div className="grid grid-cols-2 gap-3">
@@ -2953,7 +3021,11 @@ function FooterEditor({ initialData, onSave }: { initialData: any, onSave: (data
           <h1 className="text-2xl font-bold text-slate-900">Footer Settings</h1>
           <p className="text-sm text-slate-500">Control footer branding, verified links, social profiles, and conversion content</p>
         </div>
-        <button>
+        <button 
+          type="button"
+          onClick={() => onSave(form)}
+          className="px-4 py-2 bg-[#000080] hover:bg-[#000066] text-white rounded-lg text-xs font-bold flex items-center gap-2 shadow-md transition-all cursor-pointer"
+        >
           <Save className="w-4 h-4" /> Save Footer
         </button>
       </div>

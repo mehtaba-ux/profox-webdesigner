@@ -51,8 +51,9 @@ export function ConfirmDialog({
                   </p>
                 </div>
                 <button
+                  type="button"
                   onClick={onCancel}
-                  className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">
+                  className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer">
                   <X className="w-5 h-5" />
                 </button>
               </div>
@@ -60,13 +61,15 @@ export function ConfirmDialog({
             
             <div className="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-end gap-3">
               <button
+                type="button"
                 onClick={onCancel}
-                className="px-4 py-2 text-sm font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-200/50 rounded-xl transition-colors">
+                className="px-4 py-2 text-sm font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-200/50 rounded-xl transition-colors cursor-pointer">
                 {cancelText}
               </button>
               <button
+                type="button"
                 onClick={onConfirm}
-                className="px-4 py-2 text-sm font-bold text-white bg-red-600 hover:bg-red-700 rounded-xl shadow-sm transition-colors">
+                className="px-4 py-2 text-sm font-bold text-white bg-red-600 hover:bg-red-700 rounded-xl shadow-sm transition-colors cursor-pointer">
                 {confirmText}
               </button>
             </div>

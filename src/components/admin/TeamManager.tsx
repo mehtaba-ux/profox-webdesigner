@@ -116,7 +116,11 @@ export default function TeamManager({ portfolioItems }: { portfolioItems: Portfo
 
     return (
       <div key={member.id} className="bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 relative group">
-        <button>
+        <button 
+          onClick={() => handleDelete(member.id)}
+          className="absolute top-4 right-4 p-2 text-slate-400 hover:text-red-500 rounded-lg transition-colors cursor-pointer"
+          title="Delete Member"
+        >
           <Trash2 className="w-4 h-4" />
         </button>
 
@@ -199,10 +203,17 @@ export default function TeamManager({ portfolioItems }: { portfolioItems: Portfo
                 onChange={(e) => setInviteEmails(prev => ({ ...prev, developer_designer: e.target.value }))}
                 className="text-xs px-3 py-1.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:border-[#000080] dark:text-white w-48"
               />
-              <button>
+              <button 
+                onClick={() => sendInviteEmail('developer_designer')}
+                className="text-xs px-3 py-1.5 bg-[#000080] hover:bg-[#000066] text-white font-bold rounded-lg transition-all flex items-center gap-1 cursor-pointer"
+              >
                 <Send className="w-3.5 h-3.5" /> Invite
               </button>
-              <button>
+              <button 
+                onClick={() => copyOnboardingLink('developer_designer')}
+                className="p-1.5 text-slate-500 hover:text-slate-800 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                title="Copy Registration Link"
+              >
                 {copiedLink === 'developer_designer' ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
               </button>
             </div>
@@ -225,7 +236,10 @@ export default function TeamManager({ portfolioItems }: { portfolioItems: Portfo
               📈 Sales Team
             </h3>
             <div className="flex items-center gap-2">
-              <button>
+              <button 
+                onClick={() => setShowAddSalesModal(true)}
+                className="text-xs px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg transition-all flex items-center gap-1 cursor-pointer"
+              >
                 <Plus className="w-3.5 h-3.5" /> Add Sales Rep
               </button>
               <input 
@@ -235,10 +249,17 @@ export default function TeamManager({ portfolioItems }: { portfolioItems: Portfo
                 onChange={(e) => setInviteEmails(prev => ({ ...prev, sales_team: e.target.value }))}
                 className="text-xs px-3 py-1.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:border-[#000080] dark:text-white w-40"
               />
-              <button>
+              <button 
+                onClick={() => sendInviteEmail('sales_team')}
+                className="text-xs px-3 py-1.5 bg-[#000080] hover:bg-[#000066] text-white font-bold rounded-lg transition-all flex items-center gap-1 cursor-pointer"
+              >
                 <Send className="w-3.5 h-3.5" /> Invite
               </button>
-              <button>
+              <button 
+                onClick={() => copyOnboardingLink('sales_team')}
+                className="p-1.5 text-slate-500 hover:text-slate-800 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                title="Copy Registration Link"
+              >
                 {copiedLink === 'sales_team' ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
               </button>
             </div>
@@ -276,7 +297,11 @@ export default function TeamManager({ portfolioItems }: { portfolioItems: Portfo
               <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
                 <Plus className="w-5 h-5 text-emerald-600" /> Add Sales Representative
               </h3>
-              <button>
+              <button 
+                type="button"
+                onClick={() => setShowAddSalesModal(false)}
+                className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg transition-colors cursor-pointer"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -362,7 +387,11 @@ export default function TeamManager({ portfolioItems }: { portfolioItems: Portfo
               </div>
 
               <div className="flex justify-end gap-3 pt-2">
-                <button>
+                <button 
+                  type="button"
+                  onClick={() => setShowAddSalesModal(false)}
+                  className="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-900 transition-colors cursor-pointer"
+                >
                   Cancel
                 </button>
                 <button 

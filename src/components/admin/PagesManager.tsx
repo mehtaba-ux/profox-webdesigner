@@ -37,7 +37,8 @@ import {
   Zap,
   Rss,
   Upload,
-  Loader2
+  Loader2,
+  Award
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useCMS } from '../../lib/CMSProvider';
@@ -624,7 +625,15 @@ export default function PagesManager({ pages, onSavePage, onDeletePage, onRestor
       {/* Top Navigation & Action Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white border border-slate-200 p-4 rounded-2xl shadow-lg sticky top-20 z-30 backdrop-blur-md bg-opacity-95">
         <div className="flex items-center gap-3">
-          <button>
+          <button
+            type="button"
+            onClick={() => {
+              setIsEditing(false);
+              setSelectedPage(null);
+            }}
+            className="p-2 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+            title="Back to Pages List"
+          >
             <ArrowLeft className="w-4 h-4" />
           </button>
           <div>
@@ -1027,17 +1036,25 @@ export default function PagesManager({ pages, onSavePage, onDeletePage, onRestor
                   <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-6">
                     {(() => {
                       const subTab = templateSubTab;
-                      const data = typeof selectedPage.serviceDetailData === 'object' ? selectedPage.serviceDetailData : {
-                        hero: { title: '', highlight: '', description: '', image: '' },
-                        subnav: [],
-                        quote: '',
-                        howWeHelp: [],
-                        challenges: [],
-                        caseStudies: [],
-                        techStack: [],
-                        engagement: [],
-                        resources: [],
-                        faqs: []
+                      const matchedBp = blueprints.find((b: any) => b.id === selectedPage.template || b.id === selectedPage.id) || 
+                        (selectedPage.id === 'website-design-and-development' ? blueprints.find((b: any) => b.id === 'digital-experience') : null);
+                      const bpDefault = matchedBp?.defaultData || {};
+                      const rawSdd = (typeof selectedPage.serviceDetailData === 'object' && selectedPage.serviceDetailData !== null)
+                        ? selectedPage.serviceDetailData
+                        : {};
+
+                      const data = {
+                        ...bpDefault,
+                        ...rawSdd,
+                        hero: {
+                          ...bpDefault.hero,
+                          ...rawSdd.hero,
+                          title: rawSdd.hero?.title || selectedPage.heroTitle || bpDefault.hero?.title || selectedPage.title || '',
+                          highlight: rawSdd.hero?.highlight || selectedPage.heroHighlight || bpDefault.hero?.highlight || '',
+                          subheading: rawSdd.hero?.subheading || selectedPage.heroSubheading || bpDefault.hero?.subheading || '',
+                          description: rawSdd.hero?.description || selectedPage.heroSubtitle || bpDefault.hero?.description || '',
+                          image: rawSdd.hero?.image || selectedPage.coverImage || bpDefault.hero?.image || ''
+                        }
                       };
 
                       const updateData = (newData: any) => {
@@ -2022,53 +2039,6 @@ export default function PagesManager({ pages, onSavePage, onDeletePage, onRestor
                         return (
                           <div className="space-y-8">
                             <div className="space-y-6">
-                              <div className="flex items-center justify-between bg-slate-50 p-4 rounded-xl border border-slate-200">
-                                <div>
-                                  <h4 className="text-sm font-bold text-slate-900">Our Process Section Configuration</h4>
-                                  <p className="text-xs text-slate-500">Manage the step-by-step methodology cards shown on your service pages.</p>
-                                </div>
-                                <button onClick={() => {
-                                    const defaultSteps = [
-                                      {
-                                        step: "01",
-                                        title: "Discovery & Strategy",
-                                        desc: "We analyze your existing workflows, legacy systems, and technical bottlenecks to construct a pragmatic blueprint for modernization.",
-                                        image: "https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&q=80&w=1200",
-                                        ctaText: "Let's Talk",
-                                        ctaUrl: "/contact-us"
-                                      },
-                                      {
-                                        step: "02",
-                                        title: "System Architecture & Design",
-                                        desc: "Our senior engineers design scalable, secure system architectures that seamlessly bridge your current tools and future integrations.",
-                                        image: "https://images.unsplash.com/photo-1531482615713-2afd69097998?auto=format&fit=crop&q=80&w=1200",
-                                        ctaText: "Let's Talk",
-                                        ctaUrl: "/contact-us"
-                                      },
-                                      {
-                                        step: "03",
-                                        title: "Agile Development & Testing",
-                                        desc: "We write clean, high-performance code with daily standups, robust test coverage, and continuous delivery loops to guarantee momentum.",
-                                        image: "https://images.unsplash.com/photo-1552664730-d307ca884978?auto=format&fit=crop&q=80&w=1200",
-                                        ctaText: "Let's Talk",
-                                        ctaUrl: "/contact-us"
-                                      },
-                                      {
-                                        step: "04",
-                                        title: "Deployment & Continuous Growth",
-                                        desc: "We deploy without downtime, provide proactive monitoring, and continuously optimize systems as your user base and operations scale.",
-                                        image: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&q=80&w=1200",
-                                        ctaText: "Let's Talk",
-                                        ctaUrl: "/contact-us"
-                                      }
-                                    ];
-                                    updateData({ ...data, processTitle: 'Our Process', processBadge: 'How We Deliver Success', ourProcess: defaultSteps, engagement: defaultSteps });
-                                  }}
-                                  className="text-xs font-bold text-[#000080] bg-white border border-[#000080]/30 hover:bg-[#000080] hover:text-white px-3 py-1.5 rounded-lg transition-all">
-                                  Reset to Standard 4 Steps
-                                </button>
-                              </div>
-
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
                                   <label className="block text-xs font-bold text-slate-700 mb-1">Section Badge / Eyebrow</label>

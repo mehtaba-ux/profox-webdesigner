@@ -53,6 +53,31 @@ export default function CustomPageView() {
       return defaultCustomPages;
     }
     const merged = stored.map((item: any) => {
+      if (item.id === 'ai-agents' || item.id === 'email-marketing-and-business-automation' || (item.slug && item.slug.includes('email-marketing-and-business-automation'))) {
+        const def = defaultCustomPages.find(d => d.id === 'email-marketing-and-business-automation')!;
+        const cleanSeo = {
+          ...(def.seo || {}),
+          ...(item.seo || {}),
+          metaTitle: (item.seo?.metaTitle && !item.seo.metaTitle.toLowerCase().includes('ai agent')) 
+            ? item.seo.metaTitle 
+            : 'Email Marketing & Business Automation | ProFox Web Designer',
+          ogTitle: (item.seo?.ogTitle && !item.seo.ogTitle.toLowerCase().includes('ai agent'))
+            ? item.seo.ogTitle
+            : 'Email Marketing & Business Automation | ProFox Web Designer'
+        };
+        const cleanTitle = (item.title && !item.title.toLowerCase().includes('ai agent'))
+          ? item.title
+          : 'Email Marketing & Business Automation';
+        return {
+          ...def,
+          ...item,
+          id: 'email-marketing-and-business-automation',
+          title: cleanTitle,
+          slug: 'services/email-marketing-and-business-automation',
+          template: 'ai-automation',
+          seo: cleanSeo
+        };
+      }
       const def = defaultCustomPages.find(d => d.id === item.id || d.slug === item.slug);
       if (def) {
         return { ...def, ...item, seo: { ...def.seo, ...(item.seo || {}) } };

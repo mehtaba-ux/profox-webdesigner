@@ -831,10 +831,13 @@ export default function BlogManager() {
         </div>
         <div className="flex items-center gap-3">
           <button onClick={handleSeedPost} className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 transition-all shadow-sm">
-      <Check className="w-5 h-5" />
-      Publish Demo Post
-    </button>
-    <button>
+            <Check className="w-5 h-5" />
+            Publish Demo Post
+          </button>
+          <button 
+            onClick={() => setShowCategoriesModal(true)}
+            className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold flex items-center gap-2 transition-all shadow-sm cursor-pointer"
+          >
             <Tag className="w-4 h-4 text-[#000080]" />
             Manage Categories
           </button>
@@ -955,7 +958,11 @@ export default function BlogManager() {
                         aria-label={`Duplicate ${post.title} as a draft`}>
                         <CopyPlus className="w-4 h-4" />
                       </button>
-                      <button>
+                      <button 
+                        onClick={() => handleDelete(post.id)}
+                        className="p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all cursor-pointer"
+                        title="Delete Post"
+                      >
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
@@ -1097,10 +1104,18 @@ export default function BlogManager() {
                           <td className="px-4 py-3 text-slate-500 font-mono">{cat.slug}</td>
                           <td className="px-4 py-3 text-right">
                             <div className="flex items-center justify-end gap-1.5">
-                              <button>
+                              <button 
+                                onClick={() => handleEditCategory(cat)}
+                                className="p-1.5 text-slate-400 hover:text-[#000080] hover:bg-slate-100 rounded-lg transition-all cursor-pointer"
+                                title="Edit Category"
+                              >
                                 <Edit2 className="w-3.5 h-3.5" />
                               </button>
-                              <button>
+                              <button 
+                                onClick={() => handleDeleteCategory(cat.id, cat.name)}
+                                className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-slate-100 rounded-lg transition-all cursor-pointer"
+                                title="Delete Category"
+                              >
                                 <X className="w-3.5 h-3.5" />
                               </button>
                             </div>
@@ -1260,7 +1275,11 @@ function PostEditor({
               View {post.status === 'published' ? 'Live' : 'Preview'}
             </a>
           )}
-          <button>
+          <button 
+            type="button"
+            onClick={() => setShowPreview(!showPreview)}
+            className="px-4 py-2 text-sm font-bold text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-xl transition-all flex items-center gap-2 cursor-pointer"
+          >
             <Eye className="w-4 h-4" />
             Preview
           </button>
@@ -1288,7 +1307,11 @@ function PostEditor({
               <span className="bg-[#000080] text-white text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-widest">Preview Mode</span>
               <h3 className="text-sm font-bold truncate max-w-md">{post.title || 'Untitled Post'}</h3>
             </div>
-            <button>
+            <button 
+              type="button"
+              onClick={() => setShowPreview(false)}
+              className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
+            >
               <X className="w-4 h-4" />
               Close Preview
             </button>
@@ -1448,7 +1471,12 @@ function PostEditor({
                           placeholder="Enter a key highlight..."
                           className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 focus:outline-none focus:border-[#000080]"
                         />
-                        <button>
+                        <button 
+                          type="button"
+                          onClick={() => removeHighlight(index)}
+                          className="p-3 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all cursor-pointer"
+                          title="Remove highlight"
+                        >
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
@@ -1473,7 +1501,12 @@ function PostEditor({
                   <div className="space-y-6">
                     {post.faq?.map((item, index) => (
                       <div key={index} className="bg-slate-50 border border-slate-200 rounded-2xl p-6 space-y-4 relative group">
-                        <button>
+                        <button 
+                          type="button"
+                          onClick={() => removeFAQ(index)}
+                          className="absolute top-4 right-4 p-1.5 text-slate-400 hover:text-red-500 rounded-lg transition-colors cursor-pointer"
+                          title="Remove FAQ"
+                        >
                           <X className="w-4 h-4" />
                         </button>
                         <div className="space-y-2">
@@ -1580,7 +1613,11 @@ function PostEditor({
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Category</label>
-                      <button>
+                      <button 
+                        type="button"
+                        onClick={() => setShowQuickAddCategory(!showQuickAddCategory)}
+                        className="text-[10px] font-bold text-[#000080] hover:text-[#000066] flex items-center gap-1 uppercase tracking-wider cursor-pointer"
+                      >
                         <Plus className="w-3.5 h-3.5" />
                         Quick Add
                       </button>

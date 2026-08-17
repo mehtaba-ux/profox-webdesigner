@@ -26,7 +26,8 @@ import {
   Rss,
   RefreshCw,
   Upload,
-  Loader2
+  Loader2,
+  Award
 } from 'lucide-react';
 import { useCMS } from '../../lib/CMSProvider';
 import ImageUploader from './ImageUploader';
@@ -1096,31 +1097,31 @@ export const defaultBlueprintsList: TemplateBlueprint[] = [
   },
   {
     id: 'ai-automation',
-    name: 'AI Agents & Automation Service Template',
-    description: 'Autonomous AI workflow blueprints, LLM conversational agents, document processing pipelines, and predictive analytics.',
+    name: 'Email Marketing & Business Automation Service Template',
+    description: 'Email marketing campaigns, CRM lifecycle workflows, customer onboarding automation, and connected business pipelines.',
     type: 'service-detail',
     defaultData: {
       hero: {
-        title: "Autonomous AI Agents & Workflows",
-        highlight: "Powered by Gemini.",
-        description: "Automate complex business processes, document extraction, and customer support with intelligent multi-modal AI agents trained on your custom data.",
+        title: "Email Marketing & Business Automation",
+        highlight: "Powered by Connected Systems.",
+        description: "Connect your customer journeys, CRM, email sequences, and workflow automation into one seamless growth system.",
         image: "https://images.unsplash.com/photo-1677442136019-21780ecad995?auto=format&fit=crop&q=80&w=1600"
       },
       subnav: [
         { label: "Overview", id: "hero" },
-        { label: "AI Capabilities", id: "help" },
+        { label: "Automation Capabilities", id: "help" },
         { label: "Bottlenecks Solved", id: "challenges" },
-        { label: "AI Stack", id: "stack" },
+        { label: "Tech Stack", id: "stack" },
         { label: "Deployment Cycle", id: "process" },
         { label: "FAQ", id: "faq" }
       ],
-      quote: "AI will not replace managers, but managers who use AI will replace those who don't.",
-      quoteHeading: "Businesses deploying autonomous AI agents report a 70% reduction in manual data processing time.",
-      quoteAuthor: "- MIT Tech Review",
-      quoteDescription: "Unlock exponential productivity with customized AI agents that operate 24/7.",
-      howWeHelpTitle: "AI & Machine Learning Services",
-      howWeHelpDesc: "From custom LLM prompt engineering to autonomous document parsing and predictive cloud pipelines.",
-      howWeHelpButtonText: "Deploy AI Agents",
+      quote: "Automation turns repetitive follow-ups into consistent, scalable business growth.",
+      quoteHeading: "Businesses deploying connected email & workflow automation report a 70% reduction in manual customer follow-up effort.",
+      quoteAuthor: "- Marketing Automation Review",
+      quoteDescription: "Unlock exponential productivity with customized business automation pipelines that operate 24/7.",
+      howWeHelpTitle: "Email Marketing & Business Automation Services",
+      howWeHelpDesc: "From custom lifecycle email sequences to CRM integration and automated operational workflows.",
+      howWeHelpButtonText: "Discuss Your Automation",
       howWeHelp: [
         {
           title: "Autonomous Document Extractors",
@@ -1431,11 +1432,11 @@ export default function TemplateManager() {
           if (!pObj[key]) pObj[key] = {};
           traverse(pObj[key], oObj ? oObj[key] : {}, nObj[key]);
         } else if (Array.isArray(nObj[key])) {
-           if (JSON.stringify(pObj[key]) === JSON.stringify(oObj ? oObj[key] : undefined) || pObj[key] === undefined) {
+           if (JSON.stringify(pObj[key]) === JSON.stringify(oObj ? oObj[key] : undefined) || pObj[key] === undefined || !Array.isArray(pObj[key]) || pObj[key].length === 0) {
               pObj[key] = JSON.parse(JSON.stringify(nObj[key]));
            }
         } else {
-           if (pObj[key] === (oObj ? oObj[key] : undefined) || pObj[key] === undefined) {
+           if (pObj[key] === (oObj ? oObj[key] : undefined) || pObj[key] === undefined || pObj[key] === '' || (typeof pObj[key] === 'string' && pObj[key].trim() === '')) {
               pObj[key] = nObj[key];
            }
         }
@@ -1463,14 +1464,19 @@ export default function TemplateManager() {
       // Sync to all custom pages that use this blueprint
       const customPages = content.customPages || [];
       const updatedPages = customPages.map((page: any) => {
-        // ONLY sync if the page is explicitly using this specific blueprint ID
-        if (page.template === selectedTemplateId) {
+        const isPageUsingTemplate = 
+          page.template === selectedTemplateId ||
+          (selectedTemplateId === 'digital-experience' && (page.id === 'website-design-and-development' || (page.slug && page.slug.includes('website-design-and-development')))) ||
+          (selectedTemplateId === 'technology-solutions' && (page.id === 'web-and-mobile-application-development' || (page.slug && page.slug.includes('web-and-mobile-application-development')))) ||
+          (selectedTemplateId === 'ai-automation' && (page.id === 'email-marketing-and-business-automation' || (page.slug && page.slug.includes('email-marketing-and-business-automation'))));
+
+        if (isPageUsingTemplate) {
           const syncedData = syncPageData(page.serviceDetailData, oldBlueprintData, updatedData);
           
           let newPage = { ...page, serviceDetailData: syncedData };
           
           // Also sync root-level hero properties if they match the old blueprint or are unset
-          if (!page.heroTitle || (oldBlueprintData?.hero?.title && page.heroTitle === oldBlueprintData.hero.title)) {
+          if (!page.heroTitle || page.heroTitle === 'Untitled Page' || (oldBlueprintData?.hero?.title && page.heroTitle === oldBlueprintData.hero.title)) {
              newPage.heroTitle = updatedData?.hero?.title || page.heroTitle;
           }
           if (!page.heroSubtitle || (oldBlueprintData?.hero?.description && page.heroSubtitle === oldBlueprintData.hero.description)) {
@@ -3272,19 +3278,19 @@ export default function TemplateManager() {
                                           setDraftData({ ...data, howWeHelp: next });
                                         }}
                                       />
-                                      <button onClick={() => {
+                                      <button type="button" onClick={() => {
                                         const next = [...data.howWeHelp];
                                         next[idx].features = next[idx].features.filter((_: any, i: number) => i !== fidx);
                                         setDraftData({ ...data, howWeHelp: next });
-                                      }} className="text-red-300 hover:text-red-500"><Trash2 className="w-3.5 h-3.5" /></button>
+                                      }} className="text-red-300 hover:text-red-500 cursor-pointer"><Trash2 className="w-3.5 h-3.5" /></button>
                                     </div>
                                   ))}
-                                  <button onClick={() => {
+                                  <button type="button" onClick={() => {
                                       const next = [...data.howWeHelp];
                                       next[idx].features = [...(next[idx].features || []), 'New Feature Point'];
                                       setDraftData({ ...data, howWeHelp: next });
                                     }}
-                                    className="text-[10px] font-bold text-[#000080] flex items-center gap-1" >
+                                    className="text-[10px] font-bold text-[#000080] flex items-center gap-1 cursor-pointer" >
                                     <Plus className="w-3 h-3" /> Add Feature Point
                                   </button>
                                 </div>
@@ -3292,7 +3298,20 @@ export default function TemplateManager() {
                             </div>
                           </div>
                         ))}
-                        <button>
+                        <button 
+                          type="button"
+                          onClick={() => {
+                            const next = [...(data.howWeHelp || [])];
+                            next.push({
+                              title: 'New Service Capability',
+                              desc: 'Describe how this capability helps client organizations scale.',
+                              iconColor: 'bg-[#000080]',
+                              features: ['Feature point 1', 'Feature point 2']
+                            });
+                            setDraftData({ ...data, howWeHelp: next });
+                          }}
+                          className="w-full border-2 border-dashed border-slate-200 hover:border-[#000080] rounded-2xl p-4 text-slate-400 hover:text-[#000080] transition-colors bg-white hover:bg-slate-50 flex items-center justify-center gap-2 cursor-pointer text-xs font-bold"
+                        >
                           <Plus className="w-5 h-5" /> Add New "How We Help" Card
                         </button>
                       </div>
@@ -3469,12 +3488,16 @@ export default function TemplateManager() {
                                 setDraftData({ ...data, challenges: next });
                               }}
                             />
-                            <button onClick={() => setDraftData({ ...data, challenges: data.challenges.filter((_: any, i: number) => i !== idx) })} className="p-1.5 text-slate-300 hover:text-red-500 rounded-lg">
+                            <button type="button" onClick={() => setDraftData({ ...data, challenges: data.challenges.filter((_: any, i: number) => i !== idx) })} className="p-1.5 text-slate-300 hover:text-red-500 rounded-lg cursor-pointer">
                               <Trash2 className="w-4 h-4" />
                             </button>
                           </div>
                         ))}
-                        <button>
+                        <button
+                          type="button"
+                          onClick={() => setDraftData({ ...data, challenges: [...(data.challenges || []), 'New challenge statement'] })}
+                          className="w-full border-2 border-dashed border-slate-200 hover:border-[#000080] rounded-xl p-3 text-slate-400 hover:text-[#000080] transition-colors bg-white hover:bg-slate-50 flex items-center justify-center gap-2 cursor-pointer text-xs font-bold mt-2"
+                        >
                           <Plus className="w-4 h-4" /> Add Challenge Statement
                         </button>
                       </div>
@@ -3639,113 +3662,12 @@ export default function TemplateManager() {
 
                     <div className="bg-slate-50 rounded-3xl p-6 border border-slate-100 space-y-4">
                       <h4 className="text-sm font-bold text-slate-900 mb-1">Awards & Recognition Section</h4>
-                      <p className="text-xs text-slate-500 mb-4">Manage trust badges and awards logos shown below the case studies.</p>
-                      
-                      <div>
-                        <label className="block text-xs font-bold text-slate-700 mb-1">Section Title (use \n for newline)</label>
-                        <input 
-                          type="text" 
-                          className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2 text-xs"
-                          value={data.awardsTitle || 'Awards &\nRecognition'}
-                          onChange={(e) => setDraftData({ ...data, awardsTitle: e.target.value })}
-                        />
-                      </div>
-
-                      <div className="space-y-3">
-                        <label className="block text-xs font-bold text-slate-700">Badges List</label>
-                        {(data.awards || [
-                          { text: 'CLUTCH', icon: 'Sparkles' },
-                          { text: 'DESIGNRUSH', icon: 'Monitor' },
-                          { text: 'BestDesign', icon: '' }
-                        ]).map((award: any, idx: number) => (
-                          <div key={idx} className="bg-white border border-slate-200 rounded-xl p-4 space-y-3 shadow-sm relative">
-                            <div className="flex flex-col sm:flex-row items-center gap-3">
-                              <div className="flex-1 w-full">
-                                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Badge/Award Text</label>
-                                <input 
-                                  type="text" 
-                                  placeholder="Award Name"
-                                  className="w-full bg-slate-50 border border-slate-100 rounded-lg px-3 py-1.5 text-xs font-medium"
-                                  value={award.text}
-                                  onChange={(e) => {
-                                    const next = [...(data.awards || [
-                                      { text: 'CLUTCH', icon: 'Sparkles' },
-                                      { text: 'DESIGNRUSH', icon: 'Monitor' },
-                                      { text: 'BestDesign', icon: '' }
-                                    ])];
-                                    next[idx] = { ...next[idx], text: e.target.value };
-                                    setDraftData({ ...data, awards: next });
-                                  }}
-                                />
-                              </div>
-                              <div className="w-full sm:w-48">
-                                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Icon (If no image logo)</label>
-                                <select 
-                                  className="w-full bg-slate-50 border border-slate-100 rounded-lg px-3 py-1.5 text-xs"
-                                  value={award.icon || ''}
-                                  onChange={(e) => {
-                                    const next = [...(data.awards || [
-                                      { text: 'CLUTCH', icon: 'Sparkles' },
-                                      { text: 'DESIGNRUSH', icon: 'Monitor' },
-                                      { text: 'BestDesign', icon: '' }
-                                    ])];
-                                    next[idx] = { ...next[idx], icon: e.target.value };
-                                    setDraftData({ ...data, awards: next });
-                                  }}
-                               >
-                                  <option value="">No Icon</option>
-                                  <option value="Sparkles">Sparkles</option>
-                                  <option value="Monitor">Monitor</option>
-                                  <option value="Award">Award</option>
-                                  <option value="Trophy">Trophy</option>
-                                  <option value="Shield">Shield</option>
-                                  <option value="Star">Star</option>
-                                  <option value="Database">Database</option>
-                                  <option value="Cloud">Cloud</option>
-                                  <option value="Code">Code</option>
-                                  <option value="Smartphone">Smartphone</option>
-                                </select>
-                              </div>
-                              <button onClick={() => {
-                                  const currentAwards = data.awards || [
-                                    { text: 'CLUTCH', icon: 'Sparkles' },
-                                    { text: 'DESIGNRUSH', icon: 'Monitor' },
-                                    { text: 'BestDesign', icon: '' }
-                                  ];
-                                  setDraftData({ ...data, awards: currentAwards.filter((_: any, i: number) => i !== idx) });
-                                }} 
-                                className="p-1.5 text-slate-300 hover:text-red-500 rounded-lg mt-4 sm:mt-0 self-end sm:self-center shrink-0">
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            </div>
-                            <div className="border-t border-slate-100 pt-3">
-                              <ImageUploader 
-                                label="Badge Custom Image Logo (Optional)"
-                                value={award.image || ''}
-                                onChange={(url) => {
-                                  const next = [...(data.awards || [
-                                    { text: 'CLUTCH', icon: 'Sparkles' },
-                                    { text: 'DESIGNRUSH', icon: 'Monitor' },
-                                    { text: 'BestDesign', icon: '' }
-                                  ])];
-                                  next[idx] = { ...next[idx], image: url };
-                                  setDraftData({ ...data, awards: next });
-                                }}
-                              />
-                            </div>
-                          </div>
-                        ))}
-                        <button onClick={() => {
-                            const currentAwards = data.awards || [
-                              { text: 'CLUTCH', icon: 'Sparkles' },
-                              { text: 'DESIGNRUSH', icon: 'Monitor' },
-                              { text: 'BestDesign', icon: '' }
-                            ];
-                            setDraftData({ ...data, awards: [...currentAwards, { text: 'New Badge', icon: '', image: '' }] });
-                          }}
-                          className="w-full py-3 border-2 border-dashed border-slate-200 rounded-xl text-slate-400 hover:text-[#000080] transition-all flex items-center justify-center gap-2 font-bold text-xs" >
-                          <Plus className="w-4 h-4" /> Add Award/Badge
-                        </button>
+                      <div className="bg-white border border-slate-200 rounded-xl p-5 text-center space-y-2 shadow-sm">
+                        <Award className="w-8 h-8 text-[#000080] mx-auto opacity-75" />
+                        <h5 className="text-xs font-black text-slate-800">Centralized Award Section Active</h5>
+                        <p className="text-xs text-slate-500 max-w-md mx-auto leading-relaxed">
+                          Awards & trust badges are now centrally managed under the global <strong className="text-[#000080]">Award Section</strong> sidebar tab to ensure perfect consistency across the entire website.
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -3821,11 +3743,11 @@ export default function TemplateManager() {
                       <div className="space-y-4">
                         {(data.techStack || []).map((stack: any, idx: number) => (
                           <div key={idx} className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-3 relative">
-                            <button onClick={() => {
+                            <button type="button" onClick={() => {
                                 const next = data.techStack.filter((_: any, i: number) => i !== idx);
                                 setDraftData({ ...data, techStack: next });
                               }}
-                              className="absolute top-4 right-4 p-2 text-slate-300 hover:text-red-500 transition-colors">
+                              className="absolute top-4 right-4 p-2 text-slate-300 hover:text-red-500 transition-colors cursor-pointer">
                               <Trash2 className="w-4 h-4" />
                             </button>
                             <div className="max-w-md">
@@ -3850,12 +3772,12 @@ export default function TemplateManager() {
                                   const logoVal = isObj ? (iconItem.logo || '') : '';
                                   return (
                                     <div key={iidx} className="flex flex-col bg-slate-50 border border-slate-200 rounded-xl p-3 relative group hover:border-[#000080]/30 hover:bg-slate-50/50 transition-all">
-                                      <button onClick={() => {
+                                      <button type="button" onClick={() => {
                                           const next = [...data.techStack];
                                           next[idx].icons = next[idx].icons.filter((_: any, i: number) => i !== iidx);
                                           setDraftData({ ...data, techStack: next });
                                         }} 
-                                        className="absolute top-2 right-2 p-1 text-slate-300 hover:text-red-500 rounded-md hover:bg-slate-100 transition-all opacity-0 group-hover:opacity-100">
+                                        className="absolute top-2 right-2 p-1 text-slate-300 hover:text-red-500 rounded-md hover:bg-slate-100 transition-all opacity-0 group-hover:opacity-100 cursor-pointer">
                                         <Trash2 className="w-3.5 h-3.5" />
                                       </button>
                                       
@@ -3912,12 +3834,12 @@ export default function TemplateManager() {
                                   );
                                 })}
                                 
-                                <button onClick={() => {
+                                <button type="button" onClick={() => {
                                     const next = [...data.techStack];
                                     next[idx].icons = [...(next[idx].icons || []), { name: 'New Tech', logo: '' }];
                                     setDraftData({ ...data, techStack: next });
                                   }}
-                                  className="border-2 border-dashed border-slate-200 rounded-xl p-4 text-slate-400 hover:text-[#000080] hover:border-[#000080]/30 transition-all flex flex-col items-center justify-center gap-1 min-h-[110px] bg-white hover:bg-slate-50/20 w-full" >
+                                  className="border-2 border-dashed border-slate-200 rounded-xl p-4 text-slate-400 hover:text-[#000080] hover:border-[#000080]/30 transition-all flex flex-col items-center justify-center gap-1 min-h-[110px] bg-white hover:bg-slate-50/20 w-full cursor-pointer" >
                                   <Plus className="w-5 h-5 text-slate-300" />
                                   <span className="text-[11px] font-bold">Add Tech & Logo</span>
                                 </button>
@@ -3925,7 +3847,15 @@ export default function TemplateManager() {
                             </div>
                           </div>
                         ))}
-                        <button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const next = [...(data.techStack || [])];
+                            next.push({ category: 'New Category', icons: [{ name: 'Technology Name', logo: '' }] });
+                            setDraftData({ ...data, techStack: next });
+                          }}
+                          className="w-full border-2 border-dashed border-slate-200 hover:border-[#000080] rounded-xl p-3 text-slate-400 hover:text-[#000080] transition-colors bg-white hover:bg-slate-50 flex items-center justify-center gap-2 cursor-pointer text-xs font-bold mt-2"
+                        >
                           <Plus className="w-4 h-4" /> Add Stack Category Blueprint
                         </button>
                       </div>
@@ -3936,53 +3866,6 @@ export default function TemplateManager() {
                 {templateSubTab === 'Our Process' && (
                   <div className="space-y-8 animate-in fade-in slide-in-from-left-2 duration-300">
                     <div className="space-y-6">
-                      <div className="flex items-center justify-between bg-slate-50 p-4 rounded-xl border border-slate-200">
-                        <div>
-                          <h4 className="text-sm font-bold text-slate-900">Our Process Section Configuration</h4>
-                          <p className="text-xs text-slate-500">Manage the step-by-step methodology cards shown on your service pages.</p>
-                        </div>
-                        <button onClick={() => {
-                            const defaultSteps = [
-                              {
-                                step: "01",
-                                title: "Discovery & Strategy",
-                                desc: "We analyze your existing workflows, legacy systems, and technical bottlenecks to construct a pragmatic blueprint for modernization.",
-                                image: "https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&q=80&w=1200",
-                                ctaText: "Let's Talk",
-                                ctaUrl: "/contact-us"
-                              },
-                              {
-                                step: "02",
-                                title: "System Architecture & Design",
-                                desc: "Our senior engineers design scalable, secure system architectures that seamlessly bridge your current tools and future integrations.",
-                                image: "https://images.unsplash.com/photo-1531482615713-2afd69097998?auto=format&fit=crop&q=80&w=1200",
-                                ctaText: "Let's Talk",
-                                ctaUrl: "/contact-us"
-                              },
-                              {
-                                step: "03",
-                                title: "Agile Development & Testing",
-                                desc: "We write clean, high-performance code with daily standups, robust test coverage, and continuous delivery loops to guarantee momentum.",
-                                image: "https://images.unsplash.com/photo-1552664730-d307ca884978?auto=format&fit=crop&q=80&w=1200",
-                                ctaText: "Let's Talk",
-                                ctaUrl: "/contact-us"
-                              },
-                              {
-                                step: "04",
-                                title: "Deployment & Continuous Growth",
-                                desc: "We deploy without downtime, provide proactive monitoring, and continuously optimize systems as your user base and operations scale.",
-                                image: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&q=80&w=1200",
-                                ctaText: "Let's Talk",
-                                ctaUrl: "/contact-us"
-                              }
-                            ];
-                            setDraftData({ ...data, processTitle: 'Our Process', processBadge: 'How We Deliver Success', ourProcess: defaultSteps, engagement: defaultSteps });
-                          }}
-                          className="text-xs font-bold text-[#000080] bg-white border border-[#000080]/30 hover:bg-[#000080] hover:text-white px-3 py-1.5 rounded-lg transition-all" >
-                          Reset to Standard 4 Steps
-                        </button>
-                      </div>
-
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                           <label className="block text-xs font-bold text-slate-700 mb-1">Section Badge / Eyebrow</label>
@@ -4010,6 +3893,7 @@ export default function TemplateManager() {
                         <div className="flex items-center justify-between mb-3">
                           <label className="text-xs font-bold text-slate-800 uppercase tracking-wider">Process Steps ({(data.ourProcess || data.engagement || []).length})</label>
                           <button 
+                            type="button"
                             onClick={() => {
                               const processList = data.ourProcess || data.engagement || [];
                               const nextNum = processList.length + 1;
@@ -4024,7 +3908,7 @@ export default function TemplateManager() {
                               const next = [...processList, newStep];
                               setDraftData({ ...data, ourProcess: next, engagement: next });
                             }}
-                            className="text-xs font-bold text-white bg-[#000080] hover:bg-[#000066] px-3 py-1.5 rounded-lg flex items-center gap-1 shadow-sm">
+                            className="text-xs font-bold text-white bg-[#000080] hover:bg-[#000066] px-3 py-1.5 rounded-lg flex items-center gap-1 shadow-sm cursor-pointer">
                             <Plus className="w-3.5 h-3.5" /> Add Step
                           </button>
                         </div>
@@ -4048,12 +3932,12 @@ export default function TemplateManager() {
                                   />
                                   <span className="text-[10px] font-bold text-slate-400 uppercase">Step Number</span>
                                 </div>
-                                <button onClick={() => {
+                                <button type="button" onClick={() => {
                                     const processList = data.ourProcess || data.engagement || [];
                                     const next = processList.filter((_: any, i: number) => i !== idx);
                                     setDraftData({ ...data, ourProcess: next, engagement: next });
                                   }} 
-                                  className="text-red-400 hover:text-red-600 p-1 transition-colors"
+                                  className="text-red-400 hover:text-red-600 p-1 transition-colors cursor-pointer"
                                   title="Delete step">
                                   <Trash2 className="w-4 h-4" />
                                 </button>
@@ -4149,11 +4033,11 @@ export default function TemplateManager() {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {(data.engagement || []).map((model: any, idx: number) => (
                           <div key={idx} className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-4 relative">
-                            <button onClick={() => {
+                            <button type="button" onClick={() => {
                                 const next = data.engagement.filter((_: any, i: number) => i !== idx);
                                 setDraftData({ ...data, engagement: next });
                               }}
-                              className="absolute top-4 right-4 p-2 text-slate-300 hover:text-red-500 transition-colors">
+                              className="absolute top-4 right-4 p-2 text-slate-300 hover:text-red-500 transition-colors cursor-pointer">
                               <Trash2 className="w-4 h-4" />
                             </button>
                             <input 
@@ -4188,7 +4072,15 @@ export default function TemplateManager() {
                             />
                           </div>
                         ))}
-                        <button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const next = [...(data.engagement || [])];
+                            next.push({ title: 'New Engagement Model', desc: 'Describe this model', image: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&q=80&w=1200' });
+                            setDraftData({ ...data, engagement: next });
+                          }}
+                          className="flex flex-col items-center justify-center border-2 border-dashed border-slate-200 hover:border-[#000080] rounded-2xl p-6 text-slate-300 hover:text-[#000080] transition-colors bg-white hover:bg-slate-50 cursor-pointer min-h-[200px]"
+                        >
                           <Plus className="w-8 h-8" />
                           <span className="text-xs font-bold">Add Engagement Model</span>
                         </button>
@@ -4249,11 +4141,11 @@ export default function TemplateManager() {
                                   setDraftData({ ...data, faqs: next });
                                 }}
                               />
-                              <button onClick={() => {
+                              <button type="button" onClick={() => {
                                   const next = data.faqs.filter((_: any, i: number) => i !== idx);
                                   setDraftData({ ...data, faqs: next });
                                 }}
-                                className="p-2 text-red-300 hover:text-red-500 transition-colors">
+                                className="p-2 text-red-300 hover:text-red-500 transition-colors cursor-pointer">
                                 <Trash2 className="w-4 h-4" />
                               </button>
                             </div>
@@ -4273,7 +4165,15 @@ export default function TemplateManager() {
                             />
                           </div>
                         ))}
-                        <button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const next = [...(data.faqs || [])];
+                            next.push({ question: 'New Frequently Asked Question', answer: 'Provide clear, concise answer.' });
+                            setDraftData({ ...data, faqs: next });
+                          }}
+                          className="w-full border-2 border-dashed border-slate-200 hover:border-[#000080] rounded-xl p-3 text-slate-400 hover:text-[#000080] transition-colors bg-white hover:bg-slate-50 flex items-center justify-center gap-2 cursor-pointer text-xs font-bold mt-2"
+                        >
                           <Plus className="w-4 h-4" /> Add FAQ Entry Blueprint
                         </button>
                       </div>
@@ -4293,7 +4193,11 @@ export default function TemplateManager() {
                         </div>
                         <div className="flex items-center gap-2">
                           <label className="text-sm font-semibold text-slate-700">Show Pricing Section</label>
-                          <button>
+                          <button
+                            type="button"
+                            onClick={() => setDraftData({ ...data, hidePricing: !data.hidePricing })}
+                            className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${!data.hidePricing ? 'bg-[#000080]' : 'bg-slate-200'}`}
+                          >
                             <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${!data.hidePricing ? 'translate-x-6' : 'translate-x-1'}`} />
                           </button>
                         </div>
@@ -4302,11 +4206,11 @@ export default function TemplateManager() {
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         {(data.pricing || []).map((plan: any, idx: number) => (
                           <div key={idx} className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-4 relative">
-                            <button onClick={() => {
+                            <button type="button" onClick={() => {
                                 const next = data.pricing.filter((_: any, i: number) => i !== idx);
                                 setDraftData({ ...data, pricing: next });
                               }}
-                              className="absolute top-3 right-3 p-1.5 text-slate-300 hover:text-red-500 transition-colors">
+                              className="absolute top-3 right-3 p-1.5 text-slate-300 hover:text-red-500 transition-colors cursor-pointer">
                               <Trash2 className="w-4 h-4" />
                             </button>
                             <div>
@@ -4366,29 +4270,37 @@ export default function TemplateManager() {
                                         setDraftData({ ...data, pricing: next });
                                       }}
                                     />
-                                    <button onClick={() => {
+                                    <button type="button" onClick={() => {
                                         const next = [...data.pricing];
                                         next[idx].features = next[idx].features.filter((_: any, i: number) => i !== fidx);
                                         setDraftData({ ...data, pricing: next });
                                       }}
-                                      className="text-red-300 hover:text-red-500">
+                                      className="text-red-300 hover:text-red-500 cursor-pointer">
                                       <Trash2 className="w-3.5 h-3.5" />
                                     </button>
                                   </div>
                                 ))}
-                                <button onClick={() => {
+                                <button type="button" onClick={() => {
                                     const next = [...data.pricing];
                                     next[idx].features = [...(next[idx].features || []), 'New Plan Feature'];
                                     setDraftData({ ...data, pricing: next });
                                   }}
-                                  className="text-[10px] font-bold text-[#000080] flex items-center gap-1 mt-1" >
+                                  className="text-[10px] font-bold text-[#000080] flex items-center gap-1 mt-1 cursor-pointer" >
                                   <Plus className="w-3 h-3" /> Add Feature Point
                                 </button>
                               </div>
                             </div>
                           </div>
                         ))}
-                        <button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const next = [...(data.pricing || [])];
+                            next.push({ name: 'New Tier Plan', price: '2,500', period: 'project', features: ['Feature 1', 'Feature 2'] });
+                            setDraftData({ ...data, pricing: next });
+                          }}
+                          className="flex flex-col items-center justify-center border-2 border-dashed border-slate-200 hover:border-[#000080] rounded-2xl p-6 text-slate-300 hover:text-[#000080] transition-colors bg-white hover:bg-slate-50 cursor-pointer min-h-[200px]"
+                        >
                           <Plus className="w-8 h-8" />
                           <span className="text-xs font-bold">Add Pricing Plan</span>
                         </button>

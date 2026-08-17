@@ -8,6 +8,8 @@ import { getProjects, saveProject } from '../../lib/projectService';
 export default function ProjectManager() {
   const [projects, setProjects] = useState<ClientProject[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [editingProject, setEditingProject] = useState<ClientProject | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   
   useEffect(() => {
     loadProjects();
@@ -16,6 +18,30 @@ export default function ProjectManager() {
   const loadProjects = async () => {
     const data = await getProjects();
     setProjects(data);
+  };
+
+  const handleCreateNew = () => {
+    setEditingProject({
+      id: `proj_${Date.now()}`,
+      clientPortalToken: `token_${Date.now()}`,
+      projectName: 'New Client Project',
+      clientName: 'Client Name',
+      clientEmail: 'client@example.com',
+      status: 'discovery',
+      startDate: new Date().toISOString().split('T')[0],
+      targetEndDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      milestones: [
+        { id: 'm1', title: 'Discovery & Onboarding', dueDate: new Date().toISOString().split('T')[0], status: 'pending', deliverables: [] }
+      ],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    });
+    setIsModalOpen(true);
+  };
+
+  const handleDeleteProject = async (id: string) => {
+    const updated = projects.filter(p => p.id !== id);
+    setProjects(updated);
   };
 
   const filteredProjects = projects.filter(p => 
@@ -31,7 +57,10 @@ export default function ProjectManager() {
           <p className="text-slate-500 mt-1">Manage active deliverables, milestones, and client portals.</p>
         </div>
         
-        <button className="px-4 py-2.5 bg-[#000080] hover:bg-[#000066] text-white rounded-xl text-sm font-bold shadow-md transition-all flex items-center gap-2">
+        <button 
+          onClick={handleCreateNew}
+          className="px-4 py-2.5 bg-[#000080] hover:bg-[#000066] text-white rounded-xl text-sm font-bold shadow-md transition-all flex items-center gap-2 cursor-pointer"
+        >
           <Plus className="w-4 h-4" /> New Project
         </button>
       </div>
@@ -97,13 +126,30 @@ export default function ProjectManager() {
                       </div>
                     </td>
                     <td className="px-6 py-4 text-right space-x-2">
-                      <button>
+                      <a
+                        href={`/portal/${project.clientPortalToken}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="p-2 text-slate-400 hover:text-[#000080] hover:bg-blue-50 rounded-lg transition-colors inline-block"
+                        title="View Client Portal"
+                      >
                         <ExternalLink className="w-4 h-4" />
-                      </button>
-                      <button className="p-2 text-slate-400 hover:text-[#000080] hover:bg-blue-50 rounded-lg transition-colors">
+                      </a>
+                      <button 
+                        onClick={() => {
+                          setEditingProject(project);
+                          setIsModalOpen(true);
+                        }}
+                        className="p-2 text-slate-400 hover:text-[#000080] hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
+                        title="Edit Project"
+                      >
                         <Edit2 className="w-4 h-4" />
                       </button>
-                      <button className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                      <button 
+                        onClick={() => handleDeleteProject(project.id)}
+                        className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                        title="Delete Project"
+                      >
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </td>

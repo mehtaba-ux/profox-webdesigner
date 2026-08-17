@@ -166,14 +166,18 @@ export default function ImageUploader({
       {/* Database Mode */}
       {mode === 'database' && (
         <div className="flex items-center gap-2">
-          <button>
+          <button
+            type="button"
+            onClick={() => setShowMediaLibrary(true)}
+            className="flex-1 w-full bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-[#000080] rounded-xl py-2.5 px-4 text-xs font-bold transition-all flex items-center justify-center gap-2 group cursor-pointer"
+          >
             <Database className="w-4 h-4 text-[#000080] group-hover:scale-110 transition-transform" />
             <span>Select from Existing Media Library</span>
           </button>
           {value && (
             <button type="button"
               onClick={() => onChange('')}
-              className="p-3 bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 rounded-xl transition-colors shrink-0"
+              className="p-3 bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 rounded-xl transition-colors shrink-0 cursor-pointer"
               title="Clear Selection">
               <X className="w-4 h-4" />
             </button>
@@ -195,7 +199,12 @@ export default function ImageUploader({
             />
           </div>
           {value && (
-            <button>
+            <button
+              type="button"
+              onClick={() => onChange('')}
+              className="p-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 rounded-xl transition-colors shrink-0 cursor-pointer"
+              title="Clear Link"
+            >
               <X className="w-4 h-4" />
             </button>
           )}
@@ -243,7 +252,11 @@ export default function ImageUploader({
               className="bg-white text-slate-900 text-[10px] font-bold px-2.5 py-1 rounded-lg border border-slate-300 hover:bg-slate-100 flex items-center gap-1">
               <ImageIcon className="w-3 h-3 text-[#000080]" /> View/Download
             </a>
-            <button>
+            <button 
+              type="button"
+              onClick={() => onChange('')}
+              className="bg-red-500 hover:bg-red-600 text-white text-[10px] font-bold px-2.5 py-1 rounded-lg flex items-center gap-1 transition-colors cursor-pointer"
+            >
               <X className="w-3 h-3" /> Remove
             </button>
           </div>

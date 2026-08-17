@@ -133,7 +133,10 @@ export default function SiteSettingsManager() {
         </div>
         
         <div className="flex items-center gap-3">
-          <button>
+          <button 
+            onClick={() => setShowPreviewModal(true)}
+            className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer"
+          >
             <Eye className="w-4 h-4 text-blue-600" />
             <span>Preview Dev Screen</span>
           </button>
@@ -463,7 +466,10 @@ export default function SiteSettingsManager() {
                 <Eye className="w-4 h-4 text-blue-400" />
                 <span>Simulated Visitor Preview: Development Mode Screen</span>
               </div>
-              <button>
+              <button 
+                onClick={() => setShowPreviewModal(false)}
+                className="p-1 text-slate-400 hover:text-white rounded-lg transition-colors cursor-pointer"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>

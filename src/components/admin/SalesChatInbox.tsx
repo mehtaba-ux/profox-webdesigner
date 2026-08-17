@@ -252,8 +252,12 @@ export default function SalesChatInbox() {
         </div>
 
         <div className="flex items-center gap-3">
-          <button>
-            <Users className="w-4 h-4 text-blue-200" /> Manage Sales Team ({salesReps.length})
+          <button
+            type="button"
+            onClick={() => setShowTeamModal(true)}
+            className="px-3 py-1.5 bg-[#000080] hover:bg-[#000066] text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm cursor-pointer"
+          >
+            <Users className="w-4 h-4" /> Manage Sales Team ({salesReps.length})
           </button>
 
           <button 
@@ -461,13 +465,25 @@ export default function SalesChatInbox() {
             {/* Quick Canned Template Responses */}
             <div className="px-4 py-2 bg-white border-t border-slate-200 flex items-center gap-2 overflow-x-auto no-scrollbar">
               <span className="text-[10px] font-bold text-slate-400 shrink-0">Quick Templates:</span>
-              <button>
+              <button
+                type="button"
+                onClick={() => handleCannedResponse("Hello! Thank you for reaching out to Profox web designer. How can I assist you with your web project today?")}
+                className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-medium rounded-lg whitespace-nowrap transition-colors cursor-pointer"
+              >
                 👋 Welcome Greeting
               </button>
-              <button>
+              <button
+                type="button"
+                onClick={() => handleCannedResponse("We offer custom web design, e-commerce solutions, and enterprise software development. Would you like a custom quote or package recommendation?")}
+                className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-medium rounded-lg whitespace-nowrap transition-colors cursor-pointer"
+              >
                 💼 Package Overview
               </button>
-              <button>
+              <button
+                type="button"
+                onClick={() => handleCannedResponse("I've shared your requirements with our design team. We'll have a preliminary project roadmap ready for you shortly.")}
+                className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-medium rounded-lg whitespace-nowrap transition-colors cursor-pointer"
+              >
                 🎨 Draft Update
               </button>
             </div>
@@ -539,7 +555,11 @@ export default function SalesChatInbox() {
                   <p className="text-xs text-slate-500">Delete dummy sales reps or add new sales consultants.</p>
                 </div>
               </div>
-              <button>
+              <button
+                type="button"
+                onClick={() => setShowTeamModal(false)}
+                className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -549,7 +569,11 @@ export default function SalesChatInbox() {
                 <>
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold text-slate-700">Active Sales Representatives ({salesReps.length})</span>
-                    <button>
+                    <button
+                      type="button"
+                      onClick={() => setShowAddRepForm(true)}
+                      className="px-3 py-1.5 bg-[#000080] hover:bg-[#000066] text-white rounded-xl text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer"
+                    >
                       <Plus className="w-3.5 h-3.5" /> Add New Representative
                     </button>
                   </div>
@@ -584,7 +608,12 @@ export default function SalesChatInbox() {
                             </div>
                           </div>
 
-                          <button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteRep(rep.id)}
+                            className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors cursor-pointer"
+                            title="Delete representative"
+                          >
                             <Trash2 className="w-4 h-4" />
                           </button>
                         </div>
@@ -599,7 +628,11 @@ export default function SalesChatInbox() {
                     <h4 className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
                       <Plus className="w-4 h-4 text-emerald-600" /> New Sales Representative
                     </h4>
-                    <button>
+                    <button
+                      type="button"
+                      onClick={() => setShowAddRepForm(false)}
+                      className="text-xs font-bold text-slate-600 hover:text-slate-900 cursor-pointer"
+                    >
                       Back to List
                     </button>
                   </div>
@@ -661,12 +694,17 @@ export default function SalesChatInbox() {
                   </div>
 
                   <div className="flex justify-end gap-2 pt-2">
-                    <button>
+                    <button
+                      type="button"
+                      onClick={() => setShowAddRepForm(false)}
+                      className="px-3.5 py-2 text-xs font-bold text-slate-600 hover:bg-slate-200 bg-slate-100 rounded-xl transition-colors cursor-pointer"
+                    >
                       Cancel
                     </button>
                     <button 
                       type="submit"
-                      className="px-4 py-2 text-xs font-bold bg-[#000080] hover:bg-[#000066] text-white rounded-xl shadow-md">
+                      className="px-4 py-2 text-xs font-bold bg-[#000080] hover:bg-[#000066] text-white rounded-xl shadow-md cursor-pointer"
+                    >
                       Create Representative
                     </button>
                   </div>

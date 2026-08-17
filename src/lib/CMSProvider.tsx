@@ -10,7 +10,7 @@ const PUBLIC_SHARED_SECTIONS = [
   'theme', 'header', 'footer', 'siteSettings', 'hero', 'services', 'servicePackages',
   'caseStudies', 'growth', 'insights', 'cta', 'faq_section', 'feedback_submissions',
   'dynamicSections', 'portfolio_items', 'portfolio_categories', 'loadingScreen',
-  'process_header', 'process_steps', 'ourProcess'
+  'process_header', 'process_steps', 'ourProcess', 'globalAwards', 'globalAwardsEnabled'
 ];
 
 function filterPortfolioItems(items: any[]) {

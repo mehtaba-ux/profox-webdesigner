@@ -180,10 +180,20 @@ function SortableMenuItem({
           </div>
 
           <div className="flex items-center gap-1">
-            <button>
+            <button
+              type="button"
+              onClick={() => setIsExpanded(!isExpanded)}
+              className="p-1 text-slate-400 hover:text-slate-600 rounded cursor-pointer"
+              title={isExpanded ? "Collapse item" : "Expand item"}
+            >
               {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
             </button>
-            <button>
+            <button
+              type="button"
+              onClick={() => onRemove(item.id)}
+              className="p-1 text-slate-400 hover:text-red-500 rounded cursor-pointer"
+              title="Delete Item"
+            >
               <Trash2 className="w-4 h-4" />
             </button>
           </div>
@@ -216,7 +226,11 @@ function SortableMenuItem({
             </div>
 
             {depth < 1 && (
-              <button>
+              <button
+                type="button"
+                onClick={() => onAddSub(item.id)}
+                className="px-2 py-1 bg-slate-50 hover:bg-[#000080]/10 text-slate-600 hover:text-[#000080] border border-slate-200 rounded-lg text-[10px] font-bold flex items-center gap-1 transition-all cursor-pointer"
+              >
                 <Plus className="w-3.5 h-3.5" /> Add Sub-Item
               </button>
             )}
@@ -986,20 +1000,36 @@ export default function CustomMenuManager({
         {/* Presets */}
         <div className="flex items-center gap-2 pt-1 overflow-x-auto">
           <span className="text-[11px] font-bold text-slate-500 shrink-0">Preset Templates:</span>
-          <button>
+          <button 
+            type="button" 
+            onClick={() => handleLoadPresetMenu('agency')}
+            className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-[10px] font-bold rounded-lg transition-all cursor-pointer"
+          >
             Digital Agency
           </button>
-          <button>
+          <button 
+            type="button" 
+            onClick={() => handleLoadPresetMenu('saas')}
+            className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-[10px] font-bold rounded-lg transition-all cursor-pointer"
+          >
             SaaS & Product
           </button>
-          <button>
+          <button 
+            type="button" 
+            onClick={() => handleLoadPresetMenu('minimal')}
+            className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-[10px] font-bold rounded-lg transition-all cursor-pointer"
+          >
             Minimal Nav
           </button>
         </div>
         
         <div className="flex justify-end pt-2">
           {!showRestoreConfirm ? (
-            <button>
+            <button 
+              type="button"
+              onClick={() => setShowRestoreConfirm(true)}
+              className="px-3 py-1.5 text-slate-500 hover:text-red-600 hover:bg-red-50 border border-slate-200 hover:border-red-200 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
+            >
               <RefreshCw className="w-3 h-3" /> Restore Default Site Navigation
             </button>
           ) : (
@@ -1012,10 +1042,14 @@ export default function CustomMenuManager({
                   onChange(defaultItems.map(({ id, ...rest }) => rest));
                   setShowRestoreConfirm(false);
                 }}
-                className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-[10px] font-bold rounded-lg transition-all shadow-sm">
+                className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-[10px] font-bold rounded-lg transition-all shadow-sm cursor-pointer">
                 Yes, Restore
               </button>
-              <button>
+              <button 
+                type="button"
+                onClick={() => setShowRestoreConfirm(false)}
+                className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 text-[10px] font-bold rounded-lg transition-all cursor-pointer"
+              >
                 Cancel
               </button>
             </div>

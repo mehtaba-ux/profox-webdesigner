@@ -90,7 +90,27 @@ export default function ServicePackages({ isLiveEditing = false }: ServicePackag
   const isEnabled = packagesSectionData.enabled === true;
   const sectionTitle = packagesSectionData.title || 'Our Services Packages';
   const sectionSubtitle = packagesSectionData.subtitle || 'Completely customizable web design and development packages tailored to match your specific digital and business requirements.';
-  const packagesList = packagesSectionData.list || [];
+  const packagesList = (packagesSectionData.list && packagesSectionData.list.length > 0) ? packagesSectionData.list : [
+    {
+      title: "Essential Digital Presence",
+      price: "$2,500",
+      description: "Perfect for establishing a professional foundation.",
+      features: ["Custom UI/UX Design", "Responsive Web Development", "Basic SEO Setup", "Contact Form Integration", "1 Month Support"]
+    },
+    {
+      title: "Growth Accelerator",
+      price: "$5,000",
+      isPopular: true,
+      description: "Ideal for businesses looking to scale their online impact.",
+      features: ["Advanced UI/UX with Animations", "CMS Integration (Blog/Portfolio)", "Performance Optimization", "E-commerce Readiness", "Analytics Setup", "3 Months Support"]
+    },
+    {
+      title: "Enterprise Ecosystem",
+      price: "Custom",
+      description: "Comprehensive solutions for complex organizational needs.",
+      features: ["Full-Stack Custom Development", "API Integrations", "Advanced Security Protocols", "Custom Web Apps / Portals", "Dedicated Account Manager", "Ongoing Maintenance"]
+    }
+  ];
 
   if (!isEnabled && !isLiveEditing) return null;
 

@@ -250,10 +250,11 @@ export default function ThemeCustomizerDrawer({ isOpen, onClose, isLiveEditing, 
         </div>
 
         <button 
+          type="button"
           onClick={onClose}
-          className="text-slate-500 hover:text-slate-900 p-1.5 rounded-lg hover:bg-slate-100 transition-colors"
->
-          <X className="w-5 h-5"  />
+          className="text-slate-500 hover:text-slate-900 p-1.5 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+        >
+          <X className="w-5 h-5" />
         </button>
       </div>
 
@@ -453,7 +454,11 @@ export default function ThemeCustomizerDrawer({ isOpen, onClose, isLiveEditing, 
                     </div>
                   </div>
                   <p className="text-xs text-slate-500 leading-relaxed">{skin.description}</p>
-                  <button>
+                  <button
+                    type="button"
+                    onClick={() => handleApplySkin(skin.id)}
+                    className="w-full py-2 bg-[#000080] hover:bg-[#000066] text-white text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
+                  >
                     <Download className="w-3.5 h-3.5" /> Apply Skin
                   </button>
                 </div>
@@ -472,32 +477,59 @@ export default function ThemeCustomizerDrawer({ isOpen, onClose, isLiveEditing, 
               </label>
 
               <div className="grid grid-cols-2 gap-2">
-                
-                <button>
+                <button
+                  type="button"
+                  onClick={() => handleAddSection('portfolio')}
+                  className="p-3 bg-slate-50 hover:bg-[#000080]/10 hover:text-[#000080] border border-slate-200 rounded-xl text-xs font-bold text-slate-700 transition-all flex items-center gap-2 cursor-pointer"
+                >
                   <Briefcase className="w-4 h-4 text-[#000080]" />
                   <span>Portfolio Grid</span>
                 </button>
-<button>
+                <button
+                  type="button"
+                  onClick={() => handleAddSection('pricing')}
+                  className="p-3 bg-slate-50 hover:bg-[#000080]/10 hover:text-[#000080] border border-slate-200 rounded-xl text-xs font-bold text-slate-700 transition-all flex items-center gap-2 cursor-pointer"
+                >
                   <DollarSign className="w-4 h-4 text-[#000080]" />
                   <span>Pricing Table</span>
                 </button>
-                <button>
+                <button
+                  type="button"
+                  onClick={() => handleAddSection('testimonials')}
+                  className="p-3 bg-slate-50 hover:bg-[#000080]/10 hover:text-[#000080] border border-slate-200 rounded-xl text-xs font-bold text-slate-700 transition-all flex items-center gap-2 cursor-pointer"
+                >
                   <MessageSquare className="w-4 h-4 text-[#000080]" />
                   <span>Testimonials</span>
                 </button>
-                <button>
-                  <HelpCircle className="w-4 h-4 text-teal-400" />
+                <button
+                  type="button"
+                  onClick={() => handleAddSection('faq')}
+                  className="p-3 bg-slate-50 hover:bg-[#000080]/10 hover:text-[#000080] border border-slate-200 rounded-xl text-xs font-bold text-slate-700 transition-all flex items-center gap-2 cursor-pointer"
+                >
+                  <HelpCircle className="w-4 h-4 text-teal-500" />
                   <span>FAQ Accordion</span>
                 </button>
-                <button>
-                  <Award className="w-4 h-4 text-cyan-400" />
+                <button
+                  type="button"
+                  onClick={() => handleAddSection('features')}
+                  className="p-3 bg-slate-50 hover:bg-[#000080]/10 hover:text-[#000080] border border-slate-200 rounded-xl text-xs font-bold text-slate-700 transition-all flex items-center gap-2 cursor-pointer"
+                >
+                  <Award className="w-4 h-4 text-cyan-500" />
                   <span>Features Grid</span>
                 </button>
-                <button>
-                  <Grid className="w-4 h-4 text-amber-400" />
+                <button
+                  type="button"
+                  onClick={() => handleAddSection('counter')}
+                  className="p-3 bg-slate-50 hover:bg-[#000080]/10 hover:text-[#000080] border border-slate-200 rounded-xl text-xs font-bold text-slate-700 transition-all flex items-center gap-2 cursor-pointer"
+                >
+                  <Grid className="w-4 h-4 text-amber-500" />
                   <span>Stats Counter</span>
                 </button>
-                <button>
+                <button
+                  type="button"
+                  onClick={() => handleAddSection('cta')}
+                  className="p-3 bg-slate-50 hover:bg-[#000080]/10 hover:text-[#000080] border border-slate-200 rounded-xl text-xs font-bold text-slate-700 transition-all flex items-center gap-2 col-span-2 cursor-pointer"
+                >
                   <Plus className="w-4 h-4 text-[#000080]" />
                   <span>CTA Banner</span>
                 </button>
@@ -516,7 +548,8 @@ export default function ThemeCustomizerDrawer({ isOpen, onClose, isLiveEditing, 
                     className="flex items-center justify-between bg-slate-50 border border-slate-200 p-3 rounded-xl">
                     <div className="flex items-center gap-2.5">
                       <button onClick={() => handleToggleSection(idx)}
-                        className={`p-1 rounded-md transition-colors ${
+                        type="button"
+                        className={`p-1 rounded-md transition-colors cursor-pointer ${
                           sec.enabled ? 'text-[#000080] bg-[#000080]/10' : 'text-slate-500 bg-white'
                         }`}
                         title={sec.enabled ? 'Disable section' : 'Enable section'} >
@@ -529,13 +562,28 @@ export default function ThemeCustomizerDrawer({ isOpen, onClose, isLiveEditing, 
                     </div>
 
                     <div className="flex items-center gap-1">
-                      <button>
+                      <button
+                        type="button"
+                        onClick={() => handleMoveSection(idx, 'up')}
+                        className="p-1 hover:bg-slate-200 text-slate-600 rounded cursor-pointer"
+                        title="Move Up"
+                      >
                         <ArrowUp className="w-3.5 h-3.5" />
                       </button>
-                      <button>
+                      <button
+                        type="button"
+                        onClick={() => handleMoveSection(idx, 'down')}
+                        className="p-1 hover:bg-slate-200 text-slate-600 rounded cursor-pointer"
+                        title="Move Down"
+                      >
                         <ArrowDown className="w-3.5 h-3.5" />
                       </button>
-                      <button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteSection(idx)}
+                        className="p-1 hover:bg-red-100 text-red-600 rounded cursor-pointer"
+                        title="Delete Section"
+                      >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     </div>
@@ -628,8 +676,9 @@ export default function ThemeCustomizerDrawer({ isOpen, onClose, isLiveEditing, 
           <Check className="w-4 h-4" /> Syncs Live to Supabase
         </span>
         <button 
+          type="button"
           onClick={onClose}
-          className="bg-[#000080] hover:bg-[#000066] text-white px-3.5 py-1.5 rounded-lg font-bold transition-all"
+          className="bg-[#000080] hover:bg-[#000066] text-white px-3.5 py-1.5 rounded-lg font-bold transition-all cursor-pointer"
         >
           Done
         </button>

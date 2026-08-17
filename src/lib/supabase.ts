@@ -156,13 +156,6 @@ export const dbProcedure = {
     return await supabase.from('portfolio_items').select('*').eq('slug', slug).single();
   },
 
-  // 4. Process Steps Stored Procedures
-  async getProcessSteps() {
-    const { data, error } = await supabase.rpc('get_process_steps');
-    if (!error && data) return { data, error: null };
-    return await supabase.from('process_steps').select('*').order('order_index', { ascending: true });
-  },
-
   // 5. Pages Stored Procedures
   async getAllPages() {
     const { data, error } = await supabase.rpc('get_all_pages');

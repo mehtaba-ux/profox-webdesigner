@@ -170,7 +170,7 @@ export default function AboutUsDetailView({ page }: { page?: any }) {
   const defaultData = pageData.hero ? pageData : (blueprint?.defaultData || {});
 
   // Verified ProFox journey; the editable blueprint takes priority when present.
-  const timelineMilestones: TimelineEvent[] = defaultData.timeline?.milestones || [
+  const timelineMilestones: TimelineEvent[] = (defaultData.timeline?.milestones && defaultData.timeline.milestones.length > 0) ? defaultData.timeline.milestones : [
     {
       year: '2018',
       title: 'ProFox Takes Shape',
@@ -219,7 +219,7 @@ export default function AboutUsDetailView({ page }: { page?: any }) {
     { title: 'Clarity Over Chaos', description: 'We simplify complex digital environments and remove unnecessary technical complexity.' },
   ];
   const missionIcons = [Eye, CheckCircle2, Compass, Lightbulb];
-  const missionCards: MissionCardData[] = (sections.overview?.cards || missionDefaults).map((card: any, index: number) => {
+  const missionCards: MissionCardData[] = ((sections.overview?.cards && sections.overview.cards.length > 0) ? sections.overview.cards : missionDefaults).map((card: any, index: number) => {
     const Icon = missionIcons[index % missionIcons.length];
     return { ...card, icon: <Icon className="h-5 w-5" /> };
   });
@@ -232,16 +232,16 @@ export default function AboutUsDetailView({ page }: { page?: any }) {
     { title: 'AI-First Solutions', description: 'Built to evolve with automation, AI, and growth.', icon: Bot },
   ];
   const relianceIcons = [Compass, Shield, Building2, TrendingUp, Cpu, Bot];
-  const relianceCards = (sections.whyUs?.cards || relianceDefaults).map((card: any, index: number) => ({ ...card, icon: relianceIcons[index % relianceIcons.length] }));
+  const relianceCards = ((sections.whyUs?.cards && sections.whyUs.cards.length > 0) ? sections.whyUs.cards : relianceDefaults).map((card: any, index: number) => ({ ...card, icon: relianceIcons[index % relianceIcons.length] }));
   const storyImage = sections.story?.image || aboutData?.story?.image || aboutData?.hero?.image || 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&q=82&w=1800';
   const storyText = aboutData?.story?.body || "Founded with the belief that technology should empower rather than overwhelm, ProFox began as a focused team of designers and developers. Today, we help organizations solve complex digital challenges, connect fragmented systems, and deliver measurable progress through thoughtful design, engineering, and automation.";
-  const galleryImages = sections.gallery?.images || aboutData?.gallery?.images || [
+  const galleryImages = (sections.gallery?.images && sections.gallery.images.length > 0) ? sections.gallery.images : ((aboutData?.gallery?.images && aboutData.gallery.images.length > 0) ? aboutData.gallery.images : [
     'https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&q=82&w=900',
     'https://images.unsplash.com/photo-1531482615713-2afd69097998?auto=format&fit=crop&q=82&w=900',
     'https://images.unsplash.com/photo-1556761175-5973dc0f32e7?auto=format&fit=crop&q=82&w=900',
     'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&q=82&w=900',
     'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&q=82&w=900',
-  ];
+  ]);
 
   const currentTimelineItem = timelineMilestones.find(m => m.year === activeYear) || timelineMilestones[0];
 
@@ -573,16 +573,57 @@ export default function AboutUsDetailView({ page }: { page?: any }) {
             </motion.div>
           </div>
 
-          <SectionReveal className="grid items-center gap-8 py-12 md:grid-cols-[220px_1fr] md:py-16">
-            <h3 className="max-w-[170px] text-2xl font-semibold leading-[1.02] tracking-[-0.04em] text-white">
-              {sections.awards?.title || 'Awards & Recognition'}
-            </h3>
-            <motion.div initial={{ opacity: 0, x: 30 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} className="flex flex-wrap items-center gap-x-10 gap-y-7 border-l-0 border-white/15 md:border-l md:pl-10 lg:gap-x-14">
-              {(sections.awards?.items || ['Clutch', 'DESIGNRUSH', 'BestDesign', 'THE MANIFEST']).map((award: string, index: number) => (
-                <span key={`${award}-${index}`} className="text-base font-extrabold tracking-[-0.025em] text-white/75 transition-colors hover:text-[#aaaaff] md:text-lg">{award}</span>
-              ))}
-            </motion.div>
-          </SectionReveal>
+          {content.globalAwardsEnabled !== false && content.growth?.awardsEnabled !== false && (
+            <SectionReveal className="grid items-center gap-8 py-12 md:grid-cols-[220px_1fr] md:py-16">
+              <h3 className="max-w-[170px] text-2xl font-semibold leading-[1.02] tracking-[-0.04em] text-white">
+                {sections.awards?.title || 'Awards & Recognition'}
+              </h3>
+              <motion.div 
+                initial={{ opacity: 0, x: 30 }} 
+                whileInView={{ opacity: 1, x: 0 }} 
+                viewport={{ once: true }} 
+                className="flex flex-wrap items-center gap-x-10 gap-y-7 border-l-0 border-white/15 md:border-l md:pl-10 lg:gap-x-14"
+              >
+                {(() => {
+                  const globalAwards = content.globalAwards || content.growth?.awards || [
+                    { name: 'CLUTCH 2024', subtext: 'TOP DEVELOPER', type: 'CLUTCH', show: true },
+                    { name: 'DESIGNRUSH', subtext: '', type: 'TEXT', show: true },
+                    { name: 'BestDesign', subtext: '', type: 'BORDERED', show: true }
+                  ];
+                  const activeAwards = globalAwards.filter((a: any) => a.show !== false);
+                  
+                  return activeAwards.map((award: any, index: number) => {
+                    if (award.image) {
+                      return (
+                        <div key={index} className="flex flex-col items-center gap-1">
+                          <img 
+                            src={award.image} 
+                            alt={award.name} 
+                            className="h-7 md:h-8 max-w-[110px] object-contain opacity-80 hover:opacity-100 transition-opacity"
+                            referrerPolicy="no-referrer"
+                          />
+                          {award.subtext && <span className="text-[8px] font-bold text-white/40 uppercase tracking-widest">{award.subtext}</span>}
+                        </div>
+                      );
+                    }
+                    
+                    return (
+                      <div key={index} className="flex flex-col items-start">
+                        <span className="text-base font-extrabold tracking-[-0.025em] text-white/75 transition-colors hover:text-[#aaaaff] md:text-lg">
+                          {award.name}
+                        </span>
+                        {award.subtext && (
+                          <span className="text-[9px] font-bold text-white/40 uppercase tracking-wider">
+                            {award.subtext}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  });
+                })()}
+              </motion.div>
+            </SectionReveal>
+          )}
         </div>
       </section>
 

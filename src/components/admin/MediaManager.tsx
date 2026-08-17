@@ -330,10 +330,11 @@ export default function MediaManager({ onSelect, onClose, selectable = false }: 
           </div>
 
           <button 
+            type="button"
             onClick={fetchAssets}
-            className="p-1.5 text-slate-500 hover:text-[#000080] hover:bg-slate-200/60 rounded-lg transition-all"
+            className="p-1.5 text-slate-500 hover:text-[#000080] hover:bg-slate-200/60 rounded-lg transition-all cursor-pointer"
             title="Refresh Library"
->
+          >
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
           </button>
         </div>
@@ -350,7 +351,7 @@ export default function MediaManager({ onSelect, onClose, selectable = false }: 
           <button type="button"
             onClick={() => fileInputRef.current?.click()}
             disabled={uploading}
-            className="px-3.5 py-1.5 bg-[#000080] hover:bg-[#000066] text-white rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm disabled:opacity-50">
+            className="px-3.5 py-1.5 bg-[#000080] hover:bg-[#000066] text-white rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm disabled:opacity-50 cursor-pointer">
             {uploading ? (
               <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
             ) : (
@@ -360,7 +361,7 @@ export default function MediaManager({ onSelect, onClose, selectable = false }: 
           </button>
 
           {onClose && (
-            <button onClick={onClose} className="p-2 hover:bg-slate-200 rounded-full transition-colors text-slate-500" >
+            <button type="button" onClick={onClose} className="p-2 hover:bg-slate-200 rounded-full transition-colors text-slate-500 cursor-pointer">
               <X className="w-5 h-5" />
             </button>
           )}

@@ -21,7 +21,7 @@ export default function Services({ isLiveEditing = false }: ServicesProps) {
   const isEnabled = servicesData.enabled !== false;
   const sectionTitle = servicesData.title || 'How We Help';
   const sectionSubtitle = servicesData.subtitle || 'Connected digital services designed around the way your customers decide and your team delivers.';
-  const serviceList = servicesData.list || [];
+  const serviceList = (servicesData.list && servicesData.list.length > 0) ? servicesData.list : defaultServices;
 
   if (!isEnabled && !isLiveEditing) return null;
 

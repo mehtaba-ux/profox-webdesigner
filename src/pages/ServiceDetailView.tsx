@@ -892,7 +892,13 @@ export default function ServiceDetailView({ page }: { page?: any }) {
 
   // If page was not passed directly, try to resolve page from CMS customPages or defaults
   const customPages = content.customPages || [];
-  const resolvedPage = page || customPages.find((p: any) => p.slug === slug || p.id === slug || p.template === slug);
+  const resolvedPage = page || customPages.find((p: any) => 
+    p.slug === slug || 
+    p.id === slug || 
+    p.template === slug ||
+    p.slug === `services/${slug}` ||
+    (p.slug && p.slug.replace(/^services\//, '') === slug)
+  );
 
   const rawBlueprints = content.template_blueprints || [];
   let blueprints = [...rawBlueprints];
@@ -902,17 +908,59 @@ export default function ServiceDetailView({ page }: { page?: any }) {
     }
   }
 
+  // Attempt to resolve template ID based on URL slug if no custom page was found or page template is generic
+  let templateId = resolvedPage?.template;
+  if (!templateId || templateId === 'service-detail') {
+    if (slug === 'website-design-and-development' || slug === 'digital-experience') {
+      templateId = 'digital-experience';
+    } else if (slug === 'web-and-mobile-application-development' || slug === 'technology' || slug === 'technology-solutions') {
+      templateId = 'technology-solutions';
+    } else if (slug === 'email-marketing-and-business-automation' || slug === 'ai' || slug === 'ai-automation') {
+      templateId = 'ai-automation';
+    } else if (slug) {
+      // Try to see if slug matches any blueprint ID exactly
+      const exactMatch = blueprints.find((b: any) => b.id === slug);
+      if (exactMatch) templateId = slug;
+    }
+  }
+
   // Find exact blueprint by page template ID strictly
-  let blueprint = blueprints.find((b: any) => b.id === resolvedPage?.template);
+  let blueprint = blueprints.find((b: any) => b.id === templateId);
   
   if (!blueprint) {
     // If no specific template ID, fallback to the core service-detail as a baseline
     blueprint = blueprints.find((b: any) => b.id === 'service-detail') || blueprints[0];
-  }
-
-  const blueprintData = blueprint?.defaultData || {};
+  }  const blueprintData = blueprint?.defaultData || {};
   const pageData = resolvedPage?.serviceDetailData || {};
-  const templateOwnsProcess = blueprint?.id === 'service-detail' || blueprint?.id === 'web-mobile-dev' || blueprint?.id === 'ai-automation';
+  const templateOwnsProcess = true;
+
+  const resolveVal = (pageVal: any, bpVal: any, genericDefaultVal: any = '') => {
+    if (pageVal === undefined || pageVal === null || pageVal === '') {
+      return (bpVal !== undefined && bpVal !== null && bpVal !== '') ? bpVal : genericDefaultVal;
+    }
+    if (bpVal !== undefined && bpVal !== null && bpVal !== '' && (pageVal === genericDefaultVal || JSON.stringify(pageVal) === JSON.stringify(genericDefaultVal))) {
+      return bpVal;
+    }
+    return pageVal;
+  };
+
+  const resolveArr = (pageArr: any, bpArr: any, genericDefaultArr: any = []) => {
+    const isPageValid = Array.isArray(pageArr) && pageArr.length > 0;
+    const isBpValid = Array.isArray(bpArr) && bpArr.length > 0;
+    const isGenericValid = Array.isArray(genericDefaultArr) && genericDefaultArr.length > 0;
+
+    if (!isPageValid) {
+      return isBpValid ? bpArr : (isGenericValid ? genericDefaultArr : []);
+    }
+
+    if (isBpValid && (JSON.stringify(pageArr) === JSON.stringify(genericDefaultArr))) {
+      return bpArr;
+    }
+
+    return pageArr;
+  };
+
+  const resolvedHeroTitle = (resolvedPage?.heroTitle && resolvedPage.heroTitle !== 'Untitled Page') ? resolvedPage.heroTitle : undefined;
 
   const data = {
     ...serviceData,
@@ -922,89 +970,107 @@ export default function ServiceDetailView({ page }: { page?: any }) {
       ...serviceData.hero,
       ...blueprintData.hero,
       ...pageData.hero,
-      title: pageData?.hero?.title || resolvedPage?.heroTitle || blueprintData?.hero?.title || resolvedPage?.title || serviceData.hero.title,
-      highlight: pageData?.hero?.highlight || resolvedPage?.heroHighlight || blueprintData?.hero?.highlight || serviceData.hero.highlight,
-      subheading: pageData?.hero?.subheading || resolvedPage?.heroSubheading || blueprintData?.hero?.subheading || "",
-      subtitle: pageData?.hero?.subtitle || blueprintData?.hero?.subtitle || "",
-      description: pageData?.hero?.description || resolvedPage?.heroSubtitle || blueprintData?.hero?.description || serviceData.hero.description,
-      image: pageData?.hero?.image || resolvedPage?.coverImage || blueprintData?.hero?.image || serviceData.hero.image,
-      ctaText: pageData?.hero?.ctaText || blueprintData?.hero?.ctaText || serviceData.hero.ctaText,
-      ctaUrl: pageData?.hero?.ctaUrl || blueprintData?.hero?.ctaUrl || serviceData.hero.ctaUrl,
+      title: resolveVal(pageData?.hero?.title, resolvedHeroTitle || blueprintData?.hero?.title || resolvedPage?.title, serviceData.hero.title),
+      highlight: resolveVal(pageData?.hero?.highlight, resolvedPage?.heroHighlight || blueprintData?.hero?.highlight, serviceData.hero.highlight),
+      subheading: resolveVal(pageData?.hero?.subheading, resolvedPage?.heroSubheading || blueprintData?.hero?.subheading, ""),
+      subtitle: resolveVal(pageData?.hero?.subtitle, blueprintData?.hero?.subtitle, ""),
+      description: resolveVal(pageData?.hero?.description, resolvedPage?.heroSubtitle || blueprintData?.hero?.description, serviceData.hero.description),
+      image: resolveVal(pageData?.hero?.image, resolvedPage?.coverImage || blueprintData?.hero?.image, serviceData.hero.image),
+      ctaText: resolveVal(pageData?.hero?.ctaText, blueprintData?.hero?.ctaText, serviceData.hero.ctaText),
+      ctaUrl: resolveVal(pageData?.hero?.ctaUrl, blueprintData?.hero?.ctaUrl, serviceData.hero.ctaUrl),
     },
-    subnav: pageData.subnav || blueprintData.subnav || serviceData.subnav,
-    quote: pageData.quote ?? blueprintData.quote ?? serviceData.quote,
-    quoteHeading: pageData.quoteHeading ?? blueprintData.quoteHeading ?? serviceData.quoteHeading,
-    quoteAuthor: pageData.quoteAuthor ?? blueprintData.quoteAuthor ?? serviceData.quoteAuthor,
-    quoteDescription: pageData.quoteDescription ?? blueprintData.quoteDescription ?? serviceData.quoteDescription,
-    howWeHelpTitle: pageData.howWeHelpTitle || blueprintData.howWeHelpTitle || "How We Help",
-    howWeHelpDesc: pageData.howWeHelpDesc || blueprintData.howWeHelpDesc || "We provide the senior engineering capacity to clear your project backlog. From custom APIs to legacy modernization, we deliver scalable, production-ready code that integrates seamlessly without increasing your internal hiring overhead.",
-    howWeHelpButtonText: pageData.howWeHelpButtonText || blueprintData.howWeHelpButtonText || "Get Started",
-    howWeHelpButtonUrl: pageData.howWeHelpButtonUrl || blueprintData.howWeHelpButtonUrl || "#cta",
-    howWeHelp: pageData.howWeHelp || blueprintData.howWeHelp || serviceData.howWeHelp,
-    challengesTitle: pageData.challengesTitle || blueprintData.challengesTitle || "The Challenges We Make",
-    challengesHighlight: pageData.challengesHighlight || blueprintData.challengesHighlight || "Disappear For You",
-    challenges: pageData.challenges || blueprintData.challenges || serviceData.challenges,
-    progressTitle: pageData.progressTitle || blueprintData.progressTitle || "What Progress",
-    progressHighlight: pageData.progressHighlight || blueprintData.progressHighlight || "Looks Like",
-    progressDesc: pageData.progressDesc || blueprintData.progressDesc || "Modernization Wins: Case studies on successfully phasing out legacy systems for unified, automated environments.",
-    progressLinkText: pageData.progressLinkText || blueprintData.progressLinkText || "View All Case Studies",
-    caseStudies: pageData.caseStudies || blueprintData.caseStudies || serviceData.caseStudies,
-    awardsTitle: pageData.awardsTitle || blueprintData.awardsTitle || "Awards &\nRecognition",
-    awards: pageData.awards || blueprintData.awards || [
-      { text: "CLUTCH", icon: "Sparkles" },
-      { text: "DESIGNRUSH", icon: "Monitor" },
-      { text: "BestDesign", icon: "" }
-    ],
-    frictionTitle: pageData.frictionTitle || blueprintData.frictionTitle || "Engineering the Friction Out of Complex Systems",
-    frictionDescription: pageData.frictionDescription || blueprintData.frictionDescription || "True technical value isn't just about adding new tools; it's about the seamless bridge between legacy infrastructure and modern automation. We specialize in that gap, replacing repetitive toil with a unified experience that functions as a single, cohesive engine. It's the difference between managing a mess and orchestrating a system that scales.",
-    frictionImage: pageData.frictionImage || blueprintData.frictionImage || "https://images.unsplash.com/photo-1556157382-97eda2d62296?auto=format&fit=crop&q=80&w=600",
-    techStackTitle: pageData.techStackTitle || blueprintData.techStackTitle || "Marketing and Technology Under One Roof",
-    techStackDesc: pageData.techStackDesc || blueprintData.techStackDesc || "Platforms, design, and strategy all work together. This creates a connected experience that helps teams move faster and make better decisions.",
-    techStackImage: pageData.techStackImage || blueprintData.techStackImage || "https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&q=80&w=1200",
-    techStack: pageData.techStack || blueprintData.techStack || serviceData.techStack,
+    subnav: resolveArr(pageData.subnav, blueprintData.subnav, serviceData.subnav),
+    quote: resolveVal(pageData.quote, blueprintData.quote, serviceData.quote),
+    quoteHeading: resolveVal(pageData.quoteHeading, blueprintData.quoteHeading, serviceData.quoteHeading),
+    quoteAuthor: resolveVal(pageData.quoteAuthor, blueprintData.quoteAuthor, serviceData.quoteAuthor),
+    quoteDescription: resolveVal(pageData.quoteDescription, blueprintData.quoteDescription, serviceData.quoteDescription),
+    howWeHelpTitle: resolveVal(pageData.howWeHelpTitle, blueprintData.howWeHelpTitle, "How We Help"),
+    howWeHelpDesc: resolveVal(pageData.howWeHelpDesc, blueprintData.howWeHelpDesc, "We provide senior engineering capacity to clear your backlog."),
+    howWeHelpButtonText: resolveVal(pageData.howWeHelpButtonText, blueprintData.howWeHelpButtonText, "Get Started"),
+    howWeHelpButtonUrl: resolveVal(pageData.howWeHelpButtonUrl, blueprintData.howWeHelpButtonUrl, "#cta"),
+    howWeHelp: resolveArr(pageData.howWeHelp, blueprintData.howWeHelp, serviceData.howWeHelp),
+    challengesTitle: resolveVal(pageData.challengesTitle, blueprintData.challengesTitle, "The Challenges We Make"),
+    challengesHighlight: resolveVal(pageData.challengesHighlight, blueprintData.challengesHighlight, "Disappear For You"),
+    challenges: resolveArr(pageData.challenges, blueprintData.challenges, serviceData.challenges),
+    progressTitle: resolveVal(pageData.progressTitle, blueprintData.progressTitle, "What Progress"),
+    progressHighlight: resolveVal(pageData.progressHighlight, blueprintData.progressHighlight, "Looks Like"),
+    progressDesc: resolveVal(pageData.progressDesc, blueprintData.progressDesc, "Modernization Wins: Case studies on successfully phasing out legacy systems."),
+    progressLinkText: resolveVal(pageData.progressLinkText, blueprintData.progressLinkText, "View All Case Studies"),
+    caseStudies: resolveArr(pageData.caseStudies, blueprintData.caseStudies, serviceData.caseStudies),
+    awardsTitle: resolveVal(pageData.awardsTitle, blueprintData.awardsTitle, "Awards &\nRecognition"),
+    awards: (() => {
+      const globalAwards = content.globalAwards || content.growth?.awards || [
+        { name: 'CLUTCH 2024', subtext: 'TOP DEVELOPER', type: 'CLUTCH', show: true },
+        { name: 'DESIGNRUSH', subtext: '', type: 'TEXT', show: true },
+        { name: 'BestDesign', subtext: '', type: 'BORDERED', show: true }
+      ];
+      return globalAwards
+        .filter((a: any) => a.show !== false)
+        .map((a: any) => {
+          let icon = "Award";
+          if (a.type === 'CLUTCH') icon = "Sparkles";
+          else if (a.type === 'TEXT') icon = "Monitor";
+          return {
+            text: a.name + (a.subtext ? ` - ${a.subtext}` : ''),
+            icon: icon,
+            image: a.image || undefined
+          };
+        });
+    })(),
+    frictionTitle: resolveVal(pageData.frictionTitle, blueprintData.frictionTitle, "Engineering the Friction Out of Complex Systems"),
+    frictionDescription: resolveVal(pageData.frictionDescription, blueprintData.frictionDescription, "True technical value isn't just about adding new tools; it's about the seamless bridge between legacy infrastructure and modern automation."),
+    frictionImage: resolveVal(pageData.frictionImage, blueprintData.frictionImage, "https://images.unsplash.com/photo-1556157382-97eda2d62296?auto=format&fit=crop&q=80&w=600"),
+    techStackTitle: resolveVal(pageData.techStackTitle, blueprintData.techStackTitle, "Marketing and Technology Under One Roof"),
+    techStackDesc: resolveVal(pageData.techStackDesc, blueprintData.techStackDesc, "Platforms, design, and strategy all work together."),
+    techStackImage: resolveVal(pageData.techStackImage, blueprintData.techStackImage, "https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&q=80&w=1200"),
+    techStack: resolveArr(pageData.techStack, blueprintData.techStack, serviceData.techStack),
     processBadge: templateOwnsProcess
-      ? (pageData.processBadge || blueprintData.processBadge || content.process_header?.badge || "How We Deliver Success")
-      : (content.process_header?.badge || pageData.processBadge || blueprintData.processBadge || "How We Deliver Success"),
+      ? resolveVal(pageData.processBadge, blueprintData.processBadge, content.process_header?.badge || "How We Deliver Success")
+      : resolveVal(content.process_header?.badge, pageData.processBadge || blueprintData.processBadge, "How We Deliver Success"),
     processTitle: templateOwnsProcess
-      ? (pageData.processTitle || pageData.engagementTitle || blueprintData.processTitle || blueprintData.engagementTitle || content.process_header?.title || "Our Process")
-      : (content.process_header?.title || pageData.processTitle || pageData.engagementTitle || blueprintData.processTitle || blueprintData.engagementTitle || "Our Process"),
-    ourProcess: pageData.ourProcess || pageData.engagement || blueprintData.ourProcess || blueprintData.engagement || serviceData.ourProcess,
+      ? resolveVal(pageData.processTitle || pageData.engagementTitle, blueprintData.processTitle || blueprintData.engagementTitle, content.process_header?.title || "Our Process")
+      : resolveVal(content.process_header?.title, pageData.processTitle || pageData.engagementTitle || blueprintData.processTitle || blueprintData.engagementTitle, "Our Process"),
+    ourProcess: resolveArr(pageData.ourProcess || pageData.engagement, blueprintData.ourProcess || blueprintData.engagement, serviceData.ourProcess),
     engagementTitle: templateOwnsProcess
-      ? (pageData.processTitle || pageData.engagementTitle || blueprintData.processTitle || blueprintData.engagementTitle || content.process_header?.title || "Our Process")
-      : (content.process_header?.title || pageData.processTitle || pageData.engagementTitle || blueprintData.processTitle || blueprintData.engagementTitle || "Our Process"),
-    engagement: pageData.ourProcess || pageData.engagement || blueprintData.ourProcess || blueprintData.engagement || serviceData.ourProcess,
-    resourcesTitle: pageData.resourcesTitle || blueprintData.resourcesTitle || "Our Resources",
-    resourcesLinkText: pageData.resourcesLinkText || blueprintData.resourcesLinkText || "View All Resources",
-    resources: pageData.resources || blueprintData.resources || serviceData.resources,
-    faqsTitle: pageData.faqsTitle || blueprintData.faqsTitle || "Frequently Asked Questions",
-    faqsDesc: pageData.faqsDesc || blueprintData.faqsDesc || "Clear answers to common questions about implementation, integrations, and how our solution fits your business.",
-    faqs: pageData.faqs || blueprintData.faqs || serviceData.faqs,
-    ctaTitle: pageData.ctaTitle || blueprintData.ctaTitle || "Let's Build for Impact",
-    ctaDescription: pageData.ctaDescription || blueprintData.ctaDescription || "Create technology that scales, performs, and delivers business results that last.",
-    ctaButtonText: pageData.ctaButtonText || blueprintData.ctaButtonText || "Let's Talk",
-    ctaUrl: pageData.ctaUrl || blueprintData.ctaUrl || "/contact-us",
+      ? resolveVal(pageData.processTitle || pageData.engagementTitle, blueprintData.processTitle || blueprintData.engagementTitle, content.process_header?.title || "Our Process")
+      : resolveVal(content.process_header?.title, pageData.processTitle || pageData.engagementTitle || blueprintData.processTitle || blueprintData.engagementTitle, "Our Process"),
+    engagement: resolveArr(pageData.ourProcess || pageData.engagement, blueprintData.ourProcess || blueprintData.engagement, serviceData.ourProcess),
+    resourcesTitle: resolveVal(pageData.resourcesTitle, blueprintData.resourcesTitle, "Our Resources"),
+    resourcesLinkText: resolveVal(pageData.resourcesLinkText, blueprintData.resourcesLinkText, "View All Resources"),
+    resources: resolveArr(pageData.resources, blueprintData.resources, serviceData.resources),
+    faqsTitle: resolveVal(pageData.faqsTitle, blueprintData.faqsTitle, "Frequently Asked Questions"),
+    faqsDesc: resolveVal(pageData.faqsDesc, blueprintData.faqsDesc, "Clear answers to common questions about implementation, integrations, and how our solution fits your business."),
+    faqs: resolveArr(pageData.faqs, blueprintData.faqs, serviceData.faqs),
+    ctaTitle: resolveVal(pageData.ctaTitle, blueprintData.ctaTitle, "Let's Build for Impact"),
+    ctaDescription: resolveVal(pageData.ctaDescription, blueprintData.ctaDescription, "Create technology that scales, performs, and delivers business results that last."),
+    ctaButtonText: resolveVal(pageData.ctaButtonText, blueprintData.ctaButtonText, "Let's Talk"),
+    ctaUrl: resolveVal(pageData.ctaUrl, blueprintData.ctaUrl, "/contact-us"),
     connectedLoop: {
-      eyebrow: pageData.connectedLoop?.eyebrow ?? blueprintData.connectedLoop?.eyebrow ?? serviceData.connectedLoop.eyebrow,
-      title: pageData.connectedLoop?.title ?? blueprintData.connectedLoop?.title ?? serviceData.connectedLoop.title,
-      desc1: pageData.connectedLoop?.desc1 ?? blueprintData.connectedLoop?.desc1 ?? serviceData.connectedLoop.desc1,
-      desc2: pageData.connectedLoop?.desc2 ?? blueprintData.connectedLoop?.desc2 ?? serviceData.connectedLoop.desc2,
-      steps: pageData.connectedLoop?.steps ?? blueprintData.connectedLoop?.steps ?? serviceData.connectedLoop.steps,
-      footer: pageData.connectedLoop?.footer ?? blueprintData.connectedLoop?.footer ?? serviceData.connectedLoop.footer,
-      accentText: pageData.connectedLoop?.accentText ?? blueprintData.connectedLoop?.accentText ?? serviceData.connectedLoop.accentText,
+      eyebrow: resolveVal(pageData.connectedLoop?.eyebrow, blueprintData.connectedLoop?.eyebrow, serviceData.connectedLoop.eyebrow),
+      title: resolveVal(pageData.connectedLoop?.title, blueprintData.connectedLoop?.title, serviceData.connectedLoop.title),
+      desc1: resolveVal(pageData.connectedLoop?.desc1, blueprintData.connectedLoop?.desc1, serviceData.connectedLoop.desc1),
+      desc2: resolveVal(pageData.connectedLoop?.desc2, blueprintData.connectedLoop?.desc2, serviceData.connectedLoop.desc2),
+      steps: resolveArr(pageData.connectedLoop?.steps, blueprintData.connectedLoop?.steps, serviceData.connectedLoop.steps),
+      footer: resolveVal(pageData.connectedLoop?.footer, blueprintData.connectedLoop?.footer, serviceData.connectedLoop.footer),
+      accentText: resolveVal(pageData.connectedLoop?.accentText, blueprintData.connectedLoop?.accentText, serviceData.connectedLoop.accentText)
     }
   };
 
   useEffect(() => {
     const businessName = content.siteSettings?.businessName || 'Profox web designer';
     let pageTitle = resolvedPage?.seo?.metaTitle;
-    if (!pageTitle || pageTitle.includes('Untitled Page') || pageTitle.includes('Dotlogics')) {
-      const displayTitle = resolvedPage?.title && resolvedPage.title !== 'Untitled Page' ? resolvedPage.title : (blueprint?.name || data.hero.title || 'Services');
-      pageTitle = `${displayTitle} | ${businessName}`;
+    if (slug === 'email-marketing-and-business-automation' || slug === 'ai-automation' || slug === 'ai') {
+      pageTitle = `Email Marketing & Business Automation | ${businessName}`;
+    } else if (!pageTitle || pageTitle.includes('Untitled Page') || pageTitle.includes('Dotlogics') || pageTitle.toLowerCase().includes('ai agent')) {
+      const rawTitle = resolvedPage?.title && resolvedPage.title !== 'Untitled Page' && !resolvedPage.title.toLowerCase().includes('ai agent')
+        ? resolvedPage.title
+        : (blueprint?.name && !blueprint.name.toLowerCase().includes('ai agent') ? blueprint.name : 'Services');
+      pageTitle = `${rawTitle} | ${businessName}`;
     } else if (pageTitle.includes('Dotlogics')) {
       pageTitle = pageTitle.replace(/Dotlogics/g, businessName);
     }
     document.title = pageTitle;
-  }, [resolvedPage, blueprint, content.siteSettings?.businessName]);
+  }, [slug, resolvedPage, blueprint, content.siteSettings?.businessName]);
 
   const [activeTab, setActiveTab] = useState(data.techStack?.[0]?.category || 'Cloud Infrastructure');
   const [openFaq, setOpenFaq] = useState<number | null>(0);
@@ -1036,29 +1102,7 @@ export default function ServiceDetailView({ page }: { page?: any }) {
       }
     };
 
-    const fetchProcessSteps = async () => {
-      try {
-        const { data: stepsData, error } = await dbProcedure.getProcessSteps();
-
-        if (!error && stepsData && stepsData.length > 0) {
-          setDbProcessSteps(stepsData.map((s: any, idx: number) => ({
-            id: s.id,
-            step: s.step || (idx + 1 < 10 ? `0${idx + 1}` : `${idx + 1}`),
-            title: s.title,
-            desc: s.desc || s.description,
-            description: s.desc || s.description,
-            image: s.image,
-            ctaText: s.cta_text || s.ctaText || "Let's Talk",
-            ctaUrl: s.cta_url || s.ctaUrl || "/contact-us"
-          })));
-        }
-      } catch (err) {
-        console.error('Error fetching process_steps via stored procedure:', err);
-      }
-    };
-
     fetchBlogPosts();
-    fetchProcessSteps();
   }, []);
 
   const displayPortfolio = data.portfolioFeed?.enabled !== false 
@@ -1802,30 +1846,32 @@ export default function ServiceDetailView({ page }: { page?: any }) {
       </section>
 
       {/* 7. Awards */}
-      <section className="py-20 bg-[#1c1e22] border-t border-white/5">
-        <div className="max-w-[1400px] mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-12">
-          <h3 className="text-2xl text-white font-semibold whitespace-pre-line max-w-xs">
-            {data.awardsTitle}
-          </h3>
-          <div className="flex flex-wrap items-center justify-center md:justify-end gap-12 md:gap-20 opacity-70">
-            {(data.awards || []).map((award: any, idx: number) => (
-              <div key={idx} className="text-white font-bold text-xl flex items-center gap-3">
-                {award.image ? (
-                  <img 
-                    src={award.image} 
-                    alt={award.text || "Award Badge"} 
-                    className="h-8 w-auto object-contain"
-                    referrerPolicy="no-referrer"
-                  />
-                ) : (
-                  renderAwardIcon(award.icon)
-                )}
-                {award.text && <span>{award.text}</span>}
-              </div>
-            ))}
+      {content.globalAwardsEnabled !== false && content.growth?.awardsEnabled !== false && (
+        <section className="py-20 bg-[#1c1e22] border-t border-white/5">
+          <div className="max-w-[1400px] mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-12">
+            <h3 className="text-2xl text-white font-semibold whitespace-pre-line max-w-xs">
+              {data.awardsTitle}
+            </h3>
+            <div className="flex flex-wrap items-center justify-center md:justify-end gap-12 md:gap-20 opacity-70">
+              {(data.awards || []).map((award: any, idx: number) => (
+                <div key={idx} className="text-white font-bold text-xl flex items-center gap-3">
+                  {award.image ? (
+                    <img 
+                      src={award.image} 
+                      alt={award.text || "Award Badge"} 
+                      className="h-8 w-auto object-contain"
+                      referrerPolicy="no-referrer"
+                    />
+                  ) : (
+                    renderAwardIcon(award.icon)
+                  )}
+                  {award.text && <span>{award.text}</span>}
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* 8. Engineering Friction Quote */}
       <section className="py-32 bg-[#24272c] text-white relative overflow-hidden">

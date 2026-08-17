@@ -123,8 +123,9 @@ export default function DevOnboarding({
           <Check className="w-16 h-16 text-emerald-500" strokeWidth={1.5} />
         </div>
         <button 
+          type="button"
           onClick={completeOnboarding}
-          className="bg-[#000080] hover:bg-[#000066] text-white px-8 py-3 rounded text-sm font-medium transition-colors flex items-center gap-2"
+          className="bg-[#000080] hover:bg-[#000066] text-white px-8 py-3 rounded text-sm font-medium transition-colors flex items-center gap-2 cursor-pointer"
         >
           Proceed to Dashboard <ArrowRight className="w-4 h-4" />
         </button>
@@ -207,11 +208,12 @@ export default function DevOnboarding({
 
               <div className="pt-8">
                 <button 
+                  type="button"
                   onClick={handleNextStep}
                   disabled={!isProfileComplete}
                   className={`px-8 py-3.5 rounded text-sm font-medium flex items-center justify-center gap-2 transition-all ${
                     isProfileComplete 
-                      ? 'bg-[#000080] hover:bg-[#000066] text-white' 
+                      ? 'bg-[#000080] hover:bg-[#000066] text-white cursor-pointer' 
                       : 'bg-slate-200 text-slate-400 cursor-not-allowed'
                   }`}
                 >
@@ -264,11 +266,12 @@ export default function DevOnboarding({
 
             <div className="mt-12 flex justify-end">
               <button 
+                type="button"
                 onClick={handleComplete}
                 disabled={portfoliosAdded < 4}
                 className={`px-8 py-3.5 rounded text-sm font-medium flex items-center justify-center gap-2 transition-all ${
                   portfoliosAdded >= 4
-                    ? 'bg-[#000080] hover:bg-[#000066] text-white' 
+                    ? 'bg-[#000080] hover:bg-[#000066] text-white cursor-pointer' 
                     : 'bg-slate-200 text-slate-400 cursor-not-allowed'
                 }`}>
                 Complete Setup <Check className="w-4 h-4" />

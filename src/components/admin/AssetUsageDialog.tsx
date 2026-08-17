@@ -90,9 +90,9 @@ export function AssetUsageDialog({ asset, usages, onClose, onForceDelete }: Asse
               <button 
                 type="button"
                 onClick={onClose}
-                className="rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-bold text-slate-700 transition-colors hover:bg-slate-50"
-              
-                Cancel>
+                className="rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-bold text-slate-700 transition-colors hover:bg-slate-50 cursor-pointer"
+              >
+                Cancel
               </button>
               {onForceDelete ? (
                 <button type="button"
@@ -100,7 +100,7 @@ export function AssetUsageDialog({ asset, usages, onClose, onForceDelete }: Asse
                     onClose();
                     onForceDelete();
                   }}
-                  className="flex items-center gap-2 rounded-xl bg-red-600 px-5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-red-700 shadow-md shadow-red-600/20">
+                  className="flex items-center gap-2 rounded-xl bg-red-600 px-5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-red-700 shadow-md shadow-red-600/20 cursor-pointer">
                   <Trash2 className="w-4 h-4" />
                   Delete Asset Anyway
                 </button>
@@ -108,9 +108,9 @@ export function AssetUsageDialog({ asset, usages, onClose, onForceDelete }: Asse
                 <button 
                   type="button"
                   onClick={onClose}
-                  className="rounded-xl bg-[#000080] px-5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-[#000066]"
-                
-                  I Understand>
+                  className="rounded-xl bg-[#000080] px-5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-[#000066] cursor-pointer"
+                >
+                  I Understand
                 </button>
               )}
             </div>
