@@ -14,6 +14,7 @@ const buttonClass = 'grid h-9 w-9 place-items-center rounded-lg text-slate-600 t
 export default function AdvancedArticleEditor({ value, onChange }: AdvancedArticleEditorProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const toolbarRef = useRef<HTMLDivElement>(null);
+  const uploaderRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<HTMLDivElement>(null);
   const [sourceMode, setSourceMode] = useState(false);
   const [showImage, setShowImage] = useState(false);
@@ -27,15 +28,24 @@ export default function AdvancedArticleEditor({ value, onChange }: AdvancedArtic
       
       const rect = containerRef.current.getBoundingClientRect();
       const toolbar = toolbarRef.current;
+      const uploader = uploaderRef.current;
       
       // If the top of the container is above the 75px mark, fix the toolbar
       if (rect.top < 75) {
+        const toolbarHeight = toolbar.offsetHeight;
         toolbar.style.position = 'fixed';
         toolbar.style.top = '75px';
         toolbar.style.width = `${rect.width}px`;
         toolbar.style.zIndex = '100';
         toolbar.style.borderTopLeftRadius = '0';
         toolbar.style.borderTopRightRadius = '0';
+
+        if (uploader) {
+          uploader.style.position = 'fixed';
+          uploader.style.top = `${75 + toolbarHeight}px`;
+          uploader.style.width = `${rect.width}px`;
+          uploader.style.zIndex = '90';
+        }
       } else {
         toolbar.style.position = 'relative';
         toolbar.style.top = '0';
@@ -43,6 +53,13 @@ export default function AdvancedArticleEditor({ value, onChange }: AdvancedArtic
         toolbar.style.zIndex = '30';
         toolbar.style.borderTopLeftRadius = '1rem';
         toolbar.style.borderTopRightRadius = '1rem';
+
+        if (uploader) {
+          uploader.style.position = 'relative';
+          uploader.style.top = '0';
+          uploader.style.width = '100%';
+          uploader.style.zIndex = '40';
+        }
       }
     };
 
@@ -54,7 +71,7 @@ export default function AdvancedArticleEditor({ value, onChange }: AdvancedArtic
       window.removeEventListener('scroll', handleScroll, true);
       window.removeEventListener('resize', handleScroll);
     };
-  }, []);
+  }, [showImage]);
 
   useEffect(() => {
     if (!sourceMode && editorRef.current && editorRef.current.innerHTML !== value) editorRef.current.innerHTML = value || '<p><br></p>';
@@ -129,7 +146,8 @@ export default function AdvancedArticleEditor({ value, onChange }: AdvancedArtic
       </div>
 
       {showImage && <div 
-        className="sticky top-[52px] z-40 grid gap-4 border-b border-slate-200 bg-slate-50 p-5 lg:grid-cols-[1fr_1fr_auto] lg:items-end shadow-sm"
+        ref={uploaderRef}
+        className="flex grid gap-4 border-b border-slate-200 bg-slate-50 p-5 lg:grid-cols-[1fr_1fr_auto] lg:items-end shadow-sm transition-shadow"
       >
         <ImageUploader label="Upload or select article image" value={imageUrl} onChange={setImageUrl} />
         <label className="space-y-2"><span className="block text-xs font-bold uppercase tracking-wider text-slate-500">Alt text / caption</span><input value={imageAlt} onChange={event => setImageAlt(event.target.value)} className="min-h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm outline-none focus:border-[#000080]" placeholder="Describe the image for accessibility" /></label>
