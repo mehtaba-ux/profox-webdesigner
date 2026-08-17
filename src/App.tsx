@@ -26,6 +26,7 @@ import HomePageLoader from './components/HomePageLoader';
 import HomeScrollProgress from './components/HomeScrollProgress';
 
 import ClientDashboard from './components/client/ClientDashboard';
+import ScrollToTop from './components/ScrollToTop';
 
 function LegacyPageRedirect() {
   const { slug = '' } = useParams<{ slug: string }>();
@@ -79,6 +80,7 @@ export default function App() {
     <AuthProvider>
       <CMSProvider>
         <ConfirmProvider>
+          <ScrollToTop />
           <Routes>
             <Route element={<MainLayout />}>
               <Route path="/" element={<HomePage />} />
