@@ -12,6 +12,36 @@ import hiddenCostsImg from '../assets/images/blog_hidden_costs_1786879048448.jpg
 import roiValueImg from '../assets/images/blog_roi_value_1786879072611.jpg';
 
 const MEDIA_STORAGE_KEY = 'cms_media_library_assets';
+const DELETED_MEDIA_STORAGE_KEY = 'cms_media_library_deleted_ids';
+
+/**
+ * Returns set of media IDs that were deleted by the user
+ */
+export function getDeletedMediaAssetIds(): Set<string> {
+  try {
+    const raw = localStorage.getItem(DELETED_MEDIA_STORAGE_KEY);
+    if (!raw) return new Set();
+    const parsed = JSON.parse(raw);
+    return new Set(Array.isArray(parsed) ? parsed : []);
+  } catch (err) {
+    return new Set();
+  }
+}
+
+/**
+ * Records deleted media IDs in localStorage so they don't resurrect
+ */
+export function saveDeletedMediaAssetIds(ids: string[]): void {
+  try {
+    const current = getDeletedMediaAssetIds();
+    ids.forEach(id => {
+      if (id) current.add(id);
+    });
+    localStorage.setItem(DELETED_MEDIA_STORAGE_KEY, JSON.stringify(Array.from(current)));
+  } catch (err) {
+    console.error('Error saving deleted media IDs:', err);
+  }
+}
 
 // Default starter stock assets to ensure the library is never empty
 const DEFAULT_STOCK_ASSETS: MediaAsset[] = [
@@ -148,21 +178,28 @@ const DEFAULT_STOCK_ASSETS: MediaAsset[] = [
  */
 export function getLocalMediaAssets(): MediaAsset[] {
   try {
+    const deletedIds = getDeletedMediaAssetIds();
     const raw = localStorage.getItem(MEDIA_STORAGE_KEY);
-    if (!raw) return DEFAULT_STOCK_ASSETS;
+    if (!raw) {
+      return DEFAULT_STOCK_ASSETS.filter(a => !deletedIds.has(a.id));
+    }
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed) || parsed.length === 0) {
-      return DEFAULT_STOCK_ASSETS;
+      return DEFAULT_STOCK_ASSETS.filter(a => !deletedIds.has(a.id));
     }
-    // Ensure all DEFAULT_STOCK_ASSETS exist in the list
-    const existingIds = new Set(parsed.map((a: MediaAsset) => a.id));
-    const missingDefaults = DEFAULT_STOCK_ASSETS.filter(a => !existingIds.has(a.id));
+    
+    // Filter out deleted assets from parsed
+    const activeParsed = parsed.filter((a: MediaAsset) => a && a.id && !deletedIds.has(a.id));
+
+    // Ensure all DEFAULT_STOCK_ASSETS that haven't been deleted exist in the list
+    const existingIds = new Set(activeParsed.map((a: MediaAsset) => a.id));
+    const missingDefaults = DEFAULT_STOCK_ASSETS.filter(a => !existingIds.has(a.id) && !deletedIds.has(a.id));
     if (missingDefaults.length > 0) {
-      const merged = [...parsed, ...missingDefaults];
+      const merged = [...activeParsed, ...missingDefaults];
       saveLocalMediaAssets(merged);
       return merged;
     }
-    return parsed;
+    return activeParsed;
   } catch (err) {
     console.error('Error reading local media assets:', err);
     return DEFAULT_STOCK_ASSETS;
@@ -185,6 +222,7 @@ export function saveLocalMediaAssets(assets: MediaAsset[]): void {
  * and local persistent storage.
  */
 export async function getStoredMediaAssets(): Promise<MediaAsset[]> {
+  const deletedIds = getDeletedMediaAssetIds();
   let remoteAssets: MediaAsset[] = [];
 
   if (isSupabaseConfigured) {
@@ -195,7 +233,7 @@ export async function getStoredMediaAssets(): Promise<MediaAsset[]> {
         .order('created_at', { ascending: false });
 
       if (!error && Array.isArray(data)) {
-        remoteAssets = data as MediaAsset[];
+        remoteAssets = (data as MediaAsset[]).filter(a => a && a.id && !deletedIds.has(a.id));
       }
     } catch (err) {
       console.warn('Supabase media fetch skipped:', err);
@@ -209,14 +247,18 @@ export async function getStoredMediaAssets(): Promise<MediaAsset[]> {
 
   // Add stock / local assets first
   for (const asset of localAssets) {
-    const key = asset.id || asset.url;
-    combinedMap.set(key, asset);
+    if (asset && !deletedIds.has(asset.id)) {
+      const key = asset.id || asset.url;
+      combinedMap.set(key, asset);
+    }
   }
 
   // Remote assets override/extend
   for (const asset of remoteAssets) {
-    const key = asset.id || asset.url;
-    combinedMap.set(key, asset);
+    if (asset && !deletedIds.has(asset.id)) {
+      const key = asset.id || asset.url;
+      combinedMap.set(key, asset);
+    }
   }
 
   const combined = Array.from(combinedMap.values());
@@ -276,6 +318,8 @@ export async function addMediaAsset(assetData: Partial<MediaAsset>): Promise<Med
  * Removes a media asset from local storage and Supabase (if configured)
  */
 export async function deleteMediaAsset(assetId: string): Promise<void> {
+  saveDeletedMediaAssetIds([assetId]);
+
   // 1. Delete from local storage
   const localAssets = getLocalMediaAssets();
   const filtered = localAssets.filter(a => a.id !== assetId);
@@ -287,6 +331,30 @@ export async function deleteMediaAsset(assetId: string): Promise<void> {
       await supabase.from('media').delete().eq('id', assetId);
     } catch (err) {
       console.warn('Supabase media delete skipped:', err);
+    }
+  }
+}
+
+/**
+ * Removes multiple media assets from local storage and Supabase (if configured)
+ */
+export async function deleteMediaAssets(assetIds: string[]): Promise<void> {
+  if (!assetIds || assetIds.length === 0) return;
+  saveDeletedMediaAssetIds(assetIds);
+
+  const idsSet = new Set(assetIds);
+
+  // 1. Delete from local storage
+  const localAssets = getLocalMediaAssets();
+  const filtered = localAssets.filter(a => !idsSet.has(a.id));
+  saveLocalMediaAssets(filtered);
+
+  // 2. Delete from Supabase if configured
+  if (isSupabaseConfigured) {
+    try {
+      await supabase.from('media').delete().in('id', assetIds);
+    } catch (err) {
+      console.warn('Supabase bulk media delete skipped:', err);
     }
   }
 }

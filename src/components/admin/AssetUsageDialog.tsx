@@ -1,6 +1,6 @@
 import React from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { ExternalLink, ShieldAlert, X } from 'lucide-react';
+import { ExternalLink, AlertTriangle, X, Trash2 } from 'lucide-react';
 import type { MediaAsset } from '../../types';
 import type { MediaAssetUsage, MediaUsageKind } from '../../lib/mediaUsage';
 
@@ -8,6 +8,7 @@ interface AssetUsageDialogProps {
   asset: MediaAsset | null;
   usages: MediaAssetUsage[];
   onClose: () => void;
+  onForceDelete?: () => void;
 }
 
 const badgeStyles: Record<MediaUsageKind, string> = {
@@ -20,7 +21,7 @@ const badgeStyles: Record<MediaUsageKind, string> = {
   'Media library': 'bg-cyan-50 text-cyan-700 border-cyan-100',
 };
 
-export function AssetUsageDialog({ asset, usages, onClose }: AssetUsageDialogProps) {
+export function AssetUsageDialog({ asset, usages, onClose, onForceDelete }: AssetUsageDialogProps) {
   return (
     <AnimatePresence>
       {asset && (
@@ -39,18 +40,17 @@ export function AssetUsageDialog({ asset, usages, onClose }: AssetUsageDialogPro
             initial={{ opacity: 0, scale: 0.96, y: 18 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, y: 18 }}
-            className="fixed left-1/2 top-1/2 z-[9999] flex max-h-[82vh] w-[calc(100%-2rem)] max-w-2xl -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl border border-red-100 bg-white shadow-2xl"
+            className="fixed left-1/2 top-1/2 z-[9999] flex max-h-[82vh] w-[calc(100%-2rem)] max-w-2xl -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl border border-amber-200 bg-white shadow-2xl"
           >
             <div className="flex items-start gap-4 border-b border-slate-100 p-6">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-red-50">
-                <ShieldAlert className="h-6 w-6 text-red-600" />
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-amber-50">
+                <AlertTriangle className="h-6 w-6 text-amber-600" />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="mb-1 text-xs font-bold uppercase tracking-[0.16em] text-red-600">Deletion blocked</p>
-                <h3 id="asset-usage-title" className="text-xl font-bold text-slate-950">This asset is still in use</h3>
+                <p className="mb-1 text-xs font-bold uppercase tracking-[0.16em] text-amber-600">Asset In Use</p>
+                <h3 id="asset-usage-title" className="text-xl font-bold text-slate-950">Active references found</h3>
                 <p className="mt-2 text-sm leading-6 text-slate-600">
-                  <span className="font-semibold text-slate-900">{asset.name}</span> is referenced in {usages.length} {usages.length === 1 ? 'location' : 'locations'}.
-                  Replace or remove every reference below, save those changes, then try deleting the asset again.
+                  <span className="font-semibold text-slate-900">{asset.name}</span> is currently referenced in {usages.length} {usages.length === 1 ? 'location' : 'locations'}. You can still delete it now, or review the referenced places below.
                 </p>
               </div>
               <button
@@ -86,14 +86,34 @@ export function AssetUsageDialog({ asset, usages, onClose }: AssetUsageDialogPro
             </div>
 
             <div className="flex items-center justify-between gap-4 border-t border-slate-100 bg-white p-4 sm:px-6">
-              <p className="hidden text-xs text-slate-500 sm:block">No file or database record was deleted.</p>
               <button
                 type="button"
                 onClick={onClose}
-                className="ml-auto rounded-xl bg-[#000080] px-5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-[#000066]"
+                className="rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-bold text-slate-700 transition-colors hover:bg-slate-50"
               >
-                I understand
+                Cancel
               </button>
+              {onForceDelete ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    onForceDelete();
+                  }}
+                  className="flex items-center gap-2 rounded-xl bg-red-600 px-5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-red-700 shadow-md shadow-red-600/20"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Delete Asset Anyway
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="rounded-xl bg-[#000080] px-5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-[#000066]"
+                >
+                  I Understand
+                </button>
+              )}
             </div>
           </motion.div>
         </>
