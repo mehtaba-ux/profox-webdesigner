@@ -1,6 +1,8 @@
 import React from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { ExternalLink, AlertTriangle, X, Trash2 } from 'lucide-react';
+import { ConfirmButton } from "./ConfirmButton";
+import { useConfirmContext } from "./ConfirmContext";
 import type { MediaAsset } from '../../types';
 import type { MediaAssetUsage, MediaUsageKind } from '../../lib/mediaUsage';
 
@@ -53,14 +55,14 @@ export function AssetUsageDialog({ asset, usages, onClose, onForceDelete }: Asse
                   <span className="font-semibold text-slate-900">{asset.name}</span> is currently referenced in {usages.length} {usages.length === 1 ? 'location' : 'locations'}. You can still delete it now, or review the referenced places below.
                 </p>
               </div>
-              <button
+              <ConfirmButton
                 type="button"
                 onClick={onClose}
                 className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
                 aria-label="Close asset usage warning"
               >
                 <X className="h-5 w-5" />
-              </button>
+              </ConfirmButton>
             </div>
 
             <div className="overflow-y-auto bg-slate-50/70 p-4 sm:p-6">
@@ -86,15 +88,15 @@ export function AssetUsageDialog({ asset, usages, onClose, onForceDelete }: Asse
             </div>
 
             <div className="flex items-center justify-between gap-4 border-t border-slate-100 bg-white p-4 sm:px-6">
-              <button
+              <ConfirmButton
                 type="button"
                 onClick={onClose}
                 className="rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-bold text-slate-700 transition-colors hover:bg-slate-50"
               >
                 Cancel
-              </button>
+              </ConfirmButton>
               {onForceDelete ? (
-                <button
+                <ConfirmButton
                   type="button"
                   onClick={() => {
                     onClose();
@@ -104,15 +106,15 @@ export function AssetUsageDialog({ asset, usages, onClose, onForceDelete }: Asse
                 >
                   <Trash2 className="w-4 h-4" />
                   Delete Asset Anyway
-                </button>
+                </ConfirmButton>
               ) : (
-                <button
+                <ConfirmButton
                   type="button"
                   onClick={onClose}
                   className="rounded-xl bg-[#000080] px-5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-[#000066]"
                 >
                   I Understand
-                </button>
+                </ConfirmButton>
               )}
             </div>
           </motion.div>

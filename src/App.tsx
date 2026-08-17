@@ -72,42 +72,46 @@ function HomePage() {
   );
 }
 
+import { ConfirmProvider } from './components/admin/ConfirmContext';
+
 export default function App() {
   return (
     <AuthProvider>
       <CMSProvider>
-        <Routes>
-          <Route element={<MainLayout />}>
-            <Route path="/" element={<HomePage />} />
-            <Route path="/p/:slug" element={<LegacyPageRedirect />} />
-            <Route path="/page/:slug" element={<LegacyPageRedirect />} />
-            <Route path="/about" element={<Navigate to="/about-us" replace />} />
-            <Route path="/about-us" element={<CustomPageView />} />
-            <Route path="/careers" element={<CustomPageView />} />
-            <Route path="/jobs" element={<Navigate to="/careers" replace />} />
-            <Route path="/carriers" element={<Navigate to="/careers" replace />} />
-            <Route path="/carear" element={<Navigate to="/careers" replace />} />
-            <Route path="/offers" element={<Navigate to="/careers" replace />} />
-            <Route path="/contact" element={<Navigate to="/contact-us" replace />} />
-            <Route path="/contact-us" element={<CustomPageView />} />
-            <Route path="/blog" element={<BlogList />} />
-            <Route path="/blog/:slug" element={<BlogPostView />} />
-            <Route path="/services/:slug" element={<ServiceDetailView />} />
-            <Route path="/portfolio" element={<PortfolioList />} />
-            <Route path="/portfolio/:slug" element={<PortfolioDetailView />} />
-            <Route path="/privacy-policy" element={<PrivacyPolicy defaultTab="privacy" />} />
-            <Route path="/privacy" element={<Navigate to="/privacy-policy" replace />} />
-            <Route path="/terms" element={<Navigate to="/terms-and-conditions" replace />} />
-            <Route path="/terms-of-use" element={<Navigate to="/terms-and-conditions" replace />} />
-            <Route path="/terms-and-conditions" element={<PrivacyPolicy defaultTab="terms" />} />
-            <Route path="/cookie-policy" element={<PrivacyPolicy defaultTab="cookies" />} />
-            <Route path="/cookies" element={<Navigate to="/cookie-policy" replace />} />
-            <Route path="/leave-feedback" element={<LeaveFeedback />} />
-            <Route path="/:slug" element={<CustomPageView />} />
-          </Route>
-          <Route path="/client-portal" element={<ClientDashboard />} />
-          <Route path="/admin/*" element={<AdminDashboard />} />
-        </Routes>
+        <ConfirmProvider>
+          <Routes>
+            <Route element={<MainLayout />}>
+              <Route path="/" element={<HomePage />} />
+              <Route path="/p/:slug" element={<LegacyPageRedirect />} />
+              <Route path="/page/:slug" element={<LegacyPageRedirect />} />
+              <Route path="/about" element={<Navigate to="/about-us" replace />} />
+              <Route path="/about-us" element={<CustomPageView />} />
+              <Route path="/careers" element={<CustomPageView />} />
+              <Route path="/jobs" element={<Navigate to="/careers" replace />} />
+              <Route path="/carriers" element={<Navigate to="/careers" replace />} />
+              <Route path="/carear" element={<Navigate to="/careers" replace />} />
+              <Route path="/offers" element={<Navigate to="/careers" replace />} />
+              <Route path="/contact" element={<Navigate to="/contact-us" replace />} />
+              <Route path="/contact-us" element={<CustomPageView />} />
+              <Route path="/blog" element={<BlogList />} />
+              <Route path="/blog/:slug" element={<BlogPostView />} />
+              <Route path="/services/:slug" element={<ServiceDetailView />} />
+              <Route path="/portfolio" element={<PortfolioList />} />
+              <Route path="/portfolio/:slug" element={<PortfolioDetailView />} />
+              <Route path="/privacy-policy" element={<PrivacyPolicy defaultTab="privacy" />} />
+              <Route path="/privacy" element={<Navigate to="/privacy-policy" replace />} />
+              <Route path="/terms" element={<Navigate to="/terms-and-conditions" replace />} />
+              <Route path="/terms-of-use" element={<Navigate to="/terms-and-conditions" replace />} />
+              <Route path="/terms-and-conditions" element={<PrivacyPolicy defaultTab="terms" />} />
+              <Route path="/cookie-policy" element={<PrivacyPolicy defaultTab="cookies" />} />
+              <Route path="/cookies" element={<Navigate to="/cookie-policy" replace />} />
+              <Route path="/leave-feedback" element={<LeaveFeedback />} />
+              <Route path="/:slug" element={<CustomPageView />} />
+            </Route>
+            <Route path="/client-portal" element={<ClientDashboard />} />
+            <Route path="/admin/*" element={<AdminDashboard />} />
+          </Routes>
+        </ConfirmProvider>
       </CMSProvider>
     </AuthProvider>
   );

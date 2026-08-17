@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useCMS } from '../../lib/CMSProvider';
 import { Edit3, Check, X, Image as ImageIcon, Sparkles } from 'lucide-react';
+import { ConfirmButton } from "./ConfirmButton";
+import { useConfirmContext } from "./ConfirmContext";
 import ImageUploader from './ImageUploader';
 
 interface VisualEditableProps {
@@ -82,12 +84,12 @@ export default function VisualEditable({
                   Edit {label || field}
                 </h3>
               </div>
-              <button 
+              <ConfirmButton 
                 onClick={() => setIsOpen(false)}
                 className="text-slate-500 hover:text-slate-900 p-1 rounded-lg hover:bg-slate-100"
               >
                 <X className="w-5 h-5" />
-              </button>
+              </ConfirmButton>
             </div>
 
             <div className="space-y-2">
@@ -124,14 +126,14 @@ export default function VisualEditable({
             </div>
 
             <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-200">
-              <button
+              <ConfirmButton
                 type="button"
                 onClick={() => setIsOpen(false)}
                 className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-100 transition-colors"
               >
                 Cancel
-              </button>
-              <button
+              </ConfirmButton>
+              <ConfirmButton
                 type="button"
                 onClick={handleSave}
                 disabled={isSaving}
@@ -144,7 +146,7 @@ export default function VisualEditable({
                     <Check className="w-4 h-4" /> Save 1-Click
                   </>
                 )}
-              </button>
+              </ConfirmButton>
             </div>
           </div>
         </div>

@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Briefcase, Plus, Search, Edit2, Trash2, Clock, CheckCircle, ExternalLink } from 'lucide-react';
+import { ConfirmButton } from "./ConfirmButton";
+import { useConfirmContext } from "./ConfirmContext";
 import { ClientProject } from '../../types';
 import { getProjects, saveProject } from '../../lib/projectService';
 
@@ -29,9 +31,9 @@ export default function ProjectManager() {
           <p className="text-slate-500 mt-1">Manage active deliverables, milestones, and client portals.</p>
         </div>
         
-        <button className="px-4 py-2.5 bg-[#000080] hover:bg-[#000066] text-white rounded-xl text-sm font-bold shadow-md transition-all flex items-center gap-2">
+        <ConfirmButton className="px-4 py-2.5 bg-[#000080] hover:bg-[#000066] text-white rounded-xl text-sm font-bold shadow-md transition-all flex items-center gap-2">
           <Plus className="w-4 h-4" /> New Project
-        </button>
+        </ConfirmButton>
       </div>
 
       <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
@@ -95,19 +97,19 @@ export default function ProjectManager() {
                       </div>
                     </td>
                     <td className="px-6 py-4 text-right space-x-2">
-                      <button 
+                      <ConfirmButton 
                         onClick={() => window.open(`/client-portal?email=${encodeURIComponent(project.clientEmail)}`, '_blank')}
                         className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
                         title="View Client Portal"
                       >
                         <ExternalLink className="w-4 h-4" />
-                      </button>
-                      <button className="p-2 text-slate-400 hover:text-[#000080] hover:bg-blue-50 rounded-lg transition-colors">
+                      </ConfirmButton>
+                      <ConfirmButton className="p-2 text-slate-400 hover:text-[#000080] hover:bg-blue-50 rounded-lg transition-colors">
                         <Edit2 className="w-4 h-4" />
-                      </button>
-                      <button className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                      </ConfirmButton>
+                      <ConfirmButton className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
                         <Trash2 className="w-4 h-4" />
-                      </button>
+                      </ConfirmButton>
                     </td>
                   </tr>
                 );

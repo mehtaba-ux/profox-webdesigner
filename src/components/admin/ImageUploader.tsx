@@ -1,5 +1,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { Upload, Image as ImageIcon, Link as LinkIcon, X, Database, File as FileIcon } from 'lucide-react';
+import { ConfirmButton } from "./ConfirmButton";
+import { useConfirmContext } from "./ConfirmContext";
 import MediaManager from './MediaManager';
 import { uploadOptimizedFile } from '../../lib/optimizedUpload';
 
@@ -82,7 +84,7 @@ export default function ImageUploader({
           <span className="text-[11px] font-bold text-slate-500">Image / File Source</span>
         )}
         <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200 text-[10px]">
-          <button
+          <ConfirmButton
             type="button"
             onClick={() => setMode('upload')}
             className={`px-2 py-1 rounded transition-colors flex items-center gap-1 ${
@@ -91,8 +93,8 @@ export default function ImageUploader({
           >
             <Upload className="w-3 h-3" />
             Upload
-          </button>
-          <button
+          </ConfirmButton>
+          <ConfirmButton
             type="button"
             onClick={() => {
               setMode('database');
@@ -104,8 +106,8 @@ export default function ImageUploader({
           >
             <Database className="w-3 h-3" />
             Media Library
-          </button>
-          <button
+          </ConfirmButton>
+          <ConfirmButton
             type="button"
             onClick={() => setMode('url')}
             className={`px-2 py-1 rounded transition-colors flex items-center gap-1 ${
@@ -114,8 +116,8 @@ export default function ImageUploader({
           >
             <LinkIcon className="w-3 h-3" />
             Paste Link
-          </button>
-          <button
+          </ConfirmButton>
+          <ConfirmButton
             type="button"
             onClick={() => { setMode('presets'); setShowPresets(!showPresets); }}
             className={`px-2 py-1 rounded transition-colors flex items-center gap-1 ${
@@ -124,7 +126,7 @@ export default function ImageUploader({
           >
             <ImageIcon className="w-3 h-3" />
             Stock
-          </button>
+          </ConfirmButton>
         </div>
       </div>
 
@@ -138,7 +140,7 @@ export default function ImageUploader({
             accept="image/jpeg,image/png,image/webp,image/gif,image/svg+xml,application/pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv"
             className="hidden"
           />
-          <button
+          <ConfirmButton
             type="button"
             onClick={() => fileInputRef.current?.click()}
             disabled={uploading}
@@ -150,9 +152,9 @@ export default function ImageUploader({
               <Upload className="w-4 h-4 text-[#000080] group-hover:scale-110 transition-transform" />
             )}
             <span>{uploading ? 'Processing File...' : value ? 'Change File' : 'Click to Upload Local File'}</span>
-          </button>
+          </ConfirmButton>
 
-          <button
+          <ConfirmButton
             type="button"
             onClick={() => setShowMediaLibrary(true)}
             className="w-full sm:w-auto bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-[#000080] rounded-xl py-2.5 px-4 text-xs font-bold transition-all flex items-center justify-center gap-2 shrink-0"
@@ -160,17 +162,17 @@ export default function ImageUploader({
           >
             <Database className="w-4 h-4" />
             <span>Media Library</span>
-          </button>
+          </ConfirmButton>
 
           {value && (
-            <button
+            <ConfirmButton
               type="button"
               onClick={() => onChange('')}
               className="p-2.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 rounded-xl transition-colors shrink-0"
               title="Remove Image"
             >
               <X className="w-4 h-4" />
-            </button>
+            </ConfirmButton>
           )}
         </div>
       )}
@@ -178,23 +180,23 @@ export default function ImageUploader({
       {/* Database Mode */}
       {mode === 'database' && (
         <div className="flex items-center gap-2">
-          <button
+          <ConfirmButton
             type="button"
             onClick={() => setShowMediaLibrary(true)}
             className="flex-1 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-[#000080] rounded-xl py-3 px-4 text-xs font-bold transition-all flex items-center justify-center gap-2 group shadow-xs"
           >
             <Database className="w-4 h-4 text-[#000080] group-hover:scale-110 transition-transform" />
             <span>Select from Existing Media Library</span>
-          </button>
+          </ConfirmButton>
           {value && (
-            <button
+            <ConfirmButton
               type="button"
               onClick={() => onChange('')}
               className="p-3 bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 rounded-xl transition-colors shrink-0"
               title="Clear Selection"
             >
               <X className="w-4 h-4" />
-            </button>
+            </ConfirmButton>
           )}
         </div>
       )}
@@ -213,13 +215,13 @@ export default function ImageUploader({
             />
           </div>
           {value && (
-            <button
+            <ConfirmButton
               type="button"
               onClick={() => onChange('')}
               className="p-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 rounded-xl transition-colors shrink-0"
             >
               <X className="w-4 h-4" />
-            </button>
+            </ConfirmButton>
           )}
         </div>
       )}
@@ -228,7 +230,7 @@ export default function ImageUploader({
       {(mode === 'presets' || showPresets) && (
         <div className="grid grid-cols-3 gap-2 bg-slate-50 p-2 rounded-xl border border-slate-200 mt-2">
           {PRESET_IMAGES.map((preset, pIdx) => (
-            <button
+            <ConfirmButton
               key={pIdx}
               type="button"
               onClick={() => {
@@ -241,7 +243,7 @@ export default function ImageUploader({
               <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-transparent to-transparent flex items-end p-1">
                 <span className="text-[9px] font-bold text-slate-900 truncate">{preset.name}</span>
               </div>
-            </button>
+            </ConfirmButton>
           ))}
         </div>
       )}
@@ -268,13 +270,13 @@ export default function ImageUploader({
             >
               <ImageIcon className="w-3 h-3 text-[#000080]" /> View/Download
             </a>
-            <button
+            <ConfirmButton
               type="button"
               onClick={() => onChange('')}
               className="bg-red-600 text-slate-900 text-[10px] font-bold px-2.5 py-1 rounded-lg hover:bg-red-500 flex items-center gap-1"
             >
               <X className="w-3 h-3" /> Remove
-            </button>
+            </ConfirmButton>
           </div>
           <div className="absolute bottom-1 right-2 bg-white/80 backdrop-blur text-[9px] text-[#000080] px-1.5 py-0.5 rounded border border-slate-300 font-mono">
             {value.startsWith('blob:') ? 'Local Preview' : value.startsWith('data:') ? 'Base64 Upload' : 'Stored Asset'}

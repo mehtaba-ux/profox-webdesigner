@@ -12,10 +12,20 @@ export const DEFAULT_MAIN_NAVIGATION: NavItem[] = [
     href: '/services/website-design-and-development',
     children: CORE_SERVICE_LINKS,
   },
-  { label: 'Portfolio', href: '/portfolio' },
-  { label: 'About', href: '/about-us' },
-  { label: 'Careers', href: '/careers' },
-  { label: 'Insights', href: '/blog' },
+  {
+    label: 'Case Study',
+    href: '/portfolio',
+    badge: 'CASE STUDIES',
+    children: [
+      { label: 'All Projects', href: '/portfolio' },
+      { label: 'Web Design', href: '/portfolio/web-design' },
+      { label: 'App Development', href: '/portfolio/app-development' }
+    ]
+  },
+  { label: 'Pricing', href: '/pricing' },
+  { label: 'About Us', href: '/about-us' },
+  { label: 'Carear', href: '/careers' },
+  { label: 'Contact Us', href: '/contact-us' },
 ];
 
 const LEGACY_PATHS: Record<string, string> = {

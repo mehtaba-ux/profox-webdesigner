@@ -3,6 +3,8 @@ import { useAuth } from '../../lib/AuthContext';
 import { PortfolioItem } from '../../types';
 import ImageUploader from './ImageUploader';
 import { Check, ArrowRight, AlertCircle, Code2, Briefcase } from 'lucide-react';
+import { ConfirmButton } from "./ConfirmButton";
+import { useConfirmContext } from "./ConfirmContext";
 import PortfolioManager from './PortfolioManager';
 
 export default function DevOnboarding({ 
@@ -120,12 +122,12 @@ export default function DevOnboarding({
         <div className="w-32 h-32 rounded-full border-4 border-emerald-500 flex items-center justify-center mb-16">
           <Check className="w-16 h-16 text-emerald-500" strokeWidth={1.5} />
         </div>
-        <button 
+        <ConfirmButton 
           onClick={completeOnboarding}
           className="bg-[#000080] hover:bg-[#000066] text-white px-8 py-3 rounded text-sm font-medium transition-colors flex items-center gap-2"
         >
           Proceed to Dashboard <ArrowRight className="w-4 h-4" />
-        </button>
+        </ConfirmButton>
       </div>
     );
   }
@@ -204,7 +206,7 @@ export default function DevOnboarding({
               </div>
 
               <div className="pt-8">
-                <button
+                <ConfirmButton
                   onClick={handleNextStep}
                   disabled={!isProfileComplete}
                   className={`px-8 py-3.5 rounded text-sm font-medium flex items-center justify-center gap-2 transition-all ${
@@ -214,7 +216,7 @@ export default function DevOnboarding({
                   }`}
                 >
                   Save & go next
-                </button>
+                </ConfirmButton>
               </div>
             </div>
           </div>
@@ -261,7 +263,7 @@ export default function DevOnboarding({
             </div>
 
             <div className="mt-12 flex justify-end">
-              <button
+              <ConfirmButton
                 onClick={handleComplete}
                 disabled={portfoliosAdded < 4}
                 className={`px-8 py-3.5 rounded text-sm font-medium flex items-center justify-center gap-2 transition-all ${
@@ -271,7 +273,7 @@ export default function DevOnboarding({
                 }`}
               >
                 Complete Setup <Check className="w-4 h-4" />
-              </button>
+              </ConfirmButton>
             </div>
           </div>
         )}

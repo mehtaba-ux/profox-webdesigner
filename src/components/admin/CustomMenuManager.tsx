@@ -1,3 +1,5 @@
+import { ConfirmButton } from "./ConfirmButton";
+import { useConfirmContext } from "./ConfirmContext";
 import React, { useEffect, useState, useMemo } from 'react';
 import { NavItem, CustomPage, PortfolioItem, PortfolioCategory, Service } from '../../types';
 import { defaultCustomPages, defaultPortfolioItems, defaultPortfolioCategories, services as defaultServices } from '../../data';
@@ -26,7 +28,8 @@ import {
   GripVertical,
   ChevronRight,
   Settings2,
-  Monitor
+  Monitor,
+  RefreshCw
 } from 'lucide-react';
 import {
   DndContext,
@@ -146,14 +149,14 @@ function SortableMenuItem({
             : 'border-slate-200'
       } rounded-2xl p-3 shadow-sm hover:shadow-md transition-all space-y-2`}>
         <div className="flex items-center gap-2">
-          <button 
+          <ConfirmButton 
             type="button" 
             {...attributes} 
             {...listeners} 
             className="p-1 text-slate-400 hover:text-[#000080] cursor-grab active:cursor-grabbing"
           >
             <GripVertical className="w-4 h-4" />
-          </button>
+          </ConfirmButton>
 
           <div className="flex-1 grid grid-cols-2 gap-2">
             <div className="relative">
@@ -177,27 +180,27 @@ function SortableMenuItem({
           </div>
 
           <div className="flex items-center gap-1">
-            <button
+            <ConfirmButton
               type="button"
               onClick={() => setIsExpanded(!isExpanded)}
               className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
             >
               {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-            </button>
-            <button
+            </ConfirmButton>
+            <ConfirmButton
               type="button"
               onClick={() => onRemove(item.id)}
               className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
             >
               <Trash2 className="w-4 h-4" />
-            </button>
+            </ConfirmButton>
           </div>
         </div>
 
         {isExpanded && (
           <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100 text-[11px] animate-in fade-in slide-in-from-top-1 duration-200">
             <div className="flex items-center gap-2">
-              <button
+              <ConfirmButton
                 type="button"
                 onClick={() => onToggleMega(item.id)}
                 className={`px-2 py-1 rounded-lg font-bold text-[10px] flex items-center gap-1.5 border transition-all ${
@@ -208,7 +211,7 @@ function SortableMenuItem({
               >
                 <Layers className="w-3.5 h-3.5" />
                 {item.isMegaMenu ? 'Mega Menu: ON' : 'Make Mega Menu'}
-              </button>
+              </ConfirmButton>
 
               <div className="relative group/badge">
                 <Tag className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-[#000080]" />
@@ -223,13 +226,13 @@ function SortableMenuItem({
             </div>
 
             {depth < 1 && (
-              <button
+              <ConfirmButton
                 type="button"
                 onClick={() => onAddSub(item.id)}
                 className="text-[10px] font-bold text-[#000080] hover:text-white hover:bg-[#000080] flex items-center gap-1.5 bg-[#000080]/5 border border-[#000080]/10 px-3 py-1.5 rounded-lg transition-all"
               >
                 <Plus className="w-3.5 h-3.5" /> Add Sub-Item
-              </button>
+              </ConfirmButton>
             )}
           </div>
         )}
@@ -297,6 +300,7 @@ export default function CustomMenuManager({
 }: CustomMenuManagerProps) {
   const [items, setItems] = useState<(NavItem & { id: string })[]>(() => ensureIds(navItems || []));
   const [activeLocation, setActiveLocation] = useState<'header' | 'footerCompany' | 'footerServices' | 'footerLegal'>('header');
+  const [showRestoreConfirm, setShowRestoreConfirm] = useState(false);
 
   useEffect(() => {
     setItems(ensureIds(navItems || DEFAULT_MAIN_NAVIGATION));
@@ -998,27 +1002,62 @@ export default function CustomMenuManager({
         {/* Presets */}
         <div className="flex items-center gap-2 pt-1 overflow-x-auto">
           <span className="text-[11px] font-bold text-slate-500 shrink-0">Preset Templates:</span>
-          <button 
+          <ConfirmButton 
             type="button"
             onClick={() => handleLoadPresetMenu('agency')}
             className="px-2.5 py-1 bg-slate-100 hover:bg-slate-700 text-xs text-slate-800 rounded-lg transition-colors shrink-0"
           >
             Digital Agency
-          </button>
-          <button 
+          </ConfirmButton>
+          <ConfirmButton 
             type="button"
             onClick={() => handleLoadPresetMenu('saas')}
             className="px-2.5 py-1 bg-slate-100 hover:bg-slate-700 text-xs text-slate-800 rounded-lg transition-colors shrink-0"
           >
             SaaS & Product
-          </button>
-          <button 
+          </ConfirmButton>
+          <ConfirmButton 
             type="button"
             onClick={() => handleLoadPresetMenu('minimal')}
             className="px-2.5 py-1 bg-slate-100 hover:bg-slate-700 text-xs text-slate-800 rounded-lg transition-colors shrink-0"
           >
             Minimal Nav
-          </button>
+          </ConfirmButton>
+        </div>
+        
+        <div className="flex justify-end pt-2">
+          {!showRestoreConfirm ? (
+            <ConfirmButton 
+              type="button"
+              onClick={() => setShowRestoreConfirm(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-[#000080] hover:bg-[#000066] text-white text-[10px] font-bold rounded-lg transition-all shadow-sm shrink-0"
+            >
+              <RefreshCw className="w-3 h-3" /> Restore Default Site Navigation
+            </ConfirmButton>
+          ) : (
+            <div className="flex items-center gap-2 animate-in fade-in slide-in-from-right-2 duration-300">
+              <span className="text-[10px] font-bold text-red-600 bg-red-50 px-2 py-1 rounded border border-red-100">Are you sure?</span>
+              <ConfirmButton 
+                type="button"
+                onClick={() => {
+                  const defaultItems = ensureIds(DEFAULT_MAIN_NAVIGATION);
+                  setItems(defaultItems);
+                  onChange(defaultItems.map(({ id, ...rest }) => rest));
+                  setShowRestoreConfirm(false);
+                }}
+                className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-[10px] font-bold rounded-lg transition-all shadow-sm"
+              >
+                Yes, Restore
+              </ConfirmButton>
+              <ConfirmButton 
+                type="button"
+                onClick={() => setShowRestoreConfirm(false)}
+                className="px-3 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 text-[10px] font-bold rounded-lg transition-all"
+              >
+                Cancel
+              </ConfirmButton>
+            </div>
+          )}
         </div>
       </div>
 
@@ -1032,7 +1071,7 @@ export default function CustomMenuManager({
                 <FileText className="w-3.5 h-3.5 text-[#000080]" /> Site Pages ({availablePagesList.length})
               </h4>
               <div className="flex items-center gap-1 bg-white p-0.5 rounded-lg border border-slate-200">
-                <button
+                <ConfirmButton
                   type="button"
                   onClick={() => setPageFilter('available')}
                   className={`px-2 py-0.5 text-[10px] font-bold rounded ${
@@ -1040,8 +1079,8 @@ export default function CustomMenuManager({
                   }`}
                 >
                   Available
-                </button>
-                <button
+                </ConfirmButton>
+                <ConfirmButton
                   type="button"
                   onClick={() => setPageFilter('all')}
                   className={`px-2 py-0.5 text-[10px] font-bold rounded ${
@@ -1049,7 +1088,7 @@ export default function CustomMenuManager({
                   }`}
                 >
                   All ({pagesFromManager.length + 1})
-                </button>
+                </ConfirmButton>
               </div>
             </div>
 
@@ -1067,7 +1106,7 @@ export default function CustomMenuManager({
                   const isChecked = selectedPages.includes(page.href);
                   return (
                     <div key={idx} className="flex items-center gap-2 group">
-                      <button
+                      <ConfirmButton
                         type="button"
                         onClick={() => handleTogglePageSelect(page.href)}
                         className={`flex-1 flex items-center justify-between p-2 rounded-lg cursor-pointer text-xs transition-colors ${
@@ -1085,7 +1124,7 @@ export default function CustomMenuManager({
                         <span className="text-[9px] bg-[#000080]/5 text-[#000080] px-1.5 py-0.5 rounded font-bold uppercase">
                           {page.status || 'Published'}
                         </span>
-                      </button>
+                      </ConfirmButton>
                       <DraggableSourceItem
                         id={`source-page-${idx}`}
                         label={page.title}
@@ -1114,7 +1153,7 @@ export default function CustomMenuManager({
               </select>
             </div>
 
-            <button
+            <ConfirmButton
               type="button"
               disabled={selectedPages.length === 0}
               onClick={handleAddSelectedPagesToMenu}
@@ -1122,7 +1161,7 @@ export default function CustomMenuManager({
             >
               <Plus className="w-3.5 h-3.5" />
               Add Selected ({selectedPages.length}) Pages to Menu
-            </button>
+            </ConfirmButton>
           </div>
 
           {/* Portfolio & Case Studies Selector Panel */}
@@ -1131,14 +1170,14 @@ export default function CustomMenuManager({
               <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
                 <Briefcase className="w-3.5 h-3.5 text-[#000080]" /> Portfolio & Case Studies ({availablePortfolioItems.length})
               </h4>
-              <button
+              <ConfirmButton
                 type="button"
                 onClick={handleAddPortfolioMainPageToMenu}
                 className="text-[10px] bg-[#000080]/10 hover:bg-[#000080]/20 text-[#000080] border border-[#000080]/30 font-bold px-2 py-1 rounded-lg transition-all flex items-center gap-1"
                 title="Add entire Portfolio Mega Menu to Navigation"
               >
                 <Plus className="w-3 h-3" /> Add Portfolio Section
-              </button>
+              </ConfirmButton>
             </div>
 
             <div className="flex items-center justify-between gap-2">
@@ -1167,7 +1206,7 @@ export default function CustomMenuManager({
                   const isChecked = selectedCaseStudies.includes(key);
                   return (
                     <div key={key} className="flex items-center gap-2 group">
-                      <button
+                      <ConfirmButton
                         type="button"
                         onClick={() => handleToggleCaseStudySelect(key)}
                         className={`flex-1 flex items-center justify-between p-2 rounded-lg cursor-pointer text-xs transition-colors ${
@@ -1185,7 +1224,7 @@ export default function CustomMenuManager({
                         <span className="text-[9px] bg-[#000080]/5 text-[#000080] px-1.5 py-0.5 rounded font-bold uppercase shrink-0">
                           {item.category || 'CASE STUDY'}
                         </span>
-                      </button>
+                      </ConfirmButton>
                       <DraggableSourceItem
                         id={`source-portfolio-${idx}`}
                         label={item.title}
@@ -1220,7 +1259,7 @@ export default function CustomMenuManager({
               </select>
             </div>
 
-            <button
+            <ConfirmButton
               type="button"
               disabled={selectedCaseStudies.length === 0}
               onClick={handleAddSelectedCaseStudiesToMenu}
@@ -1228,7 +1267,7 @@ export default function CustomMenuManager({
             >
               <Plus className="w-3.5 h-3.5" />
               Add Selected ({selectedCaseStudies.length}) Case Studies to Menu
-            </button>
+            </ConfirmButton>
 
             {/* Services Selector Panel */}
             <div className="pt-2 border-t border-slate-200/80 space-y-2">
@@ -1240,7 +1279,7 @@ export default function CustomMenuManager({
                   const isChecked = selectedServices.includes(service.id);
                   return (
                     <div key={service.id} className="flex items-center gap-2 group">
-                      <button
+                      <ConfirmButton
                         type="button"
                         onClick={() => handleToggleServiceSelect(service.id)}
                         className={`flex-1 flex items-center justify-between p-2 rounded-lg cursor-pointer text-xs transition-colors ${
@@ -1255,7 +1294,7 @@ export default function CustomMenuManager({
                           )}
                           <span className="font-semibold truncate text-[11px]">{service.title}</span>
                         </div>
-                      </button>
+                      </ConfirmButton>
                       <DraggableSourceItem
                         id={`source-service-${idx}`}
                         label={service.title}
@@ -1288,7 +1327,7 @@ export default function CustomMenuManager({
                 </select>
               </div>
 
-              <button
+              <ConfirmButton
                 type="button"
                 disabled={selectedServices.length === 0}
                 onClick={handleAddSelectedServicesToMenu}
@@ -1296,7 +1335,7 @@ export default function CustomMenuManager({
               >
                 <Plus className="w-3.5 h-3.5" />
                 Add Selected ({selectedServices.length}) Services to Menu
-              </button>
+              </ConfirmButton>
             </div>
 
             {/* Portfolio Categories / Tags Sub-Section */}
@@ -1309,7 +1348,7 @@ export default function CustomMenuManager({
                 {availablePortfolioCategories.map(cat => {
                   const isChecked = selectedCats.includes(cat.name);
                   return (
-                    <button
+                    <ConfirmButton
                       type="button"
                       key={cat.id}
                       onClick={() => handleToggleCatSelect(cat.name)}
@@ -1321,19 +1360,19 @@ export default function CustomMenuManager({
                     >
                       {isChecked && <Check className="w-3 h-3" />}
                       <span>{cat.name}</span>
-                    </button>
+                    </ConfirmButton>
                   );
                 })}
               </div>
 
               {selectedCats.length > 0 && (
-                <button
+                <ConfirmButton
                   type="button"
                   onClick={handleAddSelectedCategoriesToMenu}
                   className="w-full py-1.5 bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-2"
                 >
                   <Plus className="w-3 h-3" /> Add Selected Tag Pages ({selectedCats.length}) to Menu
-                </button>
+                </ConfirmButton>
               )}
             </div>
           </div>
@@ -1382,13 +1421,13 @@ export default function CustomMenuManager({
               </select>
             </div>
 
-            <button
+            <ConfirmButton
               type="submit"
               disabled={!customLabel.trim()}
               className="w-full py-2 bg-[#000080]/10 hover:bg-[#000080] hover:text-white disabled:opacity-50 text-[#000080] border border-[#000080]/20 font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-2"
             >
               <Plus className="w-3.5 h-3.5" /> Add Custom Link
-            </button>
+            </ConfirmButton>
           </form>
         </div>
 

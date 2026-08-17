@@ -1,3 +1,5 @@
+import { ConfirmButton } from "./ConfirmButton";
+import { useConfirmContext } from "./ConfirmContext";
 import React, { useState, useEffect } from 'react';
 import { 
   Plus, 
@@ -22,8 +24,8 @@ import {
 import { supabase, dbProcedure } from '../../lib/supabase';
 import { ProcessStep } from '../../types';
 import ImageUploader from './ImageUploader';
-import { ConfirmDialog } from './ConfirmDialog';
-import { useConfirm } from './useConfirm';
+
+
 import { useCMS } from '../../lib/CMSProvider';
 
 const defaultSteps: ProcessStep[] = [
@@ -70,7 +72,7 @@ const defaultSteps: ProcessStep[] = [
 ];
 
 export default function ProcessManager() {
-  const { confirmState, confirm: confirmAction, handleConfirm, handleCancel } = useConfirm();
+  const { confirm: confirmAction } = useConfirmContext();
   const { content, updateSection } = useCMS();
   const [steps, setSteps] = useState<ProcessStep[]>([]);
   const [loading, setLoading] = useState(true);
@@ -368,21 +370,21 @@ export default function ProcessManager() {
             </div>
           )}
 
-          <button
+          <ConfirmButton
             onClick={fetchSteps}
             disabled={loading}
             className="p-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all border border-slate-300 flex items-center gap-1.5 cursor-pointer"
             title="Reload from database"
           >
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-          </button>
+          </ConfirmButton>
 
-          <button
+          <ConfirmButton
             onClick={handleOpenAddModal}
             className="px-5 py-2.5 bg-[#000080] hover:bg-[#000066] text-white rounded-xl text-xs font-bold transition-all shadow-md flex items-center gap-2 cursor-pointer"
           >
             <Plus className="w-4 h-4" /> Add Process Step
-          </button>
+          </ConfirmButton>
         </div>
       </div>
 
@@ -409,13 +411,13 @@ export default function ProcessManager() {
         </div>
 
         {steps.length === 0 && (
-          <button
+          <ConfirmButton
             onClick={handleSeedDefaultsToSupabase}
             disabled={saving}
             className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold text-xs shadow-sm transition-all whitespace-nowrap cursor-pointer"
           >
             Seed Standard 4 Steps to DB
-          </button>
+          </ConfirmButton>
         )}
       </div>
 
@@ -425,13 +427,13 @@ export default function ProcessManager() {
           <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-[#000080]" /> Section Header Customization
           </h3>
-          <button
+          <ConfirmButton
             onClick={handleSaveHeader}
             disabled={saving}
             className="px-4 py-1.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 cursor-pointer"
           >
             <Save className="w-3.5 h-3.5" /> Save Section Titles
-          </button>
+          </ConfirmButton>
         </div>
 
         <div className="grid md:grid-cols-2 gap-4">
@@ -484,18 +486,18 @@ export default function ProcessManager() {
               </p>
             </div>
             <div className="flex items-center justify-center gap-3">
-              <button
+              <ConfirmButton
                 onClick={handleSeedDefaultsToSupabase}
                 className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs rounded-xl transition-all border border-slate-300"
               >
                 Seed Default Steps
-              </button>
-              <button
+              </ConfirmButton>
+              <ConfirmButton
                 onClick={handleOpenAddModal}
                 className="px-4 py-2 bg-[#000080] hover:bg-[#000066] text-white font-bold text-xs rounded-xl shadow-md transition-all"
               >
                 + Add Custom Step
-              </button>
+              </ConfirmButton>
             </div>
           </div>
         ) : (
@@ -525,22 +527,22 @@ export default function ProcessManager() {
                       </span>
 
                       <div className="flex items-center gap-1 bg-black/50 backdrop-blur-md rounded-xl p-1 border border-white/20">
-                        <button
+                        <ConfirmButton
                           onClick={() => handleMoveOrder(idx, 'up')}
                           disabled={idx === 0}
                           className="p-1.5 text-white/80 hover:text-white disabled:opacity-30 transition-colors"
                           title="Move up"
                         >
                           <ArrowUp className="w-3.5 h-3.5" />
-                        </button>
-                        <button
+                        </ConfirmButton>
+                        <ConfirmButton
                           onClick={() => handleMoveOrder(idx, 'down')}
                           disabled={idx === steps.length - 1}
                           className="p-1.5 text-white/80 hover:text-white disabled:opacity-30 transition-colors"
                           title="Move down"
                         >
                           <ArrowDown className="w-3.5 h-3.5" />
-                        </button>
+                        </ConfirmButton>
                       </div>
                     </div>
 
@@ -562,19 +564,19 @@ export default function ProcessManager() {
                       </div>
 
                       <div className="flex items-center gap-2">
-                        <button
+                        <ConfirmButton
                           onClick={() => handleOpenEditModal(stepItem)}
                           className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
                         >
                           <Edit2 className="w-3.5 h-3.5" /> Edit
-                        </button>
-                        <button
+                        </ConfirmButton>
+                        <ConfirmButton
                           onClick={() => handleDeleteStep(stepItem.id!)}
                           className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
                           title="Delete step"
                         >
                           <Trash2 className="w-4 h-4" />
-                        </button>
+                        </ConfirmButton>
                       </div>
                     </div>
                   </div>
@@ -601,12 +603,12 @@ export default function ProcessManager() {
                   <p className="text-xs text-slate-400">Configure step title, detailed description, background image, and CTA button.</p>
                 </div>
               </div>
-              <button
+              <ConfirmButton
                 onClick={() => setIsModalOpen(false)}
                 className="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-white/10 transition-colors"
               >
                 <X className="w-5 h-5" />
-              </button>
+              </ConfirmButton>
             </div>
 
             <form onSubmit={handleSaveStepModal} className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
@@ -679,32 +681,26 @@ export default function ProcessManager() {
               </div>
 
               <div className="pt-4 border-t border-slate-100 flex items-center justify-end gap-3">
-                <button
+                <ConfirmButton
                   type="button"
                   onClick={() => setIsModalOpen(false)}
                   className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all"
                 >
                   Cancel
-                </button>
-                <button
+                </ConfirmButton>
+                <ConfirmButton
                   type="submit"
                   disabled={saving}
                   className="px-6 py-2.5 bg-[#000080] hover:bg-[#000066] text-white rounded-xl text-xs font-bold shadow-lg transition-all flex items-center gap-2"
                 >
                   <Save className="w-4 h-4" /> Save Process Step
-                </button>
+                </ConfirmButton>
               </div>
             </form>
           </div>
         </div>
       )}
-      <ConfirmDialog 
-        isOpen={confirmState.isOpen}
-        title={confirmState.title}
-        message={confirmState.message}
-        onConfirm={handleConfirm}
-        onCancel={handleCancel}
-      />
+      
     </div>
   );
 }
