@@ -19,7 +19,7 @@ export default function HeroReviewProof({ dark = false, className = '' }: HeroRe
   return (
     <div className={`inline-flex items-center gap-3 rounded-2xl border px-3.5 py-2.5 backdrop-blur-md ${dark ? 'border-white/15 bg-white/10 text-white' : 'border-white/60 bg-white/65 text-slate-900 shadow-[0_10px_30px_rgba(15,23,42,0.08)]'} ${className}`} aria-label={`${average.toFixed(1)} out of 5 from ${approved.length} approved reviews`}>
       <div className="flex shrink-0 -space-x-2.5">
-        {avatars.map((feedback, index) => feedback.image ? (
+        {avatars.map((feedback, index) => (feedback.image && feedback.image.trim() !== '') ? (
           <img key={feedback.id || index} src={feedback.image} alt={feedback.customerName || 'Client reviewer'} className="h-9 w-9 rounded-full border-2 border-white object-cover shadow-sm" />
         ) : (
           <span key={feedback.id || index} className="grid h-9 w-9 place-items-center rounded-full border-2 border-white bg-[#000080] text-[11px] font-black uppercase text-white shadow-sm">{(feedback.customerName || 'C').charAt(0)}</span>

@@ -17,43 +17,38 @@ interface MarqueeRowProps {
 }
 
 function MarqueeRow({ feedbacks, direction, speed }: MarqueeRowProps) {
-  // Ensure we have enough items to fill the screen by repeating if count is low
-  const repeatCount = feedbacks.length < 5 ? 5 : 3;
-  const items: FeedbackEntry[] = Array(repeatCount).fill(feedbacks).flat();
-  
   if (feedbacks.length === 0) return null;
 
+  // Repeat items to ensure a long enough track, then duplicate the whole array for -50% loop
+  const baseItems = feedbacks.length < 4 ? [...feedbacks, ...feedbacks, ...feedbacks, ...feedbacks] : feedbacks;
+  const loopItems = [...baseItems, ...baseItems];
+
   return (
-    <div className="flex w-full overflow-hidden group h-full">
-      <motion.div
-        className="flex items-stretch gap-8 whitespace-nowrap min-w-full px-4 h-full"
-        animate={{
-          x: direction === 'left' ? [0, -100 / repeatCount + '%'] : [-100 / repeatCount + '%', 0],
-        }}
-        transition={{
-          duration: speed,
-          repeat: Infinity,
-          ease: "linear",
-        }}
-        whileHover={{ animationPlayState: 'paused' }}
-        style={{ width: 'fit-content' }}
+    <div className="relative flex w-full overflow-hidden py-4 group">
+      <div 
+        className={`flex gap-8 shrink-0 w-max ${
+          direction === 'left' ? 'animate-marquee-left' : 'animate-marquee-right'
+        } group-hover:[animation-play-state:paused]`}
+        style={{ animationDuration: `${speed}s` }}
       >
-        {items.map((fb, idx) => (
-          <div key={`${fb.id}-${idx}`} className="flex-shrink-0 h-full flex">
+        {loopItems.map((fb, idx) => (
+          <div key={`${fb.id}-${idx}`} className="shrink-0">
             <FeedbackCard fb={fb} />
           </div>
         ))}
-      </motion.div>
+      </div>
     </div>
   );
 }
 
 function FeedbackCard({ fb }: { fb: FeedbackEntry }) {
+  const hasValidImage = fb.image && fb.image.trim() !== '';
+
   return (
     <div
-      className="inline-block w-[400px] h-full shrink-0 p-8 rounded-3xl bg-white border border-slate-200/80 shadow-sm hover:shadow-xl hover:border-[#000080]/20 transition-all duration-300 relative group/card flex flex-col"
+      className="w-[380px] h-[300px] shrink-0 p-8 rounded-3xl bg-white border border-slate-200/80 shadow-sm hover:shadow-xl hover:border-[#000080]/20 transition-all duration-300 relative group/card flex flex-col justify-between"
     >
-      <div className="space-y-6 flex-1">
+      <div className="space-y-4 overflow-hidden flex-1">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1">
             {[1, 2, 3, 4, 5].map((s) => (
@@ -70,26 +65,26 @@ function FeedbackCard({ fb }: { fb: FeedbackEntry }) {
           <Quote className="w-8 h-8 text-[#000080]/15 group-hover/card:text-[#000080]/30 transition-colors" />
         </div>
 
-        <p className="text-slate-700 text-base leading-relaxed italic font-serif whitespace-normal">
+        <p className="text-slate-700 text-sm md:text-base leading-relaxed italic font-serif whitespace-normal line-clamp-5">
           "{fb.comment}"
         </p>
       </div>
 
-      <div className="flex items-center gap-4 pt-6 mt-6 border-t border-slate-100">
-        {fb.image ? (
+      <div className="flex items-center gap-4 pt-4 mt-4 border-t border-slate-100 shrink-0">
+        {hasValidImage ? (
           <img
             src={fb.image}
             alt={fb.customerName}
-            className="w-12 h-12 rounded-full object-cover border-2 border-[#000080]/30"
+            className="w-10 h-10 rounded-full object-cover border-2 border-[#000080]/30"
           />
         ) : (
-          <div className="w-12 h-12 rounded-full bg-[#000080]/10 text-[#000080] font-bold text-lg flex items-center justify-center border-2 border-[#000080]/20 uppercase">
+          <div className="w-10 h-10 rounded-full bg-[#000080]/10 text-[#000080] font-bold text-base flex items-center justify-center border-2 border-[#000080]/20 uppercase shrink-0">
             {fb.customerName ? fb.customerName.charAt(0) : 'U'}
           </div>
         )}
 
-        <div className="overflow-hidden">
-          <h4 className="font-bold text-slate-900 text-base truncate">
+        <div className="overflow-hidden flex-1">
+          <h4 className="font-bold text-slate-900 text-sm md:text-base truncate">
             {fb.customerName || 'Valued Client'}
           </h4>
           {fb.position ? (
@@ -119,6 +114,7 @@ function FeedbackCard({ fb }: { fb: FeedbackEntry }) {
     </div>
   );
 }
+
 
 export default function FeedbackSection({ isLiveEditing = false }: FeedbackSectionProps) {
   const { content } = useCMS();
@@ -168,9 +164,9 @@ export default function FeedbackSection({ isLiveEditing = false }: FeedbackSecti
 
         {/* Feedback Marquee */}
         {approvedFeedbacks.length > 0 ? (
-          <div className="space-y-8 -mx-6 overflow-hidden">
+          <div className="space-y-4 -mx-6 overflow-hidden">
             {/* Row 1: Slide Left */}
-            <div className="h-full min-h-[320px]">
+            <div className="overflow-hidden">
               <MarqueeRow 
                 feedbacks={approvedFeedbacks.filter((_, idx) => idx % 2 === 0)} 
                 direction="left" 
@@ -179,7 +175,7 @@ export default function FeedbackSection({ isLiveEditing = false }: FeedbackSecti
             </div>
             
             {/* Row 2: Slide Right */}
-            <div className="h-full min-h-[320px]">
+            <div className="overflow-hidden">
               <MarqueeRow 
                 feedbacks={approvedFeedbacks.filter((_, idx) => idx % 2 !== 0)} 
                 direction="right" 

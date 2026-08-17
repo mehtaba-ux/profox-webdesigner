@@ -1572,16 +1572,27 @@ export default function TemplateManager() {
               />
               <button 
                 onClick={handleCreateTemplate}
-                className="bg-[#000080] text-white p-2 rounded-xl hover:bg-[#000066]"
->
+                className="bg-[#000080] text-white p-2 rounded-xl hover:bg-[#000066] transition-all"
+                title="Create Template"
+              >
                 <Check className="w-4 h-4" />
               </button>
-              <button>
-                <Trash2 className="w-4 h-4" />
+              <button 
+                onClick={() => {
+                  setIsAddingTemplate(false);
+                  setNewTemplateName('');
+                }}
+                className="bg-slate-100 hover:bg-slate-200 text-slate-500 p-2 rounded-xl transition-all"
+                title="Cancel"
+              >
+                <X className="w-4 h-4" />
               </button>
             </div>
           ) : (
-            <button>
+            <button 
+              onClick={() => setIsAddingTemplate(true)}
+              className="bg-[#000080] hover:bg-[#000066] text-white px-4 py-2 text-xs font-bold rounded-xl flex items-center gap-2 shadow-sm transition-all"
+            >
               <Plus className="w-4 h-4" /> Create New Template
             </button>
           )}
@@ -1745,7 +1756,10 @@ export default function TemplateManager() {
                     <span>Force Sync Pages</span>
                   </button>
 
-<button>
+                  <button onClick={() => handleSaveBlueprint(draftData)}
+                    disabled={saving}
+                    className="bg-[#000080] hover:bg-[#000066] disabled:bg-slate-400 text-white px-5 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 shadow-lg transition-all disabled:cursor-not-allowed"
+                  >
                     {saving ? (
                       <>
                         <RefreshCw className="w-4 h-4 animate-spin" />

@@ -12,6 +12,9 @@ import VisualEditable from './admin/VisualEditable';
 import { CONTACT_PAGE_PATH } from '../lib/contactCta';
 import type { NavItem } from '../types';
 import { isInternalNavigationHref, normalizeNavigationMenu } from '../lib/siteNavigation';
+import { defaultPortfolioItems } from '../data';
+import { getAllBlogPosts } from '../lib/blogService';
+import { formatR2ImageUrl } from '../lib/r2Media';
 
 export default function Header() {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -21,6 +24,34 @@ export default function Header() {
   const [openMenuId, setOpenMenuId] = useState<string | number | null>(null);
   const { content, isLiveEditing } = useCMS();
   const { isAdminOrEditor } = useAuth();
+
+  const [recentProject, setRecentProject] = useState<any>(null);
+  const [recentPost, setRecentPost] = useState<any>(null);
+
+  useEffect(() => {
+    // 1. Get recent case study
+    const projects = Array.isArray(content.portfolio_items) ? content.portfolio_items : defaultPortfolioItems;
+    const publishedProjects = projects.filter((p: any) => p.status === 'published' || !p.status);
+    if (publishedProjects.length > 0) {
+      setRecentProject(publishedProjects[0]);
+    } else if (defaultPortfolioItems.length > 0) {
+      setRecentProject(defaultPortfolioItems[0]);
+    }
+
+    // 2. Get recent blog post
+    getAllBlogPosts().then((posts) => {
+      if (posts && posts.length > 0) {
+        const publishedPosts = posts.filter((p: any) => p.status === 'published' || !p.status);
+        if (publishedPosts.length > 0) {
+          setRecentPost(publishedPosts[0]);
+        } else {
+          setRecentPost(posts[0]);
+        }
+      }
+    }).catch(err => {
+      console.warn('Failed to load blog posts for header highlight:', err);
+    });
+  }, [content.portfolio_items?.length]);
 
   const headerData = content.header || {};
   const taglineLine1 = headerData.taglineLine1 || 'Where Design & Technology';
@@ -253,57 +284,65 @@ export default function Header() {
                   {/* Mega Menu Dropdown */}
                   {isMega && hasSubItems && (
                     <div className={cn(
-                      "fixed left-1/2 -translate-x-1/2 top-20 grid-cols-12 gap-6 backdrop-blur-2xl rounded-2xl p-6 min-w-[760px] max-w-5xl shadow-2xl z-50 mt-1 text-left transition-all duration-200 border",
+                      "fixed left-1/2 -translate-x-1/2 top-20 grid grid-cols-12 gap-6 backdrop-blur-2xl rounded-3xl p-6 w-[94vw] max-w-5xl shadow-2xl z-50 mt-2 text-left transition-all duration-200 border",
+                      "max-h-[calc(100vh-110px)] overflow-y-auto scrollbar-thin",
                       isDarkBg 
                         ? "bg-slate-900/98 border-slate-800 text-white shadow-black/80" 
-                        : "bg-slate-50/98 border-slate-200/80 text-slate-900 shadow-2xl",
+                        : "bg-white/98 border-slate-200/90 text-slate-900 shadow-[0_20px_50px_rgba(0,0,0,0.12)]",
                       isOpen ? "grid opacity-100 pointer-events-auto" : "hidden group-hover:grid"
                     )}>
                       {/* Mega Columns */}
-                      <div className="col-span-8 grid grid-cols-2 gap-6">
+                      <div className="col-span-8 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
                         {(item.megaColumns && item.megaColumns.length > 0 ? item.megaColumns : [
                           { title: 'Featured Links', items: item.children.slice(0, Math.ceil(item.children.length / 2)) },
                           { title: 'Explore More', items: item.children.slice(Math.ceil(item.children.length / 2)) }
                         ]).map((col: any, colIdx: number) => (
                           <div key={colIdx} className="space-y-3">
                             <h5 className={cn(
-                              "text-xs font-bold uppercase tracking-wider border-b pb-2",
+                              "text-[11px] font-bold uppercase tracking-wider pb-1.5 border-b flex items-center justify-between",
                               isDarkBg ? "text-teal-400 border-slate-800" : "text-[#000080] border-slate-200"
                             )}>
-                              {col.title || 'Category'}
+                              <span>{col.title || 'Category'}</span>
+                              <span className="text-[9px] font-normal text-slate-400">Curated</span>
                             </h5>
-                            <div className="space-y-2">
+                            <div className="space-y-1.5">
                               {col.items && col.items.map((sub: any, sIdx: number) => (
                                 <MenuLink
                                   item={sub}
                                   key={sub.id || sIdx}
                                   onClick={() => setOpenMenuId(null)}
                                   className={cn(
-                                    "group/link block p-2 rounded-xl transition-colors",
-                                    isDarkBg ? "hover:bg-slate-800/80" : "hover:bg-white/80"
+                                    "group/link block p-2.5 rounded-xl transition-all duration-200 border border-transparent",
+                                    isDarkBg 
+                                      ? "hover:bg-slate-800/80 hover:border-slate-700/60" 
+                                      : "hover:bg-slate-100/70 hover:border-slate-200/60"
                                   )}
                                 >
-                                  <div className="flex items-center justify-between">
-                                    <span className={cn(
-                                      "text-sm font-semibold transition-colors",
-                                      isDarkBg ? "text-slate-100 group-hover/link:text-teal-300" : "text-slate-800 group-hover/link:text-[#000080]"
-                                    )}>
-                                      {sub.label}
-                                    </span>
-                                    {sub.badge && (
-                                      <span className={cn(
-                                        "text-[10px] border px-1.5 py-0.5 rounded font-bold",
-                                        isDarkBg ? "bg-teal-500/20 text-teal-300 border-teal-400/30" : "bg-[#000080]/10 text-[#000080] border-[#000080]/20"
-                                      )}>
-                                        {sub.badge}
-                                      </span>
-                                    )}
+                                  <div className="flex items-start justify-between gap-2">
+                                    <div className="space-y-0.5">
+                                      <div className="flex items-center gap-2 flex-wrap">
+                                        <span className={cn(
+                                          "text-xs font-bold transition-colors line-clamp-1",
+                                          isDarkBg ? "text-slate-100 group-hover/link:text-teal-300" : "text-slate-900 group-hover/link:text-[#000080]"
+                                        )}>
+                                          {sub.label}
+                                        </span>
+                                        {sub.badge && (
+                                          <span className={cn(
+                                            "text-[9px] px-1.5 py-0.5 rounded-full font-bold tracking-wide uppercase shrink-0",
+                                            isDarkBg ? "bg-teal-500/20 text-teal-300 border border-teal-400/30" : "bg-[#000080]/10 text-[#000080] border border-[#000080]/20"
+                                          )}>
+                                            {sub.badge}
+                                          </span>
+                                        )}
+                                      </div>
+                                      {sub.description && (
+                                        <p className={cn("text-[11px] leading-relaxed line-clamp-1", isDarkBg ? "text-slate-400" : "text-slate-500")}>
+                                          {sub.description}
+                                        </p>
+                                      )}
+                                    </div>
                                   </div>
-                                  {sub.description && (
-                                    <p className={cn("text-xs mt-0.5 line-clamp-1", isDarkBg ? "text-slate-400" : "text-slate-600")}>
-                                      {sub.description}
-                                    </p>
-                                  )}
                                 </MenuLink>
                               ))}
                             </div>
@@ -311,27 +350,106 @@ export default function Header() {
                         ))}
                       </div>
 
-                      {/* Mega Menu Callout Feature Banner */}
-                      <div className="col-span-4 bg-gradient-to-br from-slate-900 to-slate-950 border border-slate-800 rounded-xl p-4 flex flex-col justify-between">
-                        <div>
-                          <span className="text-[10px] font-bold text-blue-200 bg-blue-950 border border-blue-900 px-2 py-0.5 rounded-full uppercase tracking-wider">
-                            Featured Highlight
+                      {/* Mega Menu Callout Feature Banner - Dynamic Conversion Column */}
+                      <div className={cn(
+                        "col-span-4 flex flex-col gap-4 border-l pl-5",
+                        isDarkBg ? "border-slate-800" : "border-slate-200/80"
+                      )}>
+                        <div className="space-y-3.5">
+                          <span className={cn(
+                            "inline-block text-[9px] font-extrabold uppercase tracking-widest px-2 py-0.5 rounded",
+                            isDarkBg ? "bg-teal-500/10 text-teal-300 border border-teal-500/20" : "bg-slate-100 text-slate-600 border border-slate-200"
+                          )}>
+                            Featured Highlights
                           </span>
-                          <h6 className="font-bold text-white text-sm mt-3">
-                            {item.label} Overview
-                          </h6>
-                          <p className="text-xs text-slate-300 mt-1 leading-relaxed">
-                            {item.description || 'Explore our full suite of digital agency and technology solutions custom-engineered for growth.'}
-                          </p>
+
+                          {/* Recent Case Study Section */}
+                          {recentProject && (
+                            <Link 
+                              to={`/portfolio`}
+                              onClick={() => setOpenMenuId(null)}
+                              className={cn(
+                                "group/feat block p-2 rounded-xl transition-all duration-200 border border-transparent",
+                                isDarkBg ? "hover:bg-slate-800/50" : "hover:bg-slate-50"
+                              )}
+                            >
+                              <div className="text-[10px] font-bold text-[#000080] uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                                <span className="w-1.5 h-1.5 rounded-full bg-[#000080]" />
+                                Recent Case Study
+                              </div>
+                              <div className="flex gap-3 items-center">
+                                <img 
+                                  src={formatR2ImageUrl(recentProject.coverImage)} 
+                                  alt={recentProject.title}
+                                  referrerPolicy="no-referrer"
+                                  className="w-16 h-12 rounded-lg object-cover bg-slate-100 shrink-0 border border-slate-200/80 shadow-sm"
+                                />
+                                <div className="space-y-0.5 min-w-0">
+                                  <h6 className={cn(
+                                    "text-xs font-bold leading-snug line-clamp-1 transition-colors",
+                                    isDarkBg ? "text-slate-100 group-hover/feat:text-teal-300" : "text-slate-900 group-hover/feat:text-[#000080]"
+                                  )}>
+                                    {recentProject.title}
+                                  </h6>
+                                  <span className="text-[9px] text-slate-400 font-medium uppercase tracking-wider">
+                                    {recentProject.category || 'Digital Experience'}
+                                  </span>
+                                </div>
+                              </div>
+                            </Link>
+                          )}
+
+                          {/* Recent Blog Post Section */}
+                          {recentPost && (
+                            <Link 
+                              to={`/blog/${recentPost.slug}`}
+                              onClick={() => setOpenMenuId(null)}
+                              className={cn(
+                                "group/feat block p-2 rounded-xl transition-all duration-200 border border-transparent",
+                                isDarkBg ? "hover:bg-slate-800/50" : "hover:bg-slate-50"
+                              )}
+                            >
+                              <div className="text-[10px] font-bold text-teal-600 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                                <span className="w-1.5 h-1.5 rounded-full bg-teal-500" />
+                                Recent Blog Post
+                              </div>
+                              <div className="flex gap-3 items-center">
+                                <img 
+                                  src={formatR2ImageUrl(recentPost.featuredImage || recentPost.coverImage)} 
+                                  alt={recentPost.title}
+                                  referrerPolicy="no-referrer"
+                                  className="w-16 h-12 rounded-lg object-cover bg-slate-100 shrink-0 border border-slate-200/80 shadow-sm"
+                                />
+                                <div className="space-y-0.5 min-w-0">
+                                  <h6 className={cn(
+                                    "text-xs font-bold leading-snug line-clamp-1 transition-colors",
+                                    isDarkBg ? "text-slate-100 group-hover/feat:text-teal-300" : "text-slate-900 group-hover/feat:text-teal-600"
+                                  )}>
+                                    {recentPost.title}
+                                  </h6>
+                                  <span className="text-[9px] text-slate-400 font-medium uppercase tracking-wider">
+                                    {recentPost.category || 'Insights'}
+                                  </span>
+                                </div>
+                              </div>
+                            </Link>
+                          )}
                         </div>
-                        <MenuLink
-                          item={item}
-                          onClick={() => setOpenMenuId(null)}
-                          className="mt-4 text-xs font-bold text-white hover:text-slate-200 flex items-center gap-1 group/btn"
-                        >
-                          <span>Explore All {item.label}</span>
-                          <span className="group-hover/btn:translate-x-1 transition-transform">→</span>
-                        </MenuLink>
+
+                        {/* Conversion Action Footer */}
+                        <div className={cn(
+                          "mt-auto pt-3 border-t",
+                          isDarkBg ? "border-slate-800" : "border-slate-200/80"
+                        )}>
+                          <Link 
+                            to="/contact-us"
+                            onClick={() => setOpenMenuId(null)}
+                            className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-[#000080] px-4 py-2 text-xs font-bold text-white shadow-md transition-all hover:bg-[#000066] hover:scale-[1.01]"
+                          >
+                            <span>Speak with a digital advisor</span>
+                            <span>→</span>
+                          </Link>
+                        </div>
                       </div>
                     </div>
                   )}

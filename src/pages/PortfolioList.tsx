@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useCMS } from '../lib/CMSProvider';
 import { formatR2ImageUrl } from '../lib/r2Media';
 import { motion } from 'motion/react';
-import { ArrowUpRight, Image as ImageIcon, Search, FolderKanban, CheckCircle2, X } from 'lucide-react';
+import { ArrowUpRight, Image as ImageIcon, Search, FolderKanban, CheckCircle2, X, Globe, Layers } from 'lucide-react';
 import CTA from '../components/CTA';
 import { defaultPortfolioItems, defaultPortfolioCategories } from '../data';
 import { PortfolioItem, PortfolioCategory } from '../types';
@@ -152,7 +152,7 @@ export default function PortfolioList() {
             >
               <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-100 border border-slate-200 text-[#000080] text-xs font-bold uppercase tracking-wider mb-4">
                 <FolderKanban className="w-3.5 h-3.5 text-[#000080]" />
-                Portfolio Showcase ({allProjects.length} Case Studies)
+                Portfolio Showcase
               </div>
               <h1 className="text-5xl md:text-7xl lg:text-8xl font-normal tracking-tight text-[#212329] mb-2 leading-[1.1]">
                 Case Studies
@@ -167,8 +167,8 @@ export default function PortfolioList() {
               className="bg-slate-50 border border-slate-200 rounded-2xl p-4 flex items-center gap-5 shadow-sm shrink-0"
             >
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-xl bg-[#000080] text-white flex items-center justify-center font-black text-xl shadow-md">
-                  {allProjects.length}
+                <div className="w-12 h-12 rounded-xl bg-[#000080] text-white flex items-center justify-center shadow-md">
+                  <FolderKanban className="w-5 h-5" />
                 </div>
                 <div>
                   <div className="text-xs text-slate-500 uppercase tracking-wider font-bold">Total Posted</div>
@@ -179,8 +179,8 @@ export default function PortfolioList() {
               <div className="h-8 w-px bg-slate-200" />
 
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-xl bg-slate-900 text-white flex items-center justify-center font-black text-xl shadow-md">
-                  {categories.length - 1}
+                <div className="w-12 h-12 rounded-xl bg-slate-900 text-white flex items-center justify-center shadow-md">
+                  <Layers className="w-5 h-5" />
                 </div>
                 <div>
                   <div className="text-xs text-slate-500 uppercase tracking-wider font-bold">Active</div>
@@ -193,7 +193,7 @@ export default function PortfolioList() {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center pt-2">
             <div className="lg:col-span-6">
               <p className="text-slate-600 text-lg md:text-xl font-light leading-relaxed max-w-xl">
-                Explore our full portfolio of {allProjects.length} posted case studies detailing real-world client challenges, custom solutions, and delivered business metrics.
+                Explore our full portfolio of posted case studies detailing real-world client challenges, custom solutions, and delivered business metrics.
               </p>
               <div className="flex flex-col items-start gap-4 pt-6 sm:flex-row sm:items-center">
                 <Link to="/contact-us" className="inline-flex items-center gap-2 rounded-xl bg-[#000080] px-6 py-3.5 text-sm font-bold text-white shadow-lg transition-transform hover:-translate-y-1">Start a Conversation <ArrowUpRight className="h-4 w-4" /></Link>
@@ -225,11 +225,10 @@ export default function PortfolioList() {
       {/* Category Filter Tabs & Search Controls */}
       <section className="py-6 bg-slate-50/80 border-b border-slate-200 sticky top-16 z-20 backdrop-blur-md">
         <div className="max-w-[1400px] mx-auto px-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
-          {/* Category Tabs with Item Counts */}
+          {/* Category Filter Tabs */}
           <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0 scrollbar-none flex-1">
             {categories.map((cat) => {
               const isActive = activeCategory === cat;
-              const count = categoryCounts[cat] || 0;
               return (
                 <button
                   key={cat}
@@ -241,11 +240,6 @@ export default function PortfolioList() {
                   }`}
                 >
                   <span>{cat}</span>
-                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                    isActive ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'
-                  }`}>
-                    {count}
-                  </span>
                 </button>
               );
             })}
@@ -313,7 +307,7 @@ export default function PortfolioList() {
                 className="case-study-card relative w-full rounded-2xl bg-white flex flex-col justify-between overflow-hidden shadow-sm hover:shadow-xl transition-shadow group border border-slate-100 cursor-pointer"
               >
                 {/* Full Card Link */}
-                <Link to={`/portfolio/${item.slug}`} className="absolute inset-0 z-30" aria-label={item.title} />
+                <Link to={`/portfolio/${item.slug}`} className="absolute inset-0 z-10" aria-label={item.title} />
 
                 {/* Background Image Container with Clip-Path Transition */}
                 <div className="case-study-img-wrap absolute inset-0 z-1 bg-slate-900 rounded-2xl overflow-hidden">
@@ -337,10 +331,7 @@ export default function PortfolioList() {
                     {item.logoText || item.client}
                   </div>
                   
-                  <div className="flex items-center gap-2">
-                    <span className="text-white/80 text-[10px] font-bold uppercase tracking-widest bg-black/40 backdrop-blur-md border border-white/10 px-2.5 py-1 rounded">
-                      #{idx + 1} of {filteredProjects.length}
-                    </span>
+                  <div>
                     <span className="text-white/90 text-[11px] font-semibold uppercase tracking-widest bg-[#000080]/60 backdrop-blur-sm px-2.5 py-1 rounded">
                       {item.category}
                     </span>
@@ -348,17 +339,35 @@ export default function PortfolioList() {
                 </div>
 
                 {/* Card Bottom Content & Button */}
-                <div className="relative z-10 p-6 mt-auto flex flex-col justify-end">
+                <div className="relative z-20 p-6 mt-auto flex flex-col justify-end">
                   <h3 className="text-white font-medium text-lg md:text-xl leading-snug mb-4 line-clamp-2 drop-shadow-sm group-hover:text-white transition-colors">
                     {item.title}
                   </h3>
 
-                  {/* Glassmorphic Read Case Study Button */}
-                  <div className="w-full h-12 md:h-14 bg-white/15 hover:bg-white/30 backdrop-blur-md rounded-xl px-5 py-3 flex items-center justify-between text-white text-sm font-medium transition-all border border-white/20 group-hover:border-white/40">
-                    <span>Read Case Study</span>
-                    <span className="w-8 h-8 rounded-lg bg-white flex items-center justify-center text-[#212329] group-hover:bg-slate-100 transition-colors shadow-sm">
-                      <ArrowUpRight className="w-4 h-4 group-hover:rotate-45 transition-transform duration-300" />
-                    </span>
+                  {/* Dual Action Container */}
+                  <div className="flex gap-3 z-30 relative">
+                    <Link 
+                      to={`/portfolio/${item.slug}`}
+                      className="flex-1 h-12 bg-white/15 hover:bg-white/30 backdrop-blur-md rounded-xl px-4 flex items-center justify-between text-white text-xs font-semibold transition-all border border-white/20 group-hover:border-white/40"
+                    >
+                      <span>Read Case Study</span>
+                      <span className="w-7 h-7 rounded-lg bg-white flex items-center justify-center text-[#212329] shadow-sm">
+                        <ArrowUpRight className="w-3.5 h-3.5" />
+                      </span>
+                    </Link>
+
+                    {item.websiteUrl && (
+                      <a
+                        href={item.websiteUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-4 h-12 bg-white hover:bg-slate-100 text-[#000080] rounded-xl flex items-center justify-center gap-1.5 text-xs font-bold transition-all shadow-md group/btn"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <Globe className="w-3.5 h-3.5 text-[#000080]" />
+                        <span>Visit Website</span>
+                      </a>
+                    )}
                   </div>
                 </div>
               </motion.div>
