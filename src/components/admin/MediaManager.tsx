@@ -393,7 +393,10 @@ export default function MediaManager({ onSelect, onClose, selectable = false }: 
 
           {someSelected && (
             <div className="flex items-center gap-2">
-              <button>
+              <button
+                onClick={() => setSelectedIds(new Set())}
+                className="px-3 py-1.5 border border-slate-200 text-slate-600 hover:bg-slate-50 rounded-lg text-xs font-semibold transition-colors"
+              >
                 Clear Selection
               </button>
 
@@ -431,8 +434,8 @@ export default function MediaManager({ onSelect, onClose, selectable = false }: 
             <button 
               onClick={fetchAssets}
               className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-900 rounded-xl text-sm font-bold transition-all"
-            
-              Try Again>
+            >
+              Try Again
             </button>
           </div>
         ) : filteredAssets.length === 0 ? (
@@ -573,10 +576,23 @@ export default function MediaManager({ onSelect, onClose, selectable = false }: 
             <button 
               onClick={onClose}
               className="px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-200 rounded-lg transition-colors"
-            
-              Cancel>
+            >
+              Cancel
             </button>
-            <button>
+            <button
+              onClick={() => {
+                if (selectedAssetUrl && onSelect) {
+                  onSelect(selectedAssetUrl);
+                  if (onClose) onClose();
+                }
+              }}
+              disabled={!selectedAssetUrl}
+              className={`px-4 py-2 text-sm font-bold rounded-lg transition-all ${
+                selectedAssetUrl 
+                  ? 'bg-[#000080] hover:bg-[#000066] text-white shadow-sm' 
+                  : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+              }`}
+            >
               Select Asset
             </button>
           </div>

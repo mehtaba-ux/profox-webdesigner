@@ -1,4 +1,4 @@
-import { createElement } from 'react';
+import React, { createElement } from 'react';
 
 interface TrustedBrandRowProps {
   logos?: any[];
@@ -17,5 +17,40 @@ function BrandLogo({ item, logoClassName = '' }: { item: any; logoClassName?: st
 
 export default function TrustedBrandRow({ logos = [], title = 'Trusted by:', className = '', logoClassName = '' }: TrustedBrandRowProps) {
   if (!Array.isArray(logos) || logos.length === 0) return null;
-  return <div className={`flex flex-col gap-5 sm:flex-row sm:items-center sm:gap-9 ${className}`}><div className="shrink-0 text-sm font-medium text-slate-500">{title}</div><div className="flex min-w-0 flex-wrap items-center gap-x-8 gap-y-5 sm:gap-x-10">{logos.map((item, index) => createElement(BrandLogo, { key: `${typeof item === 'string' ? item : item?.name || item?.value || 'brand'}-${index}`, item, logoClassName }))}</div></div>;
+
+  // Support repeating the logos list to make sure the slider is dense enough to scroll seamlessly
+  const sliderLogos = logos.length < 8 ? [...logos, ...logos, ...logos, ...logos] : logos;
+
+  return (
+    <div className={`flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-8 ${className}`}>
+      <div className="shrink-0 text-xs font-semibold uppercase tracking-wider text-slate-400">
+        {title}
+      </div>
+      <div 
+        className="relative flex-1 overflow-hidden py-1"
+        style={{
+          maskImage: 'linear-gradient(to right, transparent 0%, #000 6%, #000 94%, transparent 100%)',
+          WebkitMaskImage: 'linear-gradient(to right, transparent 0%, #000 6%, #000 94%, transparent 100%)'
+        }}
+      >
+        <div className="flex w-full items-center">
+          <div className="flex min-w-max flex-shrink-0 items-center justify-around gap-12 px-6 animate-scroll-logos">
+            {sliderLogos.map((item, index) => (
+              <React.Fragment key={`slide-1-${index}`}>
+                {createElement(BrandLogo, { item, logoClassName })}
+              </React.Fragment>
+            ))}
+          </div>
+          <div className="flex min-w-max flex-shrink-0 items-center justify-around gap-12 px-6 animate-scroll-logos">
+            {sliderLogos.map((item, index) => (
+              <React.Fragment key={`slide-2-${index}`}>
+                {createElement(BrandLogo, { item, logoClassName })}
+              </React.Fragment>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
+
