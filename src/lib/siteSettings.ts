@@ -16,6 +16,7 @@ export const SITE_SETTINGS_DEFAULTS = {
     badgeText: "Development & Maintenance Mode",
     allowAdminBypass: true,
   },
+  chatWidgetEnabled: true,
 };
 
 export function resolveSiteSettings(settings: Record<string, any> | null | undefined) {

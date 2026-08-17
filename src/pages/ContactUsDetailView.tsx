@@ -1,16 +1,44 @@
-import React from 'react';
-import { motion } from 'motion/react';
-import { Mail, Phone, MapPin, Send, MessageSquare, Sparkles } from 'lucide-react';
+import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
+import { Mail, Phone, MapPin, Send, MessageSquare, Sparkles, Loader2, CheckCircle } from 'lucide-react';
 import { useCMS } from '../lib/CMSProvider';
 import { cn } from '../lib/utils';
 import HeroReviewProof from '../components/HeroReviewProof';
 import { resolveSiteSettings } from '../lib/siteSettings';
+import { leadService } from '../lib/leadService';
 
 export default function ContactUsDetailView({ page }: { page?: any }) {
   const { content } = useCMS();
   const theme = content.theme || {};
   const headingFont = theme.fontFamily || 'Inter';
   const siteSettings = resolveSiteSettings(content.siteSettings);
+
+  const [formData, setFormData] = useState({
+    fullName: '',
+    email: '',
+    subject: 'Web Design & Development',
+    message: ''
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    setError('');
+
+    const res = await leadService.submitLead(formData);
+    
+    if (res.success) {
+      setIsSuccess(true);
+      setFormData({ fullName: '', email: '', subject: 'Web Design & Development', message: '' });
+      setTimeout(() => setIsSuccess(false), 5000);
+    } else {
+      setError(res.error || 'Something went wrong. Please try again.');
+    }
+    setIsSubmitting(false);
+  };
   
   // Load blueprint data if present - Priority 1: Exact template ID match
   const blueprints = content.template_blueprints || [];
@@ -199,11 +227,14 @@ export default function ContactUsDetailView({ page }: { page?: any }) {
                   </p>
                 </div>
 
-                <form className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Full Name</label>
                     <input 
                       type="text" 
+                      required
+                      value={formData.fullName}
+                      onChange={(e) => setFormData(prev => ({ ...prev, fullName: e.target.value }))}
                       placeholder="John Doe"
                       className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3.5 text-sm focus:bg-white focus:border-[#000080] focus:ring-4 focus:ring-[#000080]/5 outline-none transition-all"
                     />
@@ -212,13 +243,20 @@ export default function ContactUsDetailView({ page }: { page?: any }) {
                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Email Address</label>
                     <input 
                       type="email" 
+                      required
+                      value={formData.email}
+                      onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
                       placeholder="john@company.com"
                       className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3.5 text-sm focus:bg-white focus:border-[#000080] focus:ring-4 focus:ring-[#000080]/5 outline-none transition-all"
                     />
                   </div>
                   <div className="sm:col-span-2 space-y-1.5">
                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Subject</label>
-                    <select className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3.5 text-sm focus:bg-white focus:border-[#000080] focus:ring-4 focus:ring-[#000080]/5 outline-none transition-all appearance-none">
+                    <select 
+                      value={formData.subject}
+                      onChange={(e) => setFormData(prev => ({ ...prev, subject: e.target.value }))}
+                      className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3.5 text-sm focus:bg-white focus:border-[#000080] focus:ring-4 focus:ring-[#000080]/5 outline-none transition-all appearance-none"
+                    >
                       <option>Web Design & Development</option>
                       <option>Digital Strategy</option>
                       <option>Marketing Automation</option>
@@ -229,16 +267,54 @@ export default function ContactUsDetailView({ page }: { page?: any }) {
                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Your Message</label>
                     <textarea 
                       rows={5}
+                      required
+                      value={formData.message}
+                      onChange={(e) => setFormData(prev => ({ ...prev, message: e.target.value }))}
                       placeholder="Tell us about your project goals..."
                       className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3.5 text-sm focus:bg-white focus:border-[#000080] focus:ring-4 focus:ring-[#000080]/5 outline-none transition-all resize-none"
                     />
                   </div>
                   <div className="sm:col-span-2 pt-2">
-                    <button className="w-full bg-[#000080] hover:bg-[#000066] text-white font-bold py-4 rounded-2xl shadow-xl shadow-blue-900/10 transition-all flex items-center justify-center gap-2 group">
-                      <span>{form.buttonText}</span>
-                      <Send className="w-4 h-4 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
+                    <button 
+                      type="submit"
+                      disabled={isSubmitting}
+                      className={cn(
+                        "w-full font-bold py-4 rounded-2xl shadow-xl transition-all flex items-center justify-center gap-2 group cursor-pointer",
+                        isSuccess ? "bg-green-600 text-white shadow-green-900/10" : "bg-[#000080] hover:bg-[#000066] text-white shadow-blue-900/10",
+                        isSubmitting && "opacity-70 cursor-not-allowed"
+                      )}
+                    >
+                      {isSubmitting ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          <span>Sending Inquiry...</span>
+                        </>
+                      ) : isSuccess ? (
+                        <>
+                          <CheckCircle className="w-4 h-4" />
+                          <span>Message Sent Successfully!</span>
+                        </>
+                      ) : (
+                        <>
+                          <span>{form.buttonText}</span>
+                          <Send className="w-4 h-4 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
+                        </>
+                      )}
                     </button>
                   </div>
+                  
+                  <AnimatePresence>
+                    {error && (
+                      <motion.div 
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="sm:col-span-2 text-red-500 text-xs font-bold text-center pt-2"
+                      >
+                        {error}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </form>
 
                 <p className="text-[10px] text-slate-400 text-center uppercase tracking-widest">

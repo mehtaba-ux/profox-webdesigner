@@ -23,7 +23,8 @@ import {
   X,
   Sparkles,
   ToggleLeft,
-  ToggleRight
+  ToggleRight,
+  MessageSquare
 } from 'lucide-react';
 
 export default function SiteSettingsManager() {
@@ -343,6 +344,38 @@ export default function SiteSettingsManager() {
                 placeholder="https://g.page/r/.../review"
                 className={inputClass}
               />
+            </div>
+
+            <div className="pt-2">
+              <label className={labelClass}>
+                <MessageSquare className="w-3.5 h-3.5 text-[#000080]" /> Visitor Live Chat Widget
+              </label>
+              <button 
+                type="button"
+                onClick={() => handleChange('chatWidgetEnabled', settings.chatWidgetEnabled === false ? true : false)}
+                className={`flex items-center justify-between w-full p-4 rounded-xl border transition-all cursor-pointer ${
+                  settings.chatWidgetEnabled !== false 
+                    ? 'bg-blue-50 border-blue-200 shadow-sm' 
+                    : 'bg-slate-50 border-slate-200 opacity-80'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className={`p-2 rounded-lg ${settings.chatWidgetEnabled !== false ? 'bg-[#000080] text-white' : 'bg-slate-300 text-slate-500'}`}>
+                    <MessageSquare className="w-4 h-4" />
+                  </div>
+                  <div className="text-left">
+                    <p className={`text-sm font-bold ${settings.chatWidgetEnabled !== false ? 'text-blue-900' : 'text-slate-600'}`}>
+                      {settings.chatWidgetEnabled !== false ? 'Chat Widget is Enabled' : 'Chat Widget is Hidden'}
+                    </p>
+                    <p className="text-[11px] text-slate-500 mt-0.5">
+                      {settings.chatWidgetEnabled !== false ? 'Visible to all public visitors.' : 'Hidden from public (Admins only).'}
+                    </p>
+                  </div>
+                </div>
+                <div className={`w-12 h-6 rounded-full relative transition-colors duration-200 ${settings.chatWidgetEnabled !== false ? 'bg-[#000080]' : 'bg-slate-300'}`}>
+                  <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all duration-200 shadow-sm ${settings.chatWidgetEnabled !== false ? 'right-1' : 'left-1'}`} />
+                </div>
+              </button>
             </div>
           </div>
         </div>

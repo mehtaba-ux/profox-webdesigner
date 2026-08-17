@@ -311,6 +311,17 @@ export interface MaintenanceConfig {
   updatedAt?: string;
 }
 
+export interface ContactLead {
+  id: string;
+  fullName: string;
+  email: string;
+  subject: string;
+  message: string;
+  status: 'new' | 'contacted' | 'qualified' | 'lost';
+  source: 'contact_form' | 'chat' | 'other';
+  createdAt: string;
+}
+
 export interface SiteSettings {
   businessName: string;
   website: string;
@@ -320,6 +331,7 @@ export interface SiteSettings {
   address: string;
   businessAddress: string;
   googleReviewUrl?: string;
+  chatWidgetEnabled?: boolean;
   lastUpdated: string;
   maintenanceMode?: MaintenanceConfig;
 }

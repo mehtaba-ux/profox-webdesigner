@@ -17,6 +17,7 @@ import {
   Plus, 
   Trash2, 
   ArrowLeft,
+  Users,
   Eye,
   Globe,
   Monitor,
@@ -51,6 +52,7 @@ import PagesManager from './PagesManager';
 import PortfolioManager from './PortfolioManager';
 import BlogManager from './BlogManager';
 import FeedbackManager from './FeedbackManager';
+import LeadsManager from './LeadsManager';
 import MediaManager from './MediaManager';
 import TemplateManager from './TemplateManager';
 import SiteSettingsManager from './SiteSettingsManager';
@@ -107,7 +109,7 @@ function AdminDashboardInner() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   
-  const [activeTab, setActiveTab] = useState<'pages' | 'blog' | 'portfolio' | 'media' | 'homepageSections' | 'header' | 'servicePackages' | 'footer' | 'templates' | 'siteSettings' | 'feedback' | 'team' | 'projects' | 'myProfile' | 'inbox' | 'awards'>(
+  const [activeTab, setActiveTab] = useState<'pages' | 'blog' | 'portfolio' | 'media' | 'homepageSections' | 'header' | 'servicePackages' | 'footer' | 'templates' | 'siteSettings' | 'feedback' | 'leads' | 'team' | 'projects' | 'myProfile' | 'inbox' | 'awards'>(
     (searchParams.get('tab') as any) || (role === 'developer_designer' ? 'portfolio' : 'pages')
   );
 
@@ -898,6 +900,17 @@ function AdminDashboardInner() {
           </button>
 
 
+          <button onClick={() => handleTabChange('leads')}
+            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              activeTab === 'leads' 
+                ? 'bg-[#000080] text-white shadow shadow-blue-900/10' 
+                : `${isDarkMode ? 'text-slate-500 hover:bg-slate-100/50 hover:text-slate-800' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'}`
+            }`}>
+            <div className="flex items-center gap-2.5">
+              <Users className="w-4 h-4" /> CRM Leads
+            </div>
+          </button>
+
           <button onClick={() => handleTabChange('feedback')}
             className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
               activeTab === 'feedback' 
@@ -1078,6 +1091,10 @@ function AdminDashboardInner() {
           )}
 
           {/* TAB FEEDBACK: FEEDBACK MANAGER */}
+          {activeTab === 'leads' && (
+            <LeadsManager />
+          )}
+
           {activeTab === 'feedback' && (
             <FeedbackManager />
           )}

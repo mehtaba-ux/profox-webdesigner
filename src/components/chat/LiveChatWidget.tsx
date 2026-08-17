@@ -1,4 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
+import { useAuth } from '../../lib/AuthContext';
+import { useCMS } from '../../lib/CMSProvider';
 import { 
   MessageSquare, X, Send, User, Star, ShieldCheck, CheckCircle, 
   ArrowRight, RefreshCw, Sparkles, Clock, HelpCircle, PhoneCall,
@@ -12,6 +15,9 @@ import {
 } from '../../lib/chatService';
 
 export default function LiveChatWidget() {
+  const location = useLocation();
+  const { isAdminOrEditor } = useAuth();
+  const { content } = useCMS();
   const [isOpen, setIsOpen] = useState(false);
   const [step, setStep] = useState<'identify' | 'select_rep' | 'reconnecting' | 'chat' | 'rate'>('identify');
   
@@ -40,6 +46,18 @@ export default function LiveChatWidget() {
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  const loadSalesReps = async () => {
+    const reps = await getSalesReps();
+    setSalesReps(reps);
+  };
+
+  const fetchMessages = async (convId: string) => {
+    const msgs = await getChatMessages(convId);
+    // Filter out internal notes for customer view
+    const customerVisibleMsgs = msgs.filter(m => !m.isInternalNote);
+    setMessages(customerVisibleMsgs);
+  };
+
   useEffect(() => {
     loadSalesReps();
   }, []);
@@ -62,17 +80,17 @@ export default function LiveChatWidget() {
     return () => clearInterval(interval);
   }, [isOpen, activeConversation, step]);
 
-  const loadSalesReps = async () => {
-    const reps = await getSalesReps();
-    setSalesReps(reps);
-  };
+  const isGlobalEnabled = content.siteSettings?.chatWidgetEnabled !== false;
 
-  const fetchMessages = async (convId: string) => {
-    const msgs = await getChatMessages(convId);
-    // Filter out internal notes for customer view
-    const customerVisibleMsgs = msgs.filter(m => !m.isInternalNote);
-    setMessages(customerVisibleMsgs);
-  };
+  // Do not show chat widget on admin pages or client portal
+  if (location.pathname.startsWith('/admin') || location.pathname.startsWith('/client-portal')) {
+    return null;
+  }
+
+  // If globally disabled, hide it for everyone (even admins)
+  if (!isGlobalEnabled) {
+    return null;
+  }
 
   // Handle Initial Entrance (Identify Step)
   const handleIdentifySubmit = async (e: React.FormEvent) => {

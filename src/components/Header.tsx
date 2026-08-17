@@ -413,7 +413,7 @@ export default function Header() {
                           {/* Recent Case Study Section */}
                           {recentProject && (
                             <Link 
-                              to={`/portfolio`}
+                              to={`/portfolio/${recentProject.slug}`}
                               onClick={() => setOpenMenuId(null)}
                               className={cn(
                                 "group/feat block p-2 rounded-xl transition-all duration-200 border border-transparent",
