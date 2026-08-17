@@ -3,6 +3,7 @@ import { supabase } from './supabase';
 import { howToChooseWebDesignCompanyPost } from '../data/howToChoosePost';
 import { defaultWebsiteCostPost } from '../data/defaultPost';
 import { signsWebsiteNeedsRedesignPost } from '../data/redesignPost';
+import { wordpressVsCustomWebsitePost } from '../data/wordpressVsCustomPost';
 import { formatR2ImageUrl } from './r2Media';
 
 const BLOG_STORAGE_KEY = 'profox_blog_posts_store_v2';
@@ -11,6 +12,7 @@ const BLOG_CATEGORIES_KEY = 'profox_blog_categories_store_v2';
 export const defaultBlogPosts: BlogPost[] = [
   howToChooseWebDesignCompanyPost,
   defaultWebsiteCostPost,
+  wordpressVsCustomWebsitePost,
   signsWebsiteNeedsRedesignPost,
 ];
 
@@ -158,6 +160,7 @@ export async function getBlogPostBySlug(slug: string): Promise<BlogPost | null> 
   // Fallback check
   if (slug === 'how-to-choose-a-web-design-company') return howToChooseWebDesignCompanyPost;
   if (slug === 'how-much-does-a-website-cost') return defaultWebsiteCostPost;
+  if (slug === 'wordpress-vs-custom-website') return wordpressVsCustomWebsitePost;
 
   return null;
 }

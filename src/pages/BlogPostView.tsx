@@ -237,13 +237,15 @@ export default function BlogPostView() {
       <section className="relative flex min-h-[100vh] min-h-[100svh] items-end overflow-hidden pb-16 pt-40 sm:pb-20">
         <div className="absolute inset-0 z-0">
           <img 
-            src={post.featuredImage || (slug === 'how-much-does-a-website-cost' ? '/blog_cost_cover.jpg' : '/how_to_choose_web_design_company_cover.jpg')} 
+            src={post.featuredImage || (slug === 'how-much-does-a-website-cost' ? '/blog_cost_cover.jpg' : slug === 'wordpress-vs-custom-website' ? '/wordpress_vs_custom_cover.jpg' : '/how_to_choose_web_design_company_cover.jpg')} 
             className="w-full h-full object-cover" 
             alt={post.title}
             onError={(e) => {
               const target = e.currentTarget;
               if (slug === 'how-much-does-a-website-cost') {
                 target.src = '/blog_cost_cover.jpg';
+              } else if (slug === 'wordpress-vs-custom-website') {
+                target.src = '/wordpress_vs_custom_cover.jpg';
               } else if (slug === 'how-to-choose-a-web-design-company') {
                 target.src = '/how_to_choose_web_design_company_cover.jpg';
               }

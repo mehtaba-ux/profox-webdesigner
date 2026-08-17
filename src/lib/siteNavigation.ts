@@ -54,7 +54,7 @@ export const DEFAULT_MAIN_NAVIGATION: NavItem[] = [
   },
   { label: 'Pricing', href: '/pricing' },
   { label: 'About Us', href: '/about-us' },
-  { label: 'Carear', href: '/careers' },
+  { label: 'Careers', href: '/careers' },
   { label: 'Contact Us', href: '/contact-us' },
 ];
 

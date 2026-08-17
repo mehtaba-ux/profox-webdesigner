@@ -1,9 +1,9 @@
 import { BlogPost } from '../types';
 
-import coverCostImg from '../assets/images/website_cost_guide_cover_1786887307779.jpg';
-import spectrumImg from '../assets/images/website_cost_spectrum_2026_1786887321213.jpg';
-import hiddenCostsImg from '../assets/images/website_hidden_costs_iceberg_1786887334362.jpg';
-import roiValueImg from '../assets/images/website_roi_comparison_1786887347231.jpg';
+import coverCostImg from '../assets/images/website_cost_guide_cover_1786960747990.jpg';
+import spectrumImg from '../assets/images/website_cost_spectrum_1786960762784.jpg';
+import hiddenCostsImg from '../assets/images/website_hidden_costs_1786960776401.jpg';
+import roiValueImg from '../assets/images/website_roi_value_1786960794301.jpg';
 
 export const defaultWebsiteCostPost: BlogPost = {
   id: 'how-much-does-a-website-cost',

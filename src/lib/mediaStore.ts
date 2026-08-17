@@ -6,10 +6,16 @@ import visual1Img from '../assets/images/freelancer_vs_agency_comparison_1786884
 import visual3Img from '../assets/images/red_flags_vs_green_flags_1786884608036.jpg';
 import visual5Img from '../assets/images/site_to_system_flow_1786884625148.jpg';
 
-import coverCostImg from '../assets/images/blog_cost_cover_1786879013661.jpg';
-import spectrumImg from '../assets/images/blog_cost_spectrum_1786879029684.jpg';
-import hiddenCostsImg from '../assets/images/blog_hidden_costs_1786879048448.jpg';
-import roiValueImg from '../assets/images/blog_roi_value_1786879072611.jpg';
+import coverCostImg from '../assets/images/website_cost_guide_cover_1786960747990.jpg';
+import spectrumImg from '../assets/images/website_cost_spectrum_1786960762784.jpg';
+import hiddenCostsImg from '../assets/images/website_hidden_costs_1786960776401.jpg';
+import roiValueImg from '../assets/images/website_roi_value_1786960794301.jpg';
+
+import wpVsCustomCover from '../assets/images/wp_vs_custom_tech_cover_1786961596252.jpg';
+import decisionTreeImg from '../assets/images/wp_decision_flowchart_desk_1786961622503.jpg';
+import customDevImg from '../assets/images/wp_custom_code_workspace_1786961640976.jpg';
+import hybridArchImg from '../assets/images/wp_hybrid_architecture_screen_1786961664678.jpg';
+import boardroomImg from '../assets/images/wp_site_to_system_boardroom_1786961685424.jpg';
 
 const MEDIA_STORAGE_KEY = 'cms_media_library_assets';
 const DELETED_MEDIA_STORAGE_KEY = 'cms_media_library_deleted_ids';
@@ -116,6 +122,51 @@ const DEFAULT_STOCK_ASSETS: MediaAsset[] = [
     size: 510000,
     path: 'blog/website-roi-value.jpg',
     created_at: '2026-01-15T00:00:00.000Z',
+  },
+  {
+    id: 'blog-wp-vs-custom-cover',
+    name: 'WordPress vs Custom Website Guide Cover',
+    url: wpVsCustomCover,
+    type: 'image/jpeg',
+    size: 720000,
+    path: 'blog/wordpress-vs-custom-cover.jpg',
+    created_at: '2026-02-15T00:00:00.000Z',
+  },
+  {
+    id: 'blog-wp-decision-tree',
+    name: 'CMS vs Custom Logic Decision Tree Flowchart',
+    url: decisionTreeImg,
+    type: 'image/jpeg',
+    size: 660000,
+    path: 'blog/decision-tree-flowchart.jpg',
+    created_at: '2026-02-15T00:00:00.000Z',
+  },
+  {
+    id: 'blog-wp-custom-dev-workspace',
+    name: 'Custom Application Full-Stack Dev Workspace',
+    url: customDevImg,
+    type: 'image/jpeg',
+    size: 710000,
+    path: 'blog/custom-dev-workspace.jpg',
+    created_at: '2026-02-15T00:00:00.000Z',
+  },
+  {
+    id: 'blog-wp-hybrid-architecture',
+    name: 'Hybrid Architecture Diagram (WordPress + Cloud App)',
+    url: hybridArchImg,
+    type: 'image/jpeg',
+    size: 670000,
+    path: 'blog/hybrid-architecture-diagram.jpg',
+    created_at: '2026-02-15T00:00:00.000Z',
+  },
+  {
+    id: 'blog-wp-site-to-system',
+    name: 'Site to System Executive Strategy Presentation',
+    url: boardroomImg,
+    type: 'image/jpeg',
+    size: 680000,
+    path: 'blog/site-to-system-boardroom.jpg',
+    created_at: '2026-02-15T00:00:00.000Z',
   },
   {
     id: 'stock-1',

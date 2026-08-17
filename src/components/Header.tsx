@@ -1,7 +1,7 @@
 import { useState, useEffect, type ReactNode } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Menu, X, ChevronDown } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Menu, X, ChevronDown, ChevronRight, PhoneCall, ArrowRight, ShieldCheck } from 'lucide-react';
+import { Link, useLocation } from 'react-router-dom';
 import { cn } from '../lib/utils';
 import { getPagePath } from '../lib/seoUrls';
 import { navItems as defaultNavItems } from '../data';
@@ -22,11 +22,31 @@ export default function Header() {
   const [isDarkBg, setIsDarkBg] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [openMenuId, setOpenMenuId] = useState<string | number | null>(null);
+  const [expandedMobileIds, setExpandedMobileIds] = useState<Record<string, boolean>>({});
   const { content, isLiveEditing } = useCMS();
   const { isAdminOrEditor } = useAuth();
+  const location = useLocation();
 
   const [recentProject, setRecentProject] = useState<any>(null);
   const [recentPost, setRecentPost] = useState<any>(null);
+
+  // Close mobile menu on route change
+  useEffect(() => {
+    setIsMobileMenuOpen(false);
+    setOpenMenuId(null);
+  }, [location.pathname]);
+
+  // Lock body scroll when mobile menu is open
+  useEffect(() => {
+    if (isMobileMenuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isMobileMenuOpen]);
 
   useEffect(() => {
     // 1. Get recent case study
@@ -58,6 +78,13 @@ export default function Header() {
   const taglineLine2 = headerData.taglineLine2 || 'Meet Business Impact';
   const buttonText = headerData.buttonText || 'Get in Touch';
   const items = normalizeNavigationMenu(Array.isArray(headerData.navItems) && headerData.navItems.length > 0 ? headerData.navItems : defaultNavItems);
+
+  const toggleMobileSubmenu = (id: string) => {
+    setExpandedMobileIds(prev => ({
+      ...prev,
+      [id]: !prev[id]
+    }));
+  };
 
   const MenuLink = ({ item, className, children, onClick }: { key?: string | number; item: NavItem; className: string; children: ReactNode; onClick?: () => void }) => {
     const href = item.href || '/';
@@ -182,24 +209,24 @@ export default function Header() {
     <header
       id="main-header"
       className={cn(
-        'fixed left-1/2 -translate-x-1/2 z-50 w-[95%] max-w-[1400px] transition-all duration-500',
-        isScrolled ? 'top-2' : 'top-6',
+        'fixed left-1/2 -translate-x-1/2 z-50 w-[96%] sm:w-[94%] xl:w-[95%] max-w-[1400px] transition-all duration-500',
+        isScrolled ? 'top-2 sm:top-3' : 'top-3 sm:top-6',
         !isVisible && '-translate-y-[150%] opacity-0'
       )}
     >
       <div 
         className={cn(
-          "px-6 py-3 flex items-center justify-between rounded-2xl transition-all duration-500 border shadow-2xl",
+          "px-3.5 sm:px-5 lg:px-6 py-2.5 sm:py-3 flex items-center justify-between rounded-2xl transition-all duration-500 border shadow-2xl",
           isDarkBg 
-            ? "bg-slate-950/85 backdrop-blur-xl border-slate-800/90 text-white shadow-slate-950/60" 
-            : "bg-white/85 backdrop-blur-xl border-slate-300/80 text-slate-900 shadow-slate-200/50"
+            ? "bg-slate-950/90 backdrop-blur-xl border-slate-800/90 text-white shadow-slate-950/60" 
+            : "bg-white/90 backdrop-blur-xl border-slate-300/80 text-slate-900 shadow-slate-200/50"
         )}
       >
-        <div className="flex items-center gap-10">
+        <div className="flex items-center gap-4 lg:gap-8 xl:gap-10 min-w-0">
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="flex items-center gap-4"
+            className="flex items-center gap-3 sm:gap-4 shrink-0"
           >
             {isAdminOrEditor && isLiveEditing ? (
               <VisualEditable
@@ -210,19 +237,20 @@ export default function Header() {
                 type="image"
                 isLiveEditing={true}
               >
-                <div className="flex items-center h-10 w-auto">
-                  <Logo light={isDarkBg} className="h-10 w-auto" />
+                <div className="flex items-center h-8 sm:h-9 lg:h-10 w-auto">
+                  <Logo light={isDarkBg} className="h-8 sm:h-9 lg:h-10 w-auto" />
                 </div>
               </VisualEditable>
             ) : (
               <Link to="/" className="flex items-center">
-                <Logo light={isDarkBg} className="h-10 w-auto" />
+                <Logo light={isDarkBg} className="h-8 sm:h-9 lg:h-10 w-auto" />
               </Link>
             )}
             
-            <div className="hidden lg:flex items-center gap-4">
-              <div className={cn("h-8 w-[1px] transition-colors duration-300", isDarkBg ? "bg-white/20" : "bg-slate-300")} />
-              <div className={cn("flex flex-col leading-snug transition-colors duration-300", isDarkBg ? "text-slate-200" : "text-slate-900/90")}>
+            {/* Desktop tagline */}
+            <div className="hidden xl:flex items-center gap-3.5">
+              <div className={cn("h-7 w-[1px] transition-colors duration-300", isDarkBg ? "bg-white/20" : "bg-slate-300")} />
+              <div className={cn("flex flex-col leading-tight transition-colors duration-300", isDarkBg ? "text-slate-200" : "text-slate-900/90")}>
                 <VisualEditable
                   section="header"
                   field="taglineLine1"
@@ -230,7 +258,7 @@ export default function Header() {
                   label="Tagline Line 1"
                   isLiveEditing={isAdminOrEditor && isLiveEditing}
                 >
-                  <span className="block min-w-[120px] text-xs font-medium">{taglineLine1}</span>
+                  <span className="block min-w-[110px] text-[11px] font-medium tracking-tight text-slate-500 dark:text-slate-400">{taglineLine1}</span>
                 </VisualEditable>
                 <VisualEditable
                   section="header"
@@ -239,14 +267,14 @@ export default function Header() {
                   label="Tagline Line 2"
                   isLiveEditing={isAdminOrEditor && isLiveEditing}
                 >
-                  <span className="block min-w-[120px] text-xs font-medium">{taglineLine2}</span>
+                  <span className="block min-w-[110px] text-[11px] font-semibold">{taglineLine2}</span>
                 </VisualEditable>
               </div>
             </div>
           </motion.div>
 
           {/* Desktop Navigation */}
-          <nav className="hidden lg:flex items-center gap-8 pl-4 header-nav-container">
+          <nav className="hidden lg:flex items-center gap-4 xl:gap-6 2xl:gap-8 header-nav-container shrink-0">
             {items.map((item: any, idx: number) => {
               const itemId = item.id || item.label || idx;
               const hasSubItems = (item.children && item.children.length > 0) || (item.megaColumns && item.megaColumns.length > 0);
@@ -256,30 +284,49 @@ export default function Header() {
 
               return (
                 <div key={itemId} className="relative group py-2">
-                  {hasSubItems ? <button
-                    type="button"
-                    aria-expanded={isOpen}
-                    onClick={() => setOpenMenuId(prev => (prev === itemId ? null : itemId))}
-                    className={cn("flex cursor-pointer items-center gap-1.5 text-[15px] font-medium transition-colors", isDarkBg ? "text-slate-100 hover:text-white" : "text-slate-900/90 hover:text-slate-950")}
-                  >
-                    <span>{item.label}</span>
-                    {displayBadge && (
-                      <span className={cn(
-                        "text-[10px] px-1.5 py-0.5 rounded-full font-bold border transition-colors",
-                        isDarkBg 
-                          ? "bg-teal-500/20 text-teal-300 border-teal-400/30" 
-                          : "bg-[#000080]/15 text-[#000066] border-[#000080]/30"
-                      )}>
-                        {displayBadge}
-                      </span>
-                    )}
-                    {hasSubItems && (
+                  {hasSubItems ? (
+                    <button
+                      type="button"
+                      aria-expanded={isOpen}
+                      onClick={() => setOpenMenuId(prev => (prev === itemId ? null : itemId))}
+                      className={cn(
+                        "flex cursor-pointer items-center gap-1 text-[14px] xl:text-[15px] font-medium transition-colors whitespace-nowrap",
+                        isDarkBg ? "text-slate-100 hover:text-white" : "text-slate-900/90 hover:text-slate-950"
+                      )}
+                    >
+                      <span>{item.label}</span>
+                      {displayBadge && (
+                        <span className={cn(
+                          "text-[9px] xl:text-[10px] px-1.5 py-0.5 rounded-full font-bold border transition-colors leading-none",
+                          isDarkBg 
+                            ? "bg-teal-500/20 text-teal-300 border-teal-400/30" 
+                            : "bg-[#000080]/15 text-[#000066] border-[#000080]/30"
+                        )}>
+                          {displayBadge}
+                        </span>
+                      )}
                       <ChevronDown className={cn(
-                        "w-4 h-4 transition-transform duration-200",
+                        "w-3.5 h-3.5 transition-transform duration-200",
                         isOpen ? (isDarkBg ? "rotate-180 text-teal-400 opacity-100" : "rotate-180 text-[#000080] opacity-100") : "opacity-60 group-hover:rotate-180"
                       )} />
-                    )}
-                  </button> : <MenuLink item={item} className={cn("flex items-center gap-1.5 text-[15px] font-medium transition-colors", isDarkBg ? "text-slate-100 hover:text-white" : "text-slate-900/90 hover:text-slate-950")} onClick={() => setOpenMenuId(null)}><span>{item.label}</span>{displayBadge && <span className="rounded-full border border-[#000080]/30 bg-[#000080]/10 px-1.5 py-0.5 text-[10px] font-bold text-[#000080]">{displayBadge}</span>}</MenuLink>}
+                    </button>
+                  ) : (
+                    <MenuLink 
+                      item={item} 
+                      className={cn(
+                        "flex items-center gap-1.5 text-[14px] xl:text-[15px] font-medium transition-colors whitespace-nowrap", 
+                        isDarkBg ? "text-slate-100 hover:text-white" : "text-slate-900/90 hover:text-slate-950"
+                      )} 
+                      onClick={() => setOpenMenuId(null)}
+                    >
+                      <span>{item.label}</span>
+                      {displayBadge && (
+                        <span className="rounded-full border border-[#000080]/30 bg-[#000080]/10 px-1.5 py-0.5 text-[9px] xl:text-[10px] font-bold text-[#000080] leading-none">
+                          {displayBadge}
+                        </span>
+                      )}
+                    </MenuLink>
+                  )}
 
                   {/* Mega Menu Dropdown */}
                   {isMega && hasSubItems && (
@@ -501,7 +548,7 @@ export default function Header() {
                 key={page.id}
                 to={getPagePath(page)}
                 className={cn(
-                  "text-[15px] font-medium transition-colors",
+                  "text-[14px] xl:text-[15px] font-medium transition-colors whitespace-nowrap",
                   isDarkBg ? "text-teal-300 hover:text-white" : "text-[#000080] hover:text-slate-900"
                 )}
               >
@@ -511,78 +558,224 @@ export default function Header() {
           </nav>
         </div>
 
-        <div className="flex items-center gap-3">
+        {/* Right CTA Actions */}
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           {isAdminOrEditor && (
             <Link 
               to="/admin" 
               className={cn(
-                "inline-flex items-center text-[14px] font-bold px-5 py-2.5 rounded-lg transition-all shadow-sm hover:shadow",
+                "hidden sm:inline-flex items-center text-xs lg:text-[13px] font-bold px-3.5 lg:px-4 py-2 lg:py-2.5 rounded-xl transition-all shadow-sm hover:shadow",
                 isDarkBg 
                   ? "bg-teal-500 hover:bg-teal-400 text-slate-950" 
                   : "bg-[#000080] hover:bg-[#000066] text-white"
               )}
             >
-              CMS Admin
+              <ShieldCheck className="w-3.5 h-3.5 mr-1.5" />
+              <span>CMS Admin</span>
             </Link>
           )}
-          <Link to={CONTACT_PAGE_PATH} className={cn(
-            "inline-flex min-h-11 items-center text-sm font-bold px-5 sm:px-7 py-2.5 rounded-lg transition-all shadow-sm hover:shadow",
-            isDarkBg 
-              ? "bg-white text-slate-950 hover:bg-slate-100" 
-              : "bg-slate-900 text-white hover:bg-slate-800"
-          )}>
+
+          <Link 
+            to={CONTACT_PAGE_PATH} 
+            className={cn(
+              "inline-flex min-h-[38px] sm:min-h-[42px] items-center text-xs sm:text-sm font-bold px-4 sm:px-6 py-2 rounded-xl transition-all shadow-sm hover:shadow active:scale-95 whitespace-nowrap",
+              isDarkBg 
+                ? "bg-white text-slate-950 hover:bg-slate-100 shadow-white/10" 
+                : "bg-slate-900 text-white hover:bg-slate-800 shadow-slate-900/10"
+            )}
+          >
             {buttonText}
           </Link>
           
+          {/* Mobile & Tablet Hamburger Toggle */}
           <button
-            className={cn("lg:hidden ml-2 p-2 transition-colors", isDarkBg ? "text-white" : "text-slate-900")}
+            type="button"
+            aria-label={isMobileMenuOpen ? "Close navigation menu" : "Open navigation menu"}
+            aria-expanded={isMobileMenuOpen}
+            className={cn(
+              "lg:hidden flex items-center justify-center w-10 h-10 rounded-xl transition-colors active:scale-90 border",
+              isDarkBg 
+                ? "text-white bg-slate-900/80 border-slate-800 hover:bg-slate-850" 
+                : "text-slate-900 bg-slate-100/80 border-slate-200 hover:bg-slate-200"
+            )}
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
           >
-            {isMobileMenuOpen ? <X /> : <Menu />}
+            {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
         </div>
       </div>
 
-      {/* Mobile Menu */}
+      {/* Mobile & Tablet Full-Screen Slide-Out Drawer */}
       <AnimatePresence>
         {isMobileMenuOpen && (
           <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
+            initial={{ opacity: 0, y: -12, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -12, scale: 0.98 }}
+            transition={{ duration: 0.25, ease: "easeOut" }}
             className={cn(
-              "lg:hidden mt-4 rounded-2xl border overflow-hidden shadow-xl transition-all duration-300",
-              isDarkBg ? "bg-slate-900 border-slate-800 text-white" : "bg-white border-slate-100 text-slate-900"
+              "lg:hidden mt-3 rounded-2xl border overflow-hidden shadow-2xl transition-all duration-300 max-h-[82vh] flex flex-col",
+              isDarkBg 
+                ? "bg-slate-950/98 backdrop-blur-2xl border-slate-800 text-white shadow-black/80" 
+                : "bg-white/98 backdrop-blur-2xl border-slate-200 text-slate-900 shadow-[0_20px_50px_rgba(0,0,0,0.15)]"
             )}
           >
-            <div className="px-6 py-6 flex flex-col gap-6">
-              {items.map((item: any) => {
-                const mobileChildren = item.children?.length ? item.children : item.megaColumns?.flatMap((column: any) => column.items || []) || [];
-                return (
-                <div key={item.label} className="flex flex-col gap-4">
-                  <MenuLink
-                    item={item}
-                    className={cn("text-[16px] font-semibold transition-colors", isDarkBg ? "text-white" : "text-slate-900")}
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    {item.label}
-                  </MenuLink>
-                  {mobileChildren.length > 0 && (
-                    <div className="pl-4 flex flex-col gap-3">
-                      {mobileChildren.map((child: any) => (
+            {/* Scrollable Navigation Area */}
+            <div className="overflow-y-auto overscroll-contain p-5 space-y-4 flex-1 divide-y divide-slate-200/40 dark:divide-slate-800/40">
+              <div className="space-y-1.5 pb-2">
+                {items.map((item: any, itemIdx: number) => {
+                  const itemId = item.id || item.label || String(itemIdx);
+                  const mobileChildren = item.children?.length 
+                    ? item.children 
+                    : item.megaColumns?.flatMap((column: any) => column.items || []) || [];
+                  const hasSubmenu = mobileChildren.length > 0;
+                  const isExpanded = Boolean(expandedMobileIds[itemId]);
+                  const displayBadge = item.badge && item.badge.toUpperCase() !== 'MEGA' ? item.badge : null;
+
+                  return (
+                    <div key={itemId} className="rounded-xl overflow-hidden">
+                      {hasSubmenu ? (
+                        <div>
+                          <button
+                            type="button"
+                            onClick={() => toggleMobileSubmenu(itemId)}
+                            className={cn(
+                              "w-full flex items-center justify-between p-3 rounded-xl text-left transition-colors font-semibold text-[15px]",
+                              isDarkBg ? "hover:bg-slate-900" : "hover:bg-slate-50",
+                              isExpanded && (isDarkBg ? "bg-slate-900/80 text-teal-300" : "bg-slate-100/80 text-[#000080]")
+                            )}
+                          >
+                            <div className="flex items-center gap-2">
+                              <span>{item.label}</span>
+                              {displayBadge && (
+                                <span className={cn(
+                                  "text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase",
+                                  isDarkBg ? "bg-teal-500/20 text-teal-300" : "bg-[#000080]/10 text-[#000080]"
+                                )}>
+                                  {displayBadge}
+                                </span>
+                              )}
+                            </div>
+                            <ChevronDown className={cn(
+                              "w-4 h-4 transition-transform duration-200 text-slate-400",
+                              isExpanded && "rotate-180 text-teal-500 dark:text-teal-400"
+                            )} />
+                          </button>
+
+                          {/* Accordion Submenu */}
+                          <AnimatePresence initial={false}>
+                            {isExpanded && (
+                              <motion.div
+                                initial={{ opacity: 0, height: 0 }}
+                                animate={{ opacity: 1, height: 'auto' }}
+                                exit={{ opacity: 0, height: 0 }}
+                                transition={{ duration: 0.2 }}
+                                className="overflow-hidden pl-3 pr-2 py-1 space-y-1"
+                              >
+                                {mobileChildren.map((child: any, cIdx: number) => (
+                                  <MenuLink
+                                    item={child}
+                                    key={child.id || child.label || cIdx}
+                                    className={cn(
+                                      "flex items-start justify-between gap-2 p-2.5 rounded-xl text-xs transition-colors",
+                                      isDarkBg 
+                                        ? "hover:bg-slate-800/70 text-slate-300 hover:text-white" 
+                                        : "hover:bg-slate-100/70 text-slate-700 hover:text-[#000080]"
+                                    )}
+                                    onClick={() => setIsMobileMenuOpen(false)}
+                                  >
+                                    <div>
+                                      <span className="font-semibold block text-[13px]">{child.label}</span>
+                                      {child.description && (
+                                        <p className="text-[11px] text-slate-400 dark:text-slate-500 line-clamp-1 mt-0.5">
+                                          {child.description}
+                                        </p>
+                                      )}
+                                    </div>
+                                    {child.badge && (
+                                      <span className="text-[9px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 shrink-0">
+                                        {child.badge}
+                                      </span>
+                                    )}
+                                  </MenuLink>
+                                ))}
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </div>
+                      ) : (
                         <MenuLink
-                          item={child}
-                          key={child.label}
-                          className={cn("text-[15px] transition-colors", isDarkBg ? "text-slate-300" : "text-slate-600")}
+                          item={item}
+                          className={cn(
+                            "flex items-center justify-between p-3 rounded-xl transition-colors font-semibold text-[15px]",
+                            isDarkBg ? "hover:bg-slate-900 text-slate-100" : "hover:bg-slate-50 text-slate-900"
+                          )}
                           onClick={() => setIsMobileMenuOpen(false)}
                         >
-                          {child.label}
+                          <div className="flex items-center gap-2">
+                            <span>{item.label}</span>
+                            {displayBadge && (
+                              <span className={cn(
+                                "text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase",
+                                isDarkBg ? "bg-teal-500/20 text-teal-300" : "bg-[#000080]/10 text-[#000080]"
+                              )}>
+                                {displayBadge}
+                              </span>
+                            )}
+                          </div>
+                          <ChevronRight className="w-4 h-4 text-slate-400" />
                         </MenuLink>
-                      ))}
+                      )}
                     </div>
-                  )}
+                  );
+                })}
+
+                {/* Custom Published Pages */}
+                {content.pages && content.pages.filter((p: any) => p.published).map((page: any) => (
+                  <Link
+                    key={page.id}
+                    to={getPagePath(page)}
+                    className={cn(
+                      "flex items-center justify-between p-3 rounded-xl transition-colors font-semibold text-[15px]",
+                      isDarkBg ? "text-teal-300 hover:bg-slate-900" : "text-[#000080] hover:bg-slate-50"
+                    )}
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    <span>{page.title}</span>
+                    <ChevronRight className="w-4 h-4 text-slate-400" />
+                  </Link>
+                ))}
+              </div>
+
+              {/* Mobile Quick Action Hub */}
+              <div className="pt-4 space-y-3">
+                {isAdminOrEditor && (
+                  <Link
+                    to="/admin"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="flex items-center justify-center gap-2 w-full p-2.5 rounded-xl bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-800 text-xs font-bold transition-all"
+                  >
+                    <ShieldCheck className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+                    <span>Open Admin CMS Dashboard</span>
+                  </Link>
+                )}
+
+                <Link
+                  to={CONTACT_PAGE_PATH}
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="flex items-center justify-center gap-2 w-full p-3.5 rounded-xl bg-[#000080] hover:bg-[#000066] text-white text-sm font-bold shadow-lg shadow-[#000080]/20 transition-all text-center"
+                >
+                  <PhoneCall className="w-4 h-4" />
+                  <span>{buttonText} — Free Consultation</span>
+                  <ArrowRight className="w-4 h-4 ml-1" />
+                </Link>
+
+                <div className="text-center pt-1">
+                  <p className="text-[11px] text-slate-400 dark:text-slate-500">
+                    Trusted by 100+ businesses nationwide
+                  </p>
                 </div>
-              )})}
+              </div>
             </div>
           </motion.div>
         )}
@@ -590,3 +783,4 @@ export default function Header() {
     </header>
   );
 }
+
