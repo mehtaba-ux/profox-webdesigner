@@ -12,11 +12,49 @@ interface AdvancedArticleEditorProps {
 const buttonClass = 'grid h-9 w-9 place-items-center rounded-lg text-slate-600 transition-colors hover:bg-[#000080]/10 hover:text-[#000080] cursor-pointer';
 
 export default function AdvancedArticleEditor({ value, onChange }: AdvancedArticleEditorProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const toolbarRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<HTMLDivElement>(null);
   const [sourceMode, setSourceMode] = useState(false);
   const [showImage, setShowImage] = useState(false);
   const [imageUrl, setImageUrl] = useState('');
   const [imageAlt, setImageAlt] = useState('');
+
+  // Handle fixed toolbar positioning and width
+  useEffect(() => {
+    const handleScroll = () => {
+      if (!containerRef.current || !toolbarRef.current) return;
+      
+      const rect = containerRef.current.getBoundingClientRect();
+      const toolbar = toolbarRef.current;
+      
+      // If the top of the container is above the 75px mark, fix the toolbar
+      if (rect.top < 75) {
+        toolbar.style.position = 'fixed';
+        toolbar.style.top = '75px';
+        toolbar.style.width = `${rect.width}px`;
+        toolbar.style.zIndex = '100';
+        toolbar.style.borderTopLeftRadius = '0';
+        toolbar.style.borderTopRightRadius = '0';
+      } else {
+        toolbar.style.position = 'relative';
+        toolbar.style.top = '0';
+        toolbar.style.width = '100%';
+        toolbar.style.zIndex = '30';
+        toolbar.style.borderTopLeftRadius = '1rem';
+        toolbar.style.borderTopRightRadius = '1rem';
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll, true);
+    window.addEventListener('resize', handleScroll);
+    handleScroll();
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll, true);
+      window.removeEventListener('resize', handleScroll);
+    };
+  }, []);
 
   useEffect(() => {
     if (!sourceMode && editorRef.current && editorRef.current.innerHTML !== value) editorRef.current.innerHTML = value || '<p><br></p>';
@@ -77,8 +115,12 @@ export default function AdvancedArticleEditor({ value, onChange }: AdvancedArtic
   ];
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-      <div className="sticky top-0 z-10 flex flex-wrap items-center gap-1 border-b border-slate-200 bg-white/95 p-2.5 backdrop-blur">
+    <div ref={containerRef} className="border border-slate-200 bg-white rounded-2xl shadow-sm overflow-visible">
+      {/* Toolbar Placeholder to prevent content jump */}
+      <div 
+        ref={toolbarRef}
+        className="flex flex-wrap items-center gap-1 border-b border-slate-200 bg-white p-2.5 shadow-sm transition-shadow"
+      >
         {tools.map(({ title, icon: Icon, action }) => <button key={title} type="button" title={title} aria-label={title} onMouseDown={event => event.preventDefault()} onClick={action} className={buttonClass}><Icon className="h-4 w-4" /></button>)}
         <span className="mx-1 h-6 w-px bg-slate-200" />
         <button type="button" onClick={() => setShowImage(value => !value)} className={`${buttonClass} ${showImage ? 'bg-[#000080] text-white hover:text-white' : ''}`} title="Insert image"><ImagePlus className="h-4 w-4" /></button>
@@ -86,13 +128,15 @@ export default function AdvancedArticleEditor({ value, onChange }: AdvancedArtic
         <span className="ml-auto pr-2 text-xs font-semibold text-slate-400">Visual article editor</span>
       </div>
 
-      {showImage && <div className="grid gap-4 border-b border-slate-200 bg-slate-50 p-5 lg:grid-cols-[1fr_1fr_auto] lg:items-end">
+      {showImage && <div 
+        className="sticky top-[52px] z-40 grid gap-4 border-b border-slate-200 bg-slate-50 p-5 lg:grid-cols-[1fr_1fr_auto] lg:items-end shadow-sm"
+      >
         <ImageUploader label="Upload or select article image" value={imageUrl} onChange={setImageUrl} />
         <label className="space-y-2"><span className="block text-xs font-bold uppercase tracking-wider text-slate-500">Alt text / caption</span><input value={imageAlt} onChange={event => setImageAlt(event.target.value)} className="min-h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm outline-none focus:border-[#000080]" placeholder="Describe the image for accessibility" /></label>
         <button type="button" disabled={!imageUrl.trim()} onClick={addImage} className="min-h-11 rounded-xl bg-[#000080] px-5 text-sm font-bold text-white disabled:opacity-40 cursor-pointer">Insert Image</button>
       </div>}
 
-      {sourceMode ? <textarea value={value} onChange={event => onChange(event.target.value)} rows={24} spellCheck={false} className="min-h-[560px] w-full resize-y bg-slate-950 p-6 font-mono text-sm leading-7 text-slate-100 outline-none" /> : <div ref={editorRef} contentEditable suppressContentEditableWarning onInput={emit} onBlur={emit} data-placeholder="Start writing your insight…" className="article-editor-content min-h-[620px] p-7 text-base leading-7 text-slate-700 outline-none sm:p-10" />}
+      {sourceMode ? <textarea value={value} onChange={event => onChange(event.target.value)} rows={24} spellCheck={false} className="min-h-[560px] w-full resize-y bg-slate-950 p-6 font-mono text-sm leading-7 text-slate-100 outline-none rounded-b-2xl" /> : <div ref={editorRef} contentEditable suppressContentEditableWarning onInput={emit} onBlur={emit} data-placeholder="Start writing your insight…" className="article-editor-content min-h-[620px] p-7 text-base leading-7 text-slate-700 outline-none sm:p-10 rounded-b-2xl" />}
     </div>
   );
 }
