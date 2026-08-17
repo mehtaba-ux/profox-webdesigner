@@ -168,61 +168,45 @@ const DEFAULT_STOCK_ASSETS: MediaAsset[] = [
     path: 'blog/site-to-system-boardroom.jpg',
     created_at: '2026-02-15T00:00:00.000Z',
   },
-  {
-    id: 'stock-1',
-    name: 'Corporate Office Headquarters',
-    url: 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&q=80&w=1200',
-    type: 'image/jpeg',
-    size: 450000,
-    path: 'stock/office.jpg',
-    created_at: '2026-01-01T00:00:00.000Z',
-  },
-  {
-    id: 'stock-2',
-    name: 'Digital Strategy & Analytics',
-    url: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&q=80&w=1200',
-    type: 'image/jpeg',
-    size: 520000,
-    path: 'stock/analytics.jpg',
-    created_at: '2026-01-02T00:00:00.000Z',
-  },
-  {
-    id: 'stock-3',
-    name: 'Team Collaboration Session',
-    url: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&q=80&w=1200',
-    type: 'image/jpeg',
-    size: 480000,
-    path: 'stock/team.jpg',
-    created_at: '2026-01-03T00:00:00.000Z',
-  },
-  {
-    id: 'stock-4',
-    name: 'Professional Client Headshot 1',
-    url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=600',
-    type: 'image/jpeg',
-    size: 210000,
-    path: 'stock/avatar-1.jpg',
-    created_at: '2026-01-04T00:00:00.000Z',
-  },
-  {
-    id: 'stock-5',
-    name: 'Professional Client Headshot 2',
-    url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=600',
-    type: 'image/jpeg',
-    size: 195000,
-    path: 'stock/avatar-2.jpg',
-    created_at: '2026-01-05T00:00:00.000Z',
-  },
-  {
-    id: 'stock-6',
-    name: 'Swimming Pool Diagnostics & Leak Detection',
-    url: 'https://images.unsplash.com/photo-1576013551627-0cc20b96c2a7?auto=format&fit=crop&q=80&w=1200',
-    type: 'image/jpeg',
-    size: 610000,
-    path: 'stock/pool.jpg',
-    created_at: '2026-01-06T00:00:00.000Z',
-  },
 ];
+
+const UNWANTED_DUMMY_PATTERNS = [
+  'stock-1', 'stock-2', 'stock-3', 'stock-4', 'stock-5', 'stock-6',
+  'jackson design award', 'jackson design consultation',
+  'quik car buyers', 'quik car 3-step', 'quik car instant quote', 'quik car rating',
+  'hispanic research center', 'hispanic research digital', 'hispanic research faceted', 'hispanic research citation',
+  'lambert dynamics engineering', 'lambert dynamics interactive',
+  'corporate office headquarters', 'digital strategy & analytics', 'team collaboration session',
+  'professional client headshot', 'swimming pool diagnostics'
+];
+
+/**
+ * Identifies unwanted generated dummy / placeholder assets
+ */
+export function isUnwantedDummyAsset(asset: Partial<MediaAsset>): boolean {
+  if (!asset) return true;
+  const id = (asset.id || '').toLowerCase();
+  const name = (asset.name || '').toLowerCase();
+  const url = (asset.url || '').toLowerCase();
+  const path = (asset.path || '').toLowerCase();
+
+  if (id.startsWith('stock-')) return true;
+  if (path.startsWith('stock/')) return true;
+  if (url.includes('photo-1460925895917-afdab827c52f')) return true;
+  if (url.includes('photo-1497366216548')) return true;
+  if (url.includes('photo-1522071820081')) return true;
+  if (url.includes('photo-1534528741775')) return true;
+  if (url.includes('photo-1507003211169')) return true;
+  if (url.includes('photo-1576013551627')) return true;
+
+  for (const pattern of UNWANTED_DUMMY_PATTERNS) {
+    if (name.includes(pattern) || id.includes(pattern)) {
+      return true;
+    }
+  }
+
+  return false;
+}
 
 /**
  * Reads locally stored media assets from localStorage
@@ -232,28 +216,45 @@ export function getLocalMediaAssets(): MediaAsset[] {
     const deletedIds = getDeletedMediaAssetIds();
     const raw = localStorage.getItem(MEDIA_STORAGE_KEY);
     if (!raw) {
-      return DEFAULT_STOCK_ASSETS.filter(a => !deletedIds.has(a.id));
+      return DEFAULT_STOCK_ASSETS.filter(a => !deletedIds.has(a.id) && !isUnwantedDummyAsset(a));
     }
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed) || parsed.length === 0) {
-      return DEFAULT_STOCK_ASSETS.filter(a => !deletedIds.has(a.id));
+      return DEFAULT_STOCK_ASSETS.filter(a => !deletedIds.has(a.id) && !isUnwantedDummyAsset(a));
     }
     
-    // Filter out deleted assets from parsed
-    const activeParsed = parsed.filter((a: MediaAsset) => a && a.id && !deletedIds.has(a.id));
+    // Filter out deleted assets and unwanted dummy placeholders
+    const activeParsed = parsed.filter(
+      (a: MediaAsset) => a && a.id && !deletedIds.has(a.id) && !isUnwantedDummyAsset(a)
+    );
+
+    // Update active parsed with any refreshed URLs from DEFAULT_STOCK_ASSETS
+    const defaultMap = new Map(DEFAULT_STOCK_ASSETS.map(d => [d.id, d]));
+    const updatedActive = activeParsed.map((a: MediaAsset) => {
+      const defaultItem = defaultMap.get(a.id);
+      if (defaultItem) {
+        return {
+          ...a,
+          url: defaultItem.url,
+          path: defaultItem.path || a.path,
+          name: defaultItem.name || a.name,
+          size: defaultItem.size || a.size
+        };
+      }
+      return a;
+    });
 
     // Ensure all DEFAULT_STOCK_ASSETS that haven't been deleted exist in the list
-    const existingIds = new Set(activeParsed.map((a: MediaAsset) => a.id));
-    const missingDefaults = DEFAULT_STOCK_ASSETS.filter(a => !existingIds.has(a.id) && !deletedIds.has(a.id));
-    if (missingDefaults.length > 0) {
-      const merged = [...activeParsed, ...missingDefaults];
-      saveLocalMediaAssets(merged);
-      return merged;
-    }
-    return activeParsed;
+    const existingIds = new Set(updatedActive.map((a: MediaAsset) => a.id));
+    const missingDefaults = DEFAULT_STOCK_ASSETS.filter(
+      a => !existingIds.has(a.id) && !deletedIds.has(a.id) && !isUnwantedDummyAsset(a)
+    );
+    const merged = [...updatedActive, ...missingDefaults];
+    saveLocalMediaAssets(merged);
+    return merged;
   } catch (err) {
     console.error('Error reading local media assets:', err);
-    return DEFAULT_STOCK_ASSETS;
+    return DEFAULT_STOCK_ASSETS.filter(a => !isUnwantedDummyAsset(a));
   }
 }
 
@@ -275,6 +276,7 @@ export function saveLocalMediaAssets(assets: MediaAsset[]): void {
 export async function getStoredMediaAssets(): Promise<MediaAsset[]> {
   const deletedIds = getDeletedMediaAssetIds();
   let remoteAssets: MediaAsset[] = [];
+  const dummyRemoteIds: string[] = [];
 
   if (isSupabaseConfigured) {
     try {
@@ -284,7 +286,23 @@ export async function getStoredMediaAssets(): Promise<MediaAsset[]> {
         .order('created_at', { ascending: false });
 
       if (!error && Array.isArray(data)) {
-        remoteAssets = (data as MediaAsset[]).filter(a => a && a.id && !deletedIds.has(a.id));
+        for (const a of data as MediaAsset[]) {
+          if (!a || !a.id || deletedIds.has(a.id)) continue;
+          if (isUnwantedDummyAsset(a)) {
+            dummyRemoteIds.push(a.id);
+          } else {
+            remoteAssets.push(a);
+          }
+        }
+      }
+
+      // Automatically clean up dummy assets from Supabase backend in the background
+      if (dummyRemoteIds.length > 0) {
+        supabase.from('media').delete().in('id', dummyRemoteIds).then(() => {
+          console.info(`Cleaned up ${dummyRemoteIds.length} dummy assets from Supabase media table.`);
+        }).catch(err => {
+          console.warn('Could not delete dummy media from Supabase:', err);
+        });
       }
     } catch (err) {
       console.warn('Supabase media fetch skipped:', err);
@@ -298,7 +316,7 @@ export async function getStoredMediaAssets(): Promise<MediaAsset[]> {
 
   // Add stock / local assets first
   for (const asset of localAssets) {
-    if (asset && !deletedIds.has(asset.id)) {
+    if (asset && !deletedIds.has(asset.id) && !isUnwantedDummyAsset(asset)) {
       const key = asset.id || asset.url;
       combinedMap.set(key, asset);
     }
@@ -306,7 +324,7 @@ export async function getStoredMediaAssets(): Promise<MediaAsset[]> {
 
   // Remote assets override/extend
   for (const asset of remoteAssets) {
-    if (asset && !deletedIds.has(asset.id)) {
+    if (asset && !deletedIds.has(asset.id) && !isUnwantedDummyAsset(asset)) {
       const key = asset.id || asset.url;
       combinedMap.set(key, asset);
     }
@@ -322,6 +340,41 @@ export async function getStoredMediaAssets(): Promise<MediaAsset[]> {
   });
 
   return combined;
+}
+
+/**
+ * Explicitly cleans up and deletes all dummy/placeholder assets from both
+ * Supabase database and local storage.
+ */
+export async function purgeUnwantedDummyMediaAssets(): Promise<number> {
+  let purgedCount = 0;
+  try {
+    // 1. Clean localStorage
+    const raw = localStorage.getItem(MEDIA_STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        const cleaned = parsed.filter((a: MediaAsset) => !isUnwantedDummyAsset(a));
+        purgedCount += (parsed.length - cleaned.length);
+        saveLocalMediaAssets(cleaned);
+      }
+    }
+
+    // 2. Clean Supabase media table
+    if (isSupabaseConfigured) {
+      const { data } = await supabase.from('media').select('id, name, url, path');
+      if (Array.isArray(data)) {
+        const dummyIds = data.filter(isUnwantedDummyAsset).map(a => a.id);
+        if (dummyIds.length > 0) {
+          await supabase.from('media').delete().in('id', dummyIds);
+          purgedCount += dummyIds.length;
+        }
+      }
+    }
+  } catch (err) {
+    console.error('Error during dummy asset purge:', err);
+  }
+  return purgedCount;
 }
 
 /**

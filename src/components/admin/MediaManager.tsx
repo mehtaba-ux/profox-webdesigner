@@ -12,8 +12,14 @@ import { findMediaAssetUsage, type MediaAssetUsage } from '../../lib/mediaUsage'
 import { AssetUsageDialog } from './AssetUsageDialog';
 
 import { MediaAsset } from '../../types';
-import { getStoredMediaAssets, deleteMediaAsset, deleteMediaAssets } from '../../lib/mediaStore';
+import { 
+  getStoredMediaAssets, 
+  deleteMediaAsset, 
+  deleteMediaAssets, 
+  purgeUnwantedDummyMediaAssets 
+} from '../../lib/mediaStore';
 import { uploadOptimizedFile } from '../../lib/optimizedUpload';
+import { formatR2ImageUrl } from '../../lib/r2Media';
 
 const R2_MEDIA_API_BASE = (import.meta.env.VITE_R2_MEDIA_API_URL || '').replace(/\/$/, '');
 
@@ -55,6 +61,7 @@ export default function MediaManager({ onSelect, onClose, selectable = false }: 
     setLoading(true);
     setError(null);
     try {
+      await purgeUnwantedDummyMediaAssets();
       const data = await getStoredMediaAssets();
       setAssets(data);
     } catch (err: any) {
@@ -473,13 +480,14 @@ export default function MediaManager({ onSelect, onClose, selectable = false }: 
                   <div className="w-full h-full flex items-center justify-center bg-slate-100">
                     {asset.type.startsWith('image/') ? (
                       <img
-                        src={asset.url}
+                        src={formatR2ImageUrl(asset.url)}
                         alt={asset.name}
                         className="w-full h-full object-cover"
                         loading="lazy"
                         onError={(e) => {
+                          // Clean SVG fallback data URL instead of unrequested stock image
                           (e.target as HTMLImageElement).src =
-                            'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&q=80&w=600';
+                            'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 24 24" fill="none" stroke="%2394a3b8" stroke-width="1.5"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>';
                         }}
                       />
                     ) : asset.type.includes('pdf') ? (
@@ -526,7 +534,7 @@ export default function MediaManager({ onSelect, onClose, selectable = false }: 
                     </button>
 
                     <a
-                      href={asset.url}
+                      href={formatR2ImageUrl(asset.url)}
                       target="_blank"
                       rel="noreferrer"
                       onClick={(e) => e.stopPropagation()}
