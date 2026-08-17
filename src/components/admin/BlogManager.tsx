@@ -1679,6 +1679,20 @@ function PostEditor({
                       />
                     </div>
                   </div>
+
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Publish Date</label>
+                    <div className="relative">
+                      <Calendar className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
+                      <input 
+                        type="datetime-local"
+                        value={post.publishedAt ? new Date(post.publishedAt).toISOString().slice(0, 16) : new Date(post.createdAt).toISOString().slice(0, 16)}
+                        onChange={(e) => setPost({ ...post, publishedAt: new Date(e.target.value).toISOString() })}
+                        className="w-full bg-white border border-slate-200 rounded-xl pl-12 pr-4 py-3 text-slate-900 focus:outline-none focus:border-[#000080]"
+                      />
+                    </div>
+                    <p className="text-[10px] text-slate-400">Manually adjust the publication date for this post.</p>
+                  </div>
                 </div>
 
                 <div className="space-y-6">
