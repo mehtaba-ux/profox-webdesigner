@@ -18,7 +18,7 @@ const ALLOWED_DOCUMENT_TYPES = new Set([
   'text/plain',
   'text/csv',
 ]);
-const R2_MEDIA_API = (import.meta.env.VITE_R2_MEDIA_API_URL || 'https://media-api.profoxwebdesigner.com').replace(/\/$/, '');
+const R2_MEDIA_API_BASE = (import.meta.env.VITE_R2_MEDIA_API_URL || '').replace(/\/$/, '');
 
 export interface OptimizedUploadResult {
   url: string;
@@ -192,8 +192,8 @@ export async function uploadOptimizedFile(file: File): Promise<OptimizedUploadRe
 
   // Try uploading to remote endpoint if reachable
   try {
-    const endpoint = import.meta.env.VITE_R2_MEDIA_API_URL 
-      ? `${import.meta.env.VITE_R2_MEDIA_API_URL.replace(/\/$/, '')}/api/r2-upload?path=${encodeURIComponent(storagePath)}`
+    const endpoint = R2_MEDIA_API_BASE 
+      ? `${R2_MEDIA_API_BASE}/api/r2-upload?path=${encodeURIComponent(storagePath)}`
       : `/api/r2-upload?path=${encodeURIComponent(storagePath)}`;
 
     const response = await fetch(endpoint, {
@@ -208,21 +208,34 @@ export async function uploadOptimizedFile(file: File): Promise<OptimizedUploadRe
       const uploaded = await response.json().catch(() => null) as { url?: string; path?: string; size?: number; error?: string } | null;
       if (uploaded?.url) {
         finalPath = uploaded.path || storagePath;
-        const customPublicDomain = import.meta.env.VITE_R2_PUBLIC_DOMAIN || 'https://media.profoxwebdesigner.com';
-        const customApiUrl = import.meta.env.VITE_R2_MEDIA_API_URL || 'https://media-api.profoxwebdesigner.com';
+        const customPublicDomain = import.meta.env.VITE_R2_PUBLIC_DOMAIN || '';
         
-        publicUrl = customPublicDomain
-          ? `${customPublicDomain.replace(/\/$/, '')}/${finalPath}`
-          : uploaded.url || `${customApiUrl.replace(/\/$/, '')}/api/r2-media/${finalPath}`;
+        if (customPublicDomain) {
+          publicUrl = `${customPublicDomain.replace(/\/$/, '')}/${finalPath}`;
+        } else if (uploaded.url.startsWith('http')) {
+          publicUrl = uploaded.url;
+        } else {
+          // If the worker returned a relative URL or we want to force one
+          const apiBase = R2_MEDIA_API_BASE || window.location.origin;
+          publicUrl = `${apiBase.replace(/\/$/, '')}/api/r2-media/${finalPath}`;
+        }
       }
+    } else {
+      const errorData = await response.json().catch(() => ({}));
+      console.warn('R2 upload failed:', response.status, errorData);
     }
   } catch (err) {
-    console.warn('Remote storage upload endpoint unavailable, using persistent local media asset store:', err);
+    console.warn('Remote storage upload endpoint unavailable:', err);
   }
 
   // Fallback if remote endpoint upload was not completed
   if (!publicUrl) {
-    publicUrl = await blobToDataUrl(prepared.data);
+    // Only use data URL for images, and only as a temporary fallback
+    if (prepared.type.startsWith('image/')) {
+      publicUrl = await blobToDataUrl(prepared.data);
+    } else {
+      throw new Error('Cloud storage is currently unavailable. Please check your R2 configuration.');
+    }
   }
 
   // CRITICAL: Persist newly uploaded media asset in Media Library Store

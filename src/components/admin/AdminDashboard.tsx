@@ -325,7 +325,41 @@ export default function AdminDashboard() {
     ]
   };
 
-  const customPagesList: CustomPage[] = content.customPages || defaultCustomPages;
+  const customPagesList: CustomPage[] = (() => {
+    const stored = content.customPages;
+    if (!Array.isArray(stored) || stored.length === 0) {
+      return defaultCustomPages;
+    }
+    const merged: CustomPage[] = stored.map((item: any) => {
+      if (item.id === 'ai-agents' && (!item.title || !item.title.includes('Email'))) {
+        const def = defaultCustomPages.find(d => d.id === 'email-marketing-and-business-automation')!;
+        return {
+          ...def,
+          ...item,
+          id: 'email-marketing-and-business-automation',
+          title: 'Email Marketing & Business Automation',
+          slug: 'services/email-marketing-and-business-automation',
+          template: 'ai-automation'
+        };
+      }
+      const def = defaultCustomPages.find(d => d.id === item.id || d.slug === item.slug);
+      if (def) {
+        return {
+          ...def,
+          ...item,
+          seo: { ...def.seo, ...(item.seo || {}) }
+        };
+      }
+      return item;
+    });
+
+    for (const def of defaultCustomPages) {
+      if (!merged.some(p => p.id === def.id || p.slug === def.slug)) {
+        merged.push(def);
+      }
+    }
+    return merged;
+  })();
   
   const portfolioItems: PortfolioItem[] = Array.isArray(content.portfolio_items) ? content.portfolio_items : defaultPortfolioItems;
   
@@ -424,6 +458,11 @@ export default function AdminDashboard() {
     const updatedList = customPagesList.filter(p => p.id !== pageId);
     await updateSection('customPages', updatedList);
     showSaveNotification('Page deleted from Supabase.');
+  };
+
+  const handleRestoreDefaultsCustomPages = async () => {
+    await updateSection('customPages', defaultCustomPages);
+    showSaveNotification('All standard pages restored & synchronized!');
   };
 
   const showSaveNotification = (msg: string) => {
@@ -1106,6 +1145,7 @@ export default function AdminDashboard() {
               pages={customPagesList}
               onSavePage={handleSaveCustomPage}
               onDeletePage={handleDeleteCustomPage}
+              onRestoreDefaults={handleRestoreDefaultsCustomPages}
             />
           )}
 

@@ -108,9 +108,10 @@ interface PagesManagerProps {
   pages: CustomPage[];
   onSavePage: (page: CustomPage) => Promise<void>;
   onDeletePage: (pageId: string) => Promise<void>;
+  onRestoreDefaults?: () => Promise<void>;
 }
 
-export default function PagesManager({ pages, onSavePage, onDeletePage }: PagesManagerProps) {
+export default function PagesManager({ pages, onSavePage, onDeletePage, onRestoreDefaults }: PagesManagerProps) {
   const { confirmState, confirm: confirmAction, handleConfirm, handleCancel } = useConfirm();
   const { content } = useCMS();
   const navigate = useNavigate();
@@ -466,12 +467,27 @@ export default function PagesManager({ pages, onSavePage, onDeletePage }: PagesM
             </p>
           </div>
 
-          <button
-            onClick={handleCreateNewPage}
-            className="inline-flex items-center gap-2 bg-[#000080] hover:bg-[#000066] text-white font-bold px-5 py-2.5 rounded-xl text-sm transition-all shadow-lg hover:scale-[1.02] shrink-0"
-          >
-            <Plus className="w-4 h-4" /> Add New Page
-          </button>
+          <div className="flex items-center gap-3 shrink-0">
+            {onRestoreDefaults && (
+              <button
+                onClick={async () => {
+                  if (await confirmAction('Restore Standard Pages', 'Are you sure you want to restore and synchronize all standard pages (Pricing, About Us, Careers, Contact Us, Services, Policies)? Existing content will be preserved.')) {
+                    await onRestoreDefaults();
+                  }
+                }}
+                className="inline-flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold px-4 py-2.5 rounded-xl text-sm transition-all border border-slate-200"
+                title="Restore all standard pages if any are missing"
+              >
+                <RefreshCw className="w-4 h-4" /> Restore Standard Pages
+              </button>
+            )}
+            <button
+              onClick={handleCreateNewPage}
+              className="inline-flex items-center gap-2 bg-[#000080] hover:bg-[#000066] text-white font-bold px-5 py-2.5 rounded-xl text-sm transition-all shadow-lg hover:scale-[1.02]"
+            >
+              <Plus className="w-4 h-4" /> Add New Page
+            </button>
+          </div>
         </div>
 
         {/* Search & Filter */}

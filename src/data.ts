@@ -1,4 +1,4 @@
-import { NavItem, Service, Client, CaseStudy, PortfolioItem, PortfolioCategory } from './types';
+import { NavItem, Service, Client, CaseStudy, PortfolioItem, PortfolioCategory, CustomPage } from './types';
 import { DEFAULT_MAIN_NAVIGATION } from './lib/siteNavigation';
 import { defaultPricingTemplateData } from './data/pricingTemplate';
 
@@ -86,7 +86,7 @@ export const recentSuccess: CaseStudy[] = [
   },
 ];
 
-export const defaultCustomPages = [
+export const defaultCustomPages: CustomPage[] = [
   {
     id: 'plans-pricing',
     title: 'Website Design & Development Pricing',
@@ -101,11 +101,11 @@ export const defaultCustomPages = [
     bodyContent: 'Transparent website design and development packages for businesses that need a professional launch, stronger growth infrastructure, advanced integrations, or a fully custom digital experience.',
     serviceDetailData: defaultPricingTemplateData,
     seo: {
-      metaTitle: 'Website Design & Development Pricing | ProFox',
-      metaDescription: 'Compare ProFox website design and development packages, included technology, delivery support, and custom digital experience options.',
+      metaTitle: 'Website Design & Development Pricing | ProFox Web Designer',
+      metaDescription: 'Compare ProFox website design and development packages, starting with Launch ($599), Growth ($2,379), Scale ($5,799+), and Custom Digital Experience.',
       focusKeyword: 'website design and development pricing',
       canonicalUrl: 'https://www.profoxwebdesigner.com/pricing',
-      ogTitle: 'Premium Website Design & Development Pricing',
+      ogTitle: 'Website Design & Development Pricing | ProFox Web Designer',
       ogDescription: 'Clear ProFox website packages built around strategy, design, technology, integrations, and measurable business growth.',
       ogImage: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&q=82&w=1600',
       noIndex: false,
@@ -115,7 +115,7 @@ export const defaultCustomPages = [
   {
     id: 'about-us',
     title: 'About ProFox Web Designer',
-    slug: 'about',
+    slug: 'about-us',
     template: 'about-us',
     status: 'published',
     createdAt: '2026-08-01',
@@ -124,32 +124,12 @@ export const defaultCustomPages = [
     heroSubtitle: '8+ years of experience, 40+ websites and applications delivered, and one growth-focused team connecting websites, applications, and business automation.',
     coverImage: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&q=80&w=1200',
     bodyContent: 'ProFox Web Designer is the client-facing brand of ProFox Digital Solution, based in Shimla, Himachal Pradesh. We help businesses attract customers, simplify operations, reduce manual work, and measure growth through connected websites, custom applications, and automation systems. Registered Udyam number: UDYAM-HP-09-0022689.',
-    blocks: [
-      {
-        id: 'b1',
-        type: 'features',
-        heading: 'Why Leading Brands Choose Profox web designer',
-        subheading: 'Our customized design and development framework balances aesthetics, responsiveness, and measurable business growth.',
-        items: [
-          { title: '8+ Years of Experience', description: 'Practical experience delivering websites, applications, and connected digital systems for growing businesses.', icon: 'award' },
-          { title: 'Bespoke Modern Engineering', description: 'Integrating custom backend platforms, lightning-fast interfaces, and robust server architectures.', icon: 'sparkles' },
-          { title: 'User Experience Mastery', description: 'Creating mathematically balanced user interfaces designed to maximize engagement and conversions.', icon: 'user' }
-        ]
-      },
-      {
-        id: 'b2',
-        type: 'cta',
-        heading: 'Ready to Transform Your Digital Ecosystem?',
-        subheading: 'Schedule a direct strategic session with our high-end web design team.',
-        body: 'Contact contact@profox-webdesigner.com to start your project.'
-      }
-    ],
     seo: {
-      metaTitle: 'About Profox web designer | Premium Custom Web Design & Development',
-      metaDescription: 'Learn how Profox web designer helps brands simplify user journeys, build bespoke custom web apps, and integrate high-end interactive designs.',
+      metaTitle: 'About ProFox Web Designer | Premium Custom Web Design & Development',
+      metaDescription: 'Learn how ProFox Web Designer helps brands simplify user journeys, build bespoke custom web apps, and integrate high-end interactive designs.',
       focusKeyword: 'Custom Web Design',
       canonicalUrl: 'https://www.profoxwebdesigner.com/about-us',
-      ogTitle: 'About Profox web designer - Premium High-End Web Design',
+      ogTitle: 'About ProFox Web Designer - Premium High-End Web Design',
       ogDescription: 'Simplifying complex digital environments with premium web design, user-centered application development, and technical expertise.',
       ogImage: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&q=80&w=1200',
       noIndex: false,
@@ -157,39 +137,183 @@ export const defaultCustomPages = [
     }
   },
   {
-    id: 'ai-agents',
-    title: 'AI Agents & Business Automation',
-    slug: 'ai-agents',
+    id: 'careers',
+    title: 'Careers & Opportunities',
+    slug: 'careers',
+    template: 'careers',
     status: 'published',
-    createdAt: '2026-08-02',
+    createdAt: '2026-08-01',
     updatedAt: '2026-08-04',
-    heroTitle: 'Autonomous AI Agents Engineered for Growth',
-    heroSubtitle: 'Deploy intelligent custom AI agents that automate complex business processes, parse data, and accelerate operational throughput.',
-    coverImage: 'https://images.unsplash.com/photo-1677442136019-21780ecad995?auto=format&fit=crop&q=80&w=1200',
-    bodyContent: 'Modern businesses require more than passive software. Our custom AI solutions combine multi-modal large language models with enterprise backend systems to automate customer workflows, financial reconciliation, and real-time decision-making.',
-    blocks: [
-      {
-        id: 'b1',
-        type: 'features',
-        heading: 'Enterprise AI Capabilities',
-        subheading: 'Turn raw data into actionable autonomous intelligence.',
-        items: [
-          { title: 'Automated Document Processing', description: 'Extract, summarize, and route structured data from invoices, contracts, and support tickets in real-time.', icon: 'file' },
-          { title: 'Custom Conversational Agents', description: 'Deploy context-aware AI assistants trained strictly on your proprietary documentation and APIs.', icon: 'bot' },
-          { title: 'Predictive Analytics & Workflow Pipelines', description: 'Connect predictive AI models directly to your backend database and Cloud infrastructure.', icon: 'cpu' }
-        ]
-      }
-    ],
+    heroTitle: 'Open Positions at ProFox',
+    heroSubtitle: 'We value experience, curiosity, empathy, and dedication; we look for thoughtful teammates who enjoy learning and helping others succeed.',
+    coverImage: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&q=80&w=1200',
+    bodyContent: 'Explore careers at ProFox Web Designer. Join our engineering, design, and automation teams building high-impact digital experiences.',
     seo: {
-      metaTitle: 'AI Agents & Business Automation Services | Profox web designer',
-      metaDescription: 'Deploy high-performance custom automation pipelines and intelligent workflow interfaces built for scalability, data security, and ROI.',
-      focusKeyword: 'AI Automation',
+      metaTitle: 'Careers & Opportunities | ProFox Web Designer',
+      metaDescription: 'Join ProFox Web Designer. Explore open roles across product design, full-stack software engineering, solutions architecture, and automation.',
+      focusKeyword: 'ProFox Careers',
+      canonicalUrl: 'https://www.profoxwebdesigner.com/careers',
+      ogTitle: 'Careers & Opportunities | ProFox Web Designer',
+      ogDescription: 'Join our growth-focused team creating connected digital systems for global clients.',
+      ogImage: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&q=80&w=1200',
+      noIndex: false,
+      schemaType: 'WebPage'
+    }
+  },
+  {
+    id: 'contact-us',
+    title: 'Contact ProFox Web Designer',
+    slug: 'contact-us',
+    template: 'contact-us',
+    status: 'published',
+    createdAt: '2026-08-01',
+    updatedAt: '2026-08-04',
+    heroTitle: 'Get in Touch with Our Team',
+    heroSubtitle: 'Have a project in mind? We would love to hear from you. Reach out for website design, custom software, or automation.',
+    coverImage: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&q=80&w=1600',
+    bodyContent: 'Contact our strategy and development team to schedule a discovery session for your upcoming digital project.',
+    seo: {
+      metaTitle: 'Contact ProFox Web Designer | Digital Strategy & Engineering',
+      metaDescription: 'Get in touch with ProFox Web Designer to discuss your website design, web/mobile application, or business automation project.',
+      focusKeyword: 'Contact Web Designer',
+      canonicalUrl: 'https://www.profoxwebdesigner.com/contact-us',
+      ogTitle: 'Contact ProFox Web Designer',
+      ogDescription: 'Start a conversation with our digital strategy and engineering team.',
+      ogImage: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&q=80&w=1600',
+      noIndex: false,
+      schemaType: 'WebPage'
+    }
+  },
+  {
+    id: 'website-design-and-development',
+    title: 'Website Design & Development',
+    slug: 'services/website-design-and-development',
+    template: 'digital-experience',
+    status: 'published',
+    createdAt: '2026-08-01',
+    updatedAt: '2026-08-04',
+    heroTitle: 'Turn Your Website Into a Growth Engine That Solves Problems & Drives Revenue',
+    heroSubtitle: 'Stop losing customers to a confusing or outdated website. We build strategic, user-focused digital experiences that solve your customers\' pain points and build trust.',
+    coverImage: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&q=80&w=1600',
+    bodyContent: 'We design and develop high-converting, performance-focused websites that turn casual visitors into loyal customers.',
+    seo: {
+      metaTitle: 'Website Design & Development Services | ProFox Web Designer',
+      metaDescription: 'Custom, high-conversion website design and development engineered for fast load speeds, SEO performance, and measurable business growth.',
+      focusKeyword: 'Website Design & Development',
+      canonicalUrl: 'https://www.profoxwebdesigner.com/services/website-design-and-development',
+      ogTitle: 'Website Design & Development | ProFox Web Designer',
+      ogDescription: 'Strategic web design and development that transforms your site into a 24/7 revenue engine.',
+      ogImage: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&q=80&w=1600',
+      noIndex: false,
+      schemaType: 'Service'
+    }
+  },
+  {
+    id: 'web-and-mobile-application-development',
+    title: 'Web & Mobile Application Development',
+    slug: 'services/web-and-mobile-application-development',
+    template: 'web-mobile-dev',
+    status: 'published',
+    createdAt: '2026-08-01',
+    updatedAt: '2026-08-04',
+    heroTitle: 'Enterprise-Grade Web & Mobile Application Development',
+    heroSubtitle: 'We engineer secure, scalable digital infrastructure, web platforms, SaaS portals, and native iOS/Android mobile applications.',
+    coverImage: 'https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?auto=format&fit=crop&q=80&w=1600',
+    bodyContent: 'Custom software, full-stack web applications, mobile apps, and scalable cloud architectures built for speed, security, and growth.',
+    seo: {
+      metaTitle: 'Web & Mobile Application Development | ProFox Web Designer',
+      metaDescription: 'Scalable custom web apps, iOS/Android mobile applications, SaaS platforms, and enterprise backend engineering.',
+      focusKeyword: 'Web & Mobile Application Development',
+      canonicalUrl: 'https://www.profoxwebdesigner.com/services/web-and-mobile-application-development',
+      ogTitle: 'Web & Mobile Application Development | ProFox Web Designer',
+      ogDescription: 'Full-lifecycle software engineering from architecture and UI/UX to cloud deployment and API integrations.',
+      ogImage: 'https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?auto=format&fit=crop&q=80&w=1600',
+      noIndex: false,
+      schemaType: 'Service'
+    }
+  },
+  {
+    id: 'email-marketing-and-business-automation',
+    title: 'Email Marketing & Business Automation',
+    slug: 'services/email-marketing-and-business-automation',
+    template: 'ai-automation',
+    status: 'published',
+    createdAt: '2026-08-01',
+    updatedAt: '2026-08-04',
+    heroTitle: 'Email Marketing Journeys & Business Automation',
+    heroSubtitle: 'Connect your customer journeys, CRM, email sequences, and workflow automation into one seamless growth system.',
+    coverImage: 'https://images.unsplash.com/photo-1677442136019-21780ecad995?auto=format&fit=crop&q=80&w=1200',
+    bodyContent: 'Eliminate repetitive tasks, nurture leads automatically, and synchronize data across your marketing and sales stack with customized automation pipelines.',
+    seo: {
+      metaTitle: 'Email Marketing & Business Automation | ProFox Web Designer',
+      metaDescription: 'Automate your customer communication, CRM synchronization, and marketing workflows with reliable business automation solutions.',
+      focusKeyword: 'Email Marketing & Business Automation',
       canonicalUrl: 'https://www.profoxwebdesigner.com/services/email-marketing-and-business-automation',
-      ogTitle: 'Web Automation & Custom Digital Tools | Profox web designer',
-      ogDescription: 'Automate complex operations with secure, scalable digital services custom-built by Profox web designer.',
+      ogTitle: 'Email Marketing & Business Automation | ProFox Web Designer',
+      ogDescription: 'Turn fragmented tools into connected, automated workflows that drive retention and revenue.',
       ogImage: 'https://images.unsplash.com/photo-1677442136019-21780ecad995?auto=format&fit=crop&q=80&w=1200',
       noIndex: false,
       schemaType: 'Service'
+    }
+  },
+  {
+    id: 'privacy-policy',
+    title: 'Privacy Policy',
+    slug: 'privacy-policy',
+    template: 'privacy-policy',
+    status: 'published',
+    createdAt: '2026-08-01',
+    updatedAt: '2026-08-07',
+    heroTitle: 'Privacy Policy',
+    heroSubtitle: 'How we collect, use, and protect your personal information.',
+    bodyContent: 'We respect your privacy and are committed to protecting your personal data in accordance with applicable data protection regulations.',
+    seo: {
+      metaTitle: 'Privacy Policy | ProFox Web Designer',
+      metaDescription: 'Read the ProFox Web Designer privacy policy covering data collection, processing, and user privacy rights.',
+      focusKeyword: 'Privacy Policy',
+      canonicalUrl: 'https://www.profoxwebdesigner.com/privacy-policy',
+      noIndex: false,
+      schemaType: 'WebPage'
+    }
+  },
+  {
+    id: 'terms-and-conditions',
+    title: 'Terms & Conditions',
+    slug: 'terms-and-conditions',
+    template: 'privacy-policy',
+    status: 'published',
+    createdAt: '2026-08-01',
+    updatedAt: '2026-08-07',
+    heroTitle: 'Terms & Conditions',
+    heroSubtitle: 'These terms and conditions govern your use of our digital services and website.',
+    bodyContent: 'Please read these Terms & Conditions carefully before using our digital platforms and services.',
+    seo: {
+      metaTitle: 'Terms & Conditions | ProFox Web Designer',
+      metaDescription: 'Legal terms and conditions for engaging ProFox Web Designer services and digital products.',
+      focusKeyword: 'Terms and Conditions',
+      canonicalUrl: 'https://www.profoxwebdesigner.com/terms-and-conditions',
+      noIndex: false,
+      schemaType: 'WebPage'
+    }
+  },
+  {
+    id: 'cookie-policy',
+    title: 'Cookie Policy',
+    slug: 'cookie-policy',
+    template: 'privacy-policy',
+    status: 'published',
+    createdAt: '2026-08-01',
+    updatedAt: '2026-08-07',
+    heroTitle: 'Cookie Policy',
+    heroSubtitle: 'Information on how we use cookies and similar technologies on our website.',
+    bodyContent: 'We use cookies and similar tracking technologies to enhance user experience and analyze website traffic.',
+    seo: {
+      metaTitle: 'Cookie Policy | ProFox Web Designer',
+      metaDescription: 'Learn how ProFox Web Designer uses cookies, analytics, and session storage.',
+      focusKeyword: 'Cookie Policy',
+      canonicalUrl: 'https://www.profoxwebdesigner.com/cookie-policy',
+      noIndex: false,
+      schemaType: 'WebPage'
     }
   }
 ];

@@ -13,7 +13,7 @@ import { MediaAsset } from '../../types';
 import { getStoredMediaAssets, deleteMediaAsset, deleteMediaAssets } from '../../lib/mediaStore';
 import { uploadOptimizedFile } from '../../lib/optimizedUpload';
 
-const R2_MEDIA_API = (import.meta.env.VITE_R2_MEDIA_API_URL || 'https://media-api.profoxwebdesigner.com').replace(/\/$/, '');
+const R2_MEDIA_API_BASE = (import.meta.env.VITE_R2_MEDIA_API_URL || '').replace(/\/$/, '');
 
 interface MediaManagerProps {
   onSelect?: (url: string) => void;
@@ -110,7 +110,8 @@ export default function MediaManager({ onSelect, onClose, selectable = false }: 
           const { data: sessionData } = await supabase.auth.getSession();
           const accessToken = sessionData.session?.access_token;
           if (accessToken) {
-            await fetch(`${R2_MEDIA_API}/?bucket=${encodeURIComponent(bucket)}&path=${encodeURIComponent(asset.path)}`, {
+            const apiBase = R2_MEDIA_API_BASE || window.location.origin;
+            await fetch(`${apiBase.replace(/\/$/, '')}/api/r2-media/${encodeURIComponent(asset.path)}`, {
               method: 'DELETE',
               headers: { Authorization: `Bearer ${accessToken}` },
             });
@@ -226,12 +227,12 @@ export default function MediaManager({ onSelect, onClose, selectable = false }: 
       const accessToken = sessionData.session?.access_token;
 
       if (accessToken) {
+        const apiBase = R2_MEDIA_API_BASE || window.location.origin;
         await Promise.allSettled(
           assetsToDelete.map(async (asset) => {
             if (asset.path && !asset.path.startsWith('db_base64_') && !asset.path.startsWith('stock/')) {
-              const bucket = asset.type.startsWith('image/') ? 'media' : 'documents';
               return fetch(
-                `${R2_MEDIA_API}/?bucket=${encodeURIComponent(bucket)}&path=${encodeURIComponent(asset.path)}`,
+                `${apiBase.replace(/\/$/, '')}/api/r2-media/${encodeURIComponent(asset.path)}`,
                 {
                   method: 'DELETE',
                   headers: { Authorization: `Bearer ${accessToken}` },

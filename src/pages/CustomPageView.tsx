@@ -47,9 +47,36 @@ export default function CustomPageView() {
   const { isAdminOrEditor } = useAuth();
 
   // Find page from Supabase CMS content or defaults
-  const customPages: CustomPage[] = content.customPages || defaultCustomPages;
+  const customPages: CustomPage[] = (() => {
+    const stored = content.customPages;
+    if (!Array.isArray(stored) || stored.length === 0) {
+      return defaultCustomPages;
+    }
+    const merged = stored.map((item: any) => {
+      const def = defaultCustomPages.find(d => d.id === item.id || d.slug === item.slug);
+      if (def) {
+        return { ...def, ...item, seo: { ...def.seo, ...(item.seo || {}) } };
+      }
+      return item;
+    });
+    for (const def of defaultCustomPages) {
+      if (!merged.some(p => p.id === def.id || p.slug === def.slug)) {
+        merged.push(def);
+      }
+    }
+    return merged;
+  })();
   const routePath = window.location.pathname.replace(/\/+$/, '') || '/';
-  const page = customPages.find(p => getPagePath(p) === routePath || p.slug === routeSlug || p.id === routeSlug);
+  const page = customPages.find(p => {
+    const path = getPagePath(p);
+    const cleanRouteSlug = routeSlug ? routeSlug.replace(/^services\//, '') : '';
+    const cleanPageSlug = p.slug ? p.slug.replace(/^services\//, '') : '';
+    return path === routePath || 
+           p.slug === routeSlug || 
+           p.id === routeSlug ||
+           cleanPageSlug === cleanRouteSlug ||
+           p.id === cleanRouteSlug;
+  });
   const slug = page?.slug || routeSlug;
 
   // SEO Meta Tag Inserter

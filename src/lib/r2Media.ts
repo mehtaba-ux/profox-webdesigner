@@ -4,8 +4,8 @@
  * reliably with fast local fallback and R2 compatibility.
  */
 
-const R2_PUBLIC_DOMAIN = (import.meta.env.VITE_R2_PUBLIC_DOMAIN || 'https://media.profoxwebdesigner.com').replace(/\/$/, '');
-const R2_API_DOMAIN = (import.meta.env.VITE_R2_MEDIA_API_URL || 'https://media-api.profoxwebdesigner.com').replace(/\/$/, '');
+const R2_PUBLIC_DOMAIN = (import.meta.env.VITE_R2_PUBLIC_DOMAIN || '').replace(/\/$/, '');
+const R2_API_DOMAIN = (import.meta.env.VITE_R2_MEDIA_API_URL || '').replace(/\/$/, '');
 
 // Static asset dictionary for guaranteed local resolution
 const KNOWN_STATIC_ASSET_MAP: Record<string, string> = {
@@ -49,8 +49,18 @@ export function formatR2ImageUrl(url?: string | null): string {
     return KNOWN_STATIC_ASSET_MAP[filenameOnly];
   }
 
-  // 3. Handle profoxwebdesigner.com URLs (map to local public files if available in KNOWN_STATIC_ASSET_MAP)
+  // 3. Handle specific R2 domains (if configured)
+  if (R2_PUBLIC_DOMAIN && trimmed.includes(R2_PUBLIC_DOMAIN.replace(/^https?:\/\//, ''))) {
+    return trimmed;
+  }
+  
+  if (R2_API_DOMAIN && trimmed.includes(R2_API_DOMAIN.replace(/^https?:\/\//, ''))) {
+    return trimmed;
+  }
+
+  // 4. Handle generic profoxwebdesigner.com or media subdomain (if those were used historically)
   if (trimmed.includes('profoxwebdesigner.com')) {
+    // If it's a known static asset, return local path
     const parts = trimmed.split('profoxwebdesigner.com/');
     if (parts[1]) {
       const cleanPath = parts[1].replace(/^api\/r2-media\//, '').replace(/^\//, '');
@@ -59,9 +69,7 @@ export function formatR2ImageUrl(url?: string | null): string {
         return KNOWN_STATIC_ASSET_MAP[cleanFilename];
       }
     }
-    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
-      return trimmed;
-    }
+    return trimmed;
   }
 
   // 4. Handle R2 API routes (/api/r2-media/...)
