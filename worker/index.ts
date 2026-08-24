@@ -18,6 +18,24 @@ export default {
     const url = new URL(request.url);
 
     // 1. Dynamic API Endpoints handled directly on Cloudflare Edge Worker
+    if (url.pathname === '/robots.txt') {
+      const robotsTxt = `User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /client-portal/
+Disallow: /api/
+
+# Sitemap location
+Sitemap: ${url.origin}/sitemap.xml`;
+      return new Response(robotsTxt, {
+        status: 200,
+        headers: {
+          'Content-Type': 'text/plain; charset=utf-8',
+          'Cache-Control': 'public, max-age=86400',
+        },
+      });
+    }
+
     if (url.pathname === '/api/health') {
       return new Response(
         JSON.stringify({
