@@ -80,20 +80,16 @@ export const supabase = clientInstance || (mockSupabase as any);
 export const isSupabaseConfigured = Boolean(clientInstance);
 
 export const submitPublicFeedback = async (data: any) => {
-  const { data: rpcData, error } = await supabase.rpc('upsert_content_item', { p_id: 'feedback_submissions', p_data: data });
-  if (!error) return { data: rpcData, error: null };
-  return await supabase.from('content').upsert({ id: 'feedback_submissions', data, updated_at: new Date().toISOString() });
+  return await supabase.rpc('submit_public_feedback', { p_feedback: data });
 };
 
 /**
- * Stored Procedure (RPC) Helper Functions
- * Executes PostgreSQL stored procedures with seamless direct table fallbacks.
+ * Database helper functions. Use direct table reads for canonical tables and
+ * RPCs only where the corresponding server function is part of the schema.
  */
 export const dbProcedure = {
   // 1. Content Stored Procedures
   async getAllContent() {
-    const { data, error } = await supabase.rpc('get_all_content');
-    if (!error && data) return { data, error: null };
     return await supabase.from('content').select('*');
   },
 
@@ -105,74 +101,70 @@ export const dbProcedure = {
       .in('id', ids);
   },
 
+  async getPublicFeedback() {
+    return await supabase.rpc('get_public_feedback');
+  },
+
   async getContentById(id: string) {
-    const { data, error } = await supabase.rpc('get_content_by_id', { p_id: id });
-    if (!error && data) return { data: data[0] || null, error: null };
-    const res = await supabase.from('content').select('*').eq('id', id).single();
-    return res;
+    return await supabase.from('content').select('*').eq('id', id).maybeSingle();
   },
 
   async upsertContentItem(id: string, data: any) {
-    const { data: rpcData, error } = await supabase.rpc('upsert_content_item', { p_id: id, p_data: data });
-    if (!error) return { data: rpcData, error: null };
     return await supabase.from('content').upsert({ id, data, updated_at: new Date().toISOString() });
   },
 
   // 2. Posts Stored Procedures
   async getPublishedPosts() {
-    const { data, error } = await supabase.rpc('get_published_posts');
-    if (!error && data) return { data, error: null };
     return await supabase.from('posts').select('*').eq('status', 'published').order('published_at', { ascending: false });
   },
 
   async getAllPosts() {
-    const { data, error } = await supabase.rpc('get_all_posts');
-    if (!error && data) return { data, error: null };
     return await supabase.from('posts').select('*').order('updated_at', { ascending: false });
   },
 
   async getPostBySlug(slug: string) {
-    const { data, error } = await supabase.rpc('get_post_by_slug', { p_slug: slug });
-    if (!error && data) return { data: data[0] || null, error: null };
-    return await supabase.from('posts').select('*').eq('slug', slug).single();
+    return await supabase.from('posts').select('*').eq('slug', slug).maybeSingle();
   },
 
   // 3. Portfolio Stored Procedures
   async getPublishedPortfolioItems() {
-    const { data, error } = await supabase.rpc('get_published_portfolio_items');
-    if (!error && data) return { data, error: null };
-    return await supabase.from('portfolio_items').select('*').eq('status', 'published').order('created_at', { ascending: false });
+    const { data: row, error } = await supabase
+      .from('content')
+      .select('data')
+      .eq('id', 'portfolio_items')
+      .maybeSingle();
+    if (error) return { data: null, error };
+    const items = Array.isArray(row?.data) ? row.data : [];
+    return { data: items.filter((item: any) => item?.status === 'published' || !item?.status), error: null };
   },
 
   async getAllPortfolioItems() {
-    const { data, error } = await supabase.rpc('get_all_portfolio_items');
-    if (!error && data) return { data, error: null };
-    return await supabase.from('portfolio_items').select('*').order('created_at', { ascending: false });
+    const { data: row, error } = await supabase
+      .from('content')
+      .select('data')
+      .eq('id', 'portfolio_items')
+      .maybeSingle();
+    if (error) return { data: null, error };
+    return { data: Array.isArray(row?.data) ? row.data : [], error: null };
   },
 
   async getPortfolioItemBySlug(slug: string) {
-    const { data, error } = await supabase.rpc('get_portfolio_item_by_slug', { p_slug: slug });
-    if (!error && data) return { data: data[0] || null, error: null };
-    return await supabase.from('portfolio_items').select('*').eq('slug', slug).single();
+    const { data, error } = await this.getAllPortfolioItems();
+    if (error) return { data: null, error };
+    return { data: data?.find((item: any) => item?.slug === slug) || null, error: null };
   },
 
   // 5. Pages Stored Procedures
   async getAllPages() {
-    const { data, error } = await supabase.rpc('get_all_pages');
-    if (!error && data) return { data, error: null };
     return await supabase.from('pages').select('*').order('updated_at', { ascending: false });
   },
 
   async getPageBySlug(slug: string) {
-    const { data, error } = await supabase.rpc('get_page_by_slug', { p_slug: slug });
-    if (!error && data) return { data: data[0] || null, error: null };
-    return await supabase.from('pages').select('*').eq('slug', slug).single();
+    return await supabase.from('pages').select('*').eq('slug', slug).maybeSingle();
   },
 
   // 6. Media Assets Stored Procedures
   async getMediaAssets() {
-    const { data, error } = await supabase.rpc('get_media_assets');
-    if (!error && data) return { data, error: null };
     const res = await supabase.from('media').select('*').order('created_at', { ascending: false });
     if (!res.error && res.data) return res;
     const { getStoredMediaAssets } = await import('./mediaStore');

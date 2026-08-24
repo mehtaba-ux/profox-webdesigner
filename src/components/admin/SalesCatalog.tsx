@@ -446,6 +446,7 @@ export default function SalesCatalog() {
       )
     };
     const isPublicOffer = editingProduct.publicVisible && ['package', 'care_plan'].includes(editingProduct.productType);
+    const isActivePrimaryOffer = editingProduct.active && ['package', 'discovery', 'custom'].includes(editingProduct.productType);
     const min = editingProduct.deliveryDurationMin;
     const max = editingProduct.deliveryDurationMax;
 
@@ -468,6 +469,27 @@ export default function SalesCatalog() {
     if (editingProduct.timelineImpact !== 'assessment_required' && editingProduct.productType !== 'care_plan' && (min === null || max === null)) {
       setError('Configure the delivery duration, or mark this product as Assessment required.');
       return;
+    }
+    if (isActivePrimaryOffer && editingProduct.paymentSchedule.length === 0) {
+      setError('An active package, discovery, or custom offer needs an approved payment schedule before Sales can use it.');
+      return;
+    }
+    if (isActivePrimaryOffer) {
+      const paymentTotal = editingProduct.paymentSchedule.reduce((sum, milestone) => sum + Number(milestone.percentage || 0), 0);
+      const hasIncompleteMilestone = editingProduct.paymentSchedule.some(milestone => !milestone.label.trim() || !milestone.paymentType.trim() || Number(milestone.percentage || 0) <= 0);
+      const firstPaymentType = [...editingProduct.paymentSchedule].sort((a, b) => a.milestoneNumber - b.milestoneNumber)[0]?.paymentType;
+      if (hasIncompleteMilestone) {
+        setError('Every payment milestone needs a label, payment type, and positive percentage.');
+        return;
+      }
+      if (Math.round(paymentTotal * 10000) / 10000 !== 100) {
+        setError('The payment schedule must total exactly 100%.');
+        return;
+      }
+      if (!['Advance', 'Full Payment'].includes(firstPaymentType || '')) {
+        setError('The first payment milestone must be Advance or Full Payment so a verified sale can enter delivery.');
+        return;
+      }
     }
 
     setIsSaving(true);

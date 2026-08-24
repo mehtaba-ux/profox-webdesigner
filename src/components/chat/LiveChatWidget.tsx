@@ -52,10 +52,14 @@ export default function LiveChatWidget() {
   };
 
   const fetchMessages = async (convId: string) => {
-    const msgs = await getChatMessages(convId);
-    // Filter out internal notes for customer view
-    const customerVisibleMsgs = msgs.filter(m => !m.isInternalNote);
-    setMessages(customerVisibleMsgs);
+    try {
+      const msgs = await getChatMessages(convId);
+      // The server already excludes internal notes for public tokens. Keep this
+      // client guard as defense in depth for previously cached data.
+      setMessages(msgs.filter(m => !m.isInternalNote));
+    } catch (err: any) {
+      setError(err?.message || 'The conversation could not be synchronized.');
+    }
   };
 
   useEffect(() => {
@@ -154,6 +158,7 @@ export default function LiveChatWidget() {
   const handleSelectRepAndStart = async (rep: SalesRep) => {
     setSelectedRep(rep);
     setLoading(true);
+    setError(null);
 
     try {
       const conv = await createOrGetConversation({
@@ -166,7 +171,7 @@ export default function LiveChatWidget() {
       await fetchMessages(conv.id);
       setStep('chat');
     } catch (e) {
-      setError('Failed to connect to representative.');
+      setError(e instanceof Error ? e.message : 'Failed to connect to representative.');
     } finally {
       setLoading(false);
     }
@@ -178,6 +183,7 @@ export default function LiveChatWidget() {
     if (!text.trim() || !activeConversation || sending) return;
 
     setSending(true);
+    setError(null);
     try {
       await sendChatMessage({
         conversationId: activeConversation.id,
@@ -189,6 +195,7 @@ export default function LiveChatWidget() {
       await fetchMessages(activeConversation.id);
     } catch (e) {
       console.error('Error sending message:', e);
+      setError(e instanceof Error ? e.message : 'The message could not be sent.');
     } finally {
       setSending(false);
     }
@@ -198,6 +205,7 @@ export default function LiveChatWidget() {
   const handleRatingSubmit = async () => {
     if (!activeConversation) return;
     setLoading(true);
+    setError(null);
     try {
       await submitChatRating(activeConversation.id, ratingStars, ratingComment);
       setRatingSubmitted(true);
@@ -208,6 +216,7 @@ export default function LiveChatWidget() {
       }, 2000);
     } catch (e) {
       console.error('Error submitting rating:', e);
+      setError(e instanceof Error ? e.message : 'The rating could not be saved.');
     } finally {
       setLoading(false);
     }
@@ -248,11 +257,7 @@ export default function LiveChatWidget() {
               {selectedRep ? (
                 <div className="flex items-center gap-3">
                   <div className="relative">
-                    <img 
-                      src={selectedRep.avatar} 
-                      alt={selectedRep.name} 
-                      className="w-10 h-10 rounded-full object-cover ring-2 ring-white/20"
-                    />
+                    {selectedRep.avatar ? <img src={selectedRep.avatar} alt={selectedRep.name} className="w-10 h-10 rounded-full object-cover ring-2 ring-white/20" /> : <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/15 text-[11px] font-bold ring-2 ring-white/20">{selectedRep.name.slice(0, 2).toUpperCase()}</div>}
                     <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-400 rounded-full ring-2 ring-[#000080]" />
                   </div>
                   <div>
@@ -292,6 +297,14 @@ export default function LiveChatWidget() {
               </button>
             </div>
           </div>
+
+          {error && step !== 'identify' && (
+            <div className="flex shrink-0 items-start gap-2 border-b border-red-100 bg-red-50 px-4 py-2.5 text-[11px] text-red-700">
+              <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+              <span className="flex-1">{error}</span>
+              <button type="button" onClick={() => setError(null)} className="font-bold text-red-500" aria-label="Dismiss chat error">×</button>
+            </div>
+          )}
 
           {/* STEP 1: IDENTIFY & CHOOSE INTENT */}
           {step === 'identify' && (
@@ -393,10 +406,11 @@ export default function LiveChatWidget() {
             <div className="flex-1 p-5 overflow-y-auto bg-slate-50/50 space-y-4">
               <div>
                 <h3 className="text-sm font-semibold text-slate-900 tracking-tight">Choose a Sales Representative</h3>
-                <p className="text-[11px] text-slate-500 mt-0.5">Select a specialist based on their criteria and ratings.</p>
+                <p className="text-[11px] text-slate-500 mt-0.5">Select a verified specialist based on availability and expertise.</p>
               </div>
 
               <div className="space-y-3">
+                {salesReps.length === 0 && <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-center text-xs leading-5 text-amber-800">No verified sales representative is currently available. Please use the contact form and our team will follow up.</div>}
                 {salesReps.map((rep) => (
                   <div
                     key={rep.id}
@@ -405,22 +419,14 @@ export default function LiveChatWidget() {
                   >
                     <div className="flex items-start gap-3">
                       <div className="relative shrink-0">
-                        <img 
-                          src={rep.avatar} 
-                          alt={rep.name} 
-                          className="w-12 h-12 rounded-full object-cover ring-1 ring-slate-200 group-hover:ring-[#000080]/20 transition-all" 
-                        />
-                        <span className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 rounded-full ring-2 ring-white" />
+                        {rep.avatar ? <img src={rep.avatar} alt={rep.name} className="w-12 h-12 rounded-full object-cover ring-1 ring-slate-200 group-hover:ring-[#000080]/20 transition-all" /> : <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#000080]/10 text-xs font-bold text-[#000080] ring-1 ring-slate-200">{rep.name.slice(0, 2).toUpperCase()}</div>}
+                        <span className={`absolute bottom-0 right-0 w-3 h-3 rounded-full ring-2 ring-white ${rep.isOnline ? 'bg-emerald-500' : 'bg-amber-400'}`} />
                       </div>
 
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between">
                           <h4 className="text-[13px] font-semibold text-slate-900 group-hover:text-[#000080] transition-colors">{rep.name}</h4>
-                          <div className="flex items-center gap-1 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-100 text-amber-800 text-[10px] font-semibold">
-                            <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
-                            <span>{rep.rating}</span>
-                            <span className="text-slate-400 font-normal">({rep.reviewCount})</span>
-                          </div>
+                          {rep.reviewCount > 0 ? <div className="flex items-center gap-1 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-100 text-amber-800 text-[10px] font-semibold"><Star className="w-3 h-3 fill-amber-400 text-amber-400" /><span>{rep.rating}</span><span className="text-slate-400 font-normal">({rep.reviewCount})</span></div> : <div className="flex items-center gap-1 rounded-full border border-blue-100 bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-[#000080]"><ShieldCheck className="h-3 w-3" />Verified</div>}
                         </div>
 
                         <p className="text-[11px] font-medium text-slate-500 mt-0.5 truncate">{rep.title}</p>
@@ -440,8 +446,9 @@ export default function LiveChatWidget() {
               </div>
 
               <button
-                onClick={() => handleSelectRepAndStart(salesReps[0])}
-                className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-[11px] font-semibold transition-all text-center cursor-pointer mt-2"
+                onClick={() => salesReps[0] && handleSelectRepAndStart(salesReps[0])}
+                disabled={!salesReps.length}
+                className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-[11px] font-semibold transition-all text-center cursor-pointer mt-2 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Auto-Assign First Available Representative
               </button>
@@ -452,11 +459,7 @@ export default function LiveChatWidget() {
           {step === 'reconnecting' && (
             <div className="flex-1 p-6 flex flex-col items-center justify-center text-center bg-white space-y-5">
               <div className="relative">
-                <img 
-                  src={assignedOriginalRep?.avatar} 
-                  alt={assignedOriginalRep?.name} 
-                  className="w-24 h-24 rounded-full object-cover ring-2 ring-slate-100 shadow-sm"
-                />
+                {assignedOriginalRep?.avatar ? <img src={assignedOriginalRep.avatar} alt={assignedOriginalRep.name} className="w-24 h-24 rounded-full object-cover ring-2 ring-slate-100 shadow-sm" /> : <div className="flex h-24 w-24 items-center justify-center rounded-full bg-[#000080]/10 text-xl font-bold text-[#000080] ring-2 ring-slate-100 shadow-sm">{assignedOriginalRep?.name?.slice(0, 2).toUpperCase() || 'PF'}</div>}
                 <div className="absolute -bottom-2 -right-2 p-2 bg-emerald-500 text-white rounded-full ring-4 ring-white shadow-sm">
                   <UserCheck className="w-4 h-4" />
                 </div>

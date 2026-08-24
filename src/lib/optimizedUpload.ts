@@ -6,7 +6,7 @@ const MAX_IMAGE_DIMENSION = 2048;
 const MIN_IMAGE_BYTES_TO_OPTIMIZE = 40 * 1024;
 const MIN_SAVING_RATIO = 0.05;
 const OPTIMIZABLE_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
-const ALLOWED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/svg+xml']);
+const ALLOWED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
 const ALLOWED_DOCUMENT_TYPES = new Set([
   'application/pdf',
   'application/msword',
@@ -30,6 +30,11 @@ export interface OptimizedUploadResult {
   uploadedSize: number;
   savedBytes: number;
   optimized: boolean;
+}
+
+export interface OptimizedUploadOptions {
+  purpose?: 'media' | 'profile';
+  registerInMediaLibrary?: boolean;
 }
 
 interface PreparedFile {
@@ -63,7 +68,7 @@ function safeBaseName(name: string) {
     .slice(0, 70) || 'asset';
 }
 
-function makeStoragePath(name: string, type: string) {
+function makeStoragePath(name: string, type: string, purpose: 'media' | 'profile') {
   const now = new Date();
   const year = now.getUTCFullYear();
   const month = String(now.getUTCMonth() + 1).padStart(2, '0');
@@ -72,7 +77,8 @@ function makeStoragePath(name: string, type: string) {
   }
   const random = crypto.randomUUID().slice(0, 8);
   const extension = extensionForMimeType(type, name);
-  return `${year}/${month}/${Date.now()}-${random}-${safeBaseName(name)}.${extension}`;
+  const prefix = purpose === 'profile' ? 'profiles' : type.startsWith('image/') ? 'media' : 'documents';
+  return `${prefix}/${year}/${month}/${Date.now()}-${random}-${safeBaseName(name)}.${extension}`;
 }
 
 function canvasToBlob(canvas: HTMLCanvasElement, type: string, quality: number) {
@@ -156,7 +162,7 @@ async function prepareFile(file: File): Promise<PreparedFile> {
   const isImage = file.type.startsWith('image/');
   const allowed = isImage ? ALLOWED_IMAGE_TYPES.has(file.type) : ALLOWED_DOCUMENT_TYPES.has(file.type);
   if (!allowed) {
-    throw new Error('This file type is not supported. Upload a standard image, PDF, Office document, text file, or CSV.');
+    throw new Error('This file type is not supported. Upload a JPG, PNG, WebP, GIF, PDF, Office document, text file, or CSV.');
   }
   const sizeLimit = isImage ? MAX_IMAGE_BYTES : MAX_DOCUMENT_BYTES;
   if (file.size > sizeLimit) {
@@ -182,16 +188,29 @@ function blobToDataUrl(blob: Blob): Promise<string> {
   });
 }
 
-export async function uploadOptimizedFile(file: File): Promise<OptimizedUploadResult> {
+export async function uploadOptimizedFile(
+  file: File,
+  options: OptimizedUploadOptions = {}
+): Promise<OptimizedUploadResult> {
   const prepared = await prepareFile(file);
   const bucket = file.type.startsWith('image/') ? 'media' : 'documents';
-  const storagePath = makeStoragePath(prepared.name, prepared.type);
+  const purpose = options.purpose || 'media';
+  if (purpose === 'profile' && !prepared.type.startsWith('image/')) {
+    throw new Error('Profile photos must be an image.');
+  }
+  const storagePath = makeStoragePath(prepared.name, prepared.type, purpose);
 
   let publicUrl = '';
   let finalPath = storagePath;
 
-  // Try uploading to remote endpoint if reachable
+  // R2 writes require the caller's verified Supabase staff session.
   try {
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+    const accessToken = sessionData.session?.access_token;
+    if (sessionError || !accessToken) {
+      throw new Error('Sign in with an active staff account before uploading files.');
+    }
+
     const endpoint = R2_MEDIA_API_BASE 
       ? `${R2_MEDIA_API_BASE}/api/r2-upload?path=${encodeURIComponent(storagePath)}`
       : `/api/r2-upload?path=${encodeURIComponent(storagePath)}`;
@@ -200,55 +219,52 @@ export async function uploadOptimizedFile(file: File): Promise<OptimizedUploadRe
       method: 'POST',
       headers: {
         'Content-Type': prepared.type,
+        Authorization: `Bearer ${accessToken}`,
       },
       body: prepared.data,
     });
 
-    if (response.ok) {
-      const uploaded = await response.json().catch(() => null) as { url?: string; path?: string; size?: number; error?: string } | null;
-      if (uploaded?.url) {
-        finalPath = uploaded.path || storagePath;
-        const customPublicDomain = import.meta.env.VITE_R2_PUBLIC_DOMAIN || '';
-        
-        if (customPublicDomain) {
-          publicUrl = `${customPublicDomain.replace(/\/$/, '')}/${finalPath}`;
-        } else if (uploaded.url.startsWith('http')) {
-          publicUrl = uploaded.url;
-        } else {
-          // If the worker returned a relative URL or we want to force one
-          const apiBase = R2_MEDIA_API_BASE || window.location.origin;
-          publicUrl = `${apiBase.replace(/\/$/, '')}/api/r2-media/${finalPath}`;
-        }
-      }
-    } else {
-      const errorData = await response.json().catch(() => ({}));
-      console.warn('R2 upload failed:', response.status, errorData);
+    const uploaded = await response.json().catch(() => null) as { url?: string; path?: string; size?: number; error?: string } | null;
+    if (!response.ok) {
+      throw new Error(uploaded?.error || `Cloud storage rejected the upload (${response.status}).`);
     }
-  } catch (err) {
-    console.warn('Remote storage upload endpoint unavailable:', err);
-  }
+    if (!uploaded?.url) {
+      throw new Error('Cloud storage returned an incomplete upload response.');
+    }
 
-  // Fallback if remote endpoint upload was not completed
-  if (!publicUrl) {
-    // Only use data URL for images, and only as a temporary fallback
-    if (prepared.type.startsWith('image/')) {
+    finalPath = uploaded.path || storagePath;
+    const customPublicDomain = import.meta.env.VITE_R2_PUBLIC_DOMAIN || '';
+    if (customPublicDomain) {
+      publicUrl = `${customPublicDomain.replace(/\/$/, '')}/${finalPath}`;
+    } else if (uploaded.url.startsWith('http')) {
+      publicUrl = uploaded.url;
+    } else {
+      const apiBase = R2_MEDIA_API_BASE || window.location.origin;
+      publicUrl = `${apiBase.replace(/\/$/, '')}/api/r2-media/${finalPath}`;
+    }
+  } catch (error) {
+    // A data URL is useful while developing without Wrangler/R2, but must never
+    // masquerade as durable production media.
+    if (import.meta.env.DEV && prepared.type.startsWith('image/')) {
+      console.warn('R2 is unavailable in local development; using a temporary data URL.', error);
       publicUrl = await blobToDataUrl(prepared.data);
     } else {
-      throw new Error('Cloud storage is currently unavailable. Please check your R2 configuration.');
+      throw error instanceof Error ? error : new Error('Cloud storage is currently unavailable.');
     }
   }
 
-  // CRITICAL: Persist newly uploaded media asset in Media Library Store
-  const createdNow = new Date().toISOString();
-  await addMediaAsset({
-    url: publicUrl,
-    name: prepared.name,
-    type: prepared.type,
-    size: prepared.data.size,
-    path: finalPath,
-    created_at: createdNow,
-    createdAt: createdNow,
-  });
+  if (options.registerInMediaLibrary !== false) {
+    const createdNow = new Date().toISOString();
+    await addMediaAsset({
+      url: publicUrl,
+      name: prepared.name,
+      type: prepared.type,
+      size: prepared.data.size,
+      path: finalPath,
+      created_at: createdNow,
+      createdAt: createdNow,
+    });
+  }
 
   return {
     url: publicUrl,
@@ -262,4 +278,3 @@ export async function uploadOptimizedFile(file: File): Promise<OptimizedUploadRe
     optimized: prepared.optimized,
   };
 }
-

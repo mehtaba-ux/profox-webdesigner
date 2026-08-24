@@ -15,7 +15,12 @@ coverage/
 .env.development.local
 .env.test.local
 .env.production.local
+.dev.vars
+.dev.vars.*
 !.env.example
+
+# Cloudflare local state
+.wrangler/
 
 # Editor & OS files
 .DS_Store

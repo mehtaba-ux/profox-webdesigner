@@ -34,7 +34,7 @@ export default function BusinessIntelligenceDashboard(){
   const primary=data?.primaryCurrency||'USD';
   const revenueChange=data?.finance.primary.revenueChangePercent;
 
-  return <div className="min-h-screen bg-slate-50 text-slate-900">
+  return <div className="profox-app-shell min-h-screen bg-[#f3f7fc] text-slate-900">
     <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/95 backdrop-blur-xl">
       <div className="mx-auto flex max-w-[1500px] items-center justify-between gap-4 px-5 py-4 sm:px-8">
         <div className="flex items-center gap-3"><button onClick={()=>nav('/admin/workspace')} className="rounded-xl border border-slate-200 p-2 hover:bg-slate-50" aria-label="All apps"><ArrowLeft className="h-4 w-4"/></button><div><div className="flex items-center gap-2"><h1 className="text-xl font-black">Founder Control</h1><span className="rounded-full bg-blue-50 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-[#000080]">Business Intelligence</span></div><p className="text-xs text-slate-500">See business health, exceptions and decisions — then act in the original module.</p></div></div>

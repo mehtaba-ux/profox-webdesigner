@@ -188,6 +188,49 @@ export type ActivityType =
 
 export type ActivityStatus = 'Scheduled' | 'Completed' | 'Cancelled';
 
+export type LeadOriginType = 'manual' | 'website' | 'paid_ads' | 'referral' | 'other';
+export type LeadQuality = 'High' | 'Medium' | 'Low';
+
+export interface CRMLeadPerson {
+  id: string;
+  name: string;
+  avatarUrl?: string;
+  role: string;
+}
+
+export interface CRMLeadEvent {
+  id: string;
+  eventType: string;
+  title: string;
+  description: string;
+  actorUserId?: string;
+  actorName: string;
+  actorRole: string;
+  metadata: Record<string, unknown>;
+  occurredAt: string;
+}
+
+export interface CRMLeadDetail {
+  assignee?: CRMLeadPerson;
+  createdBy?: CRMLeadPerson;
+  assignedBy?: CRMLeadPerson;
+  events: CRMLeadEvent[];
+  activities: Array<CRMActivity & { assigneeName?: string; assigneeAvatarUrl?: string }>;
+  meetings: Array<{
+    id: string;
+    title: string;
+    meetingType: string;
+    startAt: string;
+    endAt: string;
+    timezone: string;
+    status: string;
+    meetingUrl?: string;
+    salespersonId: string;
+    createdAt: string;
+  }>;
+  conversations: ChatConversation[];
+}
+
 export interface CRMLead {
   id: string;
   title: string;
@@ -199,7 +242,13 @@ export interface CRMLead {
   country: string;
   industry?: string;
   source: string;
+  originType: LeadOriginType;
+  leadScore: number;
+  leadQuality: LeadQuality;
+  scoreReason: string;
   salespersonId?: string;
+  assignedBy?: string;
+  assignedAt?: string;
   serviceInterest?: string;
   estimatedValue: number;
   currency: string;
@@ -311,6 +360,11 @@ export const INDUSTRIES = [
 ];
 
 export const LEAD_SOURCES = [
+  'Website Contact Form',
+  'Website Live Chat',
+  'Google Ads',
+  'Meta Ads',
+  'LinkedIn Ads',
   'Google Maps',
   'LinkedIn',
   'Google Search',
@@ -1076,6 +1130,7 @@ export const TASK_PRIORITIES: TaskPriority[] = ['Low', 'Normal', 'High', 'Urgent
 
 export interface ChatConversation {
   id: string;
+  crmLeadId?: string;
   customerName: string;
   customerEmail: string;
   customerPhone?: string;

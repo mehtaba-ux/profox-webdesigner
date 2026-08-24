@@ -23,10 +23,15 @@ Deno.serve(async(req:Request)=>{
  const supabaseUrl=Deno.env.get("SUPABASE_URL")||"";
  const anonKey=Deno.env.get("SUPABASE_ANON_KEY")||"";
  const serviceKey=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")||"";
- const clientId=Deno.env.get("GOOGLE_CALENDAR_CLIENT_ID")||"";
- const clientSecret=Deno.env.get("GOOGLE_CALENDAR_CLIENT_SECRET")||"";
+ let clientId=Deno.env.get("GOOGLE_CALENDAR_CLIENT_ID")||"";
+ let clientSecret=Deno.env.get("GOOGLE_CALENDAR_CLIENT_SECRET")||"";
  if(!supabaseUrl||!anonKey||!serviceKey)return json({error:"Server configuration unavailable"},500);
  const service=createClient(supabaseUrl,serviceKey,{auth:{persistSession:false,autoRefreshToken:false}});
+ if(!clientId||!clientSecret){
+  const {data:provider}=await service.rpc("service_get_google_calendar_provider_credentials");
+  clientId=clientId||String(provider?.clientId||"");
+  clientSecret=clientSecret||String(provider?.clientSecret||"");
+ }
  let body:any={};try{body=await req.json();}catch{body={};}
 
  // Cron uses a Vault token. Staff manual runs require a valid JWT and can queue only their own synchronization.

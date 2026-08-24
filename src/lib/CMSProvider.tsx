@@ -8,10 +8,28 @@ const CMS_CACHE_TIME_KEY = 'cms_content_cache_saved_at';
 const PUBLIC_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
 const PUBLIC_SHARED_SECTIONS = [
   'theme', 'header', 'footer', 'siteSettings', 'hero', 'services', 'servicePackages',
-  'caseStudies', 'growth', 'insights', 'cta', 'faq_section', 'feedback_submissions',
+  'caseStudies', 'growth', 'insights', 'cta', 'faq_section',
   'dynamicSections', 'portfolio_items', 'portfolio_categories', 'loadingScreen',
   'process_header', 'process_steps', 'ourProcess', 'globalAwards', 'globalAwardsEnabled'
 ];
+
+function publicFeedbackEntries(value: unknown) {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((entry) => entry && typeof entry === 'object' && entry.status === 'resolved' && entry.showOnWebsite === true)
+    .map((entry) => ({
+      id: String(entry.id || ''),
+      customerName: String(entry.customerName || 'Client'),
+      rating: Math.max(1, Math.min(5, Number(entry.rating) || 5)),
+      comment: String(entry.comment || ''),
+      position: entry.position ? String(entry.position) : undefined,
+      link: entry.link ? String(entry.link) : undefined,
+      image: entry.image ? String(entry.image) : undefined,
+      status: 'resolved',
+      showOnWebsite: true,
+      createdAt: String(entry.createdAt || ''),
+    }));
+}
 
 // Sales Catalog is the only current commercial source of truth. CMS may control only
 // the homepage package section's presentation, never package/card commercial facts.
@@ -73,6 +91,7 @@ function readCachedContent() {
     if (Object.prototype.hasOwnProperty.call(parsed, 'servicePackages')) {
       parsed.servicePackages = sanitizeCmsSection('servicePackages', parsed.servicePackages);
     }
+    parsed.feedback_submissions = publicFeedbackEntries(parsed.feedback_submissions);
     parsed.portfolio_items = filterPortfolioItems(parsed.portfolio_items);
     parsed.portfolio_categories = defaultPortfolioCategories;
     return parsed;
@@ -90,6 +109,7 @@ function cacheContent(value: Record<string, any>) {
     if (Object.prototype.hasOwnProperty.call(safeValue, 'servicePackages')) {
       safeValue.servicePackages = sanitizeCmsSection('servicePackages', safeValue.servicePackages);
     }
+    safeValue.feedback_submissions = publicFeedbackEntries(safeValue.feedback_submissions);
     localStorage.setItem(CMS_CACHE_KEY, JSON.stringify(safeValue));
     localStorage.setItem(CMS_CACHE_TIME_KEY, String(Date.now()));
   } catch (error) {
@@ -137,6 +157,11 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           data.forEach((item: any) => {
             newContent[item.id] = sanitizeCmsSection(item.id, item.data);
           });
+
+          if (!isAdminRoute) {
+            const { data: publicFeedback } = await dbProcedure.getPublicFeedback();
+            newContent.feedback_submissions = Array.isArray(publicFeedback) ? publicFeedback : [];
+          }
 
           if (!newContent.portfolio_items) {
             const { data: pData } = await dbProcedure.getPublishedPortfolioItems();

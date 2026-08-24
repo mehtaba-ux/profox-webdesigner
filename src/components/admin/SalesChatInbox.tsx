@@ -5,24 +5,20 @@ import {
   MessageSquare, Search, RefreshCw, Send, User, Star, Shield, 
   CheckCircle, Clock, AlertCircle, Phone, Mail, StickyNote, 
   ChevronRight, Filter, UserCheck, Tag, ArrowRight, CornerDownRight, Volume2,
-  Users, Trash2, Plus, X, Settings
+  Users, X, Settings
 } from 'lucide-react';
 import { useAuth } from '../../lib/AuthContext';
 import { ChatConversation, ChatMessage, SalesRep } from '../../types';
 import { 
   getConversations, getChatMessages, sendChatMessage, 
-  updateConversationStatus, getSalesReps, playChatChime,
-  deleteSalesRep, addSalesRep
+  updateConversationStatus, getSalesReps, playChatChime
 } from '../../lib/chatService';
 
 export default function SalesChatInbox() {
   const { user, role } = useAuth();
   
-  const userEmailLower = user?.email?.toLowerCase() || '';
-  const isSalesUser = role === 'sales_team' || 
-                      user?.user_metadata?.role === 'sales_team' || 
-                      userEmailLower.includes('sales');
-  const isAdmin = role === 'admin' || user?.user_metadata?.role === 'admin';
+  const isSalesUser = ['sales', 'sales_rep', 'sales_team'].includes(role || '');
+  const isAdmin = role === 'admin';
 
   // Access restriction check
   const isAuthorized = isSalesUser || isAdmin;
@@ -39,15 +35,6 @@ export default function SalesChatInbox() {
   
   // Sales Team Modal State
   const [showTeamModal, setShowTeamModal] = useState(false);
-  const [showAddRepForm, setShowAddRepForm] = useState(false);
-  const [newRepForm, setNewRepForm] = useState({
-    name: '',
-    email: '',
-    title: 'Sales Representative',
-    specialties: 'Web Packages, Custom Quotes',
-    bio: '',
-    avatar: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&q=80&w=250'
-  });
 
   // Form State
   const [replyText, setReplyText] = useState('');
@@ -162,43 +149,6 @@ export default function SalesChatInbox() {
     setReplyText(text);
   };
 
-  const handleDeleteRep = async (repId: string) => {
-    if (window.confirm('Are you sure you want to remove this sales representative? They will be removed from the chat widget and team section.')) {
-      await deleteSalesRep(repId);
-      const updatedReps = await getSalesReps();
-      setSalesReps(updatedReps);
-    }
-  };
-
-  const handleCreateNewRep = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newRepForm.name) return;
-
-    await addSalesRep({
-      name: newRepForm.name,
-      email: newRepForm.email || `${newRepForm.name.toLowerCase().replace(/\s+/g, '.')}@profoxweb.com`,
-      title: newRepForm.title,
-      avatar: newRepForm.avatar,
-      specialties: newRepForm.specialties.split(',').map(s => s.trim()).filter(Boolean),
-      rating: 5.0,
-      reviewCount: 1,
-      isOnline: true,
-      bio: newRepForm.bio
-    });
-
-    const updatedReps = await getSalesReps();
-    setSalesReps(updatedReps);
-    setShowAddRepForm(false);
-    setNewRepForm({
-      name: '',
-      email: '',
-      title: 'Sales Representative',
-      specialties: 'Web Packages, Custom Quotes',
-      bio: '',
-      avatar: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&q=80&w=250'
-    });
-  };
-
   // Filter conversations
   const filteredConversations = conversations.filter(c => {
     const matchesSearch = 
@@ -257,7 +207,7 @@ export default function SalesChatInbox() {
             onClick={() => setShowTeamModal(true)}
             className="px-3 py-1.5 bg-[#000080] hover:bg-[#000066] text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm cursor-pointer"
           >
-            <Users className="w-4 h-4" /> Manage Sales Team ({salesReps.length})
+            <Users className="w-4 h-4" /> Verified Sales Team ({salesReps.length})
           </button>
 
           <button 
@@ -551,8 +501,8 @@ export default function SalesChatInbox() {
                   <Users className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-slate-900">Manage Sales Team Representatives</h3>
-                  <p className="text-xs text-slate-500">Delete dummy sales reps or add new sales consultants.</p>
+                  <h3 className="text-base font-bold text-slate-900">Verified Sales Representatives</h3>
+                  <p className="text-xs text-slate-500">Only active, onboarded employee accounts can receive website chats and CRM leads.</p>
                 </div>
               </div>
               <button
@@ -564,152 +514,24 @@ export default function SalesChatInbox() {
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto py-4 space-y-4">
-              {!showAddRepForm ? (
-                <>
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-slate-700">Active Sales Representatives ({salesReps.length})</span>
-                    <button
-                      type="button"
-                      onClick={() => setShowAddRepForm(true)}
-                      className="px-3 py-1.5 bg-[#000080] hover:bg-[#000066] text-white rounded-xl text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer"
-                    >
-                      <Plus className="w-3.5 h-3.5" /> Add New Representative
-                    </button>
+            <div className="flex-1 space-y-4 overflow-y-auto py-4">
+              <div className="rounded-xl border border-blue-100 bg-blue-50 p-3 text-[11px] leading-5 text-blue-800">
+                Add, activate, qualify, or deactivate sellers in <strong>Team &amp; Users</strong>. The website chat directory follows those verified employee records automatically.
+              </div>
+              <div className="divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-200">
+                {salesReps.length === 0 ? (
+                  <div className="p-6 text-center text-xs text-slate-400">No active, onboarded sales representative is currently available.</div>
+                ) : salesReps.map((rep, repIdx) => (
+                  <div key={`${rep.id || 'rep'}_${repIdx}`} className="flex items-center gap-4 p-4 transition-colors hover:bg-slate-50">
+                    {rep.avatar ? <img src={rep.avatar} alt={rep.name} className="h-11 w-11 shrink-0 rounded-full object-cover ring-2 ring-slate-100" /> : <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#000080]/10 text-xs font-black text-[#000080]">{rep.name.slice(0, 2).toUpperCase()}</div>}
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2"><h4 className="truncate text-xs font-bold text-slate-900">{rep.name}</h4><span className={`h-2 w-2 rounded-full ${rep.isOnline ? 'bg-emerald-500' : 'bg-amber-400'}`} /></div>
+                      <p className="mt-0.5 truncate text-[11px] text-slate-500">{rep.title}</p>
+                      <div className="mt-1.5 flex flex-wrap gap-1">{rep.specialties.map((specialty, index) => <span key={`${specialty}_${index}`} className="rounded bg-slate-100 px-2 py-0.5 text-[9px] font-medium text-slate-600">{specialty}</span>)}</div>
+                    </div>
                   </div>
-
-                  <div className="divide-y divide-slate-100 border border-slate-200 rounded-2xl overflow-hidden">
-                    {salesReps.length === 0 ? (
-                      <div className="p-6 text-center text-xs text-slate-400">
-                        No sales representatives present. Add a new representative above.
-                      </div>
-                    ) : (
-                      salesReps.map((rep, repIdx) => (
-                        <div key={`${rep.id || 'rep'}_${repIdx}`} className="p-4 flex items-center justify-between gap-4 hover:bg-slate-50 transition-colors">
-                          <div className="flex items-center gap-3 min-w-0">
-                            <img 
-                              src={rep.avatar} 
-                              alt={rep.name} 
-                              className="w-11 h-11 rounded-full object-cover ring-2 ring-slate-100 shrink-0" 
-                            />
-                            <div className="min-w-0">
-                              <div className="flex items-center gap-2">
-                                <h4 className="text-xs font-bold text-slate-900 truncate">{rep.name}</h4>
-                                <span className="text-[10px] font-semibold text-slate-400">({rep.email})</span>
-                              </div>
-                              <p className="text-[11px] text-slate-500 truncate mt-0.5">{rep.title}</p>
-                              <div className="flex flex-wrap gap-1 mt-1.5">
-                                {rep.specialties.map((s, idx) => (
-                                  <span key={idx} className="text-[9px] font-medium bg-slate-100 text-slate-600 px-2 py-0.5 rounded">
-                                    {s}
-                                  </span>
-                                ))}
-                              </div>
-                            </div>
-                          </div>
-
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteRep(rep.id)}
-                            className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors cursor-pointer"
-                            title="Delete representative"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </>
-              ) : (
-                /* Add New Sales Representative Form */
-                <form onSubmit={handleCreateNewRep} className="space-y-4 bg-slate-50 p-5 rounded-2xl border border-slate-200">
-                  <div className="flex items-center justify-between pb-2 border-b border-slate-200">
-                    <h4 className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                      <Plus className="w-4 h-4 text-emerald-600" /> New Sales Representative
-                    </h4>
-                    <button
-                      type="button"
-                      onClick={() => setShowAddRepForm(false)}
-                      className="text-xs font-bold text-slate-600 hover:text-slate-900 cursor-pointer"
-                    >
-                      Back to List
-                    </button>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">Full Name *</label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="e.g. Alex Smith"
-                      value={newRepForm.name}
-                      onChange={(e) => setNewRepForm(prev => ({ ...prev, name: e.target.value }))}
-                      className="w-full px-3 py-2 text-xs bg-white border border-slate-200 rounded-xl outline-none focus:border-[#000080]"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">Email Address</label>
-                    <input
-                      type="email"
-                      placeholder="e.g. alex.sales@profoxweb.com"
-                      value={newRepForm.email}
-                      onChange={(e) => setNewRepForm(prev => ({ ...prev, email: e.target.value }))}
-                      className="w-full px-3 py-2 text-xs bg-white border border-slate-200 rounded-xl outline-none focus:border-[#000080]"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">Title / Role</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. Senior E-Commerce Specialist"
-                      value={newRepForm.title}
-                      onChange={(e) => setNewRepForm(prev => ({ ...prev, title: e.target.value }))}
-                      className="w-full px-3 py-2 text-xs bg-white border border-slate-200 rounded-xl outline-none focus:border-[#000080]"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">Specialties (comma separated)</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. WooCommerce, Landing Pages, Enterprise Quotes"
-                      value={newRepForm.specialties}
-                      onChange={(e) => setNewRepForm(prev => ({ ...prev, specialties: e.target.value }))}
-                      className="w-full px-3 py-2 text-xs bg-white border border-slate-200 rounded-xl outline-none focus:border-[#000080]"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">Avatar Photo URL</label>
-                    <input
-                      type="url"
-                      placeholder="https://images.unsplash.com/..."
-                      value={newRepForm.avatar}
-                      onChange={(e) => setNewRepForm(prev => ({ ...prev, avatar: e.target.value }))}
-                      className="w-full px-3 py-2 text-xs bg-white border border-slate-200 rounded-xl outline-none focus:border-[#000080]"
-                    />
-                  </div>
-
-                  <div className="flex justify-end gap-2 pt-2">
-                    <button
-                      type="button"
-                      onClick={() => setShowAddRepForm(false)}
-                      className="px-3.5 py-2 text-xs font-bold text-slate-600 hover:bg-slate-200 bg-slate-100 rounded-xl transition-colors cursor-pointer"
-                    >
-                      Cancel
-                    </button>
-                    <button 
-                      type="submit"
-                      className="px-4 py-2 text-xs font-bold bg-[#000080] hover:bg-[#000066] text-white rounded-xl shadow-md cursor-pointer"
-                    >
-                      Create Representative
-                    </button>
-                  </div>
-                </form>
-              )}
+                ))}
+              </div>
             </div>
           </div>
         </div>

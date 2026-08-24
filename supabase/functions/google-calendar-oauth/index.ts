@@ -23,11 +23,16 @@ Deno.serve(async(req:Request)=>{
  const supabaseUrl=Deno.env.get("SUPABASE_URL")||"";
  const anonKey=Deno.env.get("SUPABASE_ANON_KEY")||"";
  const serviceKey=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")||"";
- const clientId=Deno.env.get("GOOGLE_CALENDAR_CLIENT_ID")||"";
- const clientSecret=Deno.env.get("GOOGLE_CALENDAR_CLIENT_SECRET")||"";
+ let clientId=Deno.env.get("GOOGLE_CALENDAR_CLIENT_ID")||"";
+ let clientSecret=Deno.env.get("GOOGLE_CALENDAR_CLIENT_SECRET")||"";
  const redirectUri=Deno.env.get("GOOGLE_CALENDAR_REDIRECT_URI")||`${supabaseUrl}/functions/v1/google-calendar-oauth`;
  if(!supabaseUrl||!anonKey||!serviceKey)return json({error:"Server configuration unavailable"},500);
  const service=createClient(supabaseUrl,serviceKey,{auth:{persistSession:false,autoRefreshToken:false}});
+ if(!clientId||!clientSecret){
+  const {data:provider}=await service.rpc("service_get_google_calendar_provider_credentials");
+  clientId=clientId||String(provider?.clientId||"");
+  clientSecret=clientSecret||String(provider?.clientSecret||"");
+ }
  const url=new URL(req.url);
 
  // Google redirects here without a Supabase JWT. OAuth state is one-time, short-lived and server validated.
@@ -81,6 +86,23 @@ Deno.serve(async(req:Request)=>{
  if(userError||!userData.user)return json({error:"Authentication required"},401);
  let body:any={};try{body=await req.json();}catch{body={};}
  const action=String(body?.action||"status").toLowerCase();
+
+ if(action==="provider_status"||action==="provider_setup"){
+  const {data:profile}=await service.from("user_profiles").select("role,status").eq("id",userData.user.id).maybeSingle();
+  if(profile?.role!=="admin"||profile?.status!=="active")return json({error:"Administrator access required"},403);
+  if(action==="provider_status"){
+   const {data,error}=await service.rpc("service_get_google_calendar_provider_status",{p_admin_user_id:userData.user.id});
+   if(error)return json({error:error.message},500);
+   return json({provider:data,redirectUri});
+  }
+  const {data,error}=await service.rpc("service_set_google_calendar_provider",{
+   p_admin_user_id:userData.user.id,
+   p_client_id:String(body?.clientId||""),
+   p_client_secret:String(body?.clientSecret||"")
+  });
+  if(error)return json({error:error.message},400);
+  return json({provider:data,redirectUri});
+ }
 
  if(action==="status"){
   const {data,error}=await userClient.rpc("get_google_calendar_connection_status");

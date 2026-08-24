@@ -382,7 +382,7 @@ export async function purgeUnwantedDummyMediaAssets(): Promise<number> {
  */
 export async function addMediaAsset(assetData: Partial<MediaAsset>): Promise<MediaAsset> {
   const newAsset: MediaAsset = {
-    id: assetData.id || `media-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`,
+    id: assetData.id || crypto.randomUUID(),
     url: assetData.url || '',
     name: assetData.name || 'Uploaded File',
     type: assetData.type || 'image/png',
@@ -392,28 +392,24 @@ export async function addMediaAsset(assetData: Partial<MediaAsset>): Promise<Med
     createdAt: assetData.created_at || assetData.createdAt || new Date().toISOString(),
   };
 
-  // 1. Save to local persistent storage immediately
+  // Persist remotely first so the UI never reports an R2 upload as registered
+  // when its canonical media record was rejected.
+  if (isSupabaseConfigured) {
+    const { error } = await supabase.from('media').upsert({
+      id: newAsset.id,
+      url: newAsset.url,
+      name: newAsset.name,
+      type: newAsset.type,
+      size: newAsset.size,
+      path: newAsset.path,
+      created_at: newAsset.created_at,
+    });
+    if (error) throw new Error(error.message || 'The media record could not be saved.');
+  }
+
   const localAssets = getLocalMediaAssets();
-  // Filter out duplicate url if exists
   const updatedLocal = [newAsset, ...localAssets.filter(a => a.id !== newAsset.id && a.url !== newAsset.url)];
   saveLocalMediaAssets(updatedLocal);
-
-  // 2. Sync to Supabase if configured
-  if (isSupabaseConfigured) {
-    try {
-      await supabase.from('media').upsert({
-        id: newAsset.id,
-        url: newAsset.url,
-        name: newAsset.name,
-        type: newAsset.type,
-        size: newAsset.size,
-        path: newAsset.path,
-        created_at: newAsset.created_at,
-      });
-    } catch (err) {
-      console.warn('Supabase media insert skipped:', err);
-    }
-  }
 
   return newAsset;
 }
@@ -422,21 +418,14 @@ export async function addMediaAsset(assetData: Partial<MediaAsset>): Promise<Med
  * Removes a media asset from local storage and Supabase (if configured)
  */
 export async function deleteMediaAsset(assetId: string): Promise<void> {
-  saveDeletedMediaAssetIds([assetId]);
-
-  // 1. Delete from local storage
-  const localAssets = getLocalMediaAssets();
-  const filtered = localAssets.filter(a => a.id !== assetId);
-  saveLocalMediaAssets(filtered);
-
-  // 2. Delete from Supabase if configured
   if (isSupabaseConfigured) {
-    try {
-      await supabase.from('media').delete().eq('id', assetId);
-    } catch (err) {
-      console.warn('Supabase media delete skipped:', err);
-    }
+    const { error } = await supabase.from('media').delete().eq('id', assetId);
+    if (error) throw new Error(error.message || 'The media record could not be deleted.');
   }
+
+  saveDeletedMediaAssetIds([assetId]);
+  const localAssets = getLocalMediaAssets();
+  saveLocalMediaAssets(localAssets.filter(a => a.id !== assetId));
 }
 
 /**
@@ -444,21 +433,13 @@ export async function deleteMediaAsset(assetId: string): Promise<void> {
  */
 export async function deleteMediaAssets(assetIds: string[]): Promise<void> {
   if (!assetIds || assetIds.length === 0) return;
-  saveDeletedMediaAssetIds(assetIds);
-
-  const idsSet = new Set(assetIds);
-
-  // 1. Delete from local storage
-  const localAssets = getLocalMediaAssets();
-  const filtered = localAssets.filter(a => !idsSet.has(a.id));
-  saveLocalMediaAssets(filtered);
-
-  // 2. Delete from Supabase if configured
   if (isSupabaseConfigured) {
-    try {
-      await supabase.from('media').delete().in('id', assetIds);
-    } catch (err) {
-      console.warn('Supabase bulk media delete skipped:', err);
-    }
+    const { error } = await supabase.from('media').delete().in('id', assetIds);
+    if (error) throw new Error(error.message || 'The media records could not be deleted.');
   }
+
+  saveDeletedMediaAssetIds(assetIds);
+  const idsSet = new Set(assetIds);
+  const localAssets = getLocalMediaAssets();
+  saveLocalMediaAssets(localAssets.filter(a => !idsSet.has(a.id)));
 }

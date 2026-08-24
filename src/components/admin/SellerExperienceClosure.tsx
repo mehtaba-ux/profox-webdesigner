@@ -215,7 +215,7 @@ export default function SellerExperienceClosure() {
     { label: 'Sales Resources', path: '/admin/app/academy?tab=training_library', icon: BookOpen }
   ];
 
-  return <div className="min-h-screen bg-slate-50 text-slate-900">
+  return <div className="profox-app-shell min-h-screen bg-[#f3f7fc] text-slate-900">
     <header className="border-b border-slate-200 bg-white px-4 py-5 sm:px-8">
       <div className="mx-auto flex max-w-7xl flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>

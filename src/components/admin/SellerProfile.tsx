@@ -17,6 +17,8 @@ import { useAuth } from '../../lib/AuthContext';
 import { profileService } from '../../lib/profileService';
 import { SellerProfileContext, sellerProfileService } from '../../lib/sellerProfileService';
 import { supabase } from '../../lib/supabase';
+import AppAvatar from './workspace/AppAvatar';
+import ProfileImageUploader from './workspace/ProfileImageUploader';
 
 const SELLER_ROLES = ['sales', 'sales_rep', 'sales_team'];
 const inputClass = 'w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm outline-none transition focus:border-[#000080] focus:ring-4 focus:ring-blue-100';
@@ -35,7 +37,7 @@ function label(value?: string | null) {
 
 export default function SellerProfile() {
   const navigate = useNavigate();
-  const { user, profile, isAdmin, loading: authLoading } = useAuth();
+  const { user, profile, isAdmin, loading: authLoading, refreshProfile } = useAuth();
   const allowed = Boolean(user && profile?.status === 'active' && (isAdmin || SELLER_ROLES.includes(profile.role)));
   const [context, setContext] = useState<SellerProfileContext | null>(null);
   const [loading, setLoading] = useState(true);
@@ -88,6 +90,7 @@ export default function SellerProfile() {
       });
       if (result.error) throw result.error;
       setMessage('Profile updated. Your canonical ProFox account information is now current.');
+      await refreshProfile();
       await load();
     } catch (err: any) {
       setError(err?.message || 'Profile could not be updated.');
@@ -116,11 +119,12 @@ export default function SellerProfile() {
   if (authLoading) return <div className="min-h-screen bg-slate-50" />;
   if (!allowed) return <Navigate to="/admin/workspace" replace />;
 
-  return <div className="min-h-screen bg-slate-50 text-slate-900">
+  return <div className="profox-app-shell min-h-screen bg-[#f3f7fc] text-slate-900">
     <header className="border-b border-slate-200 bg-white px-4 py-5 sm:px-8">
       <div className="mx-auto flex max-w-6xl items-center gap-3">
         <button onClick={() => navigate('/admin/seller-command-center')} className="rounded-xl border border-slate-200 p-2 hover:bg-slate-50"><ArrowLeft className="h-4 w-4" /></button>
-        <div><h1 className="text-xl font-black">My Profile & Security</h1><p className="text-xs text-slate-500">Your account, activation evidence, Academy status, agreement and calendar identity in one place.</p></div>
+        <div className="min-w-0 flex-1"><h1 className="truncate text-xl font-black">My Profile & Security</h1><p className="truncate text-xs text-slate-500">Your account, activation evidence, Academy status, agreement and calendar identity in one place.</p></div>
+        <AppAvatar name={profile?.fullName || user?.email} src={form.avatarUrl} size="md" />
       </div>
     </header>
 
@@ -138,13 +142,14 @@ export default function SellerProfile() {
         <section className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
           <form onSubmit={saveProfile} className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-7">
             <div className="mb-6 flex items-center gap-3"><div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-50 text-[#000080]"><UserRound className="h-5 w-5" /></div><div><h2 className="font-black">Contact & account profile</h2><p className="text-xs text-slate-500">Updates the existing user profile. Role, status and activation authority remain protected.</p></div></div>
-            <div className="grid gap-4 sm:grid-cols-2">
+            <ProfileImageUploader value={form.avatarUrl} name={form.fullName || context.profile.email} onChange={avatarUrl => setForm({...form, avatarUrl})} disabled={saving} />
+            <div className="mt-5 grid gap-4 sm:grid-cols-2">
               <Field label="Full name"><input value={form.fullName} onChange={e => setForm({...form,fullName:e.target.value})} className={inputClass} /></Field>
               <Field label="Email"><input value={context.profile.email} disabled className={`${inputClass} bg-slate-50 text-slate-500`} /></Field>
               <Field label="Phone"><input value={form.phone} onChange={e => setForm({...form,phone:e.target.value})} className={inputClass} /></Field>
               <Field label="Country"><input value={form.country} onChange={e => setForm({...form,country:e.target.value})} className={inputClass} /></Field>
               <Field label="Timezone"><input value={form.timezone} onChange={e => setForm({...form,timezone:e.target.value})} className={inputClass} placeholder="Asia/Kolkata" /></Field>
-              <Field label="Avatar URL"><input value={form.avatarUrl} onChange={e => setForm({...form,avatarUrl:e.target.value})} className={inputClass} placeholder="https://" /></Field>
+              <Field label="Department"><input value="Sales & Client Growth" disabled className={`${inputClass} bg-slate-50 text-slate-500`} /></Field>
             </div>
             <div className="mt-6 flex justify-end"><button disabled={saving} className="inline-flex items-center gap-2 rounded-xl bg-[#000080] px-4 py-2.5 text-xs font-black text-white disabled:opacity-50">{saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save profile</button></div>
           </form>

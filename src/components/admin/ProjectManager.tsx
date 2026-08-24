@@ -34,6 +34,38 @@ import { useAuth } from '../../lib/AuthContext';
 import { format } from 'date-fns';
 import { supabase } from '../../lib/supabase';
 
+const USER_ROLE_TO_PROJECT_ROLE: Record<string, string> = {
+  admin: 'Administrator',
+  project_manager: 'Project Manager',
+  site_manager: 'Site Manager',
+  content_writer: 'Content Writer',
+  uiux_designer: 'UI/UX Designer',
+  developer: 'Developer',
+  web_developer: 'Developer',
+  developer_designer: 'Developer / Designer',
+  qa: 'Quality Assurance',
+  sales: 'Sales Handover',
+  sales_rep: 'Sales Handover',
+  sales_team: 'Sales Handover'
+};
+
+const DEPARTMENT_ROLES: Record<string, string[]> = {
+  Content: ['content_writer'],
+  'UI/UX Design': ['uiux_designer'],
+  Development: ['developer', 'web_developer', 'developer_designer'],
+  'Quality Assurance': ['qa'],
+  'Project Management': ['admin', 'project_manager', 'site_manager'],
+  Sales: ['sales', 'sales_rep', 'sales_team']
+};
+
+const userName = (user: any) => user?.fullName || user?.full_name || user?.email || 'Staff member';
+const nextStageAfter = (stage?: ProjectStage) => {
+  const index = stage ? PROJECT_STAGES.indexOf(stage) : -1;
+  return index >= 0 && index < PROJECT_STAGES.length - 1 ? PROJECT_STAGES[index + 1] : null;
+};
+const CLIENT_CONTROLLED_STAGES = new Set<ProjectStage>(['Client Design Approval', 'Client Review']);
+const CONTROLLED_TASK_DEPARTMENTS = new Set(['Content', 'UI/UX Design', 'Design', 'Development', 'Quality Assurance', 'QA']);
+
 export default function ProjectManager() {
   const { user, isAdmin, role } = useAuth();
   const [projects, setProjects] = useState<any[]>([]);
@@ -54,6 +86,7 @@ export default function ProjectManager() {
   const [availableUsers, setAvailableUsers] = useState<UserProfile[]>([]);
   const [wonOpportunities, setWonOpportunities] = useState<CRMOpportunity[]>([]);
   const [paymentWarning, setPaymentWarning] = useState<string | null>(null);
+  const [stageReadiness, setStageReadiness] = useState<{ stage: ProjectStage; ready: boolean; blockers: string[] } | null>(null);
 
   // New task form state
   const [newTask, setNewTask] = useState({
@@ -98,6 +131,16 @@ export default function ProjectManager() {
     setLoading(false);
   };
 
+  const loadStageReadiness = async (project: any) => {
+    const nextStage = nextStageAfter(project?.stage);
+    if (!canManageProjects || !nextStage || CLIENT_CONTROLLED_STAGES.has(project?.stage)) {
+      setStageReadiness(null);
+      return;
+    }
+    const { data } = await projectService.getStageStaffingReadiness(project.id, nextStage);
+    setStageReadiness(data || null);
+  };
+
   const handleViewDetails = async (project: any) => {
     setLoading(true);
     const sourceOppId = project.sourceOpportunityId || project.source_opportunity_id;
@@ -115,6 +158,7 @@ export default function ProjectManager() {
     setProjectTasks(tRes.data || []);
     setProjectTeam(tmRes.data || []);
     setProjectPayments(payRes.data || []);
+    await loadStageReadiness(projData);
 
     // Check payment completeness
     const totalVal = Number(projData?.projectValue || projData?.project_value || 0);
@@ -141,7 +185,9 @@ export default function ProjectManager() {
     if (error) {
       alert('Failed to update project: ' + error.message);
     } else {
-      setSelectedProject({ ...selectedProject, ...data, ...updates });
+      const updatedProject = { ...selectedProject, ...data, ...updates };
+      setSelectedProject(updatedProject);
+      await loadStageReadiness(updatedProject);
       await fetchInitialData();
     }
     setIsSaving(false);
@@ -153,15 +199,15 @@ export default function ProjectManager() {
 
     setIsSaving(true);
     const taskPayload = {
-      project_id: selectedProject.id,
+      projectId: selectedProject.id,
       title: newTask.title.trim(),
       description: newTask.description.trim(),
       department: newTask.department,
-      assigned_to: newTask.assigned_to || null,
-      created_by: user?.id,
+      assignedTo: newTask.assigned_to || undefined,
+      createdBy: user?.id,
       priority: newTask.priority,
       status: newTask.status,
-      due_date: newTask.due_date || null,
+      dueDate: newTask.due_date || undefined,
       notes: newTask.notes.trim()
     };
 
@@ -205,7 +251,7 @@ export default function ProjectManager() {
 
   const handleAssignTeamMember = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedProject || !selectedUserToAssign) return;
+    if (!selectedProject || !selectedUserToAssign || !selectedRoleToAssign) return;
 
     setIsSaving(true);
     const { error } = await projectService.assignTeamMember(
@@ -222,6 +268,12 @@ export default function ProjectManager() {
       setSelectedUserToAssign('');
     }
     setIsSaving(false);
+  };
+
+  const selectTeamMember = (userId: string) => {
+    setSelectedUserToAssign(userId);
+    const selected = availableUsers.find(candidate => candidate.id === userId);
+    setSelectedRoleToAssign(selected ? USER_ROLE_TO_PROJECT_ROLE[String(selected.role)] || '' : '');
   };
 
   const handleRemoveTeamMember = async (userId: string) => {
@@ -296,6 +348,11 @@ export default function ProjectManager() {
     if (taskStatusFilter === 'All') return true;
     return t.status === taskStatusFilter;
   });
+  const nextProjectStage = nextStageAfter(selectedProject?.stage);
+  const clientControlsCurrentStage = CLIENT_CONTROLLED_STAGES.has(selectedProject?.stage);
+  const projectManagerCandidates = availableUsers.filter(candidate => ['admin', 'project_manager'].includes(String(candidate.role)));
+  const availableTeamUsers = availableUsers.filter(candidate => USER_ROLE_TO_PROJECT_ROLE[String(candidate.role)] && !projectTeam.some(member => member.user_id === candidate.id));
+  const eligibleTaskAssignees = availableUsers.filter(candidate => (DEPARTMENT_ROLES[newTask.department] || []).includes(String(candidate.role)));
 
   return (
     <div className="space-y-8 max-w-7xl mx-auto p-4">
@@ -522,13 +579,16 @@ export default function ProjectManager() {
                   <div className="space-y-1">
                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Stage</label>
                     <select 
-                      disabled={!canManageProjects}
+                      disabled={!canManageProjects || clientControlsCurrentStage || !nextProjectStage || Boolean(stageReadiness && !stageReadiness.ready)}
                       value={selectedProject.stage}
                       onChange={(e) => handleUpdateProject({ stage: e.target.value as ProjectStage })}
                       className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-800 outline-none focus:border-[#000080] disabled:bg-slate-100 disabled:opacity-80"
                     >
-                      {PROJECT_STAGES.map(s => <option key={s} value={s}>{s}</option>)}
+                      <option value={selectedProject.stage}>{selectedProject.stage}</option>
+                      {nextProjectStage && !clientControlsCurrentStage && <option value={nextProjectStage}>Advance to {nextProjectStage}</option>}
                     </select>
+                    {clientControlsCurrentStage && <p className="text-[9px] font-bold leading-4 text-blue-700">The client controls this approval stage from the portal.</p>}
+                    {stageReadiness && !stageReadiness.ready && <div className="rounded-lg border border-amber-200 bg-amber-50 p-2 text-[9px] font-bold leading-4 text-amber-800"><div>Cannot advance to {stageReadiness.stage}:</div>{stageReadiness.blockers.map(blocker => <div key={blocker}>• {blocker}</div>)}</div>}
                   </div>
 
                   <div className="space-y-1">
@@ -618,8 +678,8 @@ export default function ProjectManager() {
                           className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-bold outline-none focus:border-[#000080] disabled:bg-slate-100"
                         >
                           <option value="">Unassigned</option>
-                          {availableUsers.map(u => (
-                            <option key={u.id} value={u.id}>{u.fullName} ({u.role})</option>
+                          {projectManagerCandidates.map(u => (
+                            <option key={u.id} value={u.id}>{userName(u)} ({u.role})</option>
                           ))}
                         </select>
                       </div>
@@ -758,13 +818,17 @@ export default function ProjectManager() {
                         filteredTasks.map(task => (
                           <div key={task.id} className="bg-white border border-slate-200 p-4 rounded-2xl hover:border-blue-200 hover:shadow-sm transition-all flex items-center justify-between gap-4">
                             <div className="flex items-center gap-3 min-w-0">
-                              <select 
-                                value={task.status}
-                                onChange={(e) => handleUpdateTaskStatus(task.id, e.target.value as TaskStatus)}
-                                className="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-[10px] font-bold text-slate-700 outline-none focus:border-[#000080] shrink-0"
-                              >
-                                {TASK_STATUSES.map(st => <option key={st} value={st}>{st}</option>)}
-                              </select>
+                              {CONTROLLED_TASK_DEPARTMENTS.has(task.department) ? (
+                                <span title="Status is controlled by the specialist evidence and review workspace." className="shrink-0 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-[10px] font-bold text-slate-700">{task.status}</span>
+                              ) : (
+                                <select
+                                  value={task.status}
+                                  onChange={(e) => handleUpdateTaskStatus(task.id, e.target.value as TaskStatus)}
+                                  className="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-[10px] font-bold text-slate-700 outline-none focus:border-[#000080] shrink-0"
+                                >
+                                  {TASK_STATUSES.map(st => <option key={st} value={st}>{st}</option>)}
+                                </select>
+                              )}
 
                               <div className="min-w-0">
                                 <div className="flex items-center gap-2">
@@ -789,7 +853,7 @@ export default function ProjectManager() {
                               </div>
                             </div>
 
-                            {canManageProjects && (
+                            {canManageProjects && !task.requiredForStage && !task.required_for_stage && !task.workflowKey && !task.workflow_key && (
                               <button 
                                 onClick={() => handleDeleteTask(task.id)}
                                 className="p-1.5 text-slate-300 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
@@ -818,13 +882,13 @@ export default function ProjectManager() {
                           <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Select Team Member</label>
                           <select 
                             value={selectedUserToAssign}
-                            onChange={(e) => setSelectedUserToAssign(e.target.value)}
+                            onChange={(e) => selectTeamMember(e.target.value)}
                             className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs font-bold text-slate-800 outline-none"
                             required
                           >
                             <option value="">-- Choose Member --</option>
-                            {availableUsers.map(u => (
-                              <option key={u.id} value={u.id}>{u.fullName} ({u.role} - {u.department})</option>
+                            {availableTeamUsers.map(u => (
+                              <option key={u.id} value={u.id}>{userName(u)} ({u.role} - {u.department})</option>
                             ))}
                           </select>
                         </div>
@@ -833,14 +897,11 @@ export default function ProjectManager() {
                           <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Project Role</label>
                           <select 
                             value={selectedRoleToAssign}
-                            onChange={(e) => setSelectedRoleToAssign(e.target.value)}
-                            className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs font-bold text-slate-800 outline-none"
+                            disabled
+                            className="w-full bg-slate-100 border border-slate-200 rounded-lg px-3 py-2 text-xs font-bold text-slate-700 outline-none"
                           >
-                            <option value="Project Manager">Project Manager</option>
-                            <option value="Content Writer">Content Writer</option>
-                            <option value="UI/UX Designer">UI/UX Designer</option>
-                            <option value="Developer">Developer</option>
-                            <option value="QA Tester">QA Tester</option>
+                            <option value="">Select a compatible team member</option>
+                            {Array.from(new Set(Object.values(USER_ROLE_TO_PROJECT_ROLE))).map(projectRole => <option key={projectRole} value={projectRole}>{projectRole}</option>)}
                           </select>
                         </div>
 
@@ -972,14 +1033,15 @@ export default function ProjectManager() {
                   <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Department</label>
                   <select 
                     value={newTask.department}
-                    onChange={(e) => setNewTask({ ...newTask, department: e.target.value })}
+                    onChange={(e) => setNewTask({ ...newTask, department: e.target.value, assigned_to: '' })}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-medium outline-none"
                   >
                     <option value="Content">Content</option>
-                    <option value="Design">Design</option>
+                    <option value="UI/UX Design">UI/UX Design</option>
                     <option value="Development">Development</option>
-                    <option value="QA">QA</option>
-                    <option value="Management">Management</option>
+                    <option value="Quality Assurance">Quality Assurance</option>
+                    <option value="Project Management">Project Management</option>
+                    <option value="Sales">Sales</option>
                   </select>
                 </div>
 
@@ -1007,8 +1069,8 @@ export default function ProjectManager() {
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-medium outline-none"
                   >
                     <option value="">Unassigned</option>
-                    {availableUsers.map(u => (
-                      <option key={u.id} value={u.id}>{u.fullName} ({u.role})</option>
+                    {eligibleTaskAssignees.map(u => (
+                      <option key={u.id} value={u.id}>{userName(u)} ({u.role})</option>
                     ))}
                   </select>
                 </div>

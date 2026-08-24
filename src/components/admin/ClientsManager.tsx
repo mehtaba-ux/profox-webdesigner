@@ -54,6 +54,7 @@ export default function ClientsManager() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [portalBusy, setPortalBusy] = useState(false);
   const [portalError, setPortalError] = useState('');
+  const [portalMessage, setPortalMessage] = useState('');
   const canUseMeetings = isAdmin || (profile?.role === 'sales' && profile?.status === 'active');
 
   const fetchClients = async () => {
@@ -89,6 +90,7 @@ export default function ClientsManager() {
     setPortalProfile(null);
     setPortalCandidate(null);
     setPortalError('');
+    setPortalMessage('');
     setDetailLoading(true);
 
     const [historyResult, linkedResult] = await Promise.all([
@@ -123,6 +125,7 @@ export default function ClientsManager() {
     if (!selectedClient || !portalCandidate) return;
     setPortalBusy(true);
     setPortalError('');
+    setPortalMessage('');
     const { error: linkError } = await clientService.linkPortalAccount(selectedClient.id, portalCandidate.id);
     if (linkError) setPortalError(errorMessage(linkError, 'Could not link the client portal account.'));
     else await refreshSelectedClient();
@@ -137,6 +140,19 @@ export default function ClientsManager() {
     const { error: unlinkError } = await clientService.unlinkPortalAccount(selectedClient.id);
     if (unlinkError) setPortalError(errorMessage(unlinkError, 'Could not unlink the client portal account.'));
     else await refreshSelectedClient();
+    setPortalBusy(false);
+  };
+
+  const invitePortalAccount = async () => {
+    if (!selectedClient || !isAdmin) return;
+    setPortalBusy(true);
+    setPortalError('');
+    const { data, error: inviteError } = await clientService.invitePortalAccount(selectedClient.id);
+    if (inviteError) setPortalError(errorMessage(inviteError, 'Could not send the client portal invitation.'));
+    else {
+      await refreshSelectedClient();
+      setPortalMessage(data?.inviteMode === 'recovery' ? 'Portal access email sent to the linked client.' : 'Portal invitation sent and the client account was linked securely.');
+    }
     setPortalBusy(false);
   };
 
@@ -237,6 +253,7 @@ export default function ClientsManager() {
               ) : (
                 <div className="space-y-8">
                   {portalError && <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-4 text-xs text-red-700"><AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />{portalError}</div>}
+                  {portalMessage && <div className="flex items-start gap-2 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-xs text-emerald-800"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />{portalMessage}</div>}
 
                   <section className="rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-sm">
                     <div className="mb-5 flex items-center justify-between gap-4">
@@ -250,7 +267,7 @@ export default function ClientsManager() {
                     {portalProfile ? (
                       <div className="flex flex-col gap-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 sm:flex-row sm:items-center sm:justify-between">
                         <div className="flex items-center gap-3"><div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-emerald-700"><UserCheck className="h-5 w-5" /></div><div><div className="text-sm font-bold text-slate-900">{portalProfile.fullName || selectedClient.primaryContactName}</div><div className="text-xs text-slate-600">{portalProfile.email} · customer / active</div></div></div>
-                        {isAdmin && <button type="button" onClick={() => void unlinkPortalAccount()} disabled={portalBusy} className="rounded-xl border border-red-200 bg-white px-4 py-2 text-xs font-bold text-red-600 disabled:opacity-50">Remove Portal Access</button>}
+                        {isAdmin && <div className="flex flex-wrap gap-2"><button type="button" onClick={() => void invitePortalAccount()} disabled={portalBusy} className="rounded-xl border border-emerald-200 bg-white px-4 py-2 text-xs font-bold text-emerald-700 disabled:opacity-50">Resend Access Email</button><button type="button" onClick={() => void unlinkPortalAccount()} disabled={portalBusy} className="rounded-xl border border-red-200 bg-white px-4 py-2 text-xs font-bold text-red-600 disabled:opacity-50">Remove Portal Access</button></div>}
                       </div>
                     ) : portalCandidate ? (
                       <div className="flex flex-col gap-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 sm:flex-row sm:items-center sm:justify-between">
@@ -258,8 +275,9 @@ export default function ClientsManager() {
                         {isAdmin && <button type="button" onClick={() => void linkPortalAccount()} disabled={portalBusy || !['pending', 'customer'].includes(portalCandidate.role)} className="flex items-center gap-2 rounded-xl bg-[#000080] px-4 py-2 text-xs font-bold text-white disabled:opacity-50"><ShieldCheck className="h-4 w-4" />Link & Activate Portal</button>}
                       </div>
                     ) : (
-                      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-xs text-slate-600">
-                        No matching portal account exists yet. The client should register using <strong>{selectedClient.email}</strong>. After registration, reopen this client and link the account here.
+                      <div className="flex flex-col gap-4 rounded-2xl border border-blue-200 bg-blue-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div><div className="text-sm font-bold text-slate-900">Portal account not created yet</div><div className="mt-1 text-xs leading-5 text-slate-600">Send a secure setup email to <strong>{selectedClient.email}</strong>. The invited account is linked to this client record automatically.</div></div>
+                        {isAdmin && <button type="button" onClick={() => void invitePortalAccount()} disabled={portalBusy} className="flex shrink-0 items-center gap-2 rounded-xl bg-[#000080] px-4 py-2.5 text-xs font-bold text-white disabled:opacity-50">{portalBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}Send Portal Invite</button>}
                       </div>
                     )}
                   </section>

@@ -39,6 +39,12 @@ export interface GoogleCalendarIntegrationSnapshot {
   redirectUri: string;
 }
 
+export interface GoogleCalendarProviderSetup {
+  configured: boolean;
+  clientIdHint: string;
+  secretStored: boolean;
+}
+
 async function invokeOAuth(body: Record<string, unknown>) {
   const { data, error } = await supabase.functions.invoke('google-calendar-oauth', { body });
   if (error) throw error;
@@ -47,6 +53,20 @@ async function invokeOAuth(body: Record<string, unknown>) {
 }
 
 export const googleCalendarService = {
+  async getProviderSetup(): Promise<GoogleCalendarProviderSetup> {
+    const payload = await invokeOAuth({ action: 'provider_status' });
+    return payload.provider as GoogleCalendarProviderSetup;
+  },
+
+  async saveProviderSetup(clientId: string, clientSecret: string): Promise<GoogleCalendarProviderSetup> {
+    const payload = await invokeOAuth({
+      action: 'provider_setup',
+      clientId: clientId.trim(),
+      clientSecret: clientSecret.trim()
+    });
+    return payload.provider as GoogleCalendarProviderSetup;
+  },
+
   async getSnapshot(): Promise<GoogleCalendarIntegrationSnapshot> {
     const [statusPayload, healthResult] = await Promise.all([
       invokeOAuth({ action: 'status' }),

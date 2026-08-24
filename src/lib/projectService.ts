@@ -246,11 +246,8 @@ export const projectService = {
   },
 
   async getProjectsByClientEmail(_email: string) {
-    const { data, error } = await supabase
-      .from('projects')
-      .select('*, client:clients(*), tasks:project_tasks(*)')
-      .order('created_at', { ascending: false });
-    return { data: (data || []).map(mapProjectFromDb), error };
+    const { data, error } = await supabase.rpc('client_get_portal_projects');
+    return { data: Array.isArray(data) ? data : [], error };
   },
 
   async approveClientStage(projectId: string, notes = '') {
@@ -271,5 +268,13 @@ export const projectService = {
 
   async updateProjectStage(projectId: string, stage: ProjectStage) {
     return await this.updateProject(projectId, { stage });
+  },
+
+  async getStageStaffingReadiness(projectId: string, stage: ProjectStage) {
+    const { data, error } = await supabase.rpc('delivery_stage_staffing_readiness', {
+      p_project_id: projectId,
+      p_stage: stage
+    });
+    return { data: data as { stage: ProjectStage; ready: boolean; blockers: string[] } | null, error };
   }
 };

@@ -20,6 +20,7 @@ import {
 } from '../../lib/mediaStore';
 import { uploadOptimizedFile } from '../../lib/optimizedUpload';
 import { formatR2ImageUrl } from '../../lib/r2Media';
+import { useAuth } from '../../lib/AuthContext';
 
 const R2_MEDIA_API_BASE = (import.meta.env.VITE_R2_MEDIA_API_URL || '').replace(/\/$/, '');
 
@@ -31,6 +32,8 @@ interface MediaManagerProps {
 
 export default function MediaManager({ onSelect, onClose, selectable = false }: MediaManagerProps) {
   const { confirm: confirmAction } = useConfirmContext();
+  const { role, isAdmin } = useAuth();
+  const canManageMedia = isAdmin || role === 'site_manager' || role === 'editor';
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [assets, setAssets] = useState<MediaAsset[]>([]);
   const [loading, setLoading] = useState(true);
@@ -111,22 +114,25 @@ export default function MediaManager({ onSelect, onClose, selectable = false }: 
    * Directly executes deletion of an asset across R2, local storage, and Supabase
    */
   const executeSingleDelete = async (asset: MediaAsset) => {
+    if (!canManageMedia) throw new Error('Media Manager access is required to delete assets.');
     try {
       // 1. Delete from R2 Storage if applicable
       if (asset.path && !asset.path.startsWith('db_base64_') && !asset.path.startsWith('stock/')) {
         try {
-          const bucket = asset.type.startsWith('image/') ? 'media' : 'documents';
           const { data: sessionData } = await supabase.auth.getSession();
           const accessToken = sessionData.session?.access_token;
-          if (accessToken) {
-            const apiBase = R2_MEDIA_API_BASE || window.location.origin;
-            await fetch(`${apiBase.replace(/\/$/, '')}/api/r2-media/${encodeURIComponent(asset.path)}`, {
-              method: 'DELETE',
-              headers: { Authorization: `Bearer ${accessToken}` },
-            });
+          if (!accessToken) throw new Error('Your staff session has expired. Sign in again before deleting media.');
+          const apiBase = R2_MEDIA_API_BASE || window.location.origin;
+          const response = await fetch(`${apiBase.replace(/\/$/, '')}/api/r2-media/${encodeURIComponent(asset.path)}`, {
+            method: 'DELETE',
+            headers: { Authorization: `Bearer ${accessToken}` },
+          });
+          if (!response.ok && response.status !== 404) {
+            const body = await response.json().catch(() => null) as { error?: string } | null;
+            throw new Error(body?.error || `Cloud storage rejected the deletion (${response.status}).`);
           }
-        } catch (storageErr) {
-          console.warn('Storage bucket deletion skipped:', storageErr);
+        } catch (storageError) {
+          throw storageError instanceof Error ? storageError : new Error('Cloud storage deletion failed.');
         }
       }
 
@@ -150,7 +156,7 @@ export default function MediaManager({ onSelect, onClose, selectable = false }: 
    * User clicks single delete button on a card
    */
   const handleDeleteClick = async (asset: MediaAsset) => {
-    if (checkingAssetId) return;
+    if (!canManageMedia || checkingAssetId) return;
     setCheckingAssetId(asset.id);
     try {
       const usages = await findMediaAssetUsage(asset);
@@ -216,7 +222,7 @@ export default function MediaManager({ onSelect, onClose, selectable = false }: 
    * Executes bulk deletion of all selected items
    */
   const handleBulkDelete = async () => {
-    if (selectedIds.size === 0 || isBulkDeleting) return;
+    if (!canManageMedia || selectedIds.size === 0 || isBulkDeleting) return;
 
     const count = selectedIds.size;
     const confirmed = await confirmAction(
@@ -234,22 +240,33 @@ export default function MediaManager({ onSelect, onClose, selectable = false }: 
       // 1. Delete from R2 storage in parallel
       const { data: sessionData } = await supabase.auth.getSession();
       const accessToken = sessionData.session?.access_token;
+      const r2Assets = assetsToDelete.filter((asset) => asset.path && !asset.path.startsWith('db_base64_') && !asset.path.startsWith('stock/'));
+
+      if (r2Assets.length > 0 && !accessToken) {
+        throw new Error('Your staff session has expired. Sign in again before deleting media.');
+      }
 
       if (accessToken) {
         const apiBase = R2_MEDIA_API_BASE || window.location.origin;
-        await Promise.allSettled(
-          assetsToDelete.map(async (asset) => {
+        const storageResults = await Promise.allSettled(
+          r2Assets.map(async (asset) => {
             if (asset.path && !asset.path.startsWith('db_base64_') && !asset.path.startsWith('stock/')) {
-              return fetch(
+              const response = await fetch(
                 `${apiBase.replace(/\/$/, '')}/api/r2-media/${encodeURIComponent(asset.path)}`,
                 {
                   method: 'DELETE',
                   headers: { Authorization: `Bearer ${accessToken}` },
                 }
               );
+              if (!response.ok && response.status !== 404) {
+                const body = await response.json().catch(() => null) as { error?: string } | null;
+                throw new Error(body?.error || `Cloud storage rejected a deletion (${response.status}).`);
+              }
             }
           })
         );
+        const failed = storageResults.find((result) => result.status === 'rejected');
+        if (failed?.status === 'rejected') throw failed.reason;
       }
 
       // 2. Delete from media store (local storage and Supabase)
@@ -376,7 +393,7 @@ export default function MediaManager({ onSelect, onClose, selectable = false }: 
       </div>
 
       {/* Bulk Action Toolbar (Always visible when items are selected or available) */}
-      {filteredAssets.length> 0 && (
+      {canManageMedia && filteredAssets.length> 0 && (
         <div className="px-6 py-2.5 bg-slate-100/90 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3 text-xs">
           <div className="flex items-center gap-3">
             <button 
@@ -506,16 +523,18 @@ export default function MediaManager({ onSelect, onClose, selectable = false }: 
                   </div>
 
                   {/* Multi-Select Checkbox in top-left */}
-                  <button type="button"
-                    onClick={(e) => toggleSelectAsset(asset.id, e)}
-                    className={`absolute top-2 left-2 z-10 p-1 rounded-md transition-all ${
-                      isMultiSelected
-                        ? 'bg-[#000080] text-white opacity-100 shadow-md'
-                        : 'bg-white/80 backdrop-blur-sm text-slate-600 opacity-0 group-hover:opacity-100 hover:bg-white hover:text-[#000080]'
-                    }`}
-                    title={isMultiSelected ? 'Deselect' : 'Select'}>
-                    {isMultiSelected ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
-                  </button>
+                  {canManageMedia && (
+                    <button type="button"
+                      onClick={(e) => toggleSelectAsset(asset.id, e)}
+                      className={`absolute top-2 left-2 z-10 p-1 rounded-md transition-all ${
+                        isMultiSelected
+                          ? 'bg-[#000080] text-white opacity-100 shadow-md'
+                          : 'bg-white/80 backdrop-blur-sm text-slate-600 opacity-0 group-hover:opacity-100 hover:bg-white hover:text-[#000080]'
+                      }`}
+                      title={isMultiSelected ? 'Deselect' : 'Select'}>
+                      {isMultiSelected ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
+                    </button>
+                  )}
 
                   {/* Picker mode active check badge */}
                   {selectable && isPickerSelected && (
@@ -544,20 +563,22 @@ export default function MediaManager({ onSelect, onClose, selectable = false }: 
                       <ExternalLink className="w-4 h-4" />
                     </a>
 
-                    <button type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeleteClick(asset);
-                      }}
-                      disabled={checkingAssetId !== null}
-                      className="p-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-all shadow-md disabled:cursor-wait disabled:opacity-70"
-                      title="Delete asset">
-                      {checkingAssetId === asset.id ? (
-                        <LoaderCircle className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <Trash2 className="w-4 h-4" />
-                      )}
-                    </button>
+                    {canManageMedia && (
+                      <button type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteClick(asset);
+                        }}
+                        disabled={checkingAssetId !== null}
+                        className="p-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-all shadow-md disabled:cursor-wait disabled:opacity-70"
+                        title="Delete asset">
+                        {checkingAssetId === asset.id ? (
+                          <LoaderCircle className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Trash2 className="w-4 h-4" />
+                        )}
+                      </button>
+                    )}
                   </div>
 
                   {/* Title Bar at Bottom */}
@@ -612,17 +633,19 @@ export default function MediaManager({ onSelect, onClose, selectable = false }: 
       
 
       {/* Asset In Use / Force Delete Dialog */}
-      <AssetUsageDialog
-        asset={usageWarning?.asset || null}
-        usages={usageWarning?.usages || []}
-        onClose={() => setUsageWarning(null)}
-        onForceDelete={() => {
-          if (usageWarning?.asset) {
-            executeSingleDelete(usageWarning.asset);
-            setUsageWarning(null);
-          }
-        }}
-      />
+      {canManageMedia && (
+        <AssetUsageDialog
+          asset={usageWarning?.asset || null}
+          usages={usageWarning?.usages || []}
+          onClose={() => setUsageWarning(null)}
+          onForceDelete={() => {
+            if (usageWarning?.asset) {
+              executeSingleDelete(usageWarning.asset);
+              setUsageWarning(null);
+            }
+          }}
+        />
+      )}
     </div>
   );
 }

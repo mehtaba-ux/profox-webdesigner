@@ -21,6 +21,8 @@ import {
   CheckCircle2,
   Clock,
   Edit,
+  LogIn,
+  Loader2,
   RefreshCw,
   Save,
   Search,
@@ -29,6 +31,9 @@ import {
   Users,
   X
 } from 'lucide-react';
+import ProfileImageUploader from './workspace/ProfileImageUploader';
+import AppAvatar from './workspace/AppAvatar';
+import { isSyntheticTestEmployee, testStaffAccessService } from '../../lib/testStaffAccessService';
 
 const ROLE_OPTIONS: { value: UserRole; label: string }[] = [
   { value: 'admin', label: '👑 Admin' },
@@ -48,7 +53,7 @@ const ROLE_OPTIONS: { value: UserRole; label: string }[] = [
   { value: 'developer_designer', label: 'Web Developer (legacy hybrid role)' }
 ];
 
-export default function UserRoleManager() {
+export default function UserRoleManager({ showHeader = true }: { showHeader?: boolean }) {
   const [profiles, setProfiles] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -60,6 +65,7 @@ export default function UserRoleManager() {
   const [errorMsg, setErrorMsg] = useState('');
   const [editingProfile, setEditingProfile] = useState<UserProfile | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [switchingUserId, setSwitchingUserId] = useState('');
   const [editForm, setEditForm] = useState<{
     role: UserRole;
     status: UserStatus;
@@ -68,6 +74,7 @@ export default function UserRoleManager() {
     onboardingStatus: OnboardingStatus;
     onboardingProgress: number;
     fullName: string;
+    avatarUrl: string;
   }>({
     role: 'pending',
     status: 'pending',
@@ -75,7 +82,8 @@ export default function UserRoleManager() {
     manager: '',
     onboardingStatus: 'not_started',
     onboardingProgress: 0,
-    fullName: ''
+    fullName: '',
+    avatarUrl: ''
   });
 
   const loadProfiles = async () => {
@@ -106,7 +114,8 @@ export default function UserRoleManager() {
       manager: profile.manager || '',
       onboardingStatus: profile.onboardingStatus || 'not_started',
       onboardingProgress: profile.onboardingProgress || 0,
-      fullName: profile.fullName || ''
+      fullName: profile.fullName || '',
+      avatarUrl: profile.avatarUrl || ''
     });
   };
 
@@ -134,7 +143,8 @@ export default function UserRoleManager() {
       manager: editForm.manager,
       onboardingStatus: editForm.onboardingStatus,
       onboardingProgress: editForm.onboardingProgress,
-      fullName: editForm.fullName
+      fullName: editForm.fullName,
+      avatarUrl: editForm.avatarUrl
     });
     setIsSaving(false);
 
@@ -147,6 +157,24 @@ export default function UserRoleManager() {
     setTimeout(() => setSavedMsg(''), 3000);
     closeEditModal();
     await loadProfiles();
+  };
+
+  const handleLoginAsEmployee = async (profile: UserProfile) => {
+    if (!isSyntheticTestEmployee(profile) || switchingUserId) return;
+    const confirmed = window.confirm(
+      `Login as ${profile.fullName || profile.email}?\n\nYour current Admin session will be replaced. Sign out of the employee account and sign back in as Admin when you finish testing.`
+    );
+    if (!confirmed) return;
+
+    setSwitchingUserId(profile.id);
+    setErrorMsg('');
+    try {
+      await testStaffAccessService.loginAs(profile);
+      window.location.assign('/admin');
+    } catch (error) {
+      setErrorMsg(error instanceof Error ? error.message : 'Could not access the test employee account.');
+      setSwitchingUserId('');
+    }
   };
 
   const filteredProfiles = useMemo(() => profiles.filter(profile => {
@@ -199,7 +227,29 @@ export default function UserRoleManager() {
   };
 
   const renderUserTable = (members: UserProfile[]) => (
-    <div className="overflow-x-auto">
+    <div>
+      <div className="space-y-3 p-3 md:hidden">
+        {members.map(profile => {
+          const department = departmentDefinitionForRole(profile.role);
+          return <article key={profile.id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="flex items-start gap-3">
+              <AppAvatar name={profile.fullName || profile.email} src={profile.avatarUrl} size="md" />
+              <div className="min-w-0 flex-1"><div className="truncate text-sm font-black text-slate-900">{profile.fullName || 'Unnamed User'}</div><div className="truncate text-[10px] text-slate-500">{profile.email}</div></div>
+              {getStatusBadge(profile.status)}
+            </div>
+            <div className="mt-4 grid grid-cols-2 gap-3 border-t border-slate-100 pt-4">
+              <div><div className="text-[9px] font-black uppercase tracking-wider text-slate-400">Role</div><div className="mt-1">{getRoleBadge(profile.role)}</div></div>
+              <div><div className="text-[9px] font-black uppercase tracking-wider text-slate-400">Department</div><div className="mt-1 text-xs font-bold text-slate-700">{department.shortLabel}</div></div>
+            </div>
+            <div className="mt-4 flex items-center gap-2"><div className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-200"><div className={`h-full ${profile.onboardingStatus === 'completed' ? 'bg-emerald-500' : 'bg-[#000080]'}`} style={{ width: `${profile.onboardingProgress || 0}%` }} /></div><span className="text-[10px] font-mono text-slate-500">{profile.onboardingProgress || 0}%</span></div>
+            <div className="mt-4 grid gap-2">
+              {isSyntheticTestEmployee(profile) && <button onClick={() => void handleLoginAsEmployee(profile)} disabled={Boolean(switchingUserId)} className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-xl bg-[#000080] px-3 text-[11px] font-black text-white disabled:opacity-50">{switchingUserId === profile.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <LogIn className="h-3.5 w-3.5" />}Login as test employee</button>}
+              <button onClick={() => openEditModal(profile)} className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-xl bg-slate-100 px-3 text-[11px] font-black text-slate-700"><Edit className="h-3.5 w-3.5" />Edit profile and access</button>
+            </div>
+          </article>;
+        })}
+      </div>
+      <div className="hidden overflow-x-auto md:block">
       <table className="w-full text-left text-xs">
         <thead className="border-b border-slate-200 bg-slate-50 text-[10px] font-bold uppercase tracking-wider text-slate-500">
           <tr>
@@ -218,9 +268,7 @@ export default function UserRoleManager() {
               <tr key={profile.id} className="transition-colors hover:bg-slate-50/80">
                 <td className="px-4 py-3.5">
                   <div className="flex items-center gap-3">
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-slate-200 bg-slate-100 text-xs font-bold text-[#000080]">
-                      {profile.avatarUrl ? <img src={profile.avatarUrl} alt="" className="h-full w-full object-cover" /> : (profile.fullName || profile.email).charAt(0).toUpperCase()}
-                    </div>
+                    <AppAvatar name={profile.fullName || profile.email} src={profile.avatarUrl} size="sm" />
                     <div className="min-w-0">
                       <div className="truncate font-bold text-slate-900">{profile.fullName || 'Unnamed User'}</div>
                       <div className="truncate text-[11px] text-slate-500">{profile.email}</div>
@@ -243,32 +291,36 @@ export default function UserRoleManager() {
                   <div className="mt-0.5 text-[10px] text-slate-400">{ONBOARDING_STATUS_LABELS[profile.onboardingStatus] || profile.onboardingStatus}</div>
                 </td>
                 <td className="px-4 py-3.5 text-right">
-                  <button onClick={() => openEditModal(profile)} className="inline-flex items-center gap-1.5 rounded-lg bg-slate-100 px-3 py-1.5 text-[11px] font-bold text-slate-700 transition-colors hover:bg-slate-200">
-                    <Edit className="h-3.5 w-3.5" /> Edit Access
-                  </button>
+                  <div className="flex items-center justify-end gap-2">
+                    {isSyntheticTestEmployee(profile) && <button onClick={() => void handleLoginAsEmployee(profile)} disabled={Boolean(switchingUserId)} className="inline-flex items-center gap-1.5 rounded-lg bg-[#000080] px-3 py-1.5 text-[11px] font-bold text-white transition-colors hover:bg-[#000066] disabled:opacity-50">{switchingUserId === profile.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <LogIn className="h-3.5 w-3.5" />} Login as</button>}
+                    <button onClick={() => openEditModal(profile)} className="inline-flex items-center gap-1.5 rounded-lg bg-slate-100 px-3 py-1.5 text-[11px] font-bold text-slate-700 transition-colors hover:bg-slate-200">
+                      <Edit className="h-3.5 w-3.5" /> Edit Access
+                    </button>
+                  </div>
                 </td>
               </tr>
             );
           })}
         </tbody>
       </table>
+      </div>
     </div>
   );
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm md:flex-row md:items-center md:justify-between">
+      {showHeader && <div className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm md:flex-row md:items-center md:justify-between">
         <div>
           <div className="flex flex-wrap items-center gap-2">
             <h2 className="flex items-center gap-2 text-xl font-bold text-slate-900"><ShieldCheck className="h-6 w-6 text-[#000080]" /> Team & Departments</h2>
             <span className="rounded-full border border-blue-200 bg-blue-50 px-2.5 py-0.5 text-[11px] font-bold text-[#000080]">Database RLS Active</span>
           </div>
-          <p className="mt-1 max-w-3xl text-xs leading-5 text-slate-500">Every role has one clear primary department. Access remains role-controlled; this view removes ambiguous General/mixed-team placement from daily administration.</p>
+          <p className="mt-1 max-w-3xl text-xs leading-5 text-slate-500">Every role has one clear primary department. Access remains role-controlled. Admin can securely switch into activated synthetic test employees; real employee accounts cannot be impersonated.</p>
         </div>
         <button onClick={() => void handleRefresh()} disabled={refreshing || loading} className="flex items-center gap-1.5 rounded-xl bg-slate-100 px-3.5 py-2 text-xs font-bold text-slate-700 transition-all hover:bg-slate-200 disabled:opacity-50">
           <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? 'animate-spin' : ''}`} /> Refresh
         </button>
-      </div>
+      </div>}
 
       {savedMsg && <div className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 p-3.5 text-xs font-bold text-emerald-800"><CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" /> {savedMsg}</div>}
       {errorMsg && <div className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 p-3.5 text-xs font-bold text-red-800"><AlertTriangle className="h-4 w-4 shrink-0 text-red-600" /> {errorMsg}</div>}
@@ -324,6 +376,7 @@ export default function UserRoleManager() {
             <option value="all">All Departments</option>
             {AGENCY_DEPARTMENTS.map(department => <option key={department.value} value={department.value}>{department.label}</option>)}
           </select>
+          {!showHeader && <button onClick={() => void handleRefresh()} disabled={refreshing || loading} className="flex min-h-9 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-[10px] font-extrabold text-slate-600 transition hover:bg-slate-50 disabled:opacity-50"><RefreshCw className={`h-3.5 w-3.5 ${refreshing ? 'animate-spin' : ''}`} />Refresh</button>}
         </div>
       </div>
 
@@ -356,6 +409,13 @@ export default function UserRoleManager() {
             </div>
 
             <form onSubmit={handleSaveUser} className="space-y-4">
+              <ProfileImageUploader
+                compact
+                value={editForm.avatarUrl}
+                name={editForm.fullName || editingProfile.email}
+                onChange={avatarUrl => setEditForm(previous => ({ ...previous, avatarUrl }))}
+                disabled={isSaving}
+              />
               <div><label className="mb-1 block text-xs font-bold text-slate-700">Full Name</label><input type="text" value={editForm.fullName} onChange={event => setEditForm(prev => ({ ...prev, fullName: event.target.value }))} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs outline-none focus:border-[#000080]" /></div>
 
               <div className="grid grid-cols-1 gap-3 md:grid-cols-2">

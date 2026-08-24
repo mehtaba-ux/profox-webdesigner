@@ -15,9 +15,13 @@ binding = "ASSETS"
 
 [vars]
 ENVIRONMENT = "production"
+SUPABASE_URL = "https://calabtayklhltyiriiwo.supabase.co"
+
+# Configure SUPABASE_PUBLISHABLE_KEY as an encrypted Worker secret before deploy.
+# If the media API is hosted on a different origin from the application, also add
+# an ALLOWED_ORIGINS Worker variable containing a comma-separated origin list.
 
 # Cloudflare R2 Storage Bucket Binding
 [[r2_buckets]]
 binding = "MEDIA_BUCKET"
 bucket_name = "profox-media"
-

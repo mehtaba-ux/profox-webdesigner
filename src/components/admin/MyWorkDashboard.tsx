@@ -14,6 +14,8 @@ import DesignHandoffPanel from './DesignHandoffPanel';
 import DevelopmentDeliveryTaskWorkspace from './DevelopmentDeliveryTaskWorkspace';
 import DevelopmentReviewQueue from './DevelopmentReviewQueue';
 import DevelopmentHandoverManagerQueue from './DevelopmentHandoverManagerQueue';
+import QualityAssuranceTaskWorkspace from './QualityAssuranceTaskWorkspace';
+import QualityAssuranceReviewQueue from './QualityAssuranceReviewQueue';
 
 type WorkFilter = 'All' | 'Overdue' | 'Due Today' | 'Upcoming' | 'In Progress' | 'Waiting for Review' | 'Changes Required';
 type FounderPreviewRole = 'content_writer' | 'uiux_designer' | 'developer';
@@ -31,6 +33,7 @@ const departmentKey = (task: any) => String(task?.department || '').toLowerCase(
 const isContentTask = (task: any) => workflowKey(task).startsWith('content_') || departmentKey(task).includes('content');
 const isUiuxTask = (task: any) => workflowKey(task) === 'uiux_design' || departmentKey(task).includes('ui/ux') || departmentKey(task).includes('design');
 const isDevelopmentTask = (task: any) => workflowKey(task).startsWith('development_') || departmentKey(task).includes('development');
+const isQaTask = (task: any) => workflowKey(task).startsWith('qa_') || workflowKey(task).includes('testing') || workflowKey(task)==='launch_tracking_verification' || departmentKey(task).includes('quality assurance') || departmentKey(task)==='qa';
 const projectIdForTask = (task: any) => task?.project_id || task?.projectId || task?.project?.id || null;
 
 function filterPreviewTasks(tasks: any[], previewRole: FounderPreviewRole | null) {
@@ -54,6 +57,7 @@ export default function MyWorkDashboard() {
   const isContentWriter = effectiveRole === 'content_writer';
   const isUiuxDesigner = effectiveRole === 'uiux_designer';
   const isDeveloper = DEVELOPMENT_ROLES.has(String(effectiveRole || ''));
+  const isQaSpecialist = effectiveRole === 'qa';
   const canManageContent = CONTENT_REVIEW_ROLES.has(String(effectiveRole || ''));
   const canReviewDesign = DESIGN_REVIEW_ROLES.has(String(effectiveRole || ''));
   const canUseDesignHandoff = DESIGN_HANDOFF_ROLES.has(String(effectiveRole || ''));
@@ -88,7 +92,7 @@ export default function MyWorkDashboard() {
   const updateStatus = async (taskId: string, status: TaskStatus) => {
     if (isFounderPreview) return;
     const target = tasks.find(task => task.id === taskId) || selectedTask;
-    if (isContentWriter || (target && (isUiuxTask(target) || isDevelopmentTask(target)))) return;
+    if (isContentWriter || (target && (isUiuxTask(target) || isDevelopmentTask(target) || isQaTask(target)))) return;
     const { data, error } = await projectService.updateTask(taskId, {
       status,
       completedAt: status === 'Done' ? new Date().toISOString() : null
@@ -100,7 +104,7 @@ export default function MyWorkDashboard() {
   };
 
   const saveNotes = async () => {
-    if (isFounderPreview || !selectedTask || isContentWriter || isUiuxTask(selectedTask) || isDevelopmentTask(selectedTask)) return;
+    if (isFounderPreview || !selectedTask || isContentWriter || isUiuxTask(selectedTask) || isDevelopmentTask(selectedTask) || isQaTask(selectedTask)) return;
     setSaving(true);
     const { data, error } = await projectService.updateTask(selectedTask.id, { notes: taskNotes });
     if (!error) {
@@ -166,12 +170,12 @@ export default function MyWorkDashboard() {
   }, [tasks, today]);
 
   useEffect(() => {
-    if ((!isUiuxDesigner && !isDeveloper) || !tasks.length) return;
+    if ((!isUiuxDesigner && !isDeveloper && !isQaSpecialist) || !tasks.length) return;
     const focusId = new URLSearchParams(window.location.search).get('focusTask');
     if (!focusId) return;
-    const task = tasks.find(item => item.id === focusId && (isUiuxDesigner ? isUiuxTask(item) : isDevelopmentTask(item)));
+    const task = tasks.find(item => item.id === focusId && (isUiuxDesigner ? isUiuxTask(item) : isDeveloper ? isDevelopmentTask(item) : isQaTask(item)));
     if (task) openTask(task);
-  }, [isUiuxDesigner, isDeveloper, tasks]);
+  }, [isUiuxDesigner, isDeveloper, isQaSpecialist, tasks]);
 
   const title = isContentWriter
     ? 'Content Delivery'
@@ -179,6 +183,8 @@ export default function MyWorkDashboard() {
       ? 'My Work · Design Delivery'
       : isDeveloper
         ? 'My Work · Development Delivery'
+        : isQaSpecialist
+          ? 'My Work · Quality Assurance'
         : 'My Work';
   const description = isContentWriter
     ? 'Open the highest-priority assignment, follow the guided SOP, and let the system handle the process around you.'
@@ -186,6 +192,8 @@ export default function MyWorkDashboard() {
       ? 'Work from the canonical UI/UX task. Approved Content, structured evidence, review gates and developer handoff stay connected in PF-SOP-08.'
       : isDeveloper
         ? 'Build from the approved UI/UX handoff through PF-SOP-09 engineering evidence, independent review, QA, release readiness and controlled handover.'
+        : isQaSpecialist
+          ? 'Test functional, responsive, accessibility, security and release readiness with reproducible evidence and a controlled manager review gate.'
         : canManageContent
           ? 'Manage assigned work and keep delivery quality, reviews and bottlenecks visible in one place.'
           : 'Manage assigned tasks, work notes and review handoffs.';
@@ -203,6 +211,7 @@ export default function MyWorkDashboard() {
             {isContentWriter && <span className="rounded-full bg-[#000080]/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-[#000080]">PF-SOP-07</span>}
             {isUiuxDesigner && <span className="rounded-full bg-[#000080]/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-[#000080]">PF-SOP-08</span>}
             {isDeveloper && <span className="rounded-full bg-[#000080]/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-[#000080]">PF-SOP-09</span>}
+            {isQaSpecialist && <span className="rounded-full bg-[#000080]/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-[#000080]">QA Gate</span>}
             <h1 className="text-2xl font-bold text-slate-900">{title}</h1>
           </div>
           <p className="mt-1 max-w-2xl text-sm text-slate-500">{description}</p>
@@ -233,6 +242,7 @@ export default function MyWorkDashboard() {
       {!isFounderPreview && canReviewDesign && <DesignReviewQueue onChanged={fetchTasks} />}
       {!isFounderPreview && <DevelopmentReviewQueue onChanged={fetchTasks} />}
       {!isFounderPreview && <DevelopmentHandoverManagerQueue enabled={isManagerHandoverReviewer} onChanged={fetchTasks} />}
+      {!isFounderPreview && <QualityAssuranceReviewQueue enabled={isManagerHandoverReviewer} onChanged={fetchTasks} />}
 
       {isContentWriter && focusTask && (
         <section className="rounded-[28px] bg-gradient-to-br from-[#000080] to-[#00005c] p-5 text-white shadow-xl shadow-blue-950/10 sm:p-6">
@@ -279,6 +289,15 @@ export default function MyWorkDashboard() {
         </section>
       )}
 
+      {isQaSpecialist && focusTask && (
+        <section className="rounded-[28px] border border-orange-200 bg-gradient-to-r from-orange-50 to-white p-5 shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div><div className="text-[10px] font-black uppercase tracking-[0.18em] text-orange-700">Focus now · Controlled QA Gate</div><h2 className="mt-1 text-base font-black text-slate-900">{focusTask.title}</h2><p className="mt-1 text-xs font-semibold text-slate-500">{focusTask.project?.project_number || focusTask.project?.projectNumber || 'Project'} · {focusTask.status}</p></div>
+            <button type="button" onClick={() => openTask(focusTask)} className="flex items-center gap-2 rounded-xl bg-[#000080] px-4 py-2.5 text-xs font-black text-white">Open QA Workspace <ChevronRight className="h-4 w-4" /></button>
+          </div>
+        </section>
+      )}
+
       <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
         {[
           ['Open', stats.open, 'text-slate-900'],
@@ -318,6 +337,7 @@ export default function MyWorkDashboard() {
             const overdue = due && due.split('T')[0] < today;
             const designTask = isUiuxTask(task);
             const developmentTask = isDevelopmentTask(task);
+            const qaTask = isQaTask(task);
             return (
               <div key={task.id} onClick={() => openTask(task)} className="group flex cursor-pointer flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-4 transition hover:border-blue-200 hover:shadow-lg lg:flex-row lg:items-center lg:justify-between">
                 <div className="flex min-w-0 flex-1 items-start gap-3">
@@ -329,6 +349,7 @@ export default function MyWorkDashboard() {
                       <span className={`rounded border px-1.5 py-0.5 text-[9px] font-bold ${priorityClass(task.priority)}`}>{task.priority}</span>
                       {isUiuxDesigner && designTask && <span className="rounded border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[9px] font-black text-emerald-700">Canonical content handoff</span>}
                       {isDeveloper && developmentTask && <span className="rounded border border-cyan-200 bg-cyan-50 px-2 py-0.5 text-[9px] font-black text-cyan-700">Approved design handoff</span>}
+                      {isQaSpecialist && qaTask && <span className="rounded border border-orange-200 bg-orange-50 px-2 py-0.5 text-[9px] font-black text-orange-700">Evidence-gated QA</span>}
                     </div>
                     <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-slate-500">
                       <span className="font-bold text-[#000080]">{project.projectNumber || project.project_number}: {project.projectName || project.project_name}</span>
@@ -347,6 +368,8 @@ export default function MyWorkDashboard() {
                     <button onClick={() => openTask(task)} className="rounded-xl bg-blue-50 px-3 py-2 text-[11px] font-bold text-[#000080]">Open Design Workspace</button>
                   ) : isDeveloper && developmentTask ? (
                     <button onClick={() => openTask(task)} className="rounded-xl bg-cyan-50 px-3 py-2 text-[11px] font-bold text-[#000080]">Open Development Workspace</button>
+                  ) : isQaSpecialist && qaTask ? (
+                    <button onClick={() => openTask(task)} className="rounded-xl bg-orange-50 px-3 py-2 text-[11px] font-bold text-orange-800">Open QA Workspace</button>
                   ) : task.status !== 'Review' ? (
                     <button onClick={() => void updateStatus(task.id, 'Review')} className="rounded-xl bg-blue-50 px-3 py-2 text-[11px] font-bold text-[#000080]">Ready for Review</button>
                   ) : null}
@@ -392,6 +415,8 @@ export default function MyWorkDashboard() {
         </div>
       ) : selectedTask && isDevelopmentTask(selectedTask) && isDeveloper ? (
         <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-900/70 p-3 backdrop-blur-sm sm:p-5"><div className="w-full max-w-6xl"><DevelopmentDeliveryTaskWorkspace taskId={selectedTask.id} onClose={() => setSelectedTask(null)} onChanged={fetchTasks} /></div></div>
+      ) : selectedTask && isQaTask(selectedTask) && isQaSpecialist ? (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-900/70 p-3 backdrop-blur-sm sm:p-5"><div className="w-full max-w-6xl"><QualityAssuranceTaskWorkspace taskId={selectedTask.id} onClose={() => setSelectedTask(null)} onChanged={fetchTasks} /></div></div>
       ) : selectedTask && isUiuxTask(selectedTask) && isUiuxDesigner ? (
         <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-900/70 p-3 backdrop-blur-sm sm:p-5"><div className="w-full max-w-6xl"><DesignDeliveryTaskWorkspace taskId={selectedTask.id} onClose={() => setSelectedTask(null)} onChanged={fetchTasks} /></div></div>
       ) : selectedTask ? (

@@ -187,5 +187,14 @@ export const clientService = {
       p_client_id: clientId
     });
     return { error };
+  },
+
+  async invitePortalAccount(clientId: string): Promise<{ data: { ok: boolean; linkedUserId: string; inviteMode: 'invite' | 'recovery' } | null; error: any }> {
+    const { data, error } = await supabase.functions.invoke('client-portal-invite', {
+      body: { clientId }
+    });
+    if (error) return { data: null, error };
+    if (data?.error) return { data: null, error: new Error(String(data.error)) };
+    return { data: data || null, error: null };
   }
 };

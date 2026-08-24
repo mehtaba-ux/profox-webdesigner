@@ -1,12 +1,218 @@
-.profox-admin-app-embed > div {
-  min-height: calc(100vh - 72px) !important;
+.profox-app-shell {
+  --pf-app-bg: #f4f7fb;
+  --pf-app-surface: #ffffff;
+  --pf-app-soft: #f7f9fc;
+  --pf-app-border: #e4eaf3;
+  --pf-app-text: #111b30;
+  --pf-app-muted: #7b8799;
+  --pf-app-primary: #000080;
+  --pf-app-primary-hover: #000066;
+  --pf-app-primary-soft: #eef0ff;
+  background: var(--pf-app-bg);
+  font-family: Inter, var(--site-font-family), system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
-/* Keep the legacy dashboard's save-notification layer available without
-   rendering its old CMS navigation/profile chrome inside the new app shell. */
+.profox-app-shell :where(button, a) {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.profox-app-shell :where(button, a, input, select, textarea):focus-visible {
+  outline: 3px solid rgb(0 0 128 / 16%);
+  outline-offset: 2px;
+}
+
+.pf-shell-sidebar {
+  position: fixed;
+  inset: 14px auto 14px 14px;
+  z-index: 40;
+  width: 190px;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--pf-app-border);
+  border-radius: 16px;
+  background: var(--pf-app-surface);
+  box-shadow: 0 10px 32px rgb(31 42 68 / 5%);
+}
+
+.pf-shell-nav-item {
+  display: flex;
+  min-height: 40px;
+  width: 100%;
+  align-items: center;
+  gap: 11px;
+  border-radius: 9px;
+  padding: 0 12px;
+  color: #687488;
+  font-size: 11px;
+  font-weight: 700;
+  text-align: left;
+  transition: background-color 150ms ease, color 150ms ease;
+}
+
+.pf-shell-nav-item:hover {
+  background: #f5f7fb;
+  color: #1c2940;
+}
+
+.pf-shell-nav-item.is-active {
+  background: var(--pf-app-primary-soft);
+  color: var(--pf-app-primary);
+}
+
+.pf-shell-nav-icon {
+  display: flex;
+  height: 18px;
+  width: 18px;
+  flex: 0 0 18px;
+  align-items: center;
+  justify-content: center;
+}
+
+.pf-shell-nav-icon > img,
+.pf-shell-nav-icon > svg {
+  height: 17px;
+  width: 17px;
+  object-fit: contain;
+}
+
+.pf-shell-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  display: flex;
+  min-height: 70px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  border-bottom: 1px solid rgb(228 234 243 / 75%);
+  background: rgb(244 247 251 / 94%);
+  padding: 10px clamp(16px, 2.2vw, 32px);
+  backdrop-filter: blur(16px);
+}
+
+.pf-shell-search {
+  height: 40px;
+  width: 100%;
+  border: 1px solid #e3e8f0;
+  border-radius: 10px;
+  background: #fff;
+  padding: 0 14px 0 40px;
+  color: #243047;
+  font-size: 12px;
+  outline: none;
+  box-shadow: 0 2px 7px rgb(31 42 68 / 3%);
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.pf-shell-search::placeholder {
+  color: #a2acbb;
+}
+
+.pf-shell-search:focus {
+  border-color: rgb(0 0 128 / 35%);
+  box-shadow: 0 0 0 4px rgb(0 0 128 / 7%);
+}
+
+.pf-shell-content {
+  min-height: calc(100vh - 70px);
+  padding: clamp(18px, 2.2vw, 32px);
+}
+
+.pf-page-heading {
+  margin-bottom: 22px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.pf-page-heading h1 {
+  color: var(--pf-app-text);
+  font-size: clamp(22px, 2vw, 30px);
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  line-height: 1.1;
+}
+
+.pf-page-heading p {
+  margin-top: 7px;
+  color: var(--pf-app-muted);
+  font-size: 11px;
+  line-height: 1.65;
+}
+
+.pf-reference-card {
+  border: 1px solid var(--pf-app-border);
+  border-radius: 13px;
+  background: var(--pf-app-surface);
+  box-shadow: 0 6px 22px rgb(31 42 68 / 4%);
+}
+
+.pf-context-navigation {
+  margin-bottom: 18px;
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 14px;
+  border: 1px solid var(--pf-app-border);
+  border-radius: 13px;
+  background: #fff;
+  padding: 10px 12px;
+  box-shadow: 0 5px 18px rgb(31 42 68 / 3%);
+}
+
+.pf-context-navigation__identity {
+  display: flex;
+  min-width: 180px;
+  align-items: center;
+  gap: 10px;
+  border-right: 1px solid #edf1f6;
+  padding-right: 14px;
+}
+
+.pf-context-navigation__items {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  gap: 5px;
+  overflow-x: auto;
+  padding: 2px;
+  scrollbar-width: thin;
+}
+
+.pf-context-navigation__item {
+  display: inline-flex;
+  min-height: 36px;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 7px;
+  border-radius: 9px;
+  padding: 0 12px;
+  color: #6b7688;
+  font-size: 10px;
+  font-weight: 750;
+  transition: background-color 150ms ease, color 150ms ease;
+}
+
+.pf-context-navigation__item:hover {
+  background: #f5f7fb;
+  color: #243047;
+}
+
+.pf-context-navigation__item.is-active {
+  background: var(--pf-app-primary-soft);
+  color: var(--pf-app-primary);
+}
+
+.profox-admin-app-embed > div {
+  min-height: auto !important;
+}
+
+/* The shared shell owns navigation and profile chrome. Keep only the legacy
+   save notification layer and the existing data-rich module content. */
 .profox-admin-app-embed > div > header {
   position: fixed !important;
-  top: 84px !important;
+  top: 80px !important;
   right: 20px !important;
   left: auto !important;
   z-index: 90 !important;
@@ -39,25 +245,133 @@
 }
 
 .profox-admin-app-embed > div > div {
-  min-height: calc(100vh - 72px);
+  min-height: 0 !important;
   overflow: visible !important;
 }
 
 .profox-admin-app-embed > div > div > main {
+  min-height: 0 !important;
   min-width: 0;
   width: 100%;
-  min-height: calc(100vh - 72px);
   overflow: visible !important;
+  background: transparent !important;
+  padding: 0 !important;
 }
 
-@media (max-width: 640px) {
+.profox-admin-app-embed main > :where(div, section) {
+  min-width: 0;
+}
+
+.profox-admin-app-embed :where(input, select, textarea) {
+  max-width: 100%;
+}
+
+.profox-admin-app-embed :where(table) {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.profox-admin-app-embed :where(thead) {
+  color: #657187;
+}
+
+.profox-admin-app-embed :where(tbody tr) {
+  transition: background-color 150ms ease;
+}
+
+.profox-admin-app-embed :where(.rounded-3xl) {
+  border-radius: 14px;
+}
+
+.profox-admin-app-embed :where(.rounded-2xl) {
+  border-radius: 12px;
+}
+
+.profox-admin-app-embed :where(.shadow-xl, .shadow-2xl) {
+  box-shadow: 0 16px 42px rgb(31 42 68 / 9%);
+}
+
+.profox-admin-app-embed :where(button) {
+  min-height: 2.35rem;
+}
+
+.profox-standalone-app-embed > :where(div, main, section) {
+  min-height: 0 !important;
+}
+
+.profox-standalone-app-embed > div {
+  background: transparent !important;
+}
+
+.profox-standalone-app-embed :where(.rounded-3xl) {
+  border-radius: 14px;
+}
+
+.profox-standalone-app-embed :where(.rounded-2xl) {
+  border-radius: 12px;
+}
+
+.profox-standalone-app-embed :where(.shadow-xl, .shadow-2xl) {
+  box-shadow: 0 16px 42px rgb(31 42 68 / 9%);
+}
+
+@media (max-width: 1023px) {
+  .pf-shell-content {
+    padding: 18px;
+  }
+}
+
+@media (max-width: 767px) {
+  .pf-shell-topbar {
+    min-height: 66px;
+    padding: 9px 12px;
+  }
+
+  .pf-shell-content {
+    min-height: calc(100vh - 66px);
+    padding: 15px 12px 24px;
+  }
+
+  .pf-page-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .pf-context-navigation {
+    align-items: flex-start;
+    flex-direction: column;
+    padding: 10px;
+  }
+
+  .pf-context-navigation__identity {
+    width: 100%;
+    border-right: 0;
+    border-bottom: 1px solid #edf1f6;
+    padding: 2px 2px 10px;
+  }
+
+  .pf-context-navigation__items {
+    width: 100%;
+  }
+
   .profox-admin-app-embed > div > header {
-    top: 76px !important;
+    top: 72px !important;
     right: 12px !important;
     left: 12px !important;
   }
 
-  .profox-admin-app-embed > div > div > main {
-    padding: 1rem !important;
+  .profox-admin-app-embed :where(table) {
+    min-width: 42rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .profox-app-shell *,
+  .profox-app-shell *::before,
+  .profox-app-shell *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }

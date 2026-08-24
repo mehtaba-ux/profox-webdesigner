@@ -3,9 +3,10 @@ import { useCMS } from '../../lib/CMSProvider';
 import { PortfolioItem, TeamMemberProfile } from '../../types';
 import { Briefcase, Building2, Check, Clock, Copy, Plus, Search, ShieldCheck, Trash2, Users, X } from 'lucide-react';
 import { useConfirmContext } from './ConfirmContext';
-import { addSalesRep, deleteSalesRep } from '../../lib/chatService';
 import { AGENCY_DEPARTMENTS, departmentDefinitionForRole, primaryDepartmentForRole } from '../../lib/organization';
 import UserRoleManager from './UserRoleManager';
+import AppAvatar from './workspace/AppAvatar';
+import ProfileImageUploader from './workspace/ProfileImageUploader';
 
 export default function TeamManager({ portfolioItems }: { portfolioItems: PortfolioItem[] }) {
   const { content, updateSection } = useCMS();
@@ -16,11 +17,9 @@ export default function TeamManager({ portfolioItems }: { portfolioItems: Portfo
   const [showAddSalesModal, setShowAddSalesModal] = useState(false);
   const [newSalesForm, setNewSalesForm] = useState({
     fullName: '',
-    email: '',
     title: 'Sales Representative',
     bio: '',
-    specialties: 'Web Packages, Custom Quotations',
-    avatar: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&q=80&w=250'
+    avatar: ''
   });
 
   const rawMembers: TeamMemberProfile[] = content.team_members || [];
@@ -58,7 +57,6 @@ export default function TeamManager({ portfolioItems }: { portfolioItems: Portfo
     if (!(await confirmAction('Remove Team Member', 'Are you sure you want to remove this team member from the public website showcase?'))) return;
     const updated = teamMembers.filter(member => member.id !== id);
     await updateSection('team_members', updated);
-    await deleteSalesRep(id);
   };
 
   const handleAddSalesMember = async (event: React.FormEvent) => {
@@ -78,27 +76,13 @@ export default function TeamManager({ portfolioItems }: { portfolioItems: Portfo
     };
 
     await updateSection('team_members', [...teamMembers.filter(member => member.id !== newId), newMember]);
-    await addSalesRep({
-      id: newId,
-      name: newSalesForm.fullName,
-      email: newSalesForm.email || `${newSalesForm.fullName.toLowerCase().replace(/\s+/g, '.')}@profoxweb.com`,
-      title: newSalesForm.title,
-      bio: newSalesForm.bio,
-      specialties: newSalesForm.specialties.split(',').map(item => item.trim()).filter(Boolean),
-      avatar: newSalesForm.avatar,
-      rating: 5.0,
-      reviewCount: 1,
-      isOnline: true
-    });
 
     setShowAddSalesModal(false);
     setNewSalesForm({
       fullName: '',
-      email: '',
       title: 'Sales Representative',
       bio: '',
-      specialties: 'Web Packages, Custom Quotations',
-      avatar: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&q=80&w=250'
+      avatar: ''
     });
   };
 
@@ -110,11 +94,7 @@ export default function TeamManager({ portfolioItems }: { portfolioItems: Portfo
       <div key={`${member.id || 'member'}_${index}`} className="flex flex-col justify-between rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-all hover:shadow-md">
         <div>
           <div className="flex items-start gap-4">
-            <img
-              src={member.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=250'}
-              alt={member.fullName}
-              className="h-14 w-14 shrink-0 rounded-2xl border border-slate-200 object-cover shadow-sm"
-            />
+            <AppAvatar name={member.fullName} src={member.avatar} size="lg" />
             <div className="min-w-0 flex-1">
               <div className="flex items-center justify-between gap-2">
                 <h4 className="truncate font-bold text-slate-900">{member.fullName}</h4>
@@ -139,17 +119,23 @@ export default function TeamManager({ portfolioItems }: { portfolioItems: Portfo
 
   return (
     <div className="space-y-6">
-      <div className="flex w-fit items-center gap-2 rounded-2xl border border-slate-200 bg-white p-1.5 shadow-sm">
-        <button onClick={() => setActiveSubTab('roles')} className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-all ${activeSubTab === 'roles' ? 'bg-[#000080] text-white shadow' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}>
-          <ShieldCheck className="h-4 w-4" /> Team & Departments
-        </button>
-        <button onClick={() => setActiveSubTab('showcase')} className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-all ${activeSubTab === 'showcase' ? 'bg-[#000080] text-white shadow' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}>
-          <Users className="h-4 w-4" /> Public Team Showcase ({teamMembers.length})
-        </button>
+      <div className="pf-reference-card flex flex-col gap-4 p-5 md:flex-row md:items-center md:justify-between">
+        <div>
+          <h2 className="flex items-center gap-2 text-lg font-extrabold text-slate-900"><Users className="h-5 w-5 text-[#000080]" /> Employees</h2>
+          <p className="mt-1 text-[10px] leading-5 text-slate-500">Manage employee access, departments, profile images and the separate public team directory.</p>
+        </div>
+        <div className="flex w-full items-center rounded-xl bg-slate-100 p-1 md:w-auto">
+          <button onClick={() => setActiveSubTab('roles')} className={`flex min-h-9 flex-1 items-center justify-center gap-2 rounded-lg px-4 text-[10px] font-extrabold transition md:flex-none ${activeSubTab === 'roles' ? 'bg-white text-[#000080] shadow-sm' : 'text-slate-500 hover:text-slate-900'}`}>
+            <ShieldCheck className="h-3.5 w-3.5" /> Employee Directory
+          </button>
+          <button onClick={() => setActiveSubTab('showcase')} className={`flex min-h-9 flex-1 items-center justify-center gap-2 rounded-lg px-4 text-[10px] font-extrabold transition md:flex-none ${activeSubTab === 'showcase' ? 'bg-white text-[#000080] shadow-sm' : 'text-slate-500 hover:text-slate-900'}`}>
+            <Users className="h-3.5 w-3.5" /> Public Profiles ({teamMembers.length})
+          </button>
+        </div>
       </div>
 
       {activeSubTab === 'roles' ? (
-        <UserRoleManager />
+        <UserRoleManager showHeader={false} />
       ) : (
         <div className="space-y-6">
           <div className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm md:flex-row md:items-center md:justify-between">
@@ -200,10 +186,8 @@ export default function TeamManager({ portfolioItems }: { portfolioItems: Portfo
 
             <form onSubmit={handleAddSalesMember} className="space-y-4">
               <div><label className="mb-1 block text-xs font-bold text-slate-700">Full Name *</label><input type="text" required placeholder="e.g. Jordan Smith" value={newSalesForm.fullName} onChange={event => setNewSalesForm(prev => ({ ...prev, fullName: event.target.value }))} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs outline-none focus:border-[#000080]" /></div>
-              <div><label className="mb-1 block text-xs font-bold text-slate-700">Email Address</label><input type="email" placeholder="e.g. jordan.sales@profoxweb.com" value={newSalesForm.email} onChange={event => setNewSalesForm(prev => ({ ...prev, email: event.target.value }))} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs outline-none focus:border-[#000080]" /></div>
               <div><label className="mb-1 block text-xs font-bold text-slate-700">Title / Role</label><input type="text" value={newSalesForm.title} onChange={event => setNewSalesForm(prev => ({ ...prev, title: event.target.value }))} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs outline-none focus:border-[#000080]" /></div>
-              <div><label className="mb-1 block text-xs font-bold text-slate-700">Specialties (comma-separated)</label><input type="text" value={newSalesForm.specialties} onChange={event => setNewSalesForm(prev => ({ ...prev, specialties: event.target.value }))} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs outline-none focus:border-[#000080]" /></div>
-              <div><label className="mb-1 block text-xs font-bold text-slate-700">Avatar Photo URL</label><input type="url" value={newSalesForm.avatar} onChange={event => setNewSalesForm(prev => ({ ...prev, avatar: event.target.value }))} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs outline-none focus:border-[#000080]" /></div>
+              <ProfileImageUploader compact value={newSalesForm.avatar} name={newSalesForm.fullName || 'New team member'} onChange={avatar => setNewSalesForm(previous => ({ ...previous, avatar }))} />
               <div><label className="mb-1 block text-xs font-bold text-slate-700">Short Bio</label><textarea rows={2} value={newSalesForm.bio} onChange={event => setNewSalesForm(prev => ({ ...prev, bio: event.target.value }))} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs outline-none focus:border-[#000080]" /></div>
               <div className="flex justify-end gap-3 pt-2"><button type="button" onClick={() => setShowAddSalesModal(false)} className="px-4 py-2 text-xs font-bold text-slate-600 hover:text-slate-900">Cancel</button><button type="submit" className="rounded-xl bg-[#000080] px-4 py-2 text-xs font-bold text-white shadow transition-all hover:bg-[#000066]">Create Sales Member</button></div>
             </form>

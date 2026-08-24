@@ -115,7 +115,7 @@ export const WORKSPACE_APPS: WorkspaceAppDefinition[] = [
       { id: 'leads', label: 'Leads', tab: 'crm_leads', section: 'Pipeline' },
       { id: 'pipeline', label: 'Opportunities / Pipeline', tab: 'pipeline', section: 'Pipeline' },
       { id: 'activities', label: 'Activities & Follow-Up', tab: 'activities', section: 'Pipeline' },
-      { id: 'sales-inbox', label: 'Sales Inbox', tab: 'inbox', section: 'Communication', roles: ['sales_team'] }
+      { id: 'sales-inbox', label: 'Sales Inbox', tab: 'inbox', section: 'Communication', roles: salesRoles }
     ]
   },
   {
@@ -363,7 +363,7 @@ export const WORKSPACE_APPS: WorkspaceAppDefinition[] = [
       { id: 'blog', label: 'Blog & Articles', tab: 'blog', section: 'Content & Publishing' },
       { id: 'portfolio', label: 'Portfolio', tab: 'portfolio', section: 'Content & Publishing' },
       { id: 'form-inquiries', label: 'Form Inquiries', tab: 'leads', section: 'Content & Publishing' },
-      { id: 'feedback', label: 'Feedback Inbox', tab: 'feedback', section: 'Content & Publishing' },
+      { id: 'feedback', label: 'Feedback Inbox', tab: 'feedback', section: 'Content & Publishing', roles: ['admin','site_manager','editor'] },
       { id: 'media', label: 'Media Library', tab: 'media', section: 'Content & Publishing' },
       { id: 'homepage', label: 'Homepage Sections', tab: 'homepageSections', section: 'Website Experience' },
       { id: 'awards', label: 'Awards', tab: 'awards', section: 'Website Experience' },

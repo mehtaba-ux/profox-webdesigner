@@ -13,20 +13,9 @@ export const leadService = {
 
   async submitLead(leadData: Omit<ContactLead, 'id' | 'createdAt' | 'status' | 'source'>): Promise<{ success: boolean; error?: string }> {
     try {
-      const allLeads = await this.getAllLeads();
-      
-      const newLead: ContactLead = {
-        ...leadData,
-        id: crypto.randomUUID(),
-        status: 'new',
-        source: 'contact_form',
-        createdAt: new Date().toISOString()
-      };
-
-      const updatedLeads = [newLead, ...allLeads];
-      const { error } = await dbProcedure.upsertContentItem('leads_database', { leads: updatedLeads });
-      
+      const { data, error } = await supabase.rpc('submit_public_crm_lead', { p_payload: leadData });
       if (error) throw error;
+      if (data?.success !== true) throw new Error('The enquiry could not be added to CRM.');
       return { success: true };
     } catch (err: any) {
       console.error('Lead submission failed:', err);

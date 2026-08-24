@@ -22,8 +22,6 @@ import {
 import { Link } from 'react-router-dom';
 import { useCMS } from '../lib/CMSProvider';
 import { submitPublicFeedback } from '../lib/supabase';
-import { FeedbackEntry } from '../types';
-import { uploadOptimizedFile } from '../lib/optimizedUpload';
 
 const RATING_LABELS: Record<number, { label: string; desc: string; color: string }> = {
   1: { label: 'Needs Improvement', desc: 'We fell short of your expectations. Please tell us how we can make it right.', color: 'text-amber-600 bg-amber-50 border-amber-200' },
@@ -42,8 +40,55 @@ const SUGGESTED_TAGS = [
   'Creative Quality'
 ];
 
+const PUBLIC_PHOTO_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
+const MAX_PUBLIC_PHOTO_BYTES = 320 * 1024;
+
+function canvasToBlob(canvas: HTMLCanvasElement, quality: number) {
+  return new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/webp', quality));
+}
+
+function blobToDataUrl(blob: Blob) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(String(reader.result || ''));
+    reader.onerror = () => reject(new Error('The photo could not be prepared.'));
+    reader.readAsDataURL(blob);
+  });
+}
+
+async function preparePublicFeedbackPhoto(file: File) {
+  if (!PUBLIC_PHOTO_TYPES.has(file.type)) throw new Error('Choose a JPG, PNG, WebP or GIF image.');
+  if (file.size > 5 * 1024 * 1024) throw new Error('Image size exceeds 5 MB. Please choose a smaller photo.');
+
+  const objectUrl = URL.createObjectURL(file);
+  try {
+    const photo = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const element = new Image();
+      element.onload = () => resolve(element);
+      element.onerror = () => reject(new Error('The selected photo could not be decoded.'));
+      element.src = objectUrl;
+    });
+    const scale = Math.min(1, 512 / Math.max(photo.naturalWidth, photo.naturalHeight));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(photo.naturalWidth * scale));
+    canvas.height = Math.max(1, Math.round(photo.naturalHeight * scale));
+    const context = canvas.getContext('2d');
+    if (!context) throw new Error('Photo preparation is not supported by this browser.');
+    context.drawImage(photo, 0, 0, canvas.width, canvas.height);
+
+    let prepared = await canvasToBlob(canvas, 0.76);
+    if (prepared && prepared.size > MAX_PUBLIC_PHOTO_BYTES) prepared = await canvasToBlob(canvas, 0.58);
+    if (!prepared || prepared.size > MAX_PUBLIC_PHOTO_BYTES) {
+      throw new Error('The photo is still too large after optimization. Please choose a simpler or smaller image.');
+    }
+    return blobToDataUrl(prepared);
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
+}
+
 export default function LeaveFeedback() {
-  const { content, updateSection } = useCMS();
+  const { content } = useCMS();
   
   // Step state: 1 (Rating & Review) -> 2 (Client Profile) -> 3 (Complete)
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
@@ -82,46 +127,20 @@ export default function LeaveFeedback() {
     }
   };
 
-  // Pure client-side computer file upload handler (STRICTLY NO MEDIA LIBRARY OR BACKEND IMAGES)
+  // Prepare a small moderated testimonial photo without exposing the staff media library.
   const handleLocalFileSelect = async (file?: File) => {
     if (!file) return;
-
-    // Validate type
-    if (!file.type.startsWith('image/')) {
-      setUploadError('Please select a valid image file (JPG, PNG, WEBP, GIF).');
-      return;
-    }
-
-    // Validate size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      setUploadError('Image size exceeds 5MB. Please choose a smaller photo.');
-      return;
-    }
 
     setUploadError('');
     setIsUploadingPhoto(true);
     setImageFileName(file.name);
 
     try {
-      // Create instant local preview
-      const localPreview = URL.createObjectURL(file);
-      setImage(localPreview);
-
-      // Upload optimized file
-      const result = await uploadOptimizedFile(file);
-      if (result && result.url) {
-        setImage(result.url);
-      }
+      setImage(await preparePublicFeedbackPhoto(file));
     } catch (err: any) {
-      console.warn('Direct upload warning, using local preview fallback:', err);
-      // Even if remote fails, preview remains valid as data URL
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        if (typeof reader.result === 'string') {
-          setImage(reader.result);
-        }
-      };
-      reader.readAsDataURL(file);
+      setImage('');
+      setImageFileName('');
+      setUploadError(err?.message || 'The photo could not be prepared.');
     } finally {
       setIsUploadingPhoto(false);
     }
@@ -168,8 +187,7 @@ export default function LeaveFeedback() {
         ? `${comment.trim()}\n\n[Services / Highlights: ${selectedTags.join(', ')}]`
         : comment.trim();
 
-      const newFeedback: FeedbackEntry = {
-        id: `fb-${Date.now()}`,
+      const newFeedback = {
         customerName: name.trim(),
         customerEmail: email.trim(),
         position: position.trim() || undefined,
@@ -177,20 +195,10 @@ export default function LeaveFeedback() {
         image: image || undefined,
         rating: rating,
         comment: fullComment,
-        status: 'pending',
-        showOnWebsite: false, // Requires admin moderation
-        createdAt: new Date().toISOString(),
       };
 
-      const existingData = content.feedback_submissions;
-      const existingFeedback = Array.isArray(existingData) ? existingData : [];
-      const updatedList = [newFeedback, ...existingFeedback];
-
-      const { error } = await submitPublicFeedback(updatedList);
-      if (error) {
-        console.warn('Supabase submit warning, saving to local CMS state:', error);
-      }
-      await updateSection('feedback_submissions', updatedList);
+      const { error } = await submitPublicFeedback(newFeedback);
+      if (error) throw error;
 
       setCurrentStep(3);
       window.scrollTo({ top: 80, behavior: 'smooth' });

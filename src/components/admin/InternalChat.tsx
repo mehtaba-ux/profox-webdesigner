@@ -20,6 +20,7 @@ import {
   type InternalChatThread
 } from '../../lib/internalChatService';
 import { ROLE_LABELS } from '../../types';
+import AppAvatar from './workspace/AppAvatar';
 
 const DELIVERY_COLLABORATORS = new Set([
   'content_writer',
@@ -32,15 +33,6 @@ const MANAGER_ROLES = new Set(['admin', 'project_manager', 'site_manager']);
 
 function messageFromError(error: any, fallback: string) {
   return error?.message || error?.details || fallback;
-}
-
-function initials(name: string) {
-  return name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map(part => part[0]?.toUpperCase())
-    .join('') || 'P';
 }
 
 function formatMessageTime(value?: string | null) {
@@ -245,7 +237,7 @@ export default function InternalChat() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900">
+    <div className="profox-app-shell min-h-screen bg-[#f3f7fc] text-slate-900">
       <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur-xl">
         <div className="mx-auto flex max-w-[1500px] items-center justify-between gap-4 px-4 py-4 sm:px-6">
           <div className="flex min-w-0 items-center gap-3">
@@ -275,7 +267,7 @@ export default function InternalChat() {
         {error && <div className="mb-4 flex gap-2 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-xs font-semibold text-red-700"><AlertCircle className="h-4 w-4 shrink-0" />{error}</div>}
 
         <div className="grid min-h-[72vh] overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm lg:grid-cols-[360px_1fr]">
-          <aside className="flex min-h-[72vh] flex-col border-b border-slate-200 bg-slate-50/60 lg:border-b-0 lg:border-r">
+          <aside className={`${selectedThreadId ? 'hidden lg:flex' : 'flex'} min-h-[72vh] flex-col border-b border-slate-200 bg-slate-50/60 lg:border-b-0 lg:border-r`}>
             <div className="border-b border-slate-200 bg-white p-4">
               <div className="relative"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><input value={search} onChange={event => setSearch(event.target.value)} placeholder="Search permitted people or chats..." className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-9 pr-3 text-xs outline-none focus:border-[#000080]" /></div>
             </div>
@@ -300,9 +292,9 @@ export default function InternalChat() {
             </div>
           </aside>
 
-          <section className="flex min-h-[72vh] flex-col">
+          <section className={`${selectedThreadId ? 'flex' : 'hidden lg:flex'} min-h-[72vh] flex-col`}>
             {!selectedThreadId || !selectedPeer ? <div className="flex flex-1 items-center justify-center p-8 text-center"><div><div className="mx-auto flex h-14 w-14 items-center justify-center rounded-3xl bg-blue-50 text-[#000080]"><LockKeyhole className="h-6 w-6" /></div><h2 className="mt-4 text-base font-black text-slate-800">Choose an authorized conversation</h2><p className="mx-auto mt-2 max-w-md text-xs leading-5 text-slate-500">The directory only shows people you are allowed to contact. Delivery specialists cannot open seller conversations; non-delivery staff are limited to Management.</p></div></div> : <>
-              <div className="flex items-center gap-3 border-b border-slate-200 px-5 py-4"><Avatar name={selectedPeer.fullName} url={selectedPeer.avatarUrl} /><div className="min-w-0"><div className="truncate text-sm font-black text-slate-900">{selectedPeer.fullName}</div><div className="mt-0.5 truncate text-[10px] font-semibold text-slate-400">{selectedPeer.department} · {(ROLE_LABELS as any)[selectedPeer.role] || selectedPeer.role}</div></div><div className="ml-auto flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[9px] font-black uppercase tracking-wide text-emerald-700"><ShieldCheck className="h-3.5 w-3.5" />Authorized</div></div>
+              <div className="flex items-center gap-3 border-b border-slate-200 px-4 py-4 sm:px-5"><button type="button" onClick={() => { setSelectedThreadId(null); setSelectedPeer(null); setMessages([]); }} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-200 text-slate-500 lg:hidden" aria-label="Back to conversations"><ArrowLeft className="h-4 w-4" /></button><Avatar name={selectedPeer.fullName} url={selectedPeer.avatarUrl} /><div className="min-w-0"><div className="truncate text-sm font-black text-slate-900">{selectedPeer.fullName}</div><div className="mt-0.5 truncate text-[10px] font-semibold text-slate-400">{selectedPeer.department} · {(ROLE_LABELS as any)[selectedPeer.role] || selectedPeer.role}</div></div><div className="ml-auto hidden items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[9px] font-black uppercase tracking-wide text-emerald-700 sm:flex"><ShieldCheck className="h-3.5 w-3.5" />Authorized</div></div>
 
               <div className="flex-1 overflow-y-auto bg-[linear-gradient(to_bottom,#f8fafc,#ffffff)] p-4 sm:p-6"><div className="mx-auto max-w-4xl space-y-3">{messages.length === 0 && <div className="py-16 text-center"><MessageCircle className="mx-auto h-7 w-7 text-slate-300" /><div className="mt-3 text-xs font-black text-slate-600">Start this internal conversation</div><p className="mt-1 text-[10px] text-slate-400">Keep project/customer details inside the approved ProFox workflow and use chat for coordination.</p></div>}{messages.map(message => {
                 const mine = message.senderId === user?.id;
@@ -319,6 +311,5 @@ export default function InternalChat() {
 }
 
 function Avatar({ name, url, active = false }: { name: string; url?: string; active?: boolean }) {
-  if (url) return <img src={url} alt="" className={`h-10 w-10 shrink-0 rounded-xl object-cover ${active ? 'ring-2 ring-white/40' : 'border border-slate-200'}`} />;
-  return <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-[10px] font-black ${active ? 'bg-white/15 text-white' : 'border border-blue-100 bg-blue-50 text-[#000080]'}`}>{initials(name)}</div>;
+  return <AppAvatar name={name} src={url} size="md" className={active ? 'ring-2 ring-white/40' : ''} />;
 }

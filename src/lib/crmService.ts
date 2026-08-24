@@ -1,5 +1,18 @@
 import { supabase } from './supabase';
-import { CRMLead, CRMOpportunity, CRMActivity, LeadStatus, OpportunityStage, OpportunityStatus, ActivityStatus, ActivityType } from '../types';
+import {
+  CRMLead,
+  CRMOpportunity,
+  CRMActivity,
+  CRMLeadDetail,
+  CRMLeadPerson,
+  LeadStatus,
+  OpportunityStage,
+  OpportunityStatus,
+  ActivityStatus,
+  ActivityType,
+} from '../types';
+
+const asArray = <T>(value: unknown): T[] => Array.isArray(value) ? value as T[] : [];
 
 export const crmService = {
   async getLeads() {
@@ -20,6 +33,81 @@ export const crmService = {
     const { data, error } = await supabase.from('crm_leads').update(this.mapLeadToDb(updates)).eq('id', id).select().single();
     if (error) throw error;
     return this.mapLeadFromDb(data);
+  },
+
+  async getLeadAssignees(): Promise<CRMLeadPerson[]> {
+    const { data, error } = await supabase.rpc('crm_list_lead_assignees');
+    if (error) throw error;
+    return asArray<CRMLeadPerson>(data);
+  },
+
+  async getLeadDetail(id: string): Promise<CRMLeadDetail> {
+    const { data, error } = await supabase.rpc('crm_get_lead_detail', { p_lead_id: id });
+    if (error) throw error;
+    return {
+      assignee: data?.assignee || undefined,
+      createdBy: data?.createdBy || undefined,
+      assignedBy: data?.assignedBy || undefined,
+      events: asArray(data?.events),
+      activities: asArray(data?.activities).map((activity: any) => ({
+        id: activity.id,
+        leadId: id,
+        assignedTo: activity.assignedTo,
+        activityType: activity.activityType,
+        subject: activity.subject,
+        dueAt: activity.dueAt,
+        completedAt: activity.completedAt || undefined,
+        status: activity.status,
+        channel: activity.channel || undefined,
+        notes: activity.notes || undefined,
+        createdBy: activity.createdBy || '',
+        createdAt: activity.createdAt,
+        updatedAt: activity.updatedAt || activity.createdAt,
+        assigneeName: activity.assigneeName || undefined,
+        assigneeAvatarUrl: activity.assigneeAvatarUrl || undefined,
+      })),
+      meetings: asArray(data?.meetings),
+      conversations: asArray(data?.conversations),
+    };
+  },
+
+  async assignLead(leadId: string, salespersonId: string) {
+    const { data, error } = await supabase.rpc('crm_assign_lead', {
+      p_lead_id: leadId,
+      p_salesperson_id: salespersonId,
+    });
+    if (error) throw error;
+    return data;
+  },
+
+  async scheduleLeadFollowUp(leadId: string, dueAt: string, subject: string, notes = '') {
+    const { data, error } = await supabase.rpc('crm_schedule_lead_follow_up', {
+      p_lead_id: leadId,
+      p_due_at: dueAt,
+      p_subject: subject,
+      p_notes: notes,
+    });
+    if (error) throw error;
+    return data;
+  },
+
+  async addLeadNote(leadId: string, note: string) {
+    const { data, error } = await supabase.rpc('crm_add_lead_note', {
+      p_lead_id: leadId,
+      p_note: note,
+    });
+    if (error) throw error;
+    return data;
+  },
+
+  async logLeadEmailOpened(leadId: string, subject: string, body: string) {
+    const { data, error } = await supabase.rpc('crm_log_lead_email_opened', {
+      p_lead_id: leadId,
+      p_subject: subject,
+      p_body: body,
+    });
+    if (error) throw error;
+    return data;
   },
 
   async convertToOpportunity(leadId: string, opportunityData: Partial<CRMOpportunity>) {
@@ -77,11 +165,14 @@ export const crmService = {
     return {
       id: db.id, title: db.title, companyName: db.company_name, contactName: db.contact_name, email: db.email,
       phone: db.phone, website: db.website, country: db.country, industry: db.industry, source: db.source,
+      originType: db.origin_type || 'manual', leadScore: Number(db.lead_score || 0), leadQuality: db.lead_quality || 'Low',
+      scoreReason: db.score_reason || 'Lead score has not been calculated.',
       salespersonId: db.salesperson_id, serviceInterest: db.service_interest, estimatedValue: Number(db.estimated_value),
       currency: db.currency, status: db.status as LeadStatus, loomVideoUrl: db.loom_video_url,
       initialOutreachChannel: db.initial_outreach_channel, lastContactAt: db.last_contact_at,
       nextFollowUpAt: db.next_follow_up_at, notes: db.notes, selfGenerated: db.self_generated,
-      convertedOpportunityId: db.converted_opportunity_id, createdBy: db.created_by, createdAt: db.created_at, updatedAt: db.updated_at
+      convertedOpportunityId: db.converted_opportunity_id, createdBy: db.created_by, assignedBy: db.assigned_by,
+      assignedAt: db.assigned_at, createdAt: db.created_at, updatedAt: db.updated_at
     };
   },
 
@@ -96,6 +187,7 @@ export const crmService = {
     if (app.country !== undefined) db.country = app.country;
     if (app.industry !== undefined) db.industry = app.industry;
     if (app.source !== undefined) db.source = app.source;
+    if (app.originType !== undefined) db.origin_type = app.originType;
     if (app.salespersonId !== undefined) db.salesperson_id = app.salespersonId;
     if (app.serviceInterest !== undefined) db.service_interest = app.serviceInterest;
     if (app.estimatedValue !== undefined) db.estimated_value = app.estimatedValue;

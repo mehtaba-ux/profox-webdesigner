@@ -6,6 +6,7 @@ import {
   Check,
   CheckCircle2,
   Clock,
+  ExternalLink,
   FileText,
   Loader2,
   Lock,
@@ -76,15 +77,7 @@ export default function ClientDashboard() {
   }, [hasPortalAccess, user?.id]);
 
   useEffect(() => {
-    const loadPayments = async () => {
-      if (!selectedProject) {
-        setPayments([]);
-        return;
-      }
-      const { data, error } = await projectService.getProjectPayments(selectedProject.sourceOpportunityId, selectedProject.quotationId);
-      if (!error) setPayments(data || []);
-    };
-    void loadPayments();
+    setPayments(Array.isArray(selectedProject?.payments) ? selectedProject.payments as Payment[] : []);
   }, [selectedProject?.id]);
 
   const handleSignIn = async (event: React.FormEvent) => {
@@ -122,6 +115,10 @@ export default function ClientDashboard() {
 
   const approveStage = async () => {
     if (!selectedProject) return;
+    if (approvalPaymentBlocked) {
+      setActionError(`Complete the required ${requiredApprovalPayment?.paymentType || 'milestone'} payment before approving this stage.`);
+      return;
+    }
     setActionBusy(true);
     setActionError('');
     const { error } = await projectService.approveClientStage(selectedProject.id, approvalNotes);
@@ -160,6 +157,10 @@ export default function ClientDashboard() {
   const totalDue = payments.reduce((sum, payment) => sum + payment.amountDue, 0);
   const totalPaid = payments.reduce((sum, payment) => sum + payment.amountPaid, 0);
   const outstanding = Math.max(0, totalDue - totalPaid);
+  const approvalPaymentType = selectedProject?.stage === 'Client Design Approval' ? 'Design Milestone' : selectedProject?.stage === 'Client Review' ? 'Staging Milestone' : '';
+  const requiredApprovalPayment = approvalPaymentType ? payments.find(payment => payment.paymentType === approvalPaymentType) : undefined;
+  const approvalPaymentBlocked = Boolean(requiredApprovalPayment && requiredApprovalPayment.status !== 'Verified');
+  const payableStatuses = new Set(['Sent', 'Pending', 'Partially Paid', 'Verification Pending']);
 
   if (authLoading) {
     return <div className="flex min-h-screen items-center justify-center bg-slate-50"><Loader2 className="h-8 w-8 animate-spin text-[#000080]" /></div>;
@@ -220,7 +221,7 @@ export default function ClientDashboard() {
         ) : selectedProject && (
           <>
             <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
-              <div><div className="text-[10px] font-black uppercase tracking-widest text-[#000080]">{selectedProject.projectNumber}</div><h1 className="mt-1 text-3xl font-black text-slate-900">{selectedProject.projectName}</h1><p className="mt-1 text-sm text-slate-500">{selectedProject.client?.company_name || 'Your ProFox project'}</p></div>
+              <div><div className="text-[10px] font-black uppercase tracking-widest text-[#000080]">{selectedProject.projectNumber}</div><h1 className="mt-1 text-3xl font-black text-slate-900">{selectedProject.projectName}</h1><p className="mt-1 text-sm text-slate-500">{selectedProject.client?.companyName || 'Your ProFox project'}</p></div>
               {projects.length > 1 && <select value={selectedProject.id} onChange={event => setSelectedProject(projects.find(project => project.id === event.target.value) || selectedProject)} className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-xs font-bold outline-none focus:border-[#000080]">{projects.map(project => <option key={project.id} value={project.id}>{project.projectNumber} · {project.projectName}</option>)}</select>}
             </div>
 
@@ -234,9 +235,10 @@ export default function ClientDashboard() {
             {['Client Design Approval', 'Client Review'].includes(selectedProject.stage) && (
               <section className="rounded-[2rem] border border-emerald-200 bg-emerald-50 p-7">
                 <div className="flex items-start gap-4"><div className="rounded-2xl bg-emerald-100 p-3 text-emerald-700"><CheckCircle2 className="h-6 w-6" /></div><div className="flex-1"><h2 className="text-lg font-black text-slate-900">Your review is required</h2><p className="mt-1 text-sm text-slate-600">Review the current deliverables. Approve to continue, or describe changes that need to be addressed.</p></div></div>
+                {approvalPaymentBlocked && <div className="mt-4 flex flex-col gap-3 rounded-2xl border border-amber-200 bg-white p-4 sm:flex-row sm:items-center sm:justify-between"><div className="flex items-start gap-2 text-xs leading-5 text-amber-800"><Clock className="mt-0.5 h-4 w-4 shrink-0" /><span><strong>{requiredApprovalPayment?.milestoneLabel || requiredApprovalPayment?.paymentType}</strong> must be verified before approval can move the project forward.</span></div>{requiredApprovalPayment?.paymentLink && payableStatuses.has(requiredApprovalPayment.status) && <a href={requiredApprovalPayment.paymentLink} target="_blank" rel="noreferrer" className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-[#000080] px-4 py-2.5 text-xs font-bold text-white">Pay Now<ExternalLink className="h-3.5 w-3.5" /></a>}</div>}
                 {actionError && <div className="mt-4 rounded-xl border border-red-200 bg-white p-3 text-xs text-red-700">{actionError}</div>}
                 <textarea value={approvalNotes} onChange={event => setApprovalNotes(event.target.value)} rows={3} placeholder="Optional approval note, or required details if requesting changes..." className="mt-5 w-full resize-none rounded-xl border border-emerald-200 bg-white p-3 text-sm outline-none focus:border-emerald-500" />
-                <div className="mt-4 flex flex-wrap gap-3"><button type="button" disabled={actionBusy} onClick={() => void approveStage()} className="flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-xs font-bold text-white disabled:opacity-50"><Check className="h-4 w-4" />Approve & Proceed</button><button type="button" disabled={actionBusy} onClick={() => void requestChanges()} className="flex items-center gap-2 rounded-xl border border-emerald-300 bg-white px-5 py-2.5 text-xs font-bold text-emerald-800 disabled:opacity-50"><RotateCcw className="h-4 w-4" />Request Changes</button>{actionBusy && <Loader2 className="h-5 w-5 animate-spin text-emerald-700" />}</div>
+                <div className="mt-4 flex flex-wrap gap-3"><button type="button" disabled={actionBusy || approvalPaymentBlocked} onClick={() => void approveStage()} className="flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-xs font-bold text-white disabled:opacity-50"><Check className="h-4 w-4" />{approvalPaymentBlocked ? 'Payment Required Before Approval' : 'Approve & Proceed'}</button><button type="button" disabled={actionBusy} onClick={() => void requestChanges()} className="flex items-center gap-2 rounded-xl border border-emerald-300 bg-white px-5 py-2.5 text-xs font-bold text-emerald-800 disabled:opacity-50"><RotateCcw className="h-4 w-4" />Request Changes</button>{actionBusy && <Loader2 className="h-5 w-5 animate-spin text-emerald-700" />}</div>
               </section>
             )}
 
@@ -254,7 +256,7 @@ export default function ClientDashboard() {
               </section>
 
               <aside className="space-y-5">
-                <div className="rounded-[2rem] border border-slate-200 bg-white p-7 shadow-sm"><h2 className="flex items-center gap-2 text-base font-black text-slate-900"><Receipt className="h-5 w-5 text-[#000080]" />Payment Summary</h2><div className="mt-5 space-y-3"><Mini label="Total Requested" value={`${selectedProject.currency || 'USD'} ${totalDue.toLocaleString()}`} /><Mini label="Confirmed Received" value={`${selectedProject.currency || 'USD'} ${totalPaid.toLocaleString()}`} /><Mini label="Outstanding" value={`${selectedProject.currency || 'USD'} ${outstanding.toLocaleString()}`} /></div><div className="mt-5 space-y-2">{payments.map(payment => <div key={payment.id} className="rounded-xl border border-slate-100 bg-slate-50 p-3"><div className="flex items-center justify-between gap-2"><span className="text-[10px] font-black uppercase text-slate-600">{payment.paymentType}</span><span className="text-[9px] font-black uppercase text-[#000080]">{payment.status}</span></div><div className="mt-1 text-xs font-bold text-slate-900">{payment.currency} {payment.amountPaid.toLocaleString()} / {payment.amountDue.toLocaleString()}</div></div>)}</div>{outstanding > 0 && selectedProject.stage === 'Launch' && <div className="mt-4 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-[11px] text-amber-800"><Clock className="mt-0.5 h-4 w-4 shrink-0" />Launch remains payment-gated until the required final balance is fully verified.</div>}</div>
+                <div className="rounded-[2rem] border border-slate-200 bg-white p-7 shadow-sm"><h2 className="flex items-center gap-2 text-base font-black text-slate-900"><Receipt className="h-5 w-5 text-[#000080]" />Payment Summary</h2><div className="mt-5 space-y-3"><Mini label="Total Requested" value={`${selectedProject.currency || 'USD'} ${totalDue.toLocaleString()}`} /><Mini label="Confirmed Received" value={`${selectedProject.currency || 'USD'} ${totalPaid.toLocaleString()}`} /><Mini label="Outstanding" value={`${selectedProject.currency || 'USD'} ${outstanding.toLocaleString()}`} /></div><div className="mt-5 space-y-2">{payments.map(payment => <div key={payment.id} className="rounded-xl border border-slate-100 bg-slate-50 p-3"><div className="flex items-center justify-between gap-2"><span className="text-[10px] font-black uppercase text-slate-600">{payment.paymentType}</span><span className="text-[9px] font-black uppercase text-[#000080]">{payment.status}</span></div><div className="mt-1 text-xs font-bold text-slate-900">{payment.currency} {payment.amountPaid.toLocaleString()} / {payment.amountDue.toLocaleString()}</div>{payment.paymentLink && payableStatuses.has(payment.status) && payment.amountPaid < payment.amountDue && <a href={payment.paymentLink} target="_blank" rel="noreferrer" className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-[#000080] px-3 py-2 text-[10px] font-black text-white">Pay this milestone<ExternalLink className="h-3 w-3" /></a>}</div>)}</div>{outstanding > 0 && ['Final Revisions', 'Launch'].includes(selectedProject.stage) && <div className="mt-4 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-[11px] text-amber-800"><Clock className="mt-0.5 h-4 w-4 shrink-0" />The final balance must be verified before the project can enter Launch.</div>}</div>
                 <div className="rounded-[2rem] bg-slate-900 p-7 text-white"><div className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-blue-300"><ShieldCheck className="h-4 w-4" />Secure Access</div><p className="mt-3 text-xs leading-relaxed text-slate-300">This workspace is authorized by your signed-in account link. Project, task, payment, approval, and released handover records are filtered server-side for this client only.</p></div>
               </aside>
             </div>

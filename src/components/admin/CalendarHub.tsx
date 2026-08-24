@@ -5,7 +5,9 @@ import {
   BellRing,
   CalendarDays,
   CheckCircle2,
+  Copy,
   ExternalLink,
+  KeyRound,
   ListTodo,
   Loader2,
   RefreshCw,
@@ -16,7 +18,7 @@ import {
 } from 'lucide-react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../lib/AuthContext';
-import { googleCalendarService, type GoogleCalendarIntegrationSnapshot } from '../../lib/googleCalendarService';
+import { googleCalendarService, type GoogleCalendarIntegrationSnapshot, type GoogleCalendarProviderSetup } from '../../lib/googleCalendarService';
 
 const SELLER_ROLES = ['sales', 'sales_rep', 'sales_team'];
 
@@ -39,14 +41,22 @@ export default function CalendarHub() {
   const [googleMessage, setGoogleMessage] = useState('');
   const [syncEnabled, setSyncEnabled] = useState(true);
   const [createMeet, setCreateMeet] = useState(true);
+  const [providerSetup, setProviderSetup] = useState<GoogleCalendarProviderSetup | null>(null);
+  const [providerClientId, setProviderClientId] = useState('');
+  const [providerClientSecret, setProviderClientSecret] = useState('');
+  const [providerSaving, setProviderSaving] = useState(false);
 
   const loadGoogle = useCallback(async () => {
     if (!allowed) return;
     setGoogleLoading(true);
     setGoogleError('');
     try {
-      const snapshot = await googleCalendarService.getSnapshot();
+      const [snapshot, setup] = await Promise.all([
+        googleCalendarService.getSnapshot(),
+        isAdmin ? googleCalendarService.getProviderSetup() : Promise.resolve(null)
+      ]);
       setGoogleSnapshot(snapshot);
+      setProviderSetup(setup);
       setSyncEnabled(snapshot.connection.syncEnabled !== false);
       setCreateMeet(snapshot.connection.createMeet !== false);
     } catch (error: any) {
@@ -54,7 +64,7 @@ export default function CalendarHub() {
     } finally {
       setGoogleLoading(false);
     }
-  }, [allowed]);
+  }, [allowed, isAdmin]);
 
   useEffect(() => {
     if (!loading && allowed) void loadGoogle();
@@ -140,6 +150,31 @@ export default function CalendarHub() {
     }
   };
 
+  const saveProviderSetup = async () => {
+    setProviderSaving(true);
+    setGoogleError('');
+    setGoogleMessage('');
+    try {
+      const next = await googleCalendarService.saveProviderSetup(providerClientId, providerClientSecret);
+      setProviderSetup(next);
+      setProviderClientId('');
+      setProviderClientSecret('');
+      setGoogleSnapshot(current => current ? { ...current, providerConfigured: next.configured } : current);
+      setGoogleMessage('Google OAuth provider configured securely. Salespeople can now connect their own Google Calendar.');
+    } catch (error: any) {
+      setGoogleError(error?.message || 'Google OAuth provider configuration could not be saved.');
+    } finally {
+      setProviderSaving(false);
+    }
+  };
+
+  const copyRedirectUri = async () => {
+    const value = googleSnapshot?.redirectUri || '';
+    if (!value) return;
+    await navigator.clipboard.writeText(value);
+    setGoogleMessage('Google OAuth redirect URI copied.');
+  };
+
   const cards = [
     {
       title: 'Today',
@@ -194,7 +229,7 @@ export default function CalendarHub() {
     ] : [])
   ];
 
-  return <div className="min-h-screen bg-slate-50 text-slate-900">
+  return <div className="profox-app-shell min-h-screen bg-[#f3f7fc] text-slate-900">
     <header className="border-b border-slate-200 bg-white px-4 py-5 sm:px-8"><div className="mx-auto flex max-w-7xl items-center gap-3"><button onClick={()=>navigate('/admin/workspace')} className="rounded-xl border border-slate-200 p-2 hover:bg-slate-50"><ArrowLeft className="h-4 w-4"/></button><div><h1 className="text-xl font-black">Calendar & Meetings</h1><p className="text-xs text-slate-500">Native scheduling, seller productivity, public booking and optional Google synchronization in one connected workspace.</p></div></div></header>
     <main className="mx-auto max-w-7xl space-y-6 p-4 sm:p-8">
       <div className="rounded-3xl border border-blue-200 bg-blue-50 p-5 sm:p-6"><div className="flex items-start gap-3"><div className="rounded-2xl bg-white p-2.5 text-[#000080] shadow-sm"><Settings2 className="h-5 w-5"/></div><div><h2 className="font-black text-[#000080]">ProFox Calendar stays in control</h2><p className="mt-1 text-sm leading-6 text-blue-800">Public booking, availability, reminders and CRM follow-up work natively. Google Calendar is an optional synchronization layer, never a dependency and never the source of ProFox meeting truth.</p></div></div></div>
@@ -216,6 +251,16 @@ export default function CalendarHub() {
 
         {googleError && <div className="mt-5 rounded-2xl border border-red-200 bg-red-50 p-4 text-xs font-semibold leading-5 text-red-700">{googleError}</div>}
         {googleMessage && <div className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-xs font-semibold leading-5 text-emerald-800">{googleMessage}</div>}
+
+        {isAdmin && <div className="mt-6 rounded-2xl border border-indigo-200 bg-indigo-50/60 p-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div><div className="flex items-center gap-2 text-xs font-black text-indigo-950"><KeyRound className="h-4 w-4"/>Admin Google provider setup</div><p className="mt-2 max-w-3xl text-[11px] leading-5 text-indigo-800">Create a Google OAuth Web application, enable Google Calendar API, and add the redirect URI below. The client secret is stored in Supabase Vault and is never returned to this page.</p></div><span className={`w-fit rounded-full px-3 py-1 text-[9px] font-black uppercase ${providerSetup?.configured || googleSnapshot?.providerConfigured ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>{providerSetup?.configured || googleSnapshot?.providerConfigured ? 'Provider ready' : 'Setup required'}</span></div>
+          <div className="mt-4 grid gap-4 lg:grid-cols-2">
+            <label className="block text-[10px] font-black uppercase tracking-wide text-indigo-900">OAuth client ID<input value={providerClientId} onChange={event=>setProviderClientId(event.target.value)} placeholder={providerSetup?.clientIdHint || '123456789.apps.googleusercontent.com'} className="mt-1.5 h-11 w-full rounded-xl border border-indigo-200 bg-white px-3 text-sm font-medium normal-case tracking-normal outline-none focus:border-[#000080]"/></label>
+            <label className="block text-[10px] font-black uppercase tracking-wide text-indigo-900">OAuth client secret<input type="password" autoComplete="new-password" value={providerClientSecret} onChange={event=>setProviderClientSecret(event.target.value)} placeholder={providerSetup?.secretStored ? 'Stored securely — leave blank to keep it' : 'Enter the Google client secret'} className="mt-1.5 h-11 w-full rounded-xl border border-indigo-200 bg-white px-3 text-sm font-medium normal-case tracking-normal outline-none focus:border-[#000080]"/></label>
+          </div>
+          <div className="mt-4 rounded-xl border border-indigo-200 bg-white p-3"><div className="text-[9px] font-black uppercase tracking-wide text-indigo-500">Authorized redirect URI</div><div className="mt-1 flex items-center gap-2"><code className="min-w-0 flex-1 break-all text-[11px] text-slate-700">{googleSnapshot?.redirectUri || 'Loading redirect URI...'}</code><button type="button" onClick={()=>void copyRedirectUri()} disabled={!googleSnapshot?.redirectUri} className="shrink-0 rounded-lg border border-slate-200 p-2 text-slate-500 hover:bg-slate-50 disabled:opacity-50" title="Copy redirect URI"><Copy className="h-4 w-4"/></button></div></div>
+          <div className="mt-4 flex flex-wrap items-center gap-3"><button type="button" onClick={()=>void saveProviderSetup()} disabled={providerSaving || (!providerSetup?.configured && (!providerClientId.trim() || !providerClientSecret.trim()))} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-[#000080] px-4 text-xs font-black text-white disabled:opacity-50">{providerSaving?<Loader2 className="h-4 w-4 animate-spin"/>:<KeyRound className="h-4 w-4"/>}Save Google provider</button><a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-indigo-200 bg-white px-4 text-xs font-black text-indigo-800"><ExternalLink className="h-4 w-4"/>Open Google Cloud credentials</a></div>
+        </div>}
 
         {!googleLoading && !connected && !reconnectRequired && <div className="mt-6 rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-5">
           <h3 className="text-sm font-black">Connect only if you want Google synchronization</h3>
