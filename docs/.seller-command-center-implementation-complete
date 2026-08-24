@@ -1,0 +1,6 @@
+Activated Seller Experience implementation is merged to main via PR #43.
+Tested feature head: 5da16ecfc6222ba58030c7e24293e971507d6c42.
+Merge commit: 13ef5656ef725e286fd14205d75bbeb12da6783c.
+CI #369 passed TypeScript check and production build on the exact tested head before merge.
+Production Seller role/profile and Calendar policy migrations were applied and rollback-only sales_rep/sales_team authorization smoke tests passed.
+Public deployment must still be verified separately before claiming the release is live to end users.

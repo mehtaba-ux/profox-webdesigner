@@ -1,0 +1,63 @@
+.profox-admin-app-embed > div {
+  min-height: calc(100vh - 72px) !important;
+}
+
+/* Keep the legacy dashboard's save-notification layer available without
+   rendering its old CMS navigation/profile chrome inside the new app shell. */
+.profox-admin-app-embed > div > header {
+  position: fixed !important;
+  top: 84px !important;
+  right: 20px !important;
+  left: auto !important;
+  z-index: 90 !important;
+  width: auto !important;
+  border: 0 !important;
+  background: transparent !important;
+  padding: 0 !important;
+  box-shadow: none !important;
+  pointer-events: none !important;
+}
+
+.profox-admin-app-embed > div > header > div:first-child,
+.profox-admin-app-embed > div > header > div:last-child > button,
+.profox-admin-app-embed > div > header > div:last-child > div:last-child {
+  display: none !important;
+}
+
+.profox-admin-app-embed > div > header > div:last-child {
+  display: flex !important;
+  justify-content: flex-end !important;
+  pointer-events: none !important;
+}
+
+.profox-admin-app-embed > div > header > div:last-child > div:not(:last-child) {
+  pointer-events: auto !important;
+}
+
+.profox-admin-app-embed > div > div > aside {
+  display: none !important;
+}
+
+.profox-admin-app-embed > div > div {
+  min-height: calc(100vh - 72px);
+  overflow: visible !important;
+}
+
+.profox-admin-app-embed > div > div > main {
+  min-width: 0;
+  width: 100%;
+  min-height: calc(100vh - 72px);
+  overflow: visible !important;
+}
+
+@media (max-width: 640px) {
+  .profox-admin-app-embed > div > header {
+    top: 76px !important;
+    right: 12px !important;
+    left: 12px !important;
+  }
+
+  .profox-admin-app-embed > div > div > main {
+    padding: 1rem !important;
+  }
+}

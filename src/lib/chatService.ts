@@ -113,7 +113,9 @@ export const addSalesRep = async (newRepData: Partial<SalesRep>): Promise<SalesR
   }
 
   const currentReps = await getSalesReps();
-  currentReps.push(newRep);
+  if (!currentReps.some(r => r.id === newRep.id)) {
+    currentReps.push(newRep);
+  }
   localStorage.setItem(LOCAL_SALES_REPS_KEY, JSON.stringify(currentReps));
 
   // Sync to CMS team_members
@@ -122,19 +124,21 @@ export const addSalesRep = async (newRepData: Partial<SalesRep>): Promise<SalesR
     if (cmsCache) {
       const cms = JSON.parse(cmsCache);
       const team = cms.team_members || [];
-      team.push({
-        id: newRep.id,
-        userId: newRep.id,
-        role: 'sales_team',
-        fullName: newRep.name,
-        title: newRep.title,
-        bio: newRep.bio || '',
-        avatar: newRep.avatar,
-        createdAt: new Date().toISOString()
-      });
-      cms.team_members = team;
-      localStorage.setItem('cms_content_cache', JSON.stringify(cms));
-      await dbProcedure.upsertContentItem('team_members', team);
+      if (!team.some((t: any) => t.id === newRep.id)) {
+        team.push({
+          id: newRep.id,
+          userId: newRep.id,
+          role: 'sales_team',
+          fullName: newRep.name,
+          title: newRep.title,
+          bio: newRep.bio || '',
+          avatar: newRep.avatar,
+          createdAt: new Date().toISOString()
+        });
+        cms.team_members = team;
+        localStorage.setItem('cms_content_cache', JSON.stringify(cms));
+        await dbProcedure.upsertContentItem('team_members', team);
+      }
     }
   } catch (e) {
     console.warn('Sync to CMS team_members error:', e);

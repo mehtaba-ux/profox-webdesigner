@@ -13,6 +13,20 @@ const PUBLIC_SHARED_SECTIONS = [
   'process_header', 'process_steps', 'ourProcess', 'globalAwards', 'globalAwardsEnabled'
 ];
 
+// Sales Catalog is the only current commercial source of truth. CMS may control only
+// the homepage package section's presentation, never package/card commercial facts.
+function sanitizeCmsSection(section: string, data: any) {
+  if (section !== 'servicePackages') return data;
+  const source = data && typeof data === 'object' && !Array.isArray(data) ? data : {};
+  return {
+    enabled: source.enabled === true,
+    title: typeof source.title === 'string' && source.title.trim() ? source.title : 'Our Services Packages',
+    subtitle: typeof source.subtitle === 'string' && source.subtitle.trim()
+      ? source.subtitle
+      : 'Choose the current ProFox package that best matches the outcome your business needs.'
+  };
+}
+
 function filterPortfolioItems(items: any[]) {
   if (!Array.isArray(items) || items.length === 0) return defaultPortfolioItems;
 
@@ -56,6 +70,9 @@ function readCachedContent() {
   try {
     const cached = localStorage.getItem(CMS_CACHE_KEY);
     const parsed = cached ? JSON.parse(cached) : {};
+    if (Object.prototype.hasOwnProperty.call(parsed, 'servicePackages')) {
+      parsed.servicePackages = sanitizeCmsSection('servicePackages', parsed.servicePackages);
+    }
     parsed.portfolio_items = filterPortfolioItems(parsed.portfolio_items);
     parsed.portfolio_categories = defaultPortfolioCategories;
     return parsed;
@@ -69,7 +86,11 @@ function readCachedContent() {
 
 function cacheContent(value: Record<string, any>) {
   try {
-    localStorage.setItem(CMS_CACHE_KEY, JSON.stringify(value));
+    const safeValue = { ...value };
+    if (Object.prototype.hasOwnProperty.call(safeValue, 'servicePackages')) {
+      safeValue.servicePackages = sanitizeCmsSection('servicePackages', safeValue.servicePackages);
+    }
+    localStorage.setItem(CMS_CACHE_KEY, JSON.stringify(safeValue));
     localStorage.setItem(CMS_CACHE_TIME_KEY, String(Date.now()));
   } catch (error) {
     console.error('Error caching CMS content', error);
@@ -114,7 +135,7 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (!error && data) {
           const newContent: Record<string, any> = {};
           data.forEach((item: any) => {
-            newContent[item.id] = item.data;
+            newContent[item.id] = sanitizeCmsSection(item.id, item.data);
           });
 
           if (!newContent.portfolio_items) {
@@ -168,7 +189,7 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           setContent((prev) => {
             const next = {
               ...prev,
-              [payload.new.id]: payload.new.data,
+              [payload.new.id]: sanitizeCmsSection(payload.new.id, payload.new.data),
             };
             cacheContent(next);
             return next;
@@ -183,7 +204,8 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [pathname]);
 
   const handleUpdate = async (section: string, data: any) => {
-    const { error } = await dbProcedure.upsertContentItem(section, data);
+    const safeData = sanitizeCmsSection(section, data);
+    const { error } = await dbProcedure.upsertContentItem(section, safeData);
     
     if (error) {
       console.error('Error updating content via stored procedure:', error);
@@ -191,7 +213,7 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     setContent((prev) => {
-      const next = { ...prev, [section]: data };
+      const next = { ...prev, [section]: safeData };
       cacheContent(next);
       return next;
     });

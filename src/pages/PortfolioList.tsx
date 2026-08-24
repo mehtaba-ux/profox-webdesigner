@@ -59,7 +59,8 @@ export default function PortfolioList() {
       category: item.category || 'Digital Solution',
       coverImage: item.coverImage || 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&q=80&w=800',
       logoText: item.client || 'CASE STUDY',
-      shortDescription: item.shortDescription || ''
+      shortDescription: item.shortDescription || '',
+      websiteUrl: item.websiteUrl
     }));
   }, [cmsPortfolioItems]);
 

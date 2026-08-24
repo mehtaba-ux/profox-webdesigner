@@ -44,10 +44,20 @@ import {
   Sparkles,
   HelpCircle,
   Hammer,
-  Award
+  Award,
+  ShieldCheck,
+  Clock,
+  ArrowRight,
+  RefreshCw,
+  LayoutGrid,
+  Calendar,
+  Receipt,
+  ListChecks,
+  BookOpen,
+  Sliders
 } from 'lucide-react';
 import { navItems, services, featuredCaseStudies, recentSuccess, articles, defaultCustomPages, defaultPortfolioItems, defaultPortfolioCategories } from '../../data';
-import { CustomPage, PortfolioItem, PortfolioCategory, Service } from '../../types';
+import { CustomPage, PortfolioItem, PortfolioCategory, Service, ROLE_LABELS, STATUS_LABELS } from '../../types';
 import PagesManager from './PagesManager';
 import PortfolioManager from './PortfolioManager';
 import BlogManager from './BlogManager';
@@ -62,7 +72,23 @@ import SalesChatInbox from './SalesChatInbox';
 import DevOnboarding from './DevOnboarding';
 import TeamManager from './TeamManager';
 import ProjectManager from './ProjectManager';
+import MyWorkDashboard from './MyWorkDashboard';
 import AwardsManager from './AwardsManager';
+import UserRoleManager from './UserRoleManager';
+import RecruitmentDashboard from './RecruitmentDashboard';
+import CRMLeads from './CRMLeads';
+import CRMPipeline from './CRMPipeline';
+import CRMActivities from './CRMActivities';
+import SalesCatalog from './SalesCatalog';
+import QuotationsManager from './QuotationsManager';
+import PaymentsManager from './PaymentsManager';
+import ClientsManager from './ClientsManager';
+import OnboardingManagement from './OnboardingManagement';
+import ConfigurationCenter from './ConfigurationCenter';
+import MyCommissions from './MyCommissions';
+import AdminCommissionManager from './AdminCommissionManager';
+import MyTraining from '../onboarding/MyTraining';
+import TrainingLibrary from '../onboarding/TrainingLibrary';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth, UserRole } from '../../lib/AuthContext';
 import { getPagePath, isServicePage } from '../../lib/seoUrls';
@@ -105,19 +131,43 @@ export default function AdminDashboard() {
 function AdminDashboardInner() {
   const { confirm: confirmAction } = useConfirmContext();
   const { content, updateSection, loading } = useCMS();
-  const { user, role, isAdminOrEditor, setRoleForUser, logout, loading: authChecking } = useAuth();
+  const { 
+    user, 
+    profile, 
+    role, 
+    status, 
+    isAdmin, 
+    isActive, 
+    isOnboarding,
+    isAdminOrEditor, 
+    logout, 
+    refreshProfile, 
+    loading: authChecking 
+  } = useAuth();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   
-  const [activeTab, setActiveTab] = useState<'pages' | 'blog' | 'portfolio' | 'media' | 'homepageSections' | 'header' | 'servicePackages' | 'footer' | 'templates' | 'siteSettings' | 'feedback' | 'leads' | 'team' | 'projects' | 'myProfile' | 'inbox' | 'awards'>(
-    (searchParams.get('tab') as any) || (role === 'developer_designer' ? 'portfolio' : 'pages')
+  const [activeTab, setActiveTab] = useState<'pages' | 'blog' | 'portfolio' | 'media' | 'homepageSections' | 'header' | 'servicePackages' | 'footer' | 'templates' | 'siteSettings' | 'feedback' | 'leads' | 'crm_leads' | 'pipeline' | 'activities' | 'recruitment' | 'team' | 'projects' | 'myWork' | 'myProfile' | 'inbox' | 'awards' | 'quotations' | 'payments' | 'clients' | 'sales_catalog' | 'my_commissions' | 'admin_commissions' | 'onboarding' | 'training' | 'training_library' | 'configuration'>(
+    isOnboarding ? 'training' :
+    ((searchParams.get('tab') as any) || 
+     (role === 'developer' || role === 'developer_designer' || role === 'uiux_designer' || role === 'content_writer' || role === 'qa' ? 'myWork' : 
+      role === 'sales' || role === 'sales_rep' || role === 'sales_team' ? (isOnboarding ? 'training' : 'pipeline') : 'pages'))
   );
+
+  const [tabMetadata, setTabMetadata] = useState<any>(null);
 
   const isDarkMode = false;
 
   React.useEffect(() => {
     document.documentElement.classList.toggle('dark', isDarkMode);
   }, [isDarkMode]);
+
+  React.useEffect(() => {
+    if (isOnboarding && activeTab !== 'training') {
+      setActiveTab('training');
+      setSearchParams({ tab: 'training' });
+    }
+  }, [isOnboarding, activeTab, setSearchParams]);
 
   const toggleDarkMode = () => {};
 
@@ -132,8 +182,12 @@ function AdminDashboardInner() {
   const textHeading = isDarkMode ? 'text-slate-900' : 'text-slate-900';
   const borderCol = isDarkMode ? 'border-slate-200/80' : 'border-slate-200';
 
-  const handleTabChange = (tab: typeof activeTab) => {
+  const handleTabChange = (tab: any, metadata?: any) => {
+    if (isOnboarding && tab !== 'training' && tab !== 'training_library') {
+      return;
+    }
     setActiveTab(tab);
+    setTabMetadata(metadata || null);
     setSearchParams({ tab });
   };
 
@@ -141,15 +195,17 @@ function AdminDashboardInner() {
 
   // Supabase Auth Form State
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
-  const [selectedRole, setSelectedRole] = useState<UserRole>('admin');
+  const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [authError, setAuthError] = useState('');
+  const [registerSuccessMsg, setRegisterSuccessMsg] = useState('');
   const [authLoading, setAuthLoading] = useState(false);
 
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError('');
+    setRegisterSuccessMsg('');
     setAuthLoading(true);
     try {
       if (authMode === 'login') {
@@ -157,23 +213,60 @@ function AdminDashboardInner() {
           email,
           password,
         });
-        if (error) throw error;
+        if (error) {
+          if (error.message.includes('Email not confirmed')) {
+            setAuthError('Your email address has not been confirmed yet. Please check your inbox for the verification link.');
+            return;
+          }
+          throw error;
+        }
+        await refreshProfile();
       } else {
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
             data: {
-              role: selectedRole
+              full_name: fullName
             }
           }
         });
         if (error) throw error;
+        setRegisterSuccessMsg('Account registered successfully! Please check your email to confirm your account before signing in.');
       }
-      setRoleForUser(selectedRole);
     } catch (err: any) {
       console.error(err);
-      setAuthError(err.message || 'Authentication failed.');
+      let message = err.message || 'Authentication failed.';
+      
+      // Handle rate limiting message specifically
+      if (message.includes('security purposes')) {
+        const seconds = message.match(/\d+/);
+        message = `Too many attempts. For security, please wait ${seconds ? seconds[0] : 'a moment'} before trying again.`;
+      }
+      
+      setAuthError(message);
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const handleResendVerification = async () => {
+    if (!email) {
+      setAuthError('Please enter your email address first.');
+      return;
+    }
+    setAuthLoading(true);
+    setAuthError('');
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: email,
+      });
+      if (error) throw error;
+      setRegisterSuccessMsg('Verification email has been resent. Please check your inbox.');
+    } catch (err: any) {
+      console.error(err);
+      setAuthError(err.message || 'Failed to resend verification email.');
     } finally {
       setAuthLoading(false);
     }
@@ -181,6 +274,7 @@ function AdminDashboardInner() {
 
   const handleGoogleAuth = async () => {
     setAuthError('');
+    setRegisterSuccessMsg('');
     setAuthLoading(true);
     try {
       const { error } = await supabase.auth.signInWithOAuth({
@@ -502,16 +596,8 @@ function AdminDashboardInner() {
   }
 
   // Determine whether current user is developer_designer or sales_team
-  const userEmailLower = user?.email?.toLowerCase() || '';
-  const isDevUser = role === 'developer_designer' || 
-                    user?.user_metadata?.role === 'developer_designer' || 
-                    userEmailLower.includes('webdesigner') || 
-                    userEmailLower.includes('designer') || 
-                    userEmailLower.includes('developer');
-  
-  const isSalesUser = role === 'sales_team' || 
-                      user?.user_metadata?.role === 'sales_team' || 
-                      userEmailLower.includes('sales');
+  const isDevUser = role === 'developer' || role === 'developer_designer';
+  const isSalesUser = role === 'sales' || role === 'sales_rep' || role === 'sales_team';
 
   // If user is not authenticated, show Login / Register screen
   if (!user) {
@@ -551,80 +637,73 @@ function AdminDashboardInner() {
           <div className={`flex p-1 rounded-xl mb-6 border ${
             isDarkMode ? 'bg-[#080915] border-slate-200/80' : 'bg-slate-100/80 border-slate-200'
           }`}>
-            <button onClick={() => { setAuthMode('login'); setAuthError(''); }}
-              className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
+            <button onClick={() => { setAuthMode('login'); setAuthError(''); setRegisterSuccessMsg(''); }}
+              className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
                 authMode === 'login' 
                   ? 'bg-[#000080] text-white shadow' 
-                  : `${textMuted} hover:text-slate-800 dark:hover:text-slate-900`
+                  : `${textMuted} hover:text-slate-800`
               }`}>
               Sign In
             </button>
-            <button onClick={() => { setAuthMode('register'); setAuthError(''); }}
-              className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
+            <button onClick={() => { setAuthMode('register'); setAuthError(''); setRegisterSuccessMsg(''); }}
+              className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
                 authMode === 'register' 
                   ? 'bg-[#000080] text-white shadow' 
-                  : `${textMuted} hover:text-slate-800 dark:hover:text-slate-900`
+                  : `${textMuted} hover:text-slate-800`
               }`}>
               Create Account
             </button>
           </div>
 
-          {/* Role Selection Selector */}
-          <div className={`mb-6 p-3.5 rounded-xl border space-y-2.5 ${
-            isDarkMode ? 'bg-[#080915] border-slate-200/80' : 'bg-slate-50 border-slate-200'
-          }`}>
-            <label className={`block text-[10px] font-bold uppercase tracking-wider ${textMuted}`}>
-              Select Auth Workspace:
-            </label>
-            <div className="grid grid-cols-2 gap-2">
-              <button type="button"
-                onClick={() => setSelectedRole('admin')}
-                className={`px-3 py-2 rounded-lg text-xs font-bold text-left transition-all border flex items-center gap-1.5 ${
-                  selectedRole === 'admin'
-                    ? 'bg-[#000080]/15 text-[#000080] dark:text-blue-300 border-[#000080]/50 shadow-sm'
-                    : `bg-transparent ${textMuted} border-transparent hover:border-slate-300 dark:hover:border-slate-200`
-                }`}>
-                <span>👑</span> Admin
-              </button>
-              <button type="button"
-                onClick={() => setSelectedRole('site_manager')}
-                className={`px-3 py-2 rounded-lg text-xs font-bold text-left transition-all border flex items-center gap-1.5 ${
-                  selectedRole === 'site_manager'
-                    ? 'bg-[#000080]/15 text-[#000080] dark:text-blue-300 border-[#000080]/50 shadow-sm'
-                    : `bg-transparent ${textMuted} border-transparent hover:border-slate-300 dark:hover:border-slate-200`
-                }`}>
-                <span>🛠️</span> Site Manager
-              </button>
-              <button type="button"
-                onClick={() => setSelectedRole('editor')}
-                className={`px-3 py-2 rounded-lg text-xs font-bold text-left transition-all border flex items-center gap-1.5 ${
-                  selectedRole === 'editor'
-                    ? 'bg-[#000080]/15 text-[#000080] dark:text-blue-300 border-[#000080]/50 shadow-sm'
-                    : `bg-transparent ${textMuted} border-transparent hover:border-slate-300 dark:hover:border-slate-200`
-                }`}>
-                <span>📝</span> Editor
-              </button>
-              <button type="button"
-                onClick={() => setSelectedRole('customer')}
-                className={`px-3 py-2 rounded-lg text-xs font-bold text-left transition-all border flex items-center gap-1.5 ${
-                  selectedRole === 'customer'
-                    ? 'bg-[#FF0E0E]/15 text-[#FF0E0E] border-[#FF0E0E]/45 shadow-sm'
-                    : `bg-transparent ${textMuted} border-transparent hover:border-slate-300 dark:hover:border-slate-200`
-                }`}>
-                <span>👤</span> Customer
+          {registerSuccessMsg && (
+            <div className="mb-5 p-3.5 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 text-xs font-medium space-y-2">
+              <div className="flex items-center gap-1.5 font-bold">
+                <Check className="w-4 h-4 text-emerald-600 shrink-0" />
+                Registration Submitted
+              </div>
+              <p className="text-[11px] leading-relaxed text-emerald-700">{registerSuccessMsg}</p>
+              <button
+                onClick={() => { setAuthMode('login'); setRegisterSuccessMsg(''); }}
+                className="text-[11px] font-bold text-emerald-900 underline cursor-pointer"
+              >
+                Proceed to Sign In
               </button>
             </div>
-          </div>
+          )}
 
           {authError && (
-            <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-xs font-medium">
-              {authError}
+            <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-500 text-xs font-medium space-y-2">
+              <p>{authError}</p>
+              {authError.includes('not been confirmed') && (
+                <button
+                  type="button"
+                  onClick={handleResendVerification}
+                  disabled={authLoading}
+                  className="text-[10px] font-bold uppercase tracking-wider text-red-600 hover:text-red-700 underline cursor-pointer disabled:opacity-50"
+                >
+                  {authLoading ? 'Sending...' : 'Resend Verification Email'}
+                </button>
+              )}
             </div>
           )}
 
           <form onSubmit={handleEmailAuth} className="space-y-4">
+            {authMode === 'register' && (
+              <div>
+                <label className={`block text-xs font-bold mb-1.5 ${textHeading}`}>Full Name *</label>
+                <input
+                  type="text"
+                  required
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  placeholder="e.g. Alex Morgan"
+                  className={`w-full border rounded-lg px-3.5 py-2.5 text-sm outline-none transition-all ${inputBg}`}
+                />
+              </div>
+            )}
+
             <div>
-              <label className={`block text-xs font-bold mb-1.5 ${textHeading}`}>Email Address</label>
+              <label className={`block text-xs font-bold mb-1.5 ${textHeading}`}>Email Address *</label>
               <div className="relative">
                 <Mail className="w-4 h-4 text-slate-500 absolute left-3 top-3.5" />
                 <input
@@ -632,14 +711,14 @@ function AdminDashboardInner() {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="admin@profox-webdesigner.com"
+                  placeholder="user@profox-webdesigner.com"
                   className={`w-full border rounded-lg pl-10 pr-4 py-2.5 text-sm outline-none transition-all ${inputBg}`}
                 />
               </div>
             </div>
 
             <div>
-              <label className={`block text-xs font-bold mb-1.5 ${textHeading}`}>Password</label>
+              <label className={`block text-xs font-bold mb-1.5 ${textHeading}`}>Password *</label>
               <div className="relative">
                 <Key className="w-4 h-4 text-slate-500 absolute left-3 top-3.5" />
                 <input
@@ -653,6 +732,15 @@ function AdminDashboardInner() {
               </div>
             </div>
 
+            {authMode === 'register' && (
+              <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl text-[11px] text-blue-900 leading-relaxed">
+                <p className="font-semibold flex items-center gap-1 mb-0.5">
+                  <ShieldCheck className="w-3.5 h-3.5 text-blue-700" /> Security & Authorization Policy:
+                </p>
+                All new accounts are created with <strong>Pending</strong> status and require administrator approval before access to internal workspaces is activated.
+              </div>
+            )}
+
             <button 
               type="submit"
               disabled={authLoading}
@@ -661,11 +749,11 @@ function AdminDashboardInner() {
                 <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
               ) : authMode === 'login' ? (
                 <>
-                  <LogIn className="w-4 h-4" /> Sign In as {selectedRole.replace('_', ' ').toUpperCase()}
+                  <LogIn className="w-4 h-4" /> Sign In
                 </>
               ) : (
                 <>
-                  <UserPlus className="w-4 h-4" /> Create {selectedRole.replace('_', ' ').toUpperCase()} Account
+                  <UserPlus className="w-4 h-4" /> Request Account Registration
                 </>
               )}
             </button>
@@ -688,7 +776,7 @@ function AdminDashboardInner() {
                 ? 'bg-[#080915] text-slate-800 border-slate-200 hover:bg-white' 
                 : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
             }`}
->
+          >
             <svg className="w-4 h-4" viewBox="0 0 24 24">
               <path fill="#EA4335" d="M12 5c1.6 0 3 .6 4.1 1.6l3.1-3.1C17.3 1.7 14.8 1 12 1 7.5 1 3.7 3.6 1.9 7.3l3.7 2.9C6.5 7.2 9 5 12 5z"/>
               <path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.7-.2-2.3H12v4.6h6.5c-.3 1.5-1.1 2.8-2.4 3.7l3.7 2.9c2.2-2 3.7-5 3.7-8.9z"/>
@@ -711,32 +799,53 @@ function AdminDashboardInner() {
     );
   }
 
-  // If logged in as Customer (or non-admin/site_manager/editor role)
-  if (!isAdminOrEditor) {
+  // 1. Pending Approval State Screen
+  if (profile?.status === 'pending' || profile?.role === 'pending' || (!profile && status === 'pending')) {
     return (
-      <div className="min-h-screen bg-slate-50 text-slate-100 flex items-center justify-center p-6 font-sans">
-        <div className="max-w-md w-full bg-white border border-amber-500/30 rounded-2xl p-8 shadow-2xl text-center space-y-6">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-400">
-            <ShieldAlert className="w-8 h-8" />
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6 font-sans">
+        <div className="max-w-md w-full bg-white border border-amber-300 rounded-3xl p-8 shadow-xl text-center space-y-6">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-amber-50 text-amber-600 border border-amber-200">
+            <Clock className="w-8 h-8 animate-pulse" />
           </div>
 
           <div className="space-y-2">
-            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Access Restricted</h1>
-            <p className="text-xs text-amber-300 bg-amber-500/10 border border-amber-500/20 px-3 py-1.5 rounded-lg inline-block font-mono">
-              Logged in as Customer ({user.email})
+            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Awaiting Administrator Approval</h1>
+            <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 px-3 py-1 rounded-full inline-block font-mono font-bold">
+              Status: Pending Verification
             </p>
           </div>
 
-          <p className="text-sm text-slate-500 leading-relaxed">
-            Customer accounts do not have administrative permissions. Editing features, Theme Customizer, 1-Click Front-End Edit, and CMS management are hidden and restricted to <strong>Admin</strong>, <strong>Site Manager</strong>, or <strong>Editor</strong> accounts.
+          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-left text-xs space-y-2 text-slate-600">
+            <div className="flex justify-between border-b border-slate-200 pb-2">
+              <span className="font-semibold text-slate-500">Name:</span>
+              <span className="font-bold text-slate-900">{profile?.fullName || user.user_metadata?.full_name || 'ProFox Team Member'}</span>
+            </div>
+            <div className="flex justify-between border-b border-slate-200 pb-2">
+              <span className="font-semibold text-slate-500">Email:</span>
+              <span className="font-bold text-slate-900">{user.email}</span>
+            </div>
+            <div className="flex justify-between border-b border-slate-200 pb-2">
+              <span className="font-semibold text-slate-500">Assigned Role:</span>
+              <span className="font-bold text-amber-600">Pending Authorization</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="font-semibold text-slate-500">Department:</span>
+              <span className="font-bold text-slate-700">{profile?.department || 'General'}</span>
+            </div>
+          </div>
+
+          <p className="text-xs text-slate-500 leading-relaxed">
+            Your ProFox account has been registered and is awaiting verification from the system administrator. Once approved, your assigned role and workspace permissions will be activated automatically.
           </p>
 
-          <div className="pt-2 space-y-3">
+          <div className="pt-2 space-y-2.5">
             <button 
-              onClick={() => setRoleForUser('admin')}
-              className="w-full py-2.5 bg-[#000080] hover:bg-[#000066] text-white font-bold rounded-xl text-xs transition-all shadow flex items-center justify-center gap-2 cursor-pointer"
+              onClick={async () => {
+                await refreshProfile();
+              }}
+              className="w-full py-3 bg-[#000080] hover:bg-[#000066] text-white font-bold rounded-xl text-xs transition-all shadow flex items-center justify-center gap-2 cursor-pointer"
             >
-              <UserCheck className="w-4 h-4" /> Switch Account Role to Admin
+              <RefreshCw className="w-4 h-4" /> Check / Refresh Status
             </button>
             <button 
               onClick={() => navigate('/')}
@@ -746,9 +855,93 @@ function AdminDashboardInner() {
             </button>
             <button 
               onClick={handleSignOut}
-              className="w-full py-2.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 font-semibold rounded-xl text-xs transition-all border border-red-500/20 flex items-center justify-center gap-2"
->
-              <LogOut className="w-4 h-4" /> Sign Out
+              className="w-full py-2.5 text-slate-400 hover:text-red-600 text-xs font-semibold transition-colors flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <LogOut className="w-3.5 h-3.5" /> Sign Out
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 2. Inactive State Screen
+  if (profile?.status === 'inactive' || status === 'inactive') {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6 font-sans">
+        <div className="max-w-md w-full bg-white border border-red-200 rounded-3xl p-8 shadow-xl text-center space-y-6">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-red-50 text-red-600 border border-red-200">
+            <UserX className="w-8 h-8" />
+          </div>
+
+          <div className="space-y-2">
+            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Account Deactivated</h1>
+            <p className="text-xs text-red-700 bg-red-50 border border-red-200 px-3 py-1 rounded-full inline-block font-mono font-bold">
+              Status: Inactive
+            </p>
+          </div>
+
+          <p className="text-xs text-slate-500 leading-relaxed">
+            Your ProFox account is currently deactivated. Please contact your system administrator or project manager to reactivate your workspace access.
+          </p>
+
+          <div className="pt-2 space-y-2.5">
+            <button 
+              onClick={() => navigate('/')}
+              className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <ArrowLeft className="w-4 h-4" /> Return to Website
+            </button>
+            <button 
+              onClick={handleSignOut}
+              className="w-full py-2.5 bg-red-50 hover:bg-red-100 text-red-600 font-bold rounded-xl text-xs transition-all border border-red-200 flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <LogOut className="w-3.5 h-3.5" /> Sign Out
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 3. Customer / Restricted State Screen
+  if (!isAdminOrEditor) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6 font-sans">
+        <div className="max-w-md w-full bg-white border border-amber-200 rounded-3xl p-8 shadow-xl text-center space-y-6">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-amber-50 text-amber-600 border border-amber-200">
+            <ShieldAlert className="w-8 h-8" />
+          </div>
+
+          <div className="space-y-2">
+            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Access Restricted</h1>
+            <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 px-3 py-1 rounded-full inline-block font-mono font-bold">
+              Account Role: {ROLE_LABELS[role || 'customer'] || 'Customer'}
+            </p>
+          </div>
+
+          <p className="text-xs text-slate-500 leading-relaxed">
+            Customer and non-staff accounts do not have administrative permissions. CMS management, visual customizations, and CRM tools are restricted to authorized ProFox team members.
+          </p>
+
+          <div className="pt-2 space-y-2.5">
+            <button 
+              onClick={() => navigate('/client-portal')}
+              className="w-full py-3 bg-[#000080] hover:bg-[#000066] text-white font-bold rounded-xl text-xs transition-all shadow flex items-center justify-center gap-2 cursor-pointer"
+            >
+              Go to Client Portal <ArrowRight className="w-4 h-4" />
+            </button>
+            <button 
+              onClick={() => navigate('/')}
+              className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <ArrowLeft className="w-4 h-4" /> Return to Website
+            </button>
+            <button 
+              onClick={handleSignOut}
+              className="w-full py-2.5 text-slate-400 hover:text-red-600 text-xs font-semibold transition-colors flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <LogOut className="w-3.5 h-3.5" /> Sign Out
             </button>
           </div>
         </div>
@@ -779,7 +972,7 @@ function AdminDashboardInner() {
             {/* Development Mode Quick Indicator */}
             {content.siteSettings?.maintenanceMode?.enabled ? (
               <button 
-                onClick={() => setActiveTab('settings')}
+                onClick={() => setActiveTab('siteSettings')}
                 className="text-[10px] bg-amber-500/10 text-amber-600 font-mono px-2 py-0.5 rounded border border-amber-500/20 font-bold uppercase tracking-wider flex items-center gap-1 cursor-pointer hover:bg-amber-500/20 transition-all"
                 title="Click to view Settings"
               >
@@ -788,7 +981,7 @@ function AdminDashboardInner() {
               </button>
             ) : (
               <button 
-                onClick={() => setActiveTab('settings')}
+                onClick={() => setActiveTab('siteSettings')}
                 className="text-[10px] bg-emerald-500/10 text-emerald-600 font-mono px-2 py-0.5 rounded border border-emerald-500/20 font-bold uppercase tracking-wider flex items-center gap-1.5 cursor-pointer hover:bg-emerald-500/20 transition-all"
                 title="Click to view Settings"
               >
@@ -801,7 +994,7 @@ function AdminDashboardInner() {
 
         <div className="flex items-center gap-3">
           {savedMsg && (
-            <div className="flex items-center gap-2 text-[#000080] dark:text-[#000080] bg-[#000080]/10 border border-[#000080]/20 px-3.5 py-1.5 rounded-lg text-xs font-bold shadow-sm animate-in fade-in duration-200">
+            <div className="flex items-center gap-2 text-[#000080] bg-[#000080]/10 border border-[#000080]/20 px-3.5 py-1.5 rounded-lg text-xs font-bold shadow-sm animate-in fade-in duration-200">
               <Check className="w-4 h-4 text-[#000080]" /> {savedMsg}
             </div>
           )}
@@ -819,33 +1012,30 @@ function AdminDashboardInner() {
             {isDarkMode ? <Sun className="w-4.5 h-4.5"  /> : <Moon className="w-4.5 h-4.5" />}
           </button>
 
-          {/* User Role Switcher Dropdown & Sign out */}
+          {/* User Profile Badge & Secure Sign out */}
           <div className={`flex items-center gap-3 pl-3 border-l ${borderCol}`}>
-            <div className="relative">
-              <select
-                value={role || 'admin'}
-                onChange={(e) => setRoleForUser(e.target.value as UserRole)}
-                className={`text-xs font-bold px-2.5 py-1.5 rounded-lg border cursor-pointer focus:outline-none capitalize transition-all ${
-                  isDarkMode 
-                    ? 'bg-slate-100 text-blue-300 border-slate-300 focus:border-[#FF0E0E]' 
-                    : 'bg-white text-[#000080] border-slate-200 focus:border-[#000080] shadow-sm'
-                }`}
-                title="Switch Active Auth Role">
-                <option value="admin">👑 Admin</option>
-                <option value="site_manager">🛠️ Site Manager</option>
-                <option value="editor">📝 Editor</option>
-                <option value="customer">👤 Customer (Restricted)</option>
-              </select>
-            </div>
-
-            <div className="text-right text-xs hidden md:block">
-              <div className={`font-bold max-w-[150px] truncate ${textHeading}`}>{user.email || 'Admin'}</div>
-              <div className="text-[#FF0E0E] text-[10px] font-mono uppercase tracking-wider font-bold">Supabase Auth</div>
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-xl bg-blue-50 border border-blue-200 text-[#000080] flex items-center justify-center font-bold text-xs uppercase shadow-sm">
+                {(profile?.fullName || user.email || 'U')[0]}
+              </div>
+              <div className="text-right text-xs hidden md:block">
+                <div className={`font-bold max-w-[160px] truncate ${textHeading}`}>
+                  {profile?.fullName || user.email?.split('@')[0]}
+                </div>
+                <div className="flex items-center gap-1.5 justify-end">
+                  <span className="text-[10px] font-bold text-[#000080] bg-blue-50 border border-blue-200 px-1.5 py-0.2 rounded">
+                    {ROLE_LABELS[role || 'admin'] || role}
+                  </span>
+                  <span className="text-slate-400 text-[10px]">
+                    {profile?.department || 'Staff'}
+                  </span>
+                </div>
+              </div>
             </div>
 
             <button 
               onClick={handleSignOut}
-              className="p-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 dark:text-red-400 rounded-lg border border-red-500/20 transition-colors cursor-pointer"
+              className="p-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg border border-red-200 transition-colors cursor-pointer"
               title="Sign Out">
               <LogOut className="w-4 h-4" />
             </button>
@@ -857,12 +1047,42 @@ function AdminDashboardInner() {
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar */}
         <aside className={`w-64 ${sidebarBg} border-r p-4 flex flex-col gap-2 shrink-0 transition-colors duration-200`}>
-          <div className="px-3 py-2 text-[10px] font-bold text-[#FF0E0E] uppercase tracking-widest flex items-center justify-between">
-            <span>WordPress Engine</span>
-            <span className="bg-[#FF0E0E]/10 text-[#FF0E0E] text-[9px] px-2 py-0.5 rounded font-bold border border-[#FF0E0E]/20">New</span>
-          </div>
+          {isOnboarding ? (
+            <>
+              <div className="px-3 py-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                <BookOpen className="w-3.5 h-3.5 text-[#000080]" /> Training
+              </div>
 
-          <button onClick={() => handleTabChange('pages')}
+              <button onClick={() => handleTabChange('training')}
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  activeTab === 'training' 
+                    ? 'bg-[#000080] text-white shadow shadow-blue-900/10' 
+                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                }`}>
+                <div className="flex items-center gap-2.5">
+                  <BookOpen className="w-4 h-4" /> My Training
+                </div>
+              </button>
+
+              <button onClick={() => handleTabChange('training_library')}
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  activeTab === 'training_library' 
+                    ? 'bg-[#000080] text-white shadow shadow-blue-900/10' 
+                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                }`}>
+                <div className="flex items-center gap-2.5">
+                  <BookOpen className="w-4 h-4 text-purple-600" /> Training Library
+                </div>
+              </button>
+            </>
+          ) : (
+            <>
+              <div className="px-3 py-2 text-[10px] font-bold text-[#FF0E0E] uppercase tracking-widest flex items-center justify-between">
+                <span>WordPress Engine</span>
+                <span className="bg-[#FF0E0E]/10 text-[#FF0E0E] text-[9px] px-2 py-0.5 rounded font-bold border border-[#FF0E0E]/20">New</span>
+              </div>
+
+              <button onClick={() => handleTabChange('pages')}
             className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
               activeTab === 'pages' 
                 ? 'bg-[#000080] text-white shadow shadow-blue-900/10' 
@@ -899,7 +1119,6 @@ function AdminDashboardInner() {
             </div>
           </button>
 
-
           <button onClick={() => handleTabChange('leads')}
             className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
               activeTab === 'leads' 
@@ -907,7 +1126,7 @@ function AdminDashboardInner() {
                 : `${isDarkMode ? 'text-slate-500 hover:bg-slate-100/50 hover:text-slate-800' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'}`
             }`}>
             <div className="flex items-center gap-2.5">
-              <Users className="w-4 h-4" /> CRM Leads
+              <MessageSquare className="w-4 h-4" /> Form Inquiries
             </div>
           </button>
 
@@ -967,8 +1186,13 @@ function AdminDashboardInner() {
             </button>
           )}
 
-          {!isDevUser && !isSalesUser && role === 'admin' && (
+          {/* DELIVERY SECTION */}
+          {(isAdmin || role === 'project_manager' || role === 'site_manager' || role === 'content_writer' || role === 'uiux_designer' || role === 'developer' || role === 'developer_designer' || role === 'qa' || isSalesUser) && (
             <>
+              <div className="mt-4 px-3 py-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                <Briefcase className="w-3.5 h-3.5 text-[#000080]" /> Delivery
+              </div>
+
               <button onClick={() => handleTabChange('projects')}
                 className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                   activeTab === 'projects' 
@@ -979,6 +1203,183 @@ function AdminDashboardInner() {
                   <Briefcase className="w-4 h-4" /> Client Projects
                 </div>
               </button>
+
+              {(isAdmin || role === 'project_manager' || role === 'site_manager' || role === 'content_writer' || role === 'uiux_designer' || role === 'developer' || role === 'developer_designer' || role === 'qa') && (
+                <button onClick={() => handleTabChange('myWork')}
+                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    activeTab === 'myWork' 
+                      ? 'bg-[#000080] text-white shadow shadow-blue-900/10' 
+                      : `${isDarkMode ? 'text-slate-700 hover:bg-slate-100/80 hover:text-slate-900' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'}`
+                  }`}>
+                  <div className="flex items-center gap-2.5">
+                    <ListChecks className="w-4 h-4" /> My Work
+                  </div>
+                </button>
+              )}
+            </>
+          )}
+
+          {isAdmin && (
+            <>
+              <div className="mt-4 px-3 py-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                <Users className="w-3 h-3" /> People
+              </div>
+
+              <button onClick={() => handleTabChange('recruitment')}
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  activeTab === 'recruitment' 
+                    ? 'bg-[#000080] text-white shadow shadow-blue-900/10' 
+                    : `${isDarkMode ? 'text-slate-700 hover:bg-slate-100/80 hover:text-slate-900' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'}`
+                }`}>
+                <div className="flex items-center gap-2.5">
+                  <Briefcase className="w-4 h-4" /> Recruitment
+                </div>
+              </button>
+
+              <button onClick={() => handleTabChange('onboarding')}
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  activeTab === 'onboarding' 
+                    ? 'bg-[#000080] text-white shadow shadow-blue-900/10' 
+                    : `${isDarkMode ? 'text-slate-700 hover:bg-slate-100/80 hover:text-slate-900' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'}`
+                }`}>
+                <div className="flex items-center gap-2.5">
+                  <Award className="w-4 h-4" /> Onboarding Mgt
+                </div>
+              </button>
+            </>
+          )}
+
+          {isSalesUser && isOnboarding && (
+            <>
+              <div className="mt-4 px-3 py-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                <Award className="w-3 h-3" /> Training
+              </div>
+
+              <button onClick={() => handleTabChange('training')}
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  activeTab === 'training' 
+                    ? 'bg-[#000080] text-white shadow shadow-blue-900/10' 
+                    : `${isDarkMode ? 'text-slate-700 hover:bg-slate-100/80 hover:text-slate-900' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'}`
+                }`}>
+                <div className="flex items-center gap-2.5">
+                  <BookOpen className="w-4 h-4" /> My Training
+                </div>
+              </button>
+            </>
+          )}
+
+          {(isAdmin || (isSalesUser && status === 'active')) && isActive && (
+            <>
+              <div className="mt-4 px-3 py-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                <DollarSign className="w-3 h-3" /> Sales
+              </div>
+
+              <button onClick={() => handleTabChange('training_library')}
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  activeTab === 'training_library' 
+                    ? 'bg-[#000080] text-white shadow shadow-blue-900/10' 
+                    : `${isDarkMode ? 'text-slate-700 hover:bg-slate-100/80 hover:text-slate-900' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'}`
+                }`}>
+                <div className="flex items-center gap-2.5">
+                  <BookOpen className="w-4 h-4 text-purple-600" /> Training Library
+                </div>
+              </button>
+
+              <button onClick={() => handleTabChange('crm_leads')}
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  activeTab === 'crm_leads' 
+                    ? 'bg-[#000080] text-white shadow shadow-blue-900/10' 
+                    : `${isDarkMode ? 'text-slate-700 hover:bg-slate-100/80 hover:text-slate-900' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'}`
+                }`}>
+                <div className="flex items-center gap-2.5">
+                  <Users className="w-4 h-4" /> Leads
+                </div>
+              </button>
+
+              <button onClick={() => handleTabChange('pipeline')}
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  activeTab === 'pipeline' 
+                    ? 'bg-[#000080] text-white shadow shadow-blue-900/10' 
+                    : `${isDarkMode ? 'text-slate-700 hover:bg-slate-100/80 hover:text-slate-900' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'}`
+                }`}>
+                <div className="flex items-center gap-2.5">
+                  <LayoutGrid className="w-4 h-4" /> Pipeline
+                </div>
+              </button>
+
+              <button onClick={() => handleTabChange('activities')}
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  activeTab === 'activities' 
+                    ? 'bg-[#000080] text-white shadow shadow-blue-900/10' 
+                    : `${isDarkMode ? 'text-slate-700 hover:bg-slate-100/80 hover:text-slate-900' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'}`
+                }`}>
+                <div className="flex items-center gap-2.5">
+                  <Calendar className="w-4 h-4" /> My Activities
+                </div>
+              </button>
+
+              <button onClick={() => handleTabChange('quotations')}
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  activeTab === 'quotations' 
+                    ? 'bg-[#000080] text-white shadow shadow-blue-900/10' 
+                    : `${isDarkMode ? 'text-slate-700 hover:bg-slate-100/80 hover:text-slate-900' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'}`
+                }`}>
+                <div className="flex items-center gap-2.5">
+                  <Receipt className="w-4 h-4" /> Quotations
+                </div>
+              </button>
+
+              <button onClick={() => handleTabChange('payments')}
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  activeTab === 'payments' 
+                    ? 'bg-[#000080] text-white shadow shadow-blue-900/10' 
+                    : `${isDarkMode ? 'text-slate-700 hover:bg-slate-100/80 hover:text-slate-900' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'}`
+                }`}>
+                <div className="flex items-center gap-2.5">
+                  <DollarSign className="w-4 h-4" /> Payments
+                </div>
+              </button>
+
+              <button onClick={() => handleTabChange('clients')}
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  activeTab === 'clients' 
+                    ? 'bg-[#000080] text-white shadow shadow-blue-900/10' 
+                    : `${isDarkMode ? 'text-slate-700 hover:bg-slate-100/80 hover:text-slate-900' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'}`
+                }`}>
+                <div className="flex items-center gap-2.5">
+                  <Users className="w-4 h-4" /> Clients
+                </div>
+              </button>
+
+              <button onClick={() => handleTabChange('sales_catalog')}
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  activeTab === 'sales_catalog' 
+                    ? 'bg-[#000080] text-white shadow shadow-blue-900/10' 
+                    : `${isDarkMode ? 'text-slate-700 hover:bg-slate-100/80 hover:text-slate-900' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'}`
+                }`}>
+                <div className="flex items-center gap-2.5">
+                  <ListChecks className="w-4 h-4" /> Sales Catalog
+                </div>
+              </button>
+
+              <button onClick={() => handleTabChange('my_commissions')}
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  activeTab === 'my_commissions' 
+                    ? 'bg-[#000080] text-white shadow shadow-blue-900/10' 
+                    : `${isDarkMode ? 'text-slate-700 hover:bg-slate-100/80 hover:text-slate-900' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'}`
+                }`}>
+                <div className="flex items-center gap-2.5">
+                  <Award className="w-4 h-4 text-emerald-500" /> My Commissions
+                </div>
+                <span className="text-[9px] bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 px-1.5 py-0.5 rounded font-bold uppercase">
+                  Payouts
+                </span>
+              </button>
+            </>
+          )}
+
+          {isAdmin && (
+            <>
               
               <button onClick={() => handleTabChange('team')}
                 className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
@@ -993,6 +1394,34 @@ function AdminDashboardInner() {
                   activeTab === 'team' ? 'bg-white/20 text-white' : 'bg-[#000080]/10 text-[#000080] border border-[#000080]/20'
                 }`}>
                   {(content.team_members || []).length}
+                </span>
+              </button>
+
+              <button onClick={() => handleTabChange('admin_commissions')}
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  activeTab === 'admin_commissions' 
+                    ? 'bg-[#000080] text-white shadow shadow-blue-900/10' 
+                    : `${isDarkMode ? 'text-slate-700 hover:bg-slate-100/80 hover:text-slate-900' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'}`
+                }`}>
+                <div className="flex items-center gap-2.5">
+                  <DollarSign className="w-4 h-4 text-purple-600" /> Commission Mgt
+                </div>
+                <span className="text-[9px] bg-purple-500/10 text-purple-600 border border-purple-500/20 px-1.5 py-0.5 rounded font-bold uppercase">
+                  Admin
+                </span>
+              </button>
+
+              <button onClick={() => handleTabChange('configuration')}
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  activeTab === 'configuration' 
+                    ? 'bg-[#000080] text-white shadow shadow-blue-900/10' 
+                    : `${isDarkMode ? 'text-slate-700 hover:bg-slate-100/80 hover:text-slate-900' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'}`
+                }`}>
+                <div className="flex items-center gap-2.5">
+                  <Sliders className="w-4 h-4 text-emerald-500" /> Configuration
+                </div>
+                <span className="text-[9px] bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 px-1.5 py-0.5 rounded font-bold uppercase">
+                  Center
                 </span>
               </button>
             </>
@@ -1046,6 +1475,8 @@ function AdminDashboardInner() {
             }`}>
             <Settings className="w-4 h-4" /> Footer Settings
           </button>
+            </>
+          )}
         </aside>
 
         {/* Editor Main */}
@@ -1108,8 +1539,68 @@ function AdminDashboardInner() {
             <ProjectManager />
           )}
 
+          {activeTab === 'myWork' && (
+            <MyWorkDashboard />
+          )}
+
           {activeTab === 'team' && (
             <TeamManager portfolioItems={portfolioItems} />
+          )}
+
+          {activeTab === 'recruitment' && (
+            <RecruitmentDashboard />
+          )}
+
+          {activeTab === 'crm_leads' && (
+            <CRMLeads onNavigate={handleTabChange} />
+          )}
+
+          {activeTab === 'pipeline' && (
+            <CRMPipeline onNavigate={handleTabChange} />
+          )}
+
+          {activeTab === 'activities' && (
+            <CRMActivities onNavigate={handleTabChange} />
+          )}
+
+          {activeTab === 'quotations' && (
+            <QuotationsManager onNavigate={handleTabChange} />
+          )}
+
+          {activeTab === 'payments' && (
+            <PaymentsManager initialMetadata={tabMetadata} />
+          )}
+
+          {activeTab === 'clients' && (
+            <ClientsManager />
+          )}
+
+          {activeTab === 'onboarding' && (
+            <OnboardingManagement />
+          )}
+
+          {activeTab === 'training' && (
+            <MyTraining />
+          )}
+
+          {activeTab === 'training_library' && (
+            <TrainingLibrary />
+          )}
+
+          {activeTab === 'sales_catalog' && (
+            <SalesCatalog />
+          )}
+
+          {activeTab === 'my_commissions' && (
+            <MyCommissions />
+          )}
+
+          {activeTab === 'admin_commissions' && (
+            <AdminCommissionManager />
+          )}
+
+          {activeTab === 'configuration' && (
+            <ConfigurationCenter />
           )}
 
           {activeTab === 'myProfile' && role === 'developer_designer' && (
@@ -2710,7 +3201,7 @@ function HomepageSectionsManager({
   content: any, 
   updateSection: (section: string, data: any) => Promise<void> 
 }) {
-  const [activeSubTab, setActiveSubTab] = useState<'loader' | 'hero' | 'services' | 'caseStudies' | 'insights' | 'growth' | 'cta'>('hero');
+  const [activeSubTab, setActiveSubTab] = useState<'loader' | 'hero' | 'services' | 'caseStudies' | 'insights' | 'growth' | 'cta' | 'faq' | 'feedback'>('hero');
 
   const heroData = content.hero || {};
   const servicesData = {

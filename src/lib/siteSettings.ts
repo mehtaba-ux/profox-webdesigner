@@ -17,6 +17,7 @@ export const SITE_SETTINGS_DEFAULTS = {
     allowAdminBypass: true,
   },
   chatWidgetEnabled: true,
+  faviconUrl: '/favicon.svg',
 };
 
 export function resolveSiteSettings(settings: Record<string, any> | null | undefined) {

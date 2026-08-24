@@ -1,352 +1,274 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  Briefcase, CheckCircle, Clock, FileText, Download, 
-  ArrowRight, MessageSquare, AlertCircle, Calendar, 
-  LogOut, Mail, Lock, Check, Search, Bell
+import React, { useEffect, useMemo, useState } from 'react';
+import {
+  AlertCircle,
+  ArrowRight,
+  Briefcase,
+  Check,
+  CheckCircle2,
+  Clock,
+  FileText,
+  Loader2,
+  Lock,
+  LogOut,
+  Mail,
+  Receipt,
+  RotateCcw,
+  ShieldCheck
 } from 'lucide-react';
-import { ClientProject, ProjectMilestone } from '../../types';
-import { getProjectByEmail, approveMilestone } from '../../lib/projectService';
+import { format } from 'date-fns';
 import { useAuth } from '../../lib/AuthContext';
+import { projectService } from '../../lib/projectService';
+import { supabase } from '../../lib/supabase';
+import { Payment, PROJECT_STAGES, ProjectStage } from '../../types';
+import ClientDevelopmentHandover from './ClientDevelopmentHandover';
+
+function getErrorMessage(error: unknown, fallback: string) {
+  if (error && typeof error === 'object' && 'message' in error) {
+    return String((error as { message?: unknown }).message || fallback);
+  }
+  return fallback;
+}
 
 export default function ClientDashboard() {
-  const { user } = useAuth();
-  const [email, setEmail] = useState(user?.email || '');
-  const [isLoggingIn, setIsLoggingIn] = useState(false);
-  const [error, setError] = useState('');
-  const [project, setProject] = useState<ClientProject | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const { user, profile, loading: authLoading, logout } = useAuth();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [authError, setAuthError] = useState('');
+  const [authBusy, setAuthBusy] = useState(false);
+  const [projects, setProjects] = useState<any[]>([]);
+  const [selectedProject, setSelectedProject] = useState<any | null>(null);
+  const [payments, setPayments] = useState<Payment[]>([]);
+  const [loadingProjects, setLoadingProjects] = useState(false);
+  const [projectError, setProjectError] = useState('');
+  const [approvalNotes, setApprovalNotes] = useState('');
+  const [actionBusy, setActionBusy] = useState(false);
+  const [actionError, setActionError] = useState('');
 
-  // If user is already logged in, try to fetch their project automatically
+  const hasPortalAccess = Boolean(user && profile?.role === 'customer' && profile?.status === 'active');
+
+  const loadProjects = async () => {
+    if (!hasPortalAccess) return;
+    setLoadingProjects(true);
+    setProjectError('');
+    const { data, error } = await projectService.getProjectsByClientEmail('');
+    if (error) {
+      setProjectError(getErrorMessage(error, 'Could not load your linked projects.'));
+      setProjects([]);
+      setSelectedProject(null);
+    } else {
+      const allowed = data || [];
+      setProjects(allowed);
+      setSelectedProject(current => {
+        if (current) return allowed.find(project => project.id === current.id) || allowed[0] || null;
+        return allowed[0] || null;
+      });
+    }
+    setLoadingProjects(false);
+  };
+
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const emailParam = params.get('email');
-    if (emailParam) {
-      handleLogin(emailParam);
-    } else if (user?.email) {
-      handleLogin(user.email);
+    if (hasPortalAccess) void loadProjects();
+    if (!user) {
+      setProjects([]);
+      setSelectedProject(null);
+      setPayments([]);
     }
-  }, [user]);
+  }, [hasPortalAccess, user?.id]);
 
-  const handleLogin = async (loginEmail: string) => {
-    setIsLoading(true);
-    setError('');
-    
-    try {
-      const proj = await getProjectByEmail(loginEmail);
-      if (proj) {
-        setProject(proj);
-      } else {
-        setError("No active projects found for this email address. Try 'demo@example.com'.");
+  useEffect(() => {
+    const loadPayments = async () => {
+      if (!selectedProject) {
+        setPayments([]);
+        return;
       }
-    } catch (err) {
-      setError('An error occurred while fetching your project.');
-    } finally {
-      setIsLoading(false);
+      const { data, error } = await projectService.getProjectPayments(selectedProject.sourceOpportunityId, selectedProject.quotationId);
+      if (!error) setPayments(data || []);
+    };
+    void loadPayments();
+  }, [selectedProject?.id]);
+
+  const handleSignIn = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setAuthBusy(true);
+    setAuthError('');
+    const normalizedEmail = email.trim().toLowerCase();
+    const { error } = await supabase.auth.signInWithPassword({ email: normalizedEmail, password });
+    if (error) setAuthError('Invalid email/password or portal account is not ready yet.');
+    setAuthBusy(false);
+  };
+
+  const handlePasswordReset = async () => {
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!normalizedEmail) {
+      setAuthError('Enter your registered email first.');
+      return;
     }
+    setAuthBusy(true);
+    setAuthError('');
+    const redirectTo = `${window.location.origin}/client-portal`;
+    const { error } = await supabase.auth.resetPasswordForEmail(normalizedEmail, { redirectTo });
+    setAuthError(error ? 'Password reset email could not be sent.' : 'If this email has a portal account, a password reset link has been sent.');
+    setAuthBusy(false);
   };
 
-  const handleFormSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    handleLogin(email);
+  const refreshAfterAction = async (projectId: string) => {
+    const { data, error } = await projectService.getProjectsByClientEmail('');
+    if (error) throw error;
+    const nextProjects = data || [];
+    setProjects(nextProjects);
+    setSelectedProject(nextProjects.find(project => project.id === projectId) || nextProjects[0] || null);
+    setApprovalNotes('');
   };
 
-  const handleApprove = async (milestoneId: string) => {
-    if (!project) return;
-    const updatedProject = await approveMilestone(project.id, milestoneId);
-    if (updatedProject) {
-      setProject(updatedProject);
+  const approveStage = async () => {
+    if (!selectedProject) return;
+    setActionBusy(true);
+    setActionError('');
+    const { error } = await projectService.approveClientStage(selectedProject.id, approvalNotes);
+    if (error) setActionError(getErrorMessage(error, 'Approval could not be recorded.'));
+    else {
+      try { await refreshAfterAction(selectedProject.id); } catch (error) { setActionError(getErrorMessage(error, 'Approval saved, but the project could not be refreshed.')); }
     }
+    setActionBusy(false);
   };
 
-  const handleLogout = () => {
-    setProject(null);
-    setEmail('');
-    setError('');
+  const requestChanges = async () => {
+    if (!selectedProject) return;
+    if (!approvalNotes.trim()) {
+      setActionError('Describe the requested changes before submitting.');
+      return;
+    }
+    setActionBusy(true);
+    setActionError('');
+    const { error } = await projectService.requestClientChanges(selectedProject.id, approvalNotes.trim());
+    if (error) setActionError(getErrorMessage(error, 'Change request could not be recorded.'));
+    else {
+      try { await refreshAfterAction(selectedProject.id); } catch (error) { setActionError(getErrorMessage(error, 'Request saved, but the project could not be refreshed.')); }
+    }
+    setActionBusy(false);
   };
 
-  // Login Screen
-  if (!project) {
+  const stageProgress = useMemo(() => {
+    if (!selectedProject) return 0;
+    const index = PROJECT_STAGES.indexOf(selectedProject.stage as ProjectStage);
+    if (index < 0) return 0;
+    return Math.round((index / Math.max(PROJECT_STAGES.length - 1, 1)) * 100);
+  }, [selectedProject?.stage]);
+
+  const tasks = selectedProject?.tasks || [];
+  const completedTasks = tasks.filter((task: any) => task.status === 'Done').length;
+  const totalDue = payments.reduce((sum, payment) => sum + payment.amountDue, 0);
+  const totalPaid = payments.reduce((sum, payment) => sum + payment.amountPaid, 0);
+  const outstanding = Math.max(0, totalDue - totalPaid);
+
+  if (authLoading) {
+    return <div className="flex min-h-screen items-center justify-center bg-slate-50"><Loader2 className="h-8 w-8 animate-spin text-[#000080]" /></div>;
+  }
+
+  if (!user) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-        <div className="max-w-md w-full bg-white rounded-3xl shadow-xl border border-slate-200 overflow-hidden">
-          <div className="p-8 text-center bg-[#000080] text-white">
-            <Briefcase className="w-12 h-12 mx-auto mb-4 text-blue-200" />
-            <h2 className="text-2xl font-bold">Client Portal Access</h2>
-            <p className="text-sm text-blue-200 mt-2">Enter your email to view your project status.</p>
+      <div className="flex min-h-screen items-center justify-center bg-slate-50 p-4">
+        <div className="w-full max-w-md overflow-hidden rounded-[2.5rem] border border-slate-100 bg-white shadow-2xl">
+          <div className="bg-[#000080] p-10 text-center text-white">
+            <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-white/10"><Lock className="h-8 w-8" /></div>
+            <h1 className="text-2xl font-black">Secure Client Portal</h1>
+            <p className="mt-2 text-sm text-blue-200">Sign in with the account explicitly linked to your verified ProFox client record.</p>
           </div>
-          
-          <form onSubmit={handleFormSubmit} className="p-8 space-y-6">
-            {error && (
-              <div className="p-4 bg-red-50 text-red-600 rounded-xl text-sm flex items-start gap-2">
-                <AlertCircle className="w-5 h-5 shrink-0" />
-                <span>{error}</span>
-              </div>
-            )}
-            
-            <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-2">Email Address</label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                <input
-                  type="email"
-                  required
-                  placeholder="name@company.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#000080]/20 focus:border-[#000080] transition-all"
-                />
-              </div>
-            </div>
-            
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full py-3.5 bg-[#000080] hover:bg-[#000066] text-white rounded-xl font-bold shadow-lg shadow-[#000080]/20 transition-all flex items-center justify-center gap-2"
-            >
-              {isLoading ? 'Searching...' : 'Access Dashboard'}
-            </button>
-            
-            <p className="text-center text-xs text-slate-500 mt-4">
-              Secure client portal. Use <strong className="text-slate-700">demo@example.com</strong> to view a sample project.
-            </p>
+          <form onSubmit={handleSignIn} className="space-y-5 p-8">
+            {authError && <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs font-medium text-amber-800">{authError}</div>}
+            <label className="block"><span className="mb-1.5 block text-[10px] font-black uppercase tracking-wider text-slate-500">Email</span><div className="relative"><Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><input type="email" required autoComplete="email" value={email} onChange={event => setEmail(event.target.value)} className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-3 text-sm outline-none focus:border-[#000080]" /></div></label>
+            <label className="block"><span className="mb-1.5 block text-[10px] font-black uppercase tracking-wider text-slate-500">Password</span><input type="password" required autoComplete="current-password" value={password} onChange={event => setPassword(event.target.value)} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm outline-none focus:border-[#000080]" /></label>
+            <button type="submit" disabled={authBusy} className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#000080] py-3.5 text-sm font-bold text-white disabled:opacity-50">{authBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}Sign In</button>
+            <button type="button" disabled={authBusy} onClick={() => void handlePasswordReset()} className="w-full text-center text-xs font-bold text-[#000080] hover:underline">Forgot password?</button>
           </form>
         </div>
       </div>
     );
   }
 
-  // Helper calculations
-  const totalMilestones = project.milestones.length;
-  const completedMilestones = project.milestones.filter(m => m.status === 'completed' || m.status === 'approved').length;
-  const progressPercent = Math.round((completedMilestones / totalMilestones) * 100);
-  
-  const targetDate = new Date(project.targetEndDate);
-  const now = new Date();
-  const daysLeft = Math.ceil((targetDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+  if (!hasPortalAccess) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-50 p-4">
+        <div className="w-full max-w-lg rounded-[2rem] border border-slate-200 bg-white p-8 text-center shadow-xl">
+          <ShieldCheck className="mx-auto h-12 w-12 text-[#000080]" />
+          <h1 className="mt-4 text-xl font-black text-slate-900">Portal access is not active</h1>
+          <p className="mt-2 text-sm leading-relaxed text-slate-500">You are signed in as <strong>{user.email}</strong>, but this account is not currently linked to an active client workspace. ProFox must verify and link the account before project data becomes available.</p>
+          <button type="button" onClick={() => void logout()} className="mt-6 rounded-xl border border-slate-200 px-5 py-2.5 text-xs font-bold text-slate-700">Sign Out</button>
+        </div>
+      </div>
+    );
+  }
+
+  if (loadingProjects) {
+    return <div className="flex min-h-screen items-center justify-center bg-slate-50"><Loader2 className="h-8 w-8 animate-spin text-[#000080]" /></div>;
+  }
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-20">
-      {/* Top Navbar */}
-      <div className="bg-[#000080] text-white sticky top-0 z-40 shadow-md">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Briefcase className="w-6 h-6 text-emerald-400" />
-            <h1 className="text-lg font-bold tracking-tight">Client Portal</h1>
-          </div>
-          <div className="flex items-center gap-4">
-            <button className="relative p-2 hover:bg-white/10 rounded-full transition-colors hidden sm:block">
-              <Bell className="w-5 h-5" />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-emerald-400 rounded-full"></span>
-            </button>
-            <div className="hidden sm:flex items-center gap-2 border-l border-white/20 pl-4">
-              <div className="w-8 h-8 bg-blue-700 rounded-full flex items-center justify-center font-bold text-sm">
-                {project.clientName.charAt(0)}
-              </div>
-              <span className="text-sm font-medium">{project.clientName}</span>
-            </div>
-            <button 
-              onClick={handleLogout}
-              className="ml-2 p-2 hover:bg-white/10 rounded-full transition-colors text-blue-200 hover:text-white"
-              title="Logout"
-            >
-              <LogOut className="w-5 h-5" />
-            </button>
-          </div>
+    <div className="min-h-screen bg-slate-50 pb-16">
+      <header className="sticky top-0 z-40 bg-[#000080] text-white shadow-lg">
+        <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-5">
+          <div className="flex items-center gap-3"><div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/10"><Briefcase className="h-5 w-5" /></div><div><div className="text-sm font-black uppercase tracking-widest">ProFox Delivery</div><div className="text-[10px] font-bold text-blue-300">Secure Client Portal</div></div></div>
+          <div className="flex items-center gap-4"><div className="hidden text-right sm:block"><div className="text-xs font-bold">{profile?.fullName || user.email}</div><div className="text-[10px] text-blue-300">{user.email}</div></div><button type="button" onClick={() => void logout()} className="rounded-xl border border-white/10 p-2.5 text-blue-200 hover:bg-white/10 hover:text-white" title="Sign out"><LogOut className="h-4 w-4" /></button></div>
         </div>
-      </div>
+      </header>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8">
-        {/* Welcome Header */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
-          <div>
-            <h2 className="text-3xl font-bold text-slate-900 tracking-tight">{project.projectName}</h2>
-            <p className="text-slate-500 mt-1">Project Status & Deliverables Overview</p>
-          </div>
-          <div className="flex gap-3">
-            <button className="px-4 py-2 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 rounded-xl font-semibold shadow-sm transition-all flex items-center gap-2">
-              <MessageSquare className="w-4 h-4" /> Message Team
-            </button>
-          </div>
-        </div>
+      <main className="mx-auto max-w-7xl space-y-8 px-5 py-8">
+        {projectError && <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700"><AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />{projectError}</div>}
 
-        {/* Suggestion Banner */}
-        <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-5 mb-8 flex items-start gap-4">
-          <div className="p-2 bg-emerald-100 text-emerald-600 rounded-xl shrink-0 mt-0.5">
-            <CheckCircle className="w-6 h-6" />
-          </div>
-          <div>
-            <h4 className="text-sm font-bold text-slate-900">Action Required: Approve Design Phase</h4>
-            <p className="text-sm text-slate-600 mt-1 leading-relaxed">
-              We have completed the high-fidelity mockups for your review. Please check the 'Files & Deliverables' section to view the Figma link, and approve the milestone below so we can begin development.
-            </p>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          
-          {/* Main Column */}
-          <div className="lg:col-span-2 space-y-8">
-            
-            {/* Progress Overview Card */}
-            <div className="bg-white rounded-3xl p-6 md:p-8 border border-slate-200 shadow-sm">
-              <h3 className="text-lg font-bold text-slate-900 mb-6">Overall Progress</h3>
-              
-              <div className="flex items-end justify-between mb-2">
-                <span className="text-3xl font-bold text-[#000080]">{progressPercent}%</span>
-                <span className="text-sm font-medium text-slate-500">{completedMilestones} of {totalMilestones} Phases Complete</span>
-              </div>
-              
-              <div className="w-full bg-slate-100 h-3 rounded-full overflow-hidden mb-6">
-                <div 
-                  className="h-full bg-[#000080] rounded-full transition-all duration-1000 ease-out"
-                  style={{ width: `${progressPercent}%` }}
-                />
-              </div>
-
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-6 border-t border-slate-100">
-                <div>
-                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Status</p>
-                  <p className="text-sm font-bold text-emerald-600 capitalize">{project.status.replace('_', ' ')}</p>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Start Date</p>
-                  <p className="text-sm font-bold text-slate-900">{new Date(project.startDate).toLocaleDateString()}</p>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Target Launch</p>
-                  <p className="text-sm font-bold text-slate-900">{targetDate.toLocaleDateString()}</p>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Time Remaining</p>
-                  <p className="text-sm font-bold text-slate-900 flex items-center gap-1">
-                    <Clock className="w-4 h-4 text-amber-500" /> {daysLeft} Days
-                  </p>
-                </div>
-              </div>
+        {projects.length === 0 ? (
+          <div className="rounded-[2rem] border border-slate-200 bg-white p-12 text-center shadow-sm"><Briefcase className="mx-auto h-12 w-12 text-slate-300" /><h2 className="mt-4 text-xl font-black text-slate-900">No project is available yet</h2><p className="mt-2 text-sm text-slate-500">Your account is valid, but no active project is currently linked to this client workspace.</p></div>
+        ) : selectedProject && (
+          <>
+            <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
+              <div><div className="text-[10px] font-black uppercase tracking-widest text-[#000080]">{selectedProject.projectNumber}</div><h1 className="mt-1 text-3xl font-black text-slate-900">{selectedProject.projectName}</h1><p className="mt-1 text-sm text-slate-500">{selectedProject.client?.company_name || 'Your ProFox project'}</p></div>
+              {projects.length > 1 && <select value={selectedProject.id} onChange={event => setSelectedProject(projects.find(project => project.id === event.target.value) || selectedProject)} className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-xs font-bold outline-none focus:border-[#000080]">{projects.map(project => <option key={project.id} value={project.id}>{project.projectNumber} · {project.projectName}</option>)}</select>}
             </div>
 
-            {/* Timeline */}
-            <div className="bg-white rounded-3xl p-6 md:p-8 border border-slate-200 shadow-sm">
-              <h3 className="text-lg font-bold text-slate-900 mb-8">Project Timeline</h3>
-              
-              <div className="space-y-8 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-slate-200 before:to-transparent">
-                {project.milestones.map((milestone, index) => {
-                  const isCompleted = milestone.status === 'completed' || milestone.status === 'approved';
-                  const isActive = milestone.status === 'in_progress';
-                  const isPending = milestone.status === 'pending';
-
-                  return (
-                    <div key={milestone.id} className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
-                      {/* Icon */}
-                      <div className={`flex items-center justify-center w-10 h-10 rounded-full border-4 border-white shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 shadow-sm z-10 ${
-                        isCompleted ? 'bg-emerald-500 text-white' : 
-                        isActive ? 'bg-[#000080] text-white ring-4 ring-blue-100' : 
-                        'bg-slate-200 text-slate-400'
-                      }`}>
-                        {isCompleted ? <Check className="w-5 h-5" /> : <span className="text-sm font-bold">{index + 1}</span>}
-                      </div>
-
-                      {/* Content Card */}
-                      <div className="w-[calc(100%-4rem)] md:w-[calc(50%-3rem)] p-5 rounded-2xl border transition-all duration-300 hover:shadow-md bg-white shadow-sm
-                        ${isActive ? 'border-[#000080] shadow-blue-50' : 'border-slate-200 hover:border-slate-300'}"
-                      >
-                        <div className="flex flex-col gap-1 mb-2">
-                          <div className="flex items-center justify-between">
-                            <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${
-                              isCompleted ? 'bg-emerald-100 text-emerald-700' :
-                              isActive ? 'bg-blue-100 text-[#000080]' :
-                              'bg-slate-100 text-slate-500'
-                            }`}>
-                              {milestone.status.replace('_', ' ')}
-                            </span>
-                            {milestone.dueDate && (
-                              <span className="text-xs font-semibold text-slate-400 flex items-center gap-1">
-                                <Calendar className="w-3.5 h-3.5" /> 
-                                {new Date(milestone.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-                              </span>
-                            )}
-                          </div>
-                          <h4 className={`text-base font-bold mt-1 ${isCompleted ? 'text-slate-900' : isActive ? 'text-[#000080]' : 'text-slate-600'}`}>
-                            {milestone.title}
-                          </h4>
-                        </div>
-                        <p className="text-sm text-slate-500 leading-relaxed mb-4">
-                          {milestone.description}
-                        </p>
-                        
-                        {/* Action buttons if active or needs approval */}
-                        {isActive && (
-                          <div className="pt-3 border-t border-slate-100">
-                            <button 
-                              onClick={() => handleApprove(milestone.id)}
-                              className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-colors shadow-sm"
-                            >
-                              Approve Phase
-                            </button>
-                          </div>
-                        )}
-                        {milestone.status === 'approved' && (
-                          <div className="pt-3 border-t border-slate-100 flex items-center gap-2 text-xs font-semibold text-emerald-600">
-                            <CheckCircle className="w-4 h-4" /> Approved by Client
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+            <div className="grid gap-5 md:grid-cols-4">
+              <Metric label="Current Stage" value={selectedProject.stage} />
+              <Metric label="Stage Progress" value={`${stageProgress}%`} />
+              <Metric label="Deliverables Done" value={`${completedTasks}/${tasks.length}`} />
+              <Metric label="Outstanding Balance" value={`${selectedProject.currency || 'USD'} ${outstanding.toLocaleString()}`} />
             </div>
 
-          </div>
+            {['Client Design Approval', 'Client Review'].includes(selectedProject.stage) && (
+              <section className="rounded-[2rem] border border-emerald-200 bg-emerald-50 p-7">
+                <div className="flex items-start gap-4"><div className="rounded-2xl bg-emerald-100 p-3 text-emerald-700"><CheckCircle2 className="h-6 w-6" /></div><div className="flex-1"><h2 className="text-lg font-black text-slate-900">Your review is required</h2><p className="mt-1 text-sm text-slate-600">Review the current deliverables. Approve to continue, or describe changes that need to be addressed.</p></div></div>
+                {actionError && <div className="mt-4 rounded-xl border border-red-200 bg-white p-3 text-xs text-red-700">{actionError}</div>}
+                <textarea value={approvalNotes} onChange={event => setApprovalNotes(event.target.value)} rows={3} placeholder="Optional approval note, or required details if requesting changes..." className="mt-5 w-full resize-none rounded-xl border border-emerald-200 bg-white p-3 text-sm outline-none focus:border-emerald-500" />
+                <div className="mt-4 flex flex-wrap gap-3"><button type="button" disabled={actionBusy} onClick={() => void approveStage()} className="flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-xs font-bold text-white disabled:opacity-50"><Check className="h-4 w-4" />Approve & Proceed</button><button type="button" disabled={actionBusy} onClick={() => void requestChanges()} className="flex items-center gap-2 rounded-xl border border-emerald-300 bg-white px-5 py-2.5 text-xs font-bold text-emerald-800 disabled:opacity-50"><RotateCcw className="h-4 w-4" />Request Changes</button>{actionBusy && <Loader2 className="h-5 w-5 animate-spin text-emerald-700" />}</div>
+              </section>
+            )}
 
-          {/* Side Column */}
-          <div className="space-y-8">
-            
-            {/* Files & Deliverables */}
-            <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm">
-              <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
-                <FileText className="w-5 h-5 text-[#000080]" /> Files & Deliverables
-              </h3>
-              
-              <div className="space-y-3">
-                {project.files.map(file => (
-                  <div key={file.id} className="group p-3 border border-slate-200 rounded-xl hover:border-[#000080]/30 hover:bg-slate-50 transition-all flex items-start gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-blue-50 text-[#000080] flex items-center justify-center shrink-0">
-                      <FileText className="w-5 h-5" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h4 className="text-sm font-semibold text-slate-900 truncate">{file.name}</h4>
-                      <p className="text-xs text-slate-500 mt-0.5">{new Date(file.uploadedAt).toLocaleDateString()}</p>
-                    </div>
-                    <a href={file.url} className="p-2 text-slate-400 hover:text-[#000080] hover:bg-blue-50 rounded-lg transition-colors shrink-0">
-                      <Download className="w-4 h-4" />
-                    </a>
-                  </div>
-                ))}
-                {project.files.length === 0 && (
-                  <p className="text-sm text-slate-500 text-center py-4">No files uploaded yet.</p>
-                )}
-              </div>
+            <ClientDevelopmentHandover projectId={selectedProject.id} />
+
+            <div className="grid gap-7 lg:grid-cols-3">
+              <section className="space-y-5 lg:col-span-2">
+                <div className="rounded-[2rem] border border-slate-200 bg-white p-7 shadow-sm">
+                  <div className="flex items-center justify-between"><h2 className="text-lg font-black text-slate-900">Delivery Progress</h2><span className="rounded-full bg-blue-50 px-3 py-1 text-[10px] font-black uppercase text-[#000080]">{selectedProject.status}</span></div>
+                  <div className="mt-6 h-2 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-[#000080] transition-all" style={{ width: `${stageProgress}%` }} /></div>
+                  <div className="mt-6 grid gap-4 sm:grid-cols-3"><Mini label="Started" value={selectedProject.createdAt ? format(new Date(selectedProject.createdAt), 'MMM d, yyyy') : '—'} /><Mini label="Target" value={selectedProject.targetDate ? format(new Date(selectedProject.targetDate), 'MMM d, yyyy') : 'TBD'} /><Mini label="Project Value" value={`${selectedProject.currency || 'USD'} ${Number(selectedProject.projectValue || 0).toLocaleString()}`} /></div>
+                </div>
+
+                <div className="rounded-[2rem] border border-slate-200 bg-white p-7 shadow-sm"><h2 className="flex items-center gap-2 text-lg font-black text-slate-900"><FileText className="h-5 w-5 text-[#000080]" />Project Deliverables</h2><div className="mt-5 space-y-3">{tasks.length === 0 ? <p className="text-sm text-slate-400">No deliverables have been published yet.</p> : tasks.map((task: any, index: number) => <div key={task.id} className="flex items-center gap-4 rounded-xl border border-slate-100 bg-slate-50 p-4"><div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border ${task.status === 'Done' ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-white text-slate-400'}`}>{task.status === 'Done' ? <Check className="h-4 w-4" /> : <span className="text-xs font-black">{index + 1}</span>}</div><div className="min-w-0 flex-1"><div className="truncate text-sm font-bold text-slate-900">{task.title}</div><div className="mt-0.5 truncate text-xs text-slate-500">{task.description || task.department || 'Project task'}</div></div><span className="rounded-full bg-white px-2 py-1 text-[9px] font-black uppercase text-slate-600">{task.status}</span></div>)}</div></div>
+              </section>
+
+              <aside className="space-y-5">
+                <div className="rounded-[2rem] border border-slate-200 bg-white p-7 shadow-sm"><h2 className="flex items-center gap-2 text-base font-black text-slate-900"><Receipt className="h-5 w-5 text-[#000080]" />Payment Summary</h2><div className="mt-5 space-y-3"><Mini label="Total Requested" value={`${selectedProject.currency || 'USD'} ${totalDue.toLocaleString()}`} /><Mini label="Confirmed Received" value={`${selectedProject.currency || 'USD'} ${totalPaid.toLocaleString()}`} /><Mini label="Outstanding" value={`${selectedProject.currency || 'USD'} ${outstanding.toLocaleString()}`} /></div><div className="mt-5 space-y-2">{payments.map(payment => <div key={payment.id} className="rounded-xl border border-slate-100 bg-slate-50 p-3"><div className="flex items-center justify-between gap-2"><span className="text-[10px] font-black uppercase text-slate-600">{payment.paymentType}</span><span className="text-[9px] font-black uppercase text-[#000080]">{payment.status}</span></div><div className="mt-1 text-xs font-bold text-slate-900">{payment.currency} {payment.amountPaid.toLocaleString()} / {payment.amountDue.toLocaleString()}</div></div>)}</div>{outstanding > 0 && selectedProject.stage === 'Launch' && <div className="mt-4 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-[11px] text-amber-800"><Clock className="mt-0.5 h-4 w-4 shrink-0" />Launch remains payment-gated until the required final balance is fully verified.</div>}</div>
+                <div className="rounded-[2rem] bg-slate-900 p-7 text-white"><div className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-blue-300"><ShieldCheck className="h-4 w-4" />Secure Access</div><p className="mt-3 text-xs leading-relaxed text-slate-300">This workspace is authorized by your signed-in account link. Project, task, payment, approval, and released handover records are filtered server-side for this client only.</p></div>
+              </aside>
             </div>
-
-            {/* Quick Contact */}
-            <div className="bg-[#000080] rounded-3xl p-6 text-white shadow-xl relative overflow-hidden">
-              <div className="absolute -top-10 -right-10 w-32 h-32 bg-white/10 rounded-full blur-2xl"></div>
-              
-              <h3 className="text-lg font-bold mb-2 relative z-10">Need Assistance?</h3>
-              <p className="text-sm text-blue-200 mb-6 relative z-10 leading-relaxed">
-                Have questions about your timeline or need to request a change? Our team is here to help.
-              </p>
-              
-              <button className="w-full py-3 bg-white text-[#000080] hover:bg-blue-50 rounded-xl text-sm font-bold transition-all shadow-md flex items-center justify-center gap-2 relative z-10">
-                <MessageSquare className="w-4 h-4" /> Open Support Chat
-              </button>
-            </div>
-
-          </div>
-
-        </div>
-      </div>
+          </>
+        )}
+      </main>
     </div>
   );
+}
+
+function Metric({ label, value }: { label: string; value: string }) {
+  return <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><div className="text-[10px] font-black uppercase tracking-wider text-slate-400">{label}</div><div className="mt-1 truncate text-lg font-black text-slate-900">{value}</div></div>;
+}
+
+function Mini({ label, value }: { label: string; value: string }) {
+  return <div><div className="text-[10px] font-black uppercase tracking-wider text-slate-400">{label}</div><div className="mt-1 text-sm font-bold text-slate-800">{value}</div></div>;
 }

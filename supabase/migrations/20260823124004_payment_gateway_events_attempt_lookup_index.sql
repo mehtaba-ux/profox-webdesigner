@@ -1,0 +1,1 @@
+CREATE INDEX IF NOT EXISTS idx_payment_gateway_events_attempt_lookup ON public.payment_gateway_events USING btree (attempt_id);

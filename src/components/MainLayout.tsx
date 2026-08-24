@@ -39,6 +39,24 @@ export default function MainLayout() {
     ogUrl.content = canonicalUrl;
   }, [location.pathname]);
 
+  useEffect(() => {
+    const faviconUrl = content.siteSettings?.faviconUrl || '/favicon.svg';
+    let link = document.querySelector<HTMLLinkElement>('link[rel="icon"]');
+    if (!link) {
+      link = document.createElement('link');
+      link.rel = 'icon';
+      document.head.appendChild(link);
+    }
+    if (faviconUrl.endsWith('.svg') || faviconUrl.includes('image/svg+xml')) {
+      link.type = 'image/svg+xml';
+    } else if (faviconUrl.endsWith('.png')) {
+      link.type = 'image/png';
+    } else {
+      link.type = 'image/x-icon';
+    }
+    link.href = faviconUrl;
+  }, [content.siteSettings?.faviconUrl]);
+
   // If Development Mode is active and visitor is not an Admin/Editor, render the custom development screen
   if (isDevModeActive && !isAdminOrEditor) {
     return (

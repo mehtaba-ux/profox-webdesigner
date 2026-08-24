@@ -1,138 +1,275 @@
 import { supabase } from './supabase';
-import { ClientProject } from '../types';
+import { Project, ProjectTask, ProjectStage, Payment } from '../types';
 
-const LOCAL_PROJECTS_KEY = 'profox_client_projects';
+function mapProjectFromDb(row: any): any {
+  if (!row) return null;
+  return {
+    ...row,
+    id: row.id,
+    projectNumber: row.project_number,
+    projectName: row.project_name,
+    clientId: row.client_id,
+    sourceOpportunityId: row.source_opportunity_id,
+    quotationId: row.quotation_id,
+    packageSnapshot: row.package_snapshot,
+    projectValue: Number(row.project_value || 0),
+    currency: row.currency || 'USD',
+    projectManagerId: row.project_manager_id,
+    stage: row.stage,
+    priority: row.priority,
+    status: row.status,
+    startDate: row.start_date,
+    targetDate: row.target_date,
+    completedAt: row.completed_at,
+    requirementsSummary: row.requirements_summary,
+    scopeSummary: row.scope_summary,
+    exclusions: row.exclusions,
+    salesHandoverNotes: row.sales_handover_notes,
+    internalNotes: row.internal_notes,
+    createdBy: row.created_by,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at
+  };
+}
 
-const DEFAULT_PROJECTS: ClientProject[] = [
-  {
-    id: 'proj_demo_1',
-    clientId: 'client_1',
-    clientName: 'Demo Client',
-    clientEmail: 'demo@example.com',
-    projectName: 'Premium E-Commerce Redesign',
-    status: 'development',
-    progress: 65,
-    startDate: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString(),
-    targetEndDate: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString(),
-    milestones: [
-      {
-        id: 'm1',
-        title: 'Project Kickoff & Discovery',
-        description: 'Initial requirements gathering and project scope definition.',
-        status: 'approved',
-        dueDate: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString(),
-        completedAt: new Date(Date.now() - 13 * 24 * 60 * 60 * 1000).toISOString(),
-      },
-      {
-        id: 'm2',
-        title: 'UI/UX Design & Wireframes',
-        description: 'Creating high-fidelity mockups for core pages.',
-        status: 'approved',
-        dueDate: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-        completedAt: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString(),
-      },
-      {
-        id: 'm3',
-        title: 'Frontend Development',
-        description: 'Converting designs into responsive React components.',
-        status: 'in_progress',
-        dueDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
-      },
-      {
-        id: 'm4',
-        title: 'Backend Integration & Testing',
-        description: 'Wiring up APIs and performing quality assurance.',
-        status: 'pending',
-        dueDate: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString(),
-      },
-      {
-        id: 'm5',
-        title: 'Final Review & Launch',
-        description: 'Final walkthrough and deployment to production.',
-        status: 'pending',
-        dueDate: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString(),
-      }
-    ],
-    files: [
-      {
-        id: 'f1',
-        name: 'Project_Scope_Agreement.pdf',
-        url: '#',
-        type: 'application/pdf',
-        uploadedAt: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString(),
-      },
-      {
-        id: 'f2',
-        name: 'Design_Mockups_V1.fig',
-        url: '#',
-        type: 'application/octet-stream',
-        uploadedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-      }
-    ],
-    createdAt: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString(),
-    updatedAt: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString(),
+function mapProjectToDb(project: Partial<Project>) {
+  const row: any = {};
+  if (project.projectName !== undefined) row.project_name = project.projectName;
+  if (project.clientId !== undefined) row.client_id = project.clientId;
+  if (project.sourceOpportunityId !== undefined) row.source_opportunity_id = project.sourceOpportunityId;
+  if (project.quotationId !== undefined) row.quotation_id = project.quotationId;
+  if (project.packageSnapshot !== undefined) row.package_snapshot = project.packageSnapshot;
+  if (project.projectValue !== undefined) row.project_value = project.projectValue;
+  if (project.currency !== undefined) row.currency = project.currency;
+  if (project.projectManagerId !== undefined) row.project_manager_id = project.projectManagerId;
+  if (project.stage !== undefined) row.stage = project.stage;
+  if (project.priority !== undefined) row.priority = project.priority;
+  if (project.status !== undefined) row.status = project.status;
+  if (project.startDate !== undefined) row.start_date = project.startDate;
+  if (project.targetDate !== undefined) row.target_date = project.targetDate;
+  if (project.completedAt !== undefined) row.completed_at = project.completedAt;
+  if (project.requirementsSummary !== undefined) row.requirements_summary = project.requirementsSummary;
+  if (project.scopeSummary !== undefined) row.scope_summary = project.scopeSummary;
+  if (project.exclusions !== undefined) row.exclusions = project.exclusions;
+  if (project.salesHandoverNotes !== undefined) row.sales_handover_notes = project.salesHandoverNotes;
+  if (project.internalNotes !== undefined) row.internal_notes = project.internalNotes;
+  return row;
+}
+
+function mapTaskFromDb(row: any): any {
+  if (!row) return null;
+  return {
+    ...row,
+    id: row.id,
+    projectId: row.project_id,
+    title: row.title,
+    description: row.description,
+    department: row.department,
+    assignedTo: row.assigned_to,
+    createdBy: row.created_by,
+    priority: row.priority,
+    status: row.status,
+    startDate: row.start_date,
+    dueDate: row.due_date,
+    completedAt: row.completed_at,
+    notes: row.notes,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at
+  };
+}
+
+function mapTaskToDb(task: Partial<ProjectTask>) {
+  const row: any = {};
+  if (task.projectId !== undefined) row.project_id = task.projectId;
+  if (task.title !== undefined) row.title = task.title;
+  if (task.description !== undefined) row.description = task.description;
+  if (task.department !== undefined) row.department = task.department;
+  if (task.assignedTo !== undefined) row.assigned_to = task.assignedTo;
+  if (task.createdBy !== undefined) row.created_by = task.createdBy;
+  if (task.priority !== undefined) row.priority = task.priority;
+  if (task.status !== undefined) row.status = task.status;
+  if (task.startDate !== undefined) row.start_date = task.startDate;
+  if (task.dueDate !== undefined) row.due_date = task.dueDate;
+  if (task.completedAt !== undefined) row.completed_at = task.completedAt;
+  if (task.notes !== undefined) row.notes = task.notes;
+  return row;
+}
+
+function mapPaymentFromDb(row: any): Payment {
+  return {
+    id: row.id,
+    paymentReference: row.payment_reference,
+    quotationId: row.quotation_id,
+    opportunityId: row.opportunity_id,
+    clientId: row.client_id,
+    salespersonId: row.salesperson_id,
+    customerName: row.customer_name,
+    customerEmail: row.customer_email,
+    paymentType: row.payment_type,
+    milestoneNumber: row.milestone_number,
+    milestoneLabel: row.milestone_label,
+    amountDue: Number(row.amount_due || 0),
+    amountPaid: Number(row.amount_paid || 0),
+    currency: row.currency || 'USD',
+    paymentMethod: row.payment_method,
+    paymentProvider: row.payment_provider,
+    paymentLink: row.payment_link,
+    providerPaymentId: row.provider_payment_id,
+    status: row.status,
+    dueDate: row.due_date,
+    paidAt: row.paid_at,
+    verifiedAt: row.verified_at,
+    verifiedBy: row.verified_by,
+    notes: row.notes,
+    createdBy: row.created_by,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at
+  };
+}
+
+export const projectService = {
+  async getProjects() {
+    const { data, error } = await supabase
+      .from('projects')
+      .select('*, client:clients(*), pm:user_profiles!project_manager_id(*), quotation:quotations(*)')
+      .order('created_at', { ascending: false });
+    return { data: (data || []).map(mapProjectFromDb), error };
+  },
+
+  async getProjectById(id: string) {
+    const { data, error } = await supabase
+      .from('projects')
+      .select('*, client:clients(*), pm:user_profiles!project_manager_id(*), quotation:quotations(*)')
+      .eq('id', id)
+      .single();
+    return { data: data ? mapProjectFromDb(data) : null, error };
+  },
+
+  async createProject(_project: Partial<Project>) {
+    return { data: null, error: new Error('Projects must be created from a verified sale through initializeProjectFromOpportunity().') };
+  },
+
+  async updateProject(id: string, updates: Partial<Project>) {
+    const { data, error } = await supabase
+      .from('projects')
+      .update(mapProjectToDb(updates))
+      .eq('id', id)
+      .select('*, client:clients(*), pm:user_profiles!project_manager_id(*), quotation:quotations(*)')
+      .single();
+    return { data: data ? mapProjectFromDb(data) : null, error };
+  },
+
+  async getProjectTeam(projectId: string) {
+    const { data, error } = await supabase.from('project_team').select('*, user:user_profiles!user_id(*)').eq('project_id', projectId);
+    return { data: data || [], error };
+  },
+
+  async assignTeamMember(projectId: string, userId: string, role: string) {
+    const { data, error } = await supabase
+      .from('project_team')
+      .upsert([{ project_id: projectId, user_id: userId, role }], { onConflict: 'project_id,user_id' })
+      .select('*, user:user_profiles!user_id(*)')
+      .single();
+    return { data, error };
+  },
+
+  async removeTeamMember(projectId: string, userId: string) {
+    const { error } = await supabase.from('project_team').delete().eq('project_id', projectId).eq('user_id', userId);
+    return { error };
+  },
+
+  async getProjectTasks(projectId: string) {
+    const { data, error } = await supabase
+      .from('project_tasks')
+      .select('*, assignee:user_profiles!assigned_to(*), creator:user_profiles!created_by(*)')
+      .eq('project_id', projectId)
+      .order('created_at', { ascending: true });
+    return { data: (data || []).map(mapTaskFromDb), error };
+  },
+
+  async getMyTasks(userId: string) {
+    const { data, error } = await supabase
+      .from('project_tasks')
+      .select('*, project:projects(*, client:clients(*)), assignee:user_profiles!assigned_to(*)')
+      .eq('assigned_to', userId)
+      .neq('status', 'Done')
+      .order('due_date', { ascending: true });
+    return { data: (data || []).map(mapTaskFromDb), error };
+  },
+
+  async getAllTasks() {
+    const { data, error } = await supabase
+      .from('project_tasks')
+      .select('*, project:projects(*, client:clients(*)), assignee:user_profiles!assigned_to(*)')
+      .order('due_date', { ascending: true });
+    return { data: (data || []).map(mapTaskFromDb), error };
+  },
+
+  async createTask(task: Partial<ProjectTask>) {
+    const { data: authData } = await supabase.auth.getUser();
+    const payload = mapTaskToDb({ ...task, createdBy: task.createdBy || authData.user?.id || '' });
+    const { data, error } = await supabase.from('project_tasks').insert([payload]).select('*, assignee:user_profiles!assigned_to(*)').single();
+    return { data: data ? mapTaskFromDb(data) : null, error };
+  },
+
+  async updateTask(id: string, updates: Partial<ProjectTask>) {
+    const { data, error } = await supabase.from('project_tasks').update(mapTaskToDb(updates)).eq('id', id).select('*, assignee:user_profiles!assigned_to(*)').single();
+    return { data: data ? mapTaskFromDb(data) : null, error };
+  },
+
+  async deleteTask(id: string) {
+    const { error } = await supabase.from('project_tasks').delete().eq('id', id);
+    return { error };
+  },
+
+  async initializeProjectFromOpportunity(opportunityId: string) {
+    const { data: projectId, error } = await supabase.rpc('create_project_from_sale', { p_opportunity_id: opportunityId });
+    if (error) return { data: null, error: new Error(error.message) };
+    return await this.getProjectById(projectId);
+  },
+
+  async submitSalesHandover(projectId: string, notes: string) {
+    const { data, error } = await supabase.rpc('submit_sales_project_handover', {
+      p_project_id: projectId,
+      p_notes: notes
+    });
+    return { data: data as { projectId: string; submittedBy: string; sourceSellerSubmission: boolean; notes: string; submittedAt: string } | null, error };
+  },
+
+  async getProjectPayments(opportunityId?: string, quotationId?: string) {
+    let query = supabase.from('payments').select('*');
+    if (quotationId) query = query.eq('quotation_id', quotationId);
+    else if (opportunityId) query = query.eq('opportunity_id', opportunityId);
+    else return { data: [], error: null };
+    const { data, error } = await query.order('created_at', { ascending: true });
+    return { data: (data || []).map(mapPaymentFromDb), error };
+  },
+
+  async getProjectsByClientEmail(_email: string) {
+    const { data, error } = await supabase
+      .from('projects')
+      .select('*, client:clients(*), tasks:project_tasks(*)')
+      .order('created_at', { ascending: false });
+    return { data: (data || []).map(mapProjectFromDb), error };
+  },
+
+  async approveClientStage(projectId: string, notes = '') {
+    const { data, error } = await supabase.rpc('client_approve_project_stage', {
+      p_project_id: projectId,
+      p_notes: notes
+    });
+    return { data: data as ProjectStage | null, error };
+  },
+
+  async requestClientChanges(projectId: string, notes: string) {
+    const { data, error } = await supabase.rpc('client_request_project_changes', {
+      p_project_id: projectId,
+      p_notes: notes
+    });
+    return { data: data as ProjectStage | null, error };
+  },
+
+  async updateProjectStage(projectId: string, stage: ProjectStage) {
+    return await this.updateProject(projectId, { stage });
   }
-];
-
-export const getProjects = async (): Promise<ClientProject[]> => {
-  try {
-    const cached = localStorage.getItem(LOCAL_PROJECTS_KEY);
-    let projects: ClientProject[] = cached ? JSON.parse(cached) : DEFAULT_PROJECTS;
-
-    const { data: dbData } = await supabase.from('client_projects').select('*');
-    if (dbData && dbData.length > 0) {
-      projects = dbData;
-    }
-
-    localStorage.setItem(LOCAL_PROJECTS_KEY, JSON.stringify(projects));
-    return projects;
-  } catch (e) {
-    return DEFAULT_PROJECTS;
-  }
-};
-
-export const getProjectByEmail = async (email: string): Promise<ClientProject | null> => {
-  const projects = await getProjects();
-  const project = projects.find(p => p.clientEmail.toLowerCase() === email.toLowerCase());
-  return project || null;
-};
-
-export const saveProject = async (project: ClientProject): Promise<ClientProject> => {
-  const projects = await getProjects();
-  const index = projects.findIndex(p => p.id === project.id);
-  
-  const updatedProject = { ...project, updatedAt: new Date().toISOString() };
-  
-  if (index >= 0) {
-    projects[index] = updatedProject;
-  } else {
-    projects.push(updatedProject);
-  }
-  
-  localStorage.setItem(LOCAL_PROJECTS_KEY, JSON.stringify(projects));
-  
-  try {
-    await supabase.from('client_projects').upsert(updatedProject);
-  } catch (e) {
-    console.warn('Supabase save project fallback', e);
-  }
-  
-  return updatedProject;
-};
-
-export const approveMilestone = async (projectId: string, milestoneId: string): Promise<ClientProject | null> => {
-  const projects = await getProjects();
-  const projectIndex = projects.findIndex(p => p.id === projectId);
-  
-  if (projectIndex === -1) return null;
-  
-  const project = projects[projectIndex];
-  const milestoneIndex = project.milestones.findIndex(m => m.id === milestoneId);
-  
-  if (milestoneIndex === -1) return null;
-  
-  project.milestones[milestoneIndex].status = 'approved';
-  project.milestones[milestoneIndex].completedAt = new Date().toISOString();
-  
-  return saveProject(project);
 };

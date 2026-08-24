@@ -584,8 +584,8 @@ export default function SalesChatInbox() {
                         No sales representatives present. Add a new representative above.
                       </div>
                     ) : (
-                      salesReps.map((rep) => (
-                        <div key={rep.id} className="p-4 flex items-center justify-between gap-4 hover:bg-slate-50 transition-colors">
+                      salesReps.map((rep, repIdx) => (
+                        <div key={`${rep.id || 'rep'}_${repIdx}`} className="p-4 flex items-center justify-between gap-4 hover:bg-slate-50 transition-colors">
                           <div className="flex items-center gap-3 min-w-0">
                             <img 
                               src={rep.avatar} 

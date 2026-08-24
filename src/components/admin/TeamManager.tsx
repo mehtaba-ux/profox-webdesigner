@@ -1,21 +1,18 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useCMS } from '../../lib/CMSProvider';
-import { TeamMemberProfile, PortfolioItem } from '../../types';
-
-
-import { Users, Briefcase, Clock, Search, Trash2, Copy, Check, Send, Plus, X } from 'lucide-react';
-import { ConfirmButton } from "./ConfirmButton";
-import { useConfirmContext } from "./ConfirmContext";
-import { deleteSalesRep, addSalesRep } from '../../lib/chatService';
+import { PortfolioItem, TeamMemberProfile } from '../../types';
+import { Briefcase, Building2, Check, Clock, Copy, Plus, Search, ShieldCheck, Trash2, Users, X } from 'lucide-react';
+import { useConfirmContext } from './ConfirmContext';
+import { addSalesRep, deleteSalesRep } from '../../lib/chatService';
+import { AGENCY_DEPARTMENTS, departmentDefinitionForRole, primaryDepartmentForRole } from '../../lib/organization';
+import UserRoleManager from './UserRoleManager';
 
 export default function TeamManager({ portfolioItems }: { portfolioItems: PortfolioItem[] }) {
   const { content, updateSection } = useCMS();
   const { confirm: confirmAction } = useConfirmContext();
+  const [activeSubTab, setActiveSubTab] = useState<'roles' | 'showcase'>('roles');
   const [searchTerm, setSearchTerm] = useState('');
   const [copiedLink, setCopiedLink] = useState('');
-  const [inviteEmails, setInviteEmails] = useState({ developer_designer: '', sales_team: '' });
-
-  // Modal for creating custom Sales Rep
   const [showAddSalesModal, setShowAddSalesModal] = useState(false);
   const [newSalesForm, setNewSalesForm] = useState({
     fullName: '',
@@ -26,54 +23,52 @@ export default function TeamManager({ portfolioItems }: { portfolioItems: Portfo
     avatar: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&q=80&w=250'
   });
 
-  const sendInviteEmail = (role: string) => {
-    const email = inviteEmails[role as keyof typeof inviteEmails];
-    if (!email) return;
+  const rawMembers: TeamMemberProfile[] = content.team_members || [];
+  const teamMembers = useMemo(() => {
+    const map = new Map<string, TeamMemberProfile>();
+    rawMembers.forEach((member, index) => {
+      const key = member.id || member.userId || `member_${index}`;
+      if (!map.has(key)) map.set(key, member);
+    });
+    return Array.from(map.values());
+  }, [rawMembers]);
 
-    const url = `${window.location.origin}/admin?mode=register&role=${role}`;
-    const roleName = role === 'sales_team' ? 'Sales Team Member' : 'Website Designer / Developer';
-    const subject = encodeURIComponent(`Invitation to join Profox Web Designer Team`);
-    const body = encodeURIComponent(`Hello,\n\nYou have been invited to join the Profox Web Designer team as a ${roleName}.\n\nPlease click the link below to create your account, complete your onboarding profile, and access your dashboard:\n\n${url}\n\nBest regards,\nProfox Web Designer`);
-    
-    window.location.href = `mailto:${email}?subject=${subject}&body=${body}`;
-    setInviteEmails(prev => ({ ...prev, [role]: '' }));
-  };
+  const filteredMembers = useMemo(() => {
+    const query = searchTerm.trim().toLowerCase();
+    if (!query) return teamMembers;
+    return teamMembers.filter(member => {
+      const department = departmentDefinitionForRole(member.role);
+      return `${member.fullName} ${member.role} ${member.title} ${department.label}`.toLowerCase().includes(query);
+    });
+  }, [teamMembers, searchTerm]);
 
-  const teamMembers: TeamMemberProfile[] = content.team_members || [];
+  const groupedMembers = useMemo(() => AGENCY_DEPARTMENTS.map(department => ({
+    ...department,
+    members: filteredMembers.filter(member => primaryDepartmentForRole(member.role) === department.value)
+  })).filter(group => group.members.length > 0), [filteredMembers]);
 
-  const filteredMembers = teamMembers.filter(member => 
-    member.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    member.role.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    member.title.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const designMembers = filteredMembers.filter(m => m.role === 'developer_designer');
-  const salesMembers = filteredMembers.filter(m => m.role === 'sales_team');
-  const otherMembers = filteredMembers.filter(m => m.role !== 'developer_designer' && m.role !== 'sales_team');
-
-  const copyOnboardingLink = (role: string) => {
-    const url = `${window.location.origin}/admin?mode=register&role=${role}`;
+  const copyOnboardingLink = () => {
+    const url = `${window.location.origin}/admin?mode=register`;
     navigator.clipboard.writeText(url);
-    setCopiedLink(role);
+    setCopiedLink('register');
     setTimeout(() => setCopiedLink(''), 2000);
   };
 
   const handleDelete = async (id: string) => {
-    if (await confirmAction('Remove Team Member', 'Are you sure you want to remove this sales/team member? They will be removed from the team section and chat widget.')) {
-      const updated = teamMembers.filter(m => m.id !== id);
-      await updateSection('team_members', updated);
-      await deleteSalesRep(id);
-    }
+    if (!(await confirmAction('Remove Team Member', 'Are you sure you want to remove this team member from the public website showcase?'))) return;
+    const updated = teamMembers.filter(member => member.id !== id);
+    await updateSection('team_members', updated);
+    await deleteSalesRep(id);
   };
 
-  const handleAddSalesMember = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleAddSalesMember = async (event: React.FormEvent) => {
+    event.preventDefault();
     if (!newSalesForm.fullName) return;
 
-    const memberId = `sales_${Date.now()}`;
+    const newId = `sales_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
     const newMember: TeamMemberProfile = {
-      id: memberId,
-      userId: memberId,
+      id: newId,
+      userId: `user_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
       role: 'sales_team',
       fullName: newSalesForm.fullName,
       title: newSalesForm.title,
@@ -82,21 +77,18 @@ export default function TeamManager({ portfolioItems }: { portfolioItems: Portfo
       createdAt: new Date().toISOString()
     };
 
-    const updated = [...teamMembers, newMember];
-    await updateSection('team_members', updated);
-
-    // Sync to chat sales reps
+    await updateSection('team_members', [...teamMembers.filter(member => member.id !== newId), newMember]);
     await addSalesRep({
-      id: memberId,
+      id: newId,
       name: newSalesForm.fullName,
       email: newSalesForm.email || `${newSalesForm.fullName.toLowerCase().replace(/\s+/g, '.')}@profoxweb.com`,
       title: newSalesForm.title,
+      bio: newSalesForm.bio,
+      specialties: newSalesForm.specialties.split(',').map(item => item.trim()).filter(Boolean),
       avatar: newSalesForm.avatar,
-      specialties: newSalesForm.specialties.split(',').map(s => s.trim()).filter(Boolean),
       rating: 5.0,
       reviewCount: 1,
-      isOnline: true,
-      bio: newSalesForm.bio
+      isOnline: true
     });
 
     setShowAddSalesModal(false);
@@ -110,302 +102,114 @@ export default function TeamManager({ portfolioItems }: { portfolioItems: Portfo
     });
   };
 
-  const renderMemberCard = (member: TeamMemberProfile) => {
-    const memberPortfolios = portfolioItems.filter(p => p.authorId === member.userId);
-    const pendingCount = memberPortfolios.filter(p => p.status === 'pending').length;
+  const renderMemberCard = (member: TeamMemberProfile, index: number) => {
+    const memberProjects = portfolioItems.filter(item => item.assignedTo === member.userId);
+    const department = departmentDefinitionForRole(member.role);
 
     return (
-      <div key={member.id} className="bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 relative group">
-        <button 
-          onClick={() => handleDelete(member.id)}
-          className="absolute top-4 right-4 p-2 text-slate-400 hover:text-red-500 rounded-lg transition-colors cursor-pointer"
-          title="Delete Member"
-        >
-          <Trash2 className="w-4 h-4" />
-        </button>
-
-        <div className="flex items-center gap-4 mb-6">
-          <img 
-            src={member.avatar || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=200&auto=format&fit=crop'} 
-            alt={member.fullName}
-            className="w-16 h-16 rounded-xl object-cover shadow-sm"
-          />
-          <div>
-            <h3 className="font-bold text-slate-900 dark:text-white text-lg">{member.fullName}</h3>
-            <p className="text-sm text-slate-500 dark:text-slate-400">{member.title}</p>
-            <div className="mt-1 inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
-              {member.role.replace('_', ' ')}
-            </div>
-          </div>
-        </div>
-
-        <div className="text-sm text-slate-600 dark:text-slate-300 mb-6 line-clamp-3 h-16">
-          {member.bio || 'No bio provided.'}
-        </div>
-
-        <div className="pt-4 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between text-sm">
-          <div className="flex gap-4">
-            <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-400">
-              <Briefcase className="w-4 h-4" />
-              <span className="font-semibold text-slate-900 dark:text-white">{memberPortfolios.length}</span> Total
-            </div>
-            {pendingCount> 0 && (
-              <div className="flex items-center gap-1 text-amber-600 dark:text-amber-400 text-xs font-semibold">
-                <Clock className="w-3.5 h-3.5" />
-                {pendingCount} Pending
+      <div key={`${member.id || 'member'}_${index}`} className="flex flex-col justify-between rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-all hover:shadow-md">
+        <div>
+          <div className="flex items-start gap-4">
+            <img
+              src={member.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=250'}
+              alt={member.fullName}
+              className="h-14 w-14 shrink-0 rounded-2xl border border-slate-200 object-cover shadow-sm"
+            />
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center justify-between gap-2">
+                <h4 className="truncate font-bold text-slate-900">{member.fullName}</h4>
+                <button onClick={() => void handleDelete(member.id)} className="rounded-lg p-1 text-slate-400 transition-colors hover:text-red-500" title="Remove from public website showcase">
+                  <Trash2 className="h-4 w-4" />
+                </button>
               </div>
-            )}
+              <p className="text-xs font-semibold text-[#000080]">{member.title}</p>
+              <div className="mt-1 flex items-center gap-1.5 text-[11px] text-slate-400"><Clock className="h-3 w-3" /> Joined {new Date(member.createdAt).toLocaleDateString()}</div>
+            </div>
           </div>
+          <p className="mt-4 line-clamp-2 text-xs text-slate-600">{member.bio || 'No biography provided.'}</p>
+        </div>
+
+        <div className="mt-5 flex items-center justify-between gap-3 border-t border-slate-100 pt-4 text-xs text-slate-500">
+          <div className="flex items-center gap-1.5 font-medium"><Briefcase className="h-3.5 w-3.5 text-slate-400" /><span>{memberProjects.length} Portfolio Projects</span></div>
+          <span className="rounded bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-600">{department.shortLabel}</span>
         </div>
       </div>
     );
   };
 
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-3xl p-8 shadow-sm border border-slate-200 dark:border-slate-800 transition-colors">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-        <div>
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-            <Users className="w-6 h-6 text-[#000080] dark:text-blue-400" />
-            Team Directory
-          </h2>
-          <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">
-            Manage your onboarded team members and invite new ones.
-          </p>
-        </div>
+    <div className="space-y-6">
+      <div className="flex w-fit items-center gap-2 rounded-2xl border border-slate-200 bg-white p-1.5 shadow-sm">
+        <button onClick={() => setActiveSubTab('roles')} className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-all ${activeSubTab === 'roles' ? 'bg-[#000080] text-white shadow' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}>
+          <ShieldCheck className="h-4 w-4" /> Team & Departments
+        </button>
+        <button onClick={() => setActiveSubTab('showcase')} className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-all ${activeSubTab === 'showcase' ? 'bg-[#000080] text-white shadow' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}>
+          <Users className="h-4 w-4" /> Public Team Showcase ({teamMembers.length})
+        </button>
+      </div>
 
-        <div className="flex items-center gap-3">
+      {activeSubTab === 'roles' ? (
+        <UserRoleManager />
+      ) : (
+        <div className="space-y-6">
+          <div className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm md:flex-row md:items-center md:justify-between">
+            <div>
+              <h2 className="flex items-center gap-2 text-xl font-bold text-slate-900"><Users className="h-6 w-6 text-[#000080]" /> Public Team Showcase</h2>
+              <p className="mt-1 max-w-2xl text-xs leading-5 text-slate-500">Public-facing profiles use the same department structure as internal Team & Users, so Sales, Content, Design and Development are never mixed into one generic team bucket.</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <button onClick={() => setShowAddSalesModal(true)} className="flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-bold text-white shadow transition-all hover:bg-emerald-700"><Plus className="h-3.5 w-3.5" /> Add Sales Rep</button>
+              <button onClick={copyOnboardingLink} className="flex items-center gap-1.5 rounded-xl bg-slate-100 px-3.5 py-2 text-xs font-bold text-slate-700 transition-all hover:bg-slate-200" title="Copy Registration Link">
+                {copiedLink === 'register' ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />} Copy Registration URL
+              </button>
+            </div>
+          </div>
+
           <div className="relative">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              placeholder="Search members..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:border-[#000080] focus:ring-1 focus:ring-[#000080] outline-none transition-all dark:text-white w-64"
-            />
+            <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <input type="text" placeholder="Search name, title, role or department..." value={searchTerm} onChange={event => setSearchTerm(event.target.value)} className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-10 pr-4 text-xs text-slate-900 shadow-sm outline-none transition-all focus:border-[#000080]" />
           </div>
-        </div>
-      </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
-        {/* Design & Dev Column */}
-        <div className="bg-white dark:bg-slate-800/20 border border-slate-200 dark:border-slate-700 rounded-2xl p-6">
-          <div className="flex flex-col xl:flex-row xl:items-center justify-between mb-6 pb-4 border-b border-slate-200 dark:border-slate-700 gap-4">
-            <h3 className="font-bold text-lg text-slate-900 dark:text-white flex items-center gap-2">
-              💻 Website Design & Development
-            </h3>
-            <div className="flex items-center gap-2">
-              <input 
-                type="email"
-                placeholder="Enter email address..."
-                value={inviteEmails.developer_designer}
-                onChange={(e) => setInviteEmails(prev => ({ ...prev, developer_designer: e.target.value }))}
-                className="text-xs px-3 py-1.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:border-[#000080] dark:text-white w-48"
-              />
-              <button 
-                onClick={() => sendInviteEmail('developer_designer')}
-                className="text-xs px-3 py-1.5 bg-[#000080] hover:bg-[#000066] text-white font-bold rounded-lg transition-all flex items-center gap-1 cursor-pointer"
-              >
-                <Send className="w-3.5 h-3.5" /> Invite
-              </button>
-              <button 
-                onClick={() => copyOnboardingLink('developer_designer')}
-                className="p-1.5 text-slate-500 hover:text-slate-800 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-                title="Copy Registration Link"
-              >
-                {copiedLink === 'developer_designer' ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
-              </button>
+          {groupedMembers.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center text-sm text-slate-400">No public team members match your search.</div>
+          ) : (
+            <div className="space-y-5">
+              {groupedMembers.map(group => (
+                <section key={group.value} className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                  <div className="mb-5 flex items-start justify-between gap-4 border-b border-slate-100 pb-4">
+                    <div>
+                      <div className="flex items-center gap-2"><Building2 className="h-4 w-4 text-[#000080]" /><h3 className="text-base font-bold text-slate-900">{group.label}</h3><span className="rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-xs font-bold text-[#000080]">{group.members.length}</span></div>
+                      <p className="mt-1 text-[11px] text-slate-500">{group.description}</p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">{group.members.map(renderMemberCard)}</div>
+                </section>
+              ))}
             </div>
-          </div>
-          <div className="flex flex-col gap-4">
-            {designMembers.length> 0 ? (
-              designMembers.map(renderMemberCard)
-            ) : (
-              <div className="text-center py-8 text-sm text-slate-500 dark:text-slate-400">
-                No Design & Development team members yet.
-              </div>
-            )}
-          </div>
-        </div>
-        
-        {/* Sales Column */}
-        <div className="bg-white dark:bg-slate-800/20 border border-slate-200 dark:border-slate-700 rounded-2xl p-6">
-          <div className="flex flex-col xl:flex-row xl:items-center justify-between mb-6 pb-4 border-b border-slate-200 dark:border-slate-700 gap-4">
-            <h3 className="font-bold text-lg text-slate-900 dark:text-white flex items-center gap-2">
-              📈 Sales Team
-            </h3>
-            <div className="flex items-center gap-2">
-              <button 
-                onClick={() => setShowAddSalesModal(true)}
-                className="text-xs px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg transition-all flex items-center gap-1 cursor-pointer"
-              >
-                <Plus className="w-3.5 h-3.5" /> Add Sales Rep
-              </button>
-              <input 
-                type="email"
-                placeholder="Enter email address..."
-                value={inviteEmails.sales_team}
-                onChange={(e) => setInviteEmails(prev => ({ ...prev, sales_team: e.target.value }))}
-                className="text-xs px-3 py-1.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:border-[#000080] dark:text-white w-40"
-              />
-              <button 
-                onClick={() => sendInviteEmail('sales_team')}
-                className="text-xs px-3 py-1.5 bg-[#000080] hover:bg-[#000066] text-white font-bold rounded-lg transition-all flex items-center gap-1 cursor-pointer"
-              >
-                <Send className="w-3.5 h-3.5" /> Invite
-              </button>
-              <button 
-                onClick={() => copyOnboardingLink('sales_team')}
-                className="p-1.5 text-slate-500 hover:text-slate-800 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-                title="Copy Registration Link"
-              >
-                {copiedLink === 'sales_team' ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
-              </button>
-            </div>
-          </div>
-          <div className="flex flex-col gap-4">
-            {salesMembers.length> 0 ? (
-              salesMembers.map(renderMemberCard)
-            ) : (
-              <div className="text-center py-8 text-sm text-slate-500 dark:text-slate-400">
-                No Sales Team members yet.
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {otherMembers.length> 0 && (
-        <div className="mt-8 bg-white dark:bg-slate-800/20 border border-slate-200 dark:border-slate-700 rounded-2xl p-6">
-          <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-200 dark:border-slate-700">
-            <h3 className="font-bold text-lg text-slate-900 dark:text-white flex items-center gap-2">
-              Other Roles
-            </h3>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {otherMembers.map(renderMemberCard)}
-          </div>
+          )}
         </div>
       )}
 
-      {/* Add Sales Rep Modal */}
       {showAddSalesModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full p-6 border border-slate-200 dark:border-slate-800 shadow-2xl">
-            <div className="flex items-center justify-between pb-4 mb-4 border-b border-slate-200 dark:border-slate-800">
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                <Plus className="w-5 h-5 text-emerald-600" /> Add Sales Representative
-              </h3>
-              <button 
-                type="button"
-                onClick={() => setShowAddSalesModal(false)}
-                className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg transition-colors cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
+            <div className="mb-4 flex items-center justify-between border-b border-slate-100 pb-4">
+              <div><h3 className="flex items-center gap-2 text-base font-bold text-slate-900"><Plus className="h-5 w-5 text-emerald-600" /> Add Sales Representative</h3><p className="mt-1 text-[11px] text-slate-500">This profile will appear under Sales & Business Development.</p></div>
+              <button type="button" onClick={() => setShowAddSalesModal(false)} className="rounded-lg p-1.5 text-slate-400 hover:text-slate-600"><X className="h-5 w-5" /></button>
             </div>
 
             <form onSubmit={handleAddSalesMember} className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Full Name *
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Jordan Smith"
-                  value={newSalesForm.fullName}
-                  onChange={(e) => setNewSalesForm(prev => ({ ...prev, fullName: e.target.value }))}
-                  className="w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-[#000080] dark:text-white"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Email Address
-                </label>
-                <input
-                  type="email"
-                  placeholder="e.g. jordan.sales@profoxweb.com"
-                  value={newSalesForm.email}
-                  onChange={(e) => setNewSalesForm(prev => ({ ...prev, email: e.target.value }))}
-                  className="w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-[#000080] dark:text-white"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Title / Role
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. Senior E-Commerce Consultant"
-                  value={newSalesForm.title}
-                  onChange={(e) => setNewSalesForm(prev => ({ ...prev, title: e.target.value }))}
-                  className="w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-[#000080] dark:text-white"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Specialties (comma-separated)
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. Shopify Packages, Enterprise Quotes, Custom Apps"
-                  value={newSalesForm.specialties}
-                  onChange={(e) => setNewSalesForm(prev => ({ ...prev, specialties: e.target.value }))}
-                  className="w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-[#000080] dark:text-white"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Avatar Photo URL
-                </label>
-                <input
-                  type="url"
-                  placeholder="https://images.unsplash.com/..."
-                  value={newSalesForm.avatar}
-                  onChange={(e) => setNewSalesForm(prev => ({ ...prev, avatar: e.target.value }))}
-                  className="w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-[#000080] dark:text-white"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Short Bio
-                </label>
-                <textarea
-                  rows={2}
-                  placeholder="Brief description of sales expertise..."
-                  value={newSalesForm.bio}
-                  onChange={(e) => setNewSalesForm(prev => ({ ...prev, bio: e.target.value }))}
-                  className="w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-[#000080] dark:text-white"
-                />
-              </div>
-
-              <div className="flex justify-end gap-3 pt-2">
-                <button 
-                  type="button"
-                  onClick={() => setShowAddSalesModal(false)}
-                  className="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-900 transition-colors cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button 
-                  type="submit"
-                  className="px-4 py-2 text-xs font-semibold bg-[#000080] hover:bg-[#000066] text-white rounded-xl shadow-md transition-all">
-                  Create Sales Member
-                </button>
-              </div>
+              <div><label className="mb-1 block text-xs font-bold text-slate-700">Full Name *</label><input type="text" required placeholder="e.g. Jordan Smith" value={newSalesForm.fullName} onChange={event => setNewSalesForm(prev => ({ ...prev, fullName: event.target.value }))} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs outline-none focus:border-[#000080]" /></div>
+              <div><label className="mb-1 block text-xs font-bold text-slate-700">Email Address</label><input type="email" placeholder="e.g. jordan.sales@profoxweb.com" value={newSalesForm.email} onChange={event => setNewSalesForm(prev => ({ ...prev, email: event.target.value }))} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs outline-none focus:border-[#000080]" /></div>
+              <div><label className="mb-1 block text-xs font-bold text-slate-700">Title / Role</label><input type="text" value={newSalesForm.title} onChange={event => setNewSalesForm(prev => ({ ...prev, title: event.target.value }))} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs outline-none focus:border-[#000080]" /></div>
+              <div><label className="mb-1 block text-xs font-bold text-slate-700">Specialties (comma-separated)</label><input type="text" value={newSalesForm.specialties} onChange={event => setNewSalesForm(prev => ({ ...prev, specialties: event.target.value }))} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs outline-none focus:border-[#000080]" /></div>
+              <div><label className="mb-1 block text-xs font-bold text-slate-700">Avatar Photo URL</label><input type="url" value={newSalesForm.avatar} onChange={event => setNewSalesForm(prev => ({ ...prev, avatar: event.target.value }))} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs outline-none focus:border-[#000080]" /></div>
+              <div><label className="mb-1 block text-xs font-bold text-slate-700">Short Bio</label><textarea rows={2} value={newSalesForm.bio} onChange={event => setNewSalesForm(prev => ({ ...prev, bio: event.target.value }))} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs outline-none focus:border-[#000080]" /></div>
+              <div className="flex justify-end gap-3 pt-2"><button type="button" onClick={() => setShowAddSalesModal(false)} className="px-4 py-2 text-xs font-bold text-slate-600 hover:text-slate-900">Cancel</button><button type="submit" className="rounded-xl bg-[#000080] px-4 py-2 text-xs font-bold text-white shadow transition-all hover:bg-[#000066]">Create Sales Member</button></div>
             </form>
           </div>
         </div>
       )}
-
-      
     </div>
   );
 }

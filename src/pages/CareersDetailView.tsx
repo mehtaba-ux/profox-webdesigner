@@ -1,669 +1,418 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'motion/react';
-import { 
-  ArrowLeft, 
-  MapPin, 
-  Briefcase, 
-  Search, 
-  Send, 
-  X, 
-  CheckCircle2, 
-  Upload, 
-  Edit3, 
-  Sparkles,
-  Users,
+import React, { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
+import {
+  ArrowLeft,
+  ArrowRight,
+  BriefcaseBusiness,
+  CheckCircle2,
+  CircleDollarSign,
+  Clock3,
+  FileText,
+  Globe2,
+  Laptop2,
+  Send,
+  ShieldCheck,
   Target,
-  Compass,
-  Heart
+  Video,
+  X
 } from 'lucide-react';
-import { useCMS } from '../lib/CMSProvider';
-import { useAuth } from '../lib/AuthContext';
-import CTA from '../components/CTA';
-import HeroReviewProof from '../components/HeroReviewProof';
+import { applicantService } from '../lib/applicantService';
 
-interface Position {
-  id: string;
-  title: string;
-  location: string;
-  department?: string;
-  type?: string;
-  description?: string;
-  applyUrl?: string;
-  active?: boolean;
+interface CareersDetailViewProps {
+  page?: any;
 }
 
-interface CultureItem {
-  id: string;
-  title: string;
-  description: string;
-}
+const ROLE_TITLE = 'Independent Commission-Based Sales Representative';
 
-interface CareersData {
-  hero?: {
-    title?: string;
-    subtitle?: string;
-    subheading?: string;
-    badgeText?: string;
-    description?: string;
-    subtitleParagraph?: string;
-  };
-  positions?: Position[];
-  culture?: {
-    title?: string;
-    bgImage?: string;
-    items?: CultureItem[];
-  };
-}
-
-const defaultCareersData: CareersData = {
+const fallback = {
   hero: {
-    title: "Open positions",
-    subtitle: "We value experience, curiosity, empathy, and dedication; we look for thoughtful teammates who enjoy learning and helping others succeed. Take a look at the open roles below and share your resume. We’ll review it with care and reach out if there’s a good fit now or in the future.",
-    badgeText: "CAREERS & OFFERS",
+    badge: 'REMOTE · COMMISSION-BASED · INTERNATIONAL SALES',
+    title: 'Independent Sales Representative',
+    line: 'Help businesses move from site to system.',
+    description:
+      'Represent ProFox with businesses in the US, UK, Canada and Australia. Find qualified prospects, start useful conversations, run discovery calls and close website, application and automation projects.'
   },
-  positions: [
-    {
-      id: "pos-1",
-      title: "Product Experience Designer",
-      location: "United States, New York",
-      department: "Design & UX",
-      type: "Full-time",
-      description: "We are seeking a senior Product Experience Designer to craft high-impact digital solutions for enterprise clients.",
-      active: true
-    },
-    {
-      id: "pos-2",
-      title: "Senior UX Designer",
-      location: "United States, Remote",
-      department: "Design & UX",
-      type: "Full-time",
-      description: "Lead user research, wireframing, and design systems for enterprise web applications.",
-      active: true
-    },
-    {
-      id: "pos-3",
-      title: "Creative Director",
-      location: "United States, New York",
-      department: "Creative Strategy",
-      type: "Full-time",
-      description: "Drive brand vision, creative strategy, and digital storytelling across client engagements.",
-      active: true
-    },
-    {
-      id: "pos-4",
-      title: "Brand and Visual Design Lead",
-      location: "Remote",
-      department: "Design & UX",
-      type: "Full-time",
-      description: "Own visual identity systems, typography, and interactive brand design.",
-      active: true
-    },
-    {
-      id: "pos-5",
-      title: "Solutions Architect",
-      location: "Remote",
-      department: "Engineering",
-      type: "Full-time",
-      description: "Architect cloud infrastructure, API integrations, and scalable web software.",
-      active: true
-    },
-    {
-      id: "pos-6",
-      title: "Ecommerce Solutions Architect",
-      location: "Remote",
-      department: "Engineering",
-      type: "Full-time",
-      description: "Build high-conversion headless e-commerce architectures for global brands.",
-      active: true
-    },
-    {
-      id: "pos-7",
-      title: "Customer Experience Technology Lead",
-      location: "Remote",
-      department: "Technology",
-      type: "Full-time",
-      description: "Bridge marketing strategy and frontend software engineering to deliver seamless customer journeys.",
-      active: true
-    },
-    {
-      id: "pos-8",
-      title: "Data Solutions Architect",
-      location: "United States, Remote",
-      department: "Data & AI",
-      type: "Full-time",
-      description: "Design real-time data pipelines, AI models, and enterprise analytics architectures.",
-      active: true
-    },
-    {
-      id: "pos-9",
-      title: "AI and Automation Consultant",
-      location: "United States, New York",
-      department: "Data & AI",
-      type: "Full-time",
-      description: "Deploy autonomous AI agents, workflow automation pipelines, and machine learning solutions.",
-      active: true
-    },
-    {
-      id: "pos-10",
-      title: "Technical Delivery Lead",
-      location: "United States, Remote",
-      department: "Engineering",
-      type: "Full-time",
-      description: "Lead cross-functional engineering teams delivering complex digital transformation projects.",
-      active: true
-    }
+  role: {
+    location: 'Remote · Worldwide',
+    type: 'Independent contractor · Commission-only',
+    experience: '6+ months sales experience',
+    summary:
+      'This role is for salespeople who can work independently, communicate clearly in English and stay consistent from prospect research through follow-up and close.'
+  },
+  compensation: [
+    { label: 'Website Package', price: '$599', rate: '10%', example: '$59.90' },
+    { label: 'Business Package', price: '$2,379', rate: '12%', example: '$285.48' },
+    { label: 'Premium Package', price: '$5,799+', rate: '15%', example: '$869.85+' },
+    { label: 'Custom Web Application', price: 'Approved quotation', rate: '10–15%', example: 'Set per quotation' }
   ],
-  culture: {
-    title: "Why Work at Profox",
-    bgImage: "https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&q=80&w=1600",
-    items: [
-      {
-        id: "c1",
-        title: "Work That Actually Matters",
-        description: "You will work on real business challenges, not throwaway tasks, helping teams grow and fix what is broken, allowing you to see the direct impact of your work."
-      },
-      {
-        id: "c2",
-        title: "Learn From Experienced People",
-        description: "You collaborate with senior creatives, engineers, and strategists who share context, challenge your thinking, and help you grow through real projects."
-      },
-      {
-        id: "c3",
-        title: "Trust, Ownership, and Respect",
-        description: "We trust people to own their work, manage their time, and speak honestly. We create a culture where accountability and respect come before process."
-      },
-      {
-        id: "c4",
-        title: "Room to Grow Over Time",
-        description: "Profox is built for long-term growth, giving you space to improve your skills, take on more responsibility, and shape your own career path."
-      }
-    ]
-  }
+  responsibilities: [
+    'Research and qualify businesses that fit ProFox services.',
+    'Use thoughtful email, LinkedIn, phone and personalized outreach to start conversations.',
+    'Book and conduct discovery meetings by Zoom or Google Meet.',
+    'Understand the client’s goals, current website or workflow, decision process and next step.',
+    'Present the right ProFox Web, ProFox Apps or ProFox Flow service without overselling.',
+    'Keep leads, follow-ups, meetings and quotations accurate in the ProFox CRM.',
+    'Close responsibly and hand verified sales into the delivery system.'
+  ],
+  requirements: [
+    'At least 6 months of sales, business development or client-facing experience.',
+    'Clear spoken and written English for international client conversations.',
+    'Confidence conducting professional video meetings and asking discovery questions.',
+    'A reliable laptop, internet connection and a suitable place for client calls.',
+    'Comfort with a commission-only independent contractor model.',
+    'Ability to research prospects, follow up consistently and work without daily supervision.'
+  ],
+  process: [
+    { title: 'Apply', text: 'Tell us about your experience and send a 60–120 second introduction video.' },
+    { title: 'Review & assessment', text: 'We review communication, sales judgment, lead research and CRM readiness.' },
+    { title: 'Agreement', text: 'Selected candidates review and sign the ProFox Independent Sales Partner Agreement.' },
+    { title: 'Sales Academy', text: 'Complete the required 20-module training, practical reviews and final certification.' },
+    { title: 'Final approval', text: 'ProFox reviews training evidence and activation readiness.' },
+    { title: 'Start selling', text: 'Approved representatives receive active sales access and begin managing their own pipeline.' }
+  ]
 };
 
-export default function CareersDetailView({ page }: { page?: any }) {
-  const { content } = useCMS();
-  const { isAdminOrEditor } = useAuth();
-  const navigate = useNavigate();
+export default function CareersDetailView({ page }: CareersDetailViewProps) {
+  const data = page?.careersData || {};
+  const hero = { ...fallback.hero, ...(data.hero || {}) };
+  const role = { ...fallback.role, ...(data.role || {}) };
+  const compensation = Array.isArray(data.compensation) && data.compensation.length ? data.compensation : fallback.compensation;
+  const responsibilities = Array.isArray(data.responsibilities) && data.responsibilities.length ? data.responsibilities : fallback.responsibilities;
+  const requirements = Array.isArray(data.requirements) && data.requirements.length ? data.requirements : fallback.requirements;
+  const process = Array.isArray(data.process) && data.process.length ? data.process : fallback.process;
 
-  // Retrieve careers template blueprint data or fallback
-  const blueprints = content.template_blueprints || [];
-  const careersBlueprint = blueprints.find((b: any) => b.id === page?.template);
-  
-  const careersData: CareersData = page?.careersData || page?.serviceDetailData || careersBlueprint?.defaultData || defaultCareersData;
+  const [applyOpen, setApplyOpen] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
 
-  const hero = {
-    title: page?.heroTitle || careersData?.hero?.title || defaultCareersData.hero!.title,
-    subtitle: careersData?.hero?.subtitle || "",
-    description: page?.heroSubtitle || careersData?.hero?.description || careersData?.hero?.subtitleParagraph || defaultCareersData.hero!.description,
-    badgeText: page?.heroSubheading || careersData?.hero?.subheading || careersData?.hero?.badgeText || defaultCareersData.hero!.badgeText,
-  };
-
-  const rawPositions = (careersData?.positions && careersData.positions.length > 0) 
-    ? careersData.positions 
-    : defaultCareersData.positions!;
-  
-  // Filter out inactive positions if flag exists
-  const positions = rawPositions.filter(p => p.active !== false);
-
-  const culture = careersData?.culture || defaultCareersData.culture!;
-
-  // UI States
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedDept, setSelectedDept] = useState<string>('All');
-  const [selectedRoleForApply, setSelectedRoleForApply] = useState<Position | null>(null);
-  const [applicationSubmitted, setApplicationSubmitted] = useState(false);
+  const [fullName, setFullName] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [country, setCountry] = useState('');
+  const [timezone, setTimezone] = useState('');
+  const [linkedinUrl, setLinkedinUrl] = useState('');
+  const [currentRole, setCurrentRole] = useState('');
+  const [salesExperience, setSalesExperience] = useState('');
+  const [digitalSalesExperience, setDigitalSalesExperience] = useState('');
+  const [internationalSalesExperience, setInternationalSalesExperience] = useState('');
+  const [englishRating, setEnglishRating] = useState('Fluent / Native');
+  const [availability, setAvailability] = useState('Full-time');
+  const [hasLaptopInternet, setHasLaptopInternet] = useState(true);
+  const [comfortableCommission, setComfortableCommission] = useState(true);
+  const [comfortableSourcing, setComfortableSourcing] = useState(true);
+  const [cvUrl, setCvUrl] = useState('');
+  const [videoUrl, setVideoUrl] = useState('');
+  const [referralSource, setReferralSource] = useState('ProFox Website');
+  const [message, setMessage] = useState('');
+  const [consentAccurate, setConsentAccurate] = useState(false);
+  const [consentCommission, setConsentCommission] = useState(false);
+  const [consentReview, setConsentReview] = useState(false);
+  const [consentPrivacy, setConsentPrivacy] = useState(false);
 
   useEffect(() => {
-    const businessName = content.siteSettings?.businessName || 'Profox web designer';
-    let pageTitle = page?.seo?.metaTitle;
-    if (!pageTitle || pageTitle.includes('Untitled Page') || pageTitle.includes('Dotlogics')) {
-      const displayTitle = page?.title && page.title !== 'Untitled Page' ? page.title : 'Careers & Offers';
-      pageTitle = `${displayTitle} | ${businessName}`;
-    } else if (pageTitle.includes('Dotlogics')) {
-      pageTitle = pageTitle.replace(/Dotlogics/g, businessName);
-    }
-    document.title = pageTitle;
+    document.title = page?.seo?.metaTitle || 'Independent Sales Representative | ProFox Careers';
     window.scrollTo(0, 0);
-  }, [page, content.siteSettings?.businessName]);
-  
-  // Application form state
-  const [applicantName, setApplicantName] = useState('');
-  const [applicantEmail, setApplicantEmail] = useState('');
-  const [applicantPhone, setApplicantPhone] = useState('');
-  const [applicantLink, setApplicantLink] = useState('');
-  const [applicantCover, setApplicantCover] = useState('');
-  const [resumeFile, setResumeFile] = useState<File | null>(null);
+  }, [page?.seo?.metaTitle]);
 
-  // Departments list for tabs
-  const departments = useMemo(() => {
-    const depts = new Set<string>();
-    positions.forEach(p => {
-      if (p.department) depts.add(p.department);
-    });
-    return ['All', ...Array.from(depts)];
-  }, [positions]);
+  const commissionExamples = useMemo(
+    () => compensation.map((item: any) => ({ ...item, key: `${item.label}-${item.rate}` })),
+    [compensation]
+  );
 
-  // Filtered positions
-  const filteredPositions = useMemo(() => {
-    return positions.filter(p => {
-      const matchesSearch = searchQuery === '' || 
-        p.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-        p.location.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesDept = selectedDept === 'All' || p.department === selectedDept;
-      return matchesSearch && matchesDept;
-    });
-  }, [positions, searchQuery, selectedDept]);
+  const closeApply = () => {
+    setApplyOpen(false);
+    setSubmitted(false);
+    setError('');
+  };
 
-  const handleApplySubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!applicantName || !applicantEmail) return;
-    
-    setApplicationSubmitted(true);
-    setTimeout(() => {
-      setApplicationSubmitted(false);
-      setSelectedRoleForApply(null);
-      setApplicantName('');
-      setApplicantEmail('');
-      setApplicantPhone('');
-      setApplicantLink('');
-      setApplicantCover('');
-      setResumeFile(null);
-    }, 3000);
+  const submit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setError('');
+
+    if (!fullName.trim() || !email.trim() || !salesExperience.trim() || !country.trim()) {
+      setError('Please complete your name, email, country and sales experience.');
+      return;
+    }
+    if (!/^https?:\/\//i.test(videoUrl.trim())) {
+      setError('Please add a valid public or shareable link to your 60–120 second introduction video.');
+      return;
+    }
+    if (!consentAccurate || !consentCommission || !consentReview || !consentPrivacy) {
+      setError('Please review and accept the required confirmations before applying.');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const result = await applicantService.submitPublicApplication({
+        fullName,
+        email,
+        phone,
+        country,
+        timezone,
+        linkedinUrl,
+        currentRole,
+        salesExperience,
+        digitalSalesExperience,
+        internationalSalesExperience,
+        englishRating,
+        availability,
+        hasLaptopInternet,
+        comfortableCommission,
+        comfortableSourcing,
+        cvUrl,
+        videoUrl,
+        referralSource,
+        message
+      });
+      if (result.success) {
+        setSubmitted(true);
+      } else if (result.duplicate) {
+        setError(result.message || 'An active application with this email is already under review.');
+      } else {
+        setError(result.error || 'Your application could not be submitted. Please try again.');
+      }
+    } catch (err: any) {
+      setError(err?.message || 'Your application could not be submitted. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
-    <div className="min-h-screen bg-white font-sans text-slate-900 selection:bg-slate-100 selection:text-[#000080] overflow-x-hidden relative">
-      
-      {/* Top Header / Breadcrumb Hero */}
-      <section className="pt-36 pb-16 bg-[#FBFBFD] border-b border-slate-200/60 relative">
-        <div className="max-w-6xl mx-auto px-6">
-          <Link 
-            to="/" 
-            className="inline-flex items-center gap-2 text-xs font-semibold text-slate-500 hover:text-[#000080] transition-colors mb-8 bg-white border border-slate-200 px-3.5 py-1.5 rounded-full shadow-sm"
-          >
-            <ArrowLeft className="w-3.5 h-3.5" /> Back to Home
+    <div className="min-h-screen bg-white text-slate-900">
+      <section className="border-b border-slate-200 bg-white pt-32 pb-16 sm:pt-36 sm:pb-20">
+        <div className="mx-auto max-w-6xl px-6">
+          <Link to="/" className="inline-flex items-center gap-2 text-xs font-bold text-slate-500 transition hover:text-[#000080]">
+            <ArrowLeft className="h-4 w-4" /> Back to home
           </Link>
-
-          <motion.div
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4 }}
-            className="max-w-4xl space-y-6"
-          >
-            {hero.badgeText && (
-              <span className="inline-block text-[11px] font-bold text-[#000080] bg-[#000080]/10 border border-[#000080]/20 px-3 py-1 rounded-full uppercase tracking-wider">
-                {hero.badgeText}
-              </span>
-            )}
-            
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-slate-900 tracking-tight leading-tight">
-              {hero.title}
-            </h1>
-
-            {hero.subtitle && (
-              <p className="text-xl sm:text-2xl font-bold text-[#000080] max-w-3xl leading-snug">
-                {hero.subtitle}
-              </p>
-            )}
-
-            <p className="text-base sm:text-lg text-slate-600 leading-relaxed max-w-3xl font-normal">
-              {hero.description}
-            </p>
-            <div className="flex flex-col items-start gap-4 pt-3 sm:flex-row sm:items-center">
-              <a href="/contact-us" className="inline-flex items-center gap-2 rounded-xl bg-[#000080] px-6 py-3.5 text-sm font-bold text-white shadow-lg transition-transform hover:-translate-y-1">Talk to Our Team</a>
-              <HeroReviewProof />
-            </div>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* Open Positions List & Filters */}
-      <section className="py-16 sm:py-24 bg-white">
-        <div className="max-w-6xl mx-auto px-6 space-y-10">
-          
-          {/* Controls Bar: Search & Department Tabs */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-6 border-b border-slate-200">
-            {/* Department Filter Pills */}
-            <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0 scrollbar-none">
-              {departments.map((dept) => (
-                <button
-                  key={dept}
-                  onClick={() => setSelectedDept(dept)}
-                  className={`px-4 py-2 rounded-full text-xs font-bold transition-all whitespace-nowrap ${
-                    selectedDept === dept
-                      ? 'bg-[#000080] text-white shadow-md'
-                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-900'
-                  }`}
-                >
-                  {dept}
-                </button>
-              ))}
-            </div>
-
-            {/* Search Input */}
-            <div className="relative w-full md:w-72 shrink-0">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-              <input 
-                type="text"
-                placeholder="Search position or location..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-xs font-medium focus:outline-none focus:border-[#000080] focus:bg-white transition-all"
-              />
-              {searchQuery && (
-                <button 
-                  onClick={() => setSearchQuery('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* Roles Grid / Rows */}
-          {filteredPositions.length === 0 ? (
-            <div className="text-center py-20 bg-slate-50 rounded-3xl border border-slate-200/80 space-y-4">
-              <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center mx-auto text-slate-400 border border-slate-200 shadow-sm">
-                <Briefcase className="w-6 h-6" />
-              </div>
-              <h3 className="text-lg font-bold text-slate-800">No positions found</h3>
-              <p className="text-xs text-slate-500 max-w-md mx-auto">
-                No open roles match your current search criteria. Try selecting another department or clearing search filters.
-              </p>
-              <button
-                onClick={() => { setSearchQuery(''); setSelectedDept('All'); }}
-                className="text-xs font-bold text-[#000080] underline hover:text-[#000066]"
-              >
-                Reset Search Filters
+          <div className="mt-10 max-w-4xl">
+            <div className="text-[11px] font-black uppercase tracking-[0.2em] text-[#FF0E0E]">{hero.badge}</div>
+            <h1 className="mt-5 text-4xl font-black tracking-tight text-[#000080] sm:text-6xl">{hero.title}</h1>
+            <p className="mt-5 text-xl font-bold leading-snug text-slate-900 sm:text-2xl">{hero.line}</p>
+            <p className="mt-5 max-w-3xl text-base leading-7 text-slate-600 sm:text-lg">{hero.description}</p>
+            <div className="mt-8 flex flex-wrap gap-3">
+              <button onClick={() => setApplyOpen(true)} className="inline-flex items-center gap-2 rounded-xl bg-[#FF0E0E] px-5 py-3 text-sm font-black text-white transition hover:brightness-95">
+                Apply for the role <ArrowRight className="h-4 w-4" />
               </button>
+              <a href="#role" className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-[#000080] transition hover:border-[#000080]">
+                See role details
+              </a>
             </div>
-          ) : (
-            <div className="divide-y divide-slate-200/80 border-t border-b border-slate-200">
-              {filteredPositions.map((pos, idx) => (
-                <motion.div
-                  key={pos.id || idx}
-                  initial={{ opacity: 0, y: 10 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.3, delay: idx * 0.03 }}
-                  className="py-6 sm:py-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4 group hover:bg-slate-50/80 px-4 rounded-2xl transition-all"
-                >
-                  <div className="space-y-1.5">
-                    <h3 className="text-lg sm:text-xl font-bold text-slate-900 group-hover:text-[#000080] transition-colors">
-                      {pos.title}
-                    </h3>
-                    <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500">
-                      <span className="flex items-center gap-1 font-medium text-slate-600">
-                        <MapPin className="w-3.5 h-3.5 text-slate-400" /> {pos.location}
-                      </span>
-                      {pos.type && (
-                        <>
-                          <span>•</span>
-                          <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded text-[11px] font-semibold">
-                            {pos.type}
-                          </span>
-                        </>
-                      )}
-                      {pos.department && (
-                        <>
-                          <span>•</span>
-                          <span className="text-slate-400 font-medium">{pos.department}</span>
-                        </>
-                      )}
-                    </div>
-                    {pos.description && (
-                      <p className="text-xs text-slate-500 mt-2 line-clamp-2 max-w-2xl">
-                        {pos.description}
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="shrink-0 pt-2 sm:pt-0">
-                    <button
-                      onClick={() => {
-                        if (pos.applyUrl && pos.applyUrl.startsWith('http')) {
-                          window.open(pos.applyUrl, '_blank');
-                        } else {
-                          setSelectedRoleForApply(pos);
-                        }
-                      }}
-                      className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-[#059669] hover:bg-[#047857] text-white text-xs font-bold px-6 py-3 rounded-full transition-all shadow-sm hover:shadow-md hover:scale-[1.02]"
-                    >
-                      <span>Send Your Resume</span>
-                      <Send className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          )}
-
+          </div>
         </div>
       </section>
 
-      {/* Culture Section: Why Work at Profox web designer */}
-      <section className="py-20 sm:py-32 bg-slate-950 text-white relative overflow-hidden">
-        {culture.bgImage && (
-          <div className="absolute inset-0 opacity-20 pointer-events-none">
-            <img src={culture.bgImage} alt="Culture background" className="w-full h-full object-cover filter blur-xs" />
-            <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/80 to-slate-950" />
-          </div>
-        )}
+      <section id="role" className="border-b border-slate-200 bg-slate-50 py-10">
+        <div className="mx-auto grid max-w-6xl gap-4 px-6 sm:grid-cols-3">
+          <Info icon={Globe2} label="Location" value={role.location} />
+          <Info icon={BriefcaseBusiness} label="Engagement" value={role.type} />
+          <Info icon={Clock3} label="Experience" value={role.experience} />
+        </div>
+      </section>
 
-        <div className="max-w-6xl mx-auto px-6 relative z-10 space-y-16">
-          <div className="max-w-2xl space-y-4">
-            <span className="text-xs font-bold text-emerald-400 uppercase tracking-widest bg-emerald-950/80 border border-emerald-800/60 px-3 py-1 rounded-full">
-              CULTURE & VALUES
-            </span>
-            <h2 className="text-3xl sm:text-5xl font-black text-white tracking-tight leading-tight">
-              {culture.title || "Why Work at Profox"}
-            </h2>
+      <section className="py-16 sm:py-20">
+        <div className="mx-auto max-w-6xl px-6">
+          <div className="max-w-3xl">
+            <Eyebrow>THE OPPORTUNITY</Eyebrow>
+            <h2 className="mt-3 text-3xl font-black tracking-tight text-[#000080] sm:text-4xl">Sell connected digital work. Keep the relationship clear.</h2>
+            <p className="mt-5 text-base leading-7 text-slate-600">{role.summary}</p>
           </div>
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8">
-            {culture.items?.map((item, idx) => (
-              <motion.div
-                key={item.id || idx}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.4, delay: idx * 0.1 }}
-                className="bg-slate-900/90 border border-slate-800 p-8 rounded-3xl space-y-4 shadow-xl hover:border-slate-700 transition-all flex flex-col justify-between"
-              >
-                <div className="space-y-4">
-                  <div className="w-10 h-10 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-2xl flex items-center justify-center font-bold text-sm">
-                    0{idx + 1}
-                  </div>
-                  <h3 className="text-lg font-bold text-white tracking-tight leading-snug">
-                    {item.title}
-                  </h3>
-                  <p className="text-xs text-slate-400 leading-relaxed font-normal">
-                    {item.description}
-                  </p>
+          <div className="mt-12 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+            <div className="flex items-start gap-3">
+              <CircleDollarSign className="mt-1 h-6 w-6 shrink-0 text-[#FF0E0E]" />
+              <div>
+                <h3 className="text-xl font-black text-[#000080]">Clear commission. No hidden formula.</h3>
+                <p className="mt-2 text-sm leading-6 text-slate-600">This is a commission-only independent contractor opportunity. Commission is earned on verified customer payments according to the approved package or quotation.</p>
+              </div>
+            </div>
+            <div className="mt-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {commissionExamples.map((item: any) => (
+                <div key={item.key} className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+                  <div className="text-xs font-black uppercase tracking-wide text-slate-500">{item.label}</div>
+                  <div className="mt-2 text-2xl font-black text-[#000080]">{item.price}</div>
+                  <div className="mt-3 text-sm font-black text-slate-900">{item.rate} commission</div>
+                  <div className="mt-1 text-xs text-slate-500">{item.example}</div>
                 </div>
-              </motion.div>
+              ))}
+            </div>
+            <div className="mt-5 rounded-2xl border-l-4 border-[#FF0E0E] bg-red-50/60 p-5">
+              <div className="text-sm font-black text-slate-900">Self-sourced + closed deal: +5 percentage points</div>
+              <p className="mt-1 text-xs leading-5 text-slate-600">When you both generate and close the lead yourself, five percentage points are added to the approved base commission rate for that deal.</p>
+            </div>
+            <p className="mt-5 text-xs leading-5 text-slate-500">Eligible commissions are paid on the 15th and the last working day of each month after the relevant customer payment has been verified.</p>
+          </div>
+        </div>
+      </section>
+
+      <section className="border-y border-slate-200 bg-slate-50 py-16 sm:py-20">
+        <div className="mx-auto grid max-w-6xl gap-10 px-6 lg:grid-cols-2">
+          <ListBlock eyebrow="WHAT YOU'LL DO" title="Own the sales journey." items={responsibilities} icon={Target} />
+          <ListBlock eyebrow="WHAT YOU NEED" title="The essentials, not a wish list." items={requirements} icon={ShieldCheck} />
+        </div>
+      </section>
+
+      <section className="py-16 sm:py-20">
+        <div className="mx-auto max-w-6xl px-6">
+          <div className="max-w-3xl">
+            <Eyebrow>HOW SELECTION WORKS</Eyebrow>
+            <h2 className="mt-3 text-3xl font-black tracking-tight text-[#000080] sm:text-4xl">Simple outside. Thorough inside.</h2>
+            <p className="mt-4 text-base leading-7 text-slate-600">You see a clear path. Behind it, ProFox uses structured checks so system access is granted only after agreement, training and final approval.</p>
+          </div>
+          <div className="mt-10 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {process.map((step: any, index: number) => (
+              <div key={`${step.title}-${index}`} className="rounded-2xl border border-slate-200 bg-white p-5">
+                <div className="text-xs font-black text-[#FF0E0E]">0{index + 1}</div>
+                <h3 className="mt-3 text-base font-black text-[#000080]">{step.title}</h3>
+                <p className="mt-2 text-sm leading-6 text-slate-600">{step.text}</p>
+              </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Global CTA */}
-      <CTA />
-
-      {/* Application / Send Resume Modal Drawer */}
-      <AnimatePresence>
-        {selectedRoleForApply && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="bg-white rounded-3xl max-w-xl w-full p-6 sm:p-8 shadow-2xl border border-slate-200 relative overflow-hidden"
-            >
-              <button
-                onClick={() => setSelectedRoleForApply(null)}
-                className="absolute right-6 top-6 text-slate-400 hover:text-slate-700 bg-slate-100 p-2 rounded-full transition-colors"
-              >
-                <X className="w-4 h-4" />
-              </button>
-
-              {applicationSubmitted ? (
-                <div className="py-12 text-center space-y-4">
-                  <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto shadow-inner">
-                    <CheckCircle2 className="w-8 h-8" />
-                  </div>
-                  <h3 className="text-2xl font-black text-slate-900">Resume Sent Successfully!</h3>
-                  <p className="text-xs text-slate-600 max-w-md mx-auto leading-relaxed">
-                    Thank you for applying for the <strong>{selectedRoleForApply.title}</strong> role. Our talent acquisition team will review your details with care and reach out to you shortly.
-                  </p>
-                </div>
-              ) : (
-                <form onSubmit={handleApplySubmit} className="space-y-5">
-                  <div>
-                    <span className="text-[10px] font-bold text-[#059669] bg-emerald-50 px-2.5 py-1 rounded-full uppercase tracking-wider border border-emerald-200">
-                      JOB APPLICATION
-                    </span>
-                    <h3 className="text-2xl font-black text-slate-900 mt-2">
-                      Apply for {selectedRoleForApply.title}
-                    </h3>
-                    <p className="text-xs text-slate-500 mt-1">
-                      {selectedRoleForApply.location} • {selectedRoleForApply.department || 'Profox Careers'}
-                    </p>
-                  </div>
-
-                  <div className="space-y-4 pt-2">
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1">
-                        Full Name <span className="text-red-500">*</span>
-                      </label>
-                      <input 
-                        type="text" 
-                        required
-                        placeholder="John Doe"
-                        value={applicantName}
-                        onChange={(e) => setApplicantName(e.target.value)}
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-medium focus:border-[#000080] focus:bg-white outline-none"
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-xs font-bold text-slate-700 mb-1">
-                          Email Address <span className="text-red-500">*</span>
-                        </label>
-                        <input 
-                          type="email" 
-                          required
-                          placeholder="john@example.com"
-                          value={applicantEmail}
-                          onChange={(e) => setApplicantEmail(e.target.value)}
-                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-medium focus:border-[#000080] focus:bg-white outline-none"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-bold text-slate-700 mb-1">
-                          Phone Number
-                        </label>
-                        <input 
-                          type="tel" 
-                          placeholder="+1 (555) 000-0000"
-                          value={applicantPhone}
-                          onChange={(e) => setApplicantPhone(e.target.value)}
-                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-medium focus:border-[#000080] focus:bg-white outline-none"
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1">
-                        LinkedIn Profile / Portfolio Link
-                      </label>
-                      <input 
-                        type="url" 
-                        placeholder="https://linkedin.com/in/username or portfolio link"
-                        value={applicantLink}
-                        onChange={(e) => setApplicantLink(e.target.value)}
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-medium focus:border-[#000080] focus:bg-white outline-none"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1">
-                        Attach Resume (PDF, DOCX)
-                      </label>
-                      <div className="border-2 border-dashed border-slate-200 rounded-2xl p-4 text-center bg-slate-50/50 hover:bg-slate-50 transition-colors cursor-pointer">
-                        <input 
-                          type="file" 
-                          accept=".pdf,.doc,.docx"
-                          onChange={(e) => setResumeFile(e.target.files?.[0] || null)}
-                          className="hidden"
-                          id="resume-upload-input"
-                        />
-                        <label htmlFor="resume-upload-input" className="cursor-pointer space-y-1 block">
-                          <Upload className="w-5 h-5 text-slate-400 mx-auto" />
-                          <span className="text-xs font-bold text-[#000080] block">
-                            {resumeFile ? resumeFile.name : 'Click to upload your resume'}
-                          </span>
-                          <span className="text-[10px] text-slate-400 block">
-                            PDF, DOCX up to 10MB
-                          </span>
-                        </label>
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1">
-                        Brief Cover Note / Why You'd Be a Great Fit
-                      </label>
-                      <textarea 
-                        rows={3}
-                        placeholder="Tell us about your background, projects, or curiosity..."
-                        value={applicantCover}
-                        onChange={(e) => setApplicantCover(e.target.value)}
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-medium focus:border-[#000080] focus:bg-white outline-none resize-none"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="pt-2 flex justify-end gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setSelectedRoleForApply(null)}
-                      className="px-5 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-100 transition-colors"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      className="bg-[#059669] hover:bg-[#047857] text-white text-xs font-bold px-7 py-2.5 rounded-xl transition-all shadow-md flex items-center gap-2"
-                    >
-                      <span>Submit Application</span>
-                      <Send className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                </form>
-              )}
-            </motion.div>
+      <section className="bg-[#000080] py-16 text-white sm:py-20">
+        <div className="mx-auto grid max-w-6xl gap-8 px-6 lg:grid-cols-[1fr_360px] lg:items-center">
+          <div>
+            <Eyebrow light>INTRODUCTION VIDEO</Eyebrow>
+            <h2 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl">Give us 60–120 seconds.</h2>
+            <p className="mt-4 max-w-2xl text-sm leading-7 text-blue-100">Record a short English introduction and share a public or viewable link. Cover your background, sales experience, client communication, English fluency and why this ProFox opportunity fits you.</p>
           </div>
-        )}
-      </AnimatePresence>
+          <div className="rounded-3xl border border-white/20 bg-white/10 p-6">
+            <Video className="h-7 w-7 text-white" />
+            <div className="mt-4 text-sm font-black">A polished production is not required.</div>
+            <p className="mt-2 text-xs leading-5 text-blue-100">We are reviewing clarity, communication and fit—not your editing skills.</p>
+          </div>
+        </div>
+      </section>
 
-      {/* Floating Admin Quick Edit Shortcut */}
-      {isAdminOrEditor && (
-        <button
-          onClick={() => navigate('/admin')}
-          className="fixed bottom-6 right-6 z-50 bg-white hover:bg-[#000066] text-slate-900 px-4 py-3 rounded-full shadow-2xl border border-slate-300 flex items-center gap-2 text-xs font-bold transition-all group hover:scale-105"
-          title="Manage Careers & Offers in Admin Area"
-        >
-          <Edit3 className="w-4 h-4 text-[#000080] group-hover:text-slate-900" />
-          <span>Manage Careers & Offers in Admin</span>
-        </button>
+      <section className="py-16 text-center sm:py-20">
+        <div className="mx-auto max-w-3xl px-6">
+          <div className="text-sm font-black text-[#FF0E0E]">From site to system.</div>
+          <h2 className="mt-3 text-3xl font-black tracking-tight text-[#000080] sm:text-4xl">Ready to represent ProFox?</h2>
+          <p className="mx-auto mt-4 max-w-2xl text-sm leading-6 text-slate-600">If the role, commission model and expectations are clear and fit how you work, send your application. We will review the information you provide and contact shortlisted candidates.</p>
+          <button onClick={() => setApplyOpen(true)} className="mt-7 inline-flex items-center gap-2 rounded-xl bg-[#FF0E0E] px-6 py-3.5 text-sm font-black text-white transition hover:brightness-95">
+            Apply for the role <Send className="h-4 w-4" />
+          </button>
+        </div>
+      </section>
+
+      {applyOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm">
+          <div className="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-3xl bg-white shadow-2xl">
+            <div className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-slate-200 bg-white px-6 py-5">
+              <div>
+                <div className="text-[10px] font-black uppercase tracking-[0.18em] text-[#FF0E0E]">APPLICATION</div>
+                <h2 className="mt-1 text-xl font-black text-[#000080]">{ROLE_TITLE}</h2>
+              </div>
+              <button onClick={closeApply} className="rounded-xl border border-slate-200 p-2 text-slate-500 transition hover:bg-slate-50" aria-label="Close application">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            {submitted ? (
+              <div className="p-8 text-center sm:p-12">
+                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
+                  <CheckCircle2 className="h-7 w-7" />
+                </div>
+                <h3 className="mt-5 text-2xl font-black text-[#000080]">Application received.</h3>
+                <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-slate-600">Thank you for applying to ProFox. Your candidate details and introduction video are now in review. Shortlisted candidates will be contacted using the email or phone number submitted in the application.</p>
+                <p className="mx-auto mt-3 max-w-xl text-xs leading-5 text-slate-500">Submitting an application does not create a ProFox account or grant CRM access.</p>
+                <button onClick={closeApply} className="mt-7 rounded-xl bg-[#000080] px-5 py-3 text-sm font-black text-white">Done</button>
+              </div>
+            ) : (
+              <form onSubmit={submit} className="space-y-7 p-6 sm:p-8">
+                {error && <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-700">{error}</div>}
+
+                <FormSection title="About you" description="The information we need to review your application.">
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <Field label="Full name *"><input required value={fullName} onChange={e => setFullName(e.target.value)} className={inputClass} /></Field>
+                    <Field label="Email address *"><input required type="email" value={email} onChange={e => setEmail(e.target.value)} className={inputClass} /></Field>
+                    <Field label="Phone / WhatsApp"><input value={phone} onChange={e => setPhone(e.target.value)} className={inputClass} /></Field>
+                    <Field label="Country *"><input required value={country} onChange={e => setCountry(e.target.value)} className={inputClass} /></Field>
+                    <Field label="Timezone"><input value={timezone} onChange={e => setTimezone(e.target.value)} className={inputClass} placeholder="e.g. Asia/Kolkata" /></Field>
+                    <Field label="LinkedIn profile"><input type="url" value={linkedinUrl} onChange={e => setLinkedinUrl(e.target.value)} className={inputClass} placeholder="https://linkedin.com/in/..." /></Field>
+                    <Field label="Current role"><input value={currentRole} onChange={e => setCurrentRole(e.target.value)} className={inputClass} /></Field>
+                    <Field label="Availability"><select value={availability} onChange={e => setAvailability(e.target.value)} className={inputClass}><option>Full-time</option><option>Part-time</option><option>Flexible</option></select></Field>
+                  </div>
+                </FormSection>
+
+                <FormSection title="Sales experience" description="Keep it practical. We care about what you have actually done.">
+                  <Field label="Sales / business development experience *"><textarea required rows={3} value={salesExperience} onChange={e => setSalesExperience(e.target.value)} className={inputClass} placeholder="What have you sold, who were the customers, and what part of the sales process did you own?" /></Field>
+                  <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                    <Field label="Digital / SaaS sales experience"><input value={digitalSalesExperience} onChange={e => setDigitalSalesExperience(e.target.value)} className={inputClass} /></Field>
+                    <Field label="International sales experience"><input value={internationalSalesExperience} onChange={e => setInternationalSalesExperience(e.target.value)} className={inputClass} /></Field>
+                    <Field label="English level"><select value={englishRating} onChange={e => setEnglishRating(e.target.value)} className={inputClass}><option>Fluent / Native</option><option>Professional working proficiency</option><option>Conversational</option></select></Field>
+                    <Field label="CV / résumé link"><input type="url" value={cvUrl} onChange={e => setCvUrl(e.target.value)} className={inputClass} placeholder="Optional shareable link" /></Field>
+                  </div>
+                </FormSection>
+
+                <FormSection title="60–120 second introduction video *" description="A shareable Loom, Google Drive, YouTube unlisted or similar link is fine.">
+                  <Field label="Video link *"><input required type="url" value={videoUrl} onChange={e => setVideoUrl(e.target.value)} className={inputClass} placeholder="https://..." /></Field>
+                  <div className="mt-3 rounded-2xl bg-slate-50 p-4 text-xs leading-5 text-slate-600">
+                    Cover: <strong>your introduction · sales experience · English communication · client dealing · why ProFox</strong>.
+                  </div>
+                </FormSection>
+
+                <FormSection title="Readiness" description="These answers help us avoid wasting your time or ours.">
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <Toggle checked={hasLaptopInternet} setChecked={setHasLaptopInternet} label="I have a reliable laptop and internet connection." />
+                    <Toggle checked={comfortableCommission} setChecked={setComfortableCommission} label="I am comfortable with a commission-only contractor role." />
+                    <Toggle checked={comfortableSourcing} setChecked={setComfortableSourcing} label="I can research and source qualified prospects." />
+                  </div>
+                  <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                    <Field label="How did you find ProFox?"><input value={referralSource} onChange={e => setReferralSource(e.target.value)} className={inputClass} /></Field>
+                    <Field label="Anything else we should know?"><input value={message} onChange={e => setMessage(e.target.value)} className={inputClass} /></Field>
+                  </div>
+                </FormSection>
+
+                <div className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-5 text-xs leading-5 text-slate-700">
+                  <Check checked={consentAccurate} setChecked={setConsentAccurate} label="The information in this application is accurate to the best of my knowledge." />
+                  <Check checked={consentCommission} setChecked={setConsentCommission} label="I understand this is a commission-only independent contractor opportunity with no fixed salary." />
+                  <Check checked={consentReview} setChecked={setConsentReview} label="I agree that ProFox may review my application and introduction video for recruitment." />
+                  <Check checked={consentPrivacy} setChecked={setConsentPrivacy} label={<span>I agree to the handling of my submitted information for recruitment and have reviewed the <Link className="font-black text-[#000080] underline" to="/privacy-policy" target="_blank">Privacy Policy</Link>.</span>} />
+                </div>
+
+                <button disabled={submitting} type="submit" className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#FF0E0E] px-6 py-3.5 text-sm font-black text-white transition hover:brightness-95 disabled:opacity-50">
+                  {submitting ? 'Submitting…' : 'Submit application'} <Send className="h-4 w-4" />
+                </button>
+              </form>
+            )}
+          </div>
+        </div>
       )}
-
     </div>
   );
+}
+
+const inputClass = 'w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 outline-none transition focus:border-[#000080] focus:ring-4 focus:ring-blue-100';
+
+function Eyebrow({ children, light = false }: { children: React.ReactNode; light?: boolean }) {
+  return <div className={`text-[11px] font-black uppercase tracking-[0.2em] ${light ? 'text-red-300' : 'text-[#FF0E0E]'}`}>{children}</div>;
+}
+
+function Info({ icon: Icon, label, value }: { icon: any; label: string; value: string }) {
+  return <div className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-white p-5"><Icon className="mt-0.5 h-5 w-5 text-[#000080]" /><div><div className="text-[10px] font-black uppercase tracking-wide text-slate-400">{label}</div><div className="mt-1 text-sm font-black text-slate-800">{value}</div></div></div>;
+}
+
+function ListBlock({ eyebrow, title, items, icon: Icon }: { eyebrow: string; title: string; items: string[]; icon: any }) {
+  return <div><Eyebrow>{eyebrow}</Eyebrow><div className="mt-3 flex items-center gap-3"><Icon className="h-6 w-6 text-[#000080]" /><h2 className="text-2xl font-black text-[#000080] sm:text-3xl">{title}</h2></div><div className="mt-6 space-y-3">{items.map((item, index) => <div key={`${item}-${index}`} className="flex gap-3 rounded-2xl border border-slate-200 bg-white p-4"><CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-[#FF0E0E]" /><p className="text-sm leading-6 text-slate-600">{item}</p></div>)}</div></div>;
+}
+
+function FormSection({ title, description, children }: { title: string; description: string; children: React.ReactNode }) {
+  return <section><h3 className="text-base font-black text-[#000080]">{title}</h3><p className="mt-1 text-xs leading-5 text-slate-500">{description}</p><div className="mt-4">{children}</div></section>;
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return <label className="block text-xs font-black text-slate-600"><span>{label}</span><div className="mt-2">{children}</div></label>;
+}
+
+function Toggle({ checked, setChecked, label }: { checked: boolean; setChecked: (value: boolean) => void; label: string }) {
+  return <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-slate-200 bg-white p-4"><input type="checkbox" checked={checked} onChange={e => setChecked(e.target.checked)} className="mt-1" /><span className="text-xs font-semibold leading-5 text-slate-700">{label}</span></label>;
+}
+
+function Check({ checked, setChecked, label }: { checked: boolean; setChecked: (value: boolean) => void; label: React.ReactNode }) {
+  return <label className="flex cursor-pointer items-start gap-3"><input required type="checkbox" checked={checked} onChange={e => setChecked(e.target.checked)} className="mt-1" /><span>{label}</span></label>;
 }

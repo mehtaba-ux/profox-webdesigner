@@ -1,0 +1,101 @@
+-- Least-privilege hardening for Development/PF-SOP-09 RPCs.
+-- Remove PostgreSQL's default PUBLIC/anon execute while preserving intended authenticated UI RPCs.
+
+-- Internal helpers: owner/service execution only.
+revoke execute on function public.pick_delivery_specialist(text,uuid) from public, anon, authenticated;
+revoke execute on function public.development_delivery_config() from public, anon, authenticated;
+revoke execute on function public.development_delivery_required_evidence(uuid) from public, anon, authenticated;
+revoke execute on function public.development_delivery_assert_current_playbook_complete(uuid,uuid) from public, anon, authenticated;
+revoke execute on function public.development_delivery_assert_required_evidence(uuid) from public, anon, authenticated;
+revoke execute on function public.development_delivery_pick_reviewer(uuid,uuid) from public, anon, authenticated;
+revoke execute on function public.development_delivery_assign_stage_tasks(uuid) from public, anon, authenticated;
+revoke execute on function public.development_delivery_on_project_stage_change() from public, anon, authenticated;
+revoke execute on function public.development_delivery_on_team_assignment() from public, anon, authenticated;
+revoke execute on function public.development_handover_validate_client_package(jsonb) from public, anon, authenticated;
+revoke execute on function public.development_handover_ensure_task(uuid) from public, anon, authenticated;
+revoke execute on function public.development_handover_completion_gate() from public, anon, authenticated;
+revoke execute on function public.protect_development_task_completion() from public, anon, authenticated;
+revoke execute on function public.development_sop_ensure_release_readiness_task(uuid) from public, anon, authenticated;
+revoke execute on function public.development_sop_on_project_stage_change() from public, anon, authenticated;
+revoke execute on function public.development_sop_ensure_post_launch_assurance(uuid) from public, anon, authenticated;
+revoke execute on function public.development_sop_post_launch_stage_trigger() from public, anon, authenticated;
+revoke execute on function public.protect_pf_sop09_project_release() from public, anon, authenticated;
+revoke execute on function public.enforce_pf_sop09_development_status_gate() from public, anon, authenticated;
+revoke execute on function public.development_quality_can_access_project(uuid) from public, anon;
+revoke execute on function public.create_web_developer_agreement_internal(uuid) from public, anon, authenticated;
+revoke execute on function public.service_link_invited_developer_candidate(uuid,uuid,text) from public, anon, authenticated;
+
+-- Authenticated application RPCs. Remove PUBLIC/anon then explicitly grant authenticated.
+revoke execute on function public.development_delivery_can_access_task(uuid) from public, anon;
+revoke execute on function public.development_delivery_compute_readiness(uuid) from public, anon;
+revoke execute on function public.development_delivery_add_evidence(uuid,text,text,text,text,text) from public, anon;
+revoke execute on function public.development_delivery_start_task(uuid) from public, anon;
+revoke execute on function public.development_delivery_submit_for_review(uuid,text) from public, anon;
+revoke execute on function public.development_delivery_get_my_reviews() from public, anon;
+revoke execute on function public.development_delivery_submit_review_decision(uuid,text,numeric,text) from public, anon;
+revoke execute on function public.development_delivery_workspace(uuid) from public, anon;
+revoke execute on function public.development_handover_submit(uuid,jsonb,text) from public, anon;
+revoke execute on function public.development_manager_review_handover(uuid,text,text) from public, anon;
+revoke execute on function public.development_manager_get_handover_queue() from public, anon;
+revoke execute on function public.client_get_released_development_handover(uuid) from public, anon;
+revoke execute on function public.development_sop_delivery_tier(uuid) from public, anon;
+revoke execute on function public.development_sop_ticket_readiness(uuid) from public, anon;
+revoke execute on function public.development_sop_upsert_task_spec(uuid,text,text,text,text,text,text,text,text,text,text,text,text,text,text,text) from public, anon;
+revoke execute on function public.development_sop_create_adr(uuid,text,text,text,text,text,text,text,text,text,text) from public, anon;
+revoke execute on function public.development_sop_submit_release_quality_score(uuid,jsonb,integer,integer,text) from public, anon;
+revoke execute on function public.development_sop_workspace(uuid) from public, anon;
+revoke execute on function public.development_quality_create_finding(uuid,uuid,text,text,text,text,text,text,text,text,uuid) from public, anon;
+revoke execute on function public.development_quality_update_finding(uuid,text,text,text) from public, anon;
+revoke execute on function public.development_quality_release_blockers(uuid) from public, anon;
+revoke execute on function public.development_quality_workspace(uuid) from public, anon;
+revoke execute on function public.development_change_request_submit(uuid,uuid,text,text,text,text,text,text,text,text,text) from public, anon;
+revoke execute on function public.development_change_request_decide(uuid,text,text) from public, anon;
+revoke execute on function public.development_incident_create(uuid,text,text,text,uuid) from public, anon;
+revoke execute on function public.development_incident_update(uuid,text,text,text,text,text,text,text) from public, anon;
+revoke execute on function public.submit_role_final_certification(jsonb) from public, anon;
+revoke execute on function public.admin_review_role_final_certification(uuid,text,text,integer) from public, anon;
+revoke execute on function public.training_track_for_user(uuid) from public, anon;
+revoke execute on function public.request_my_final_approval() from public, anon;
+revoke execute on function public.admin_issue_candidate_agreement(uuid) from public, anon;
+revoke execute on function public.request_developer_final_approval() from public, anon;
+revoke execute on function public.approve_developer_candidate_final(uuid) from public, anon;
+revoke execute on function public.activate_web_developer(uuid) from public, anon;
+
+grant execute on function public.development_delivery_can_access_task(uuid) to authenticated;
+grant execute on function public.development_delivery_compute_readiness(uuid) to authenticated;
+grant execute on function public.development_delivery_add_evidence(uuid,text,text,text,text,text) to authenticated;
+grant execute on function public.development_delivery_start_task(uuid) to authenticated;
+grant execute on function public.development_delivery_submit_for_review(uuid,text) to authenticated;
+grant execute on function public.development_delivery_get_my_reviews() to authenticated;
+grant execute on function public.development_delivery_submit_review_decision(uuid,text,numeric,text) to authenticated;
+grant execute on function public.development_delivery_workspace(uuid) to authenticated;
+grant execute on function public.development_handover_submit(uuid,jsonb,text) to authenticated;
+grant execute on function public.development_manager_review_handover(uuid,text,text) to authenticated;
+grant execute on function public.development_manager_get_handover_queue() to authenticated;
+grant execute on function public.client_get_released_development_handover(uuid) to authenticated;
+grant execute on function public.development_sop_delivery_tier(uuid) to authenticated;
+grant execute on function public.development_sop_ticket_readiness(uuid) to authenticated;
+grant execute on function public.development_sop_upsert_task_spec(uuid,text,text,text,text,text,text,text,text,text,text,text,text,text,text,text) to authenticated;
+grant execute on function public.development_sop_create_adr(uuid,text,text,text,text,text,text,text,text,text,text) to authenticated;
+grant execute on function public.development_sop_submit_release_quality_score(uuid,jsonb,integer,integer,text) to authenticated;
+grant execute on function public.development_sop_workspace(uuid) to authenticated;
+grant execute on function public.development_quality_create_finding(uuid,uuid,text,text,text,text,text,text,text,text,uuid) to authenticated;
+grant execute on function public.development_quality_update_finding(uuid,text,text,text) to authenticated;
+grant execute on function public.development_quality_release_blockers(uuid) to authenticated;
+grant execute on function public.development_quality_workspace(uuid) to authenticated;
+grant execute on function public.development_change_request_submit(uuid,uuid,text,text,text,text,text,text,text,text,text) to authenticated;
+grant execute on function public.development_change_request_decide(uuid,text,text) to authenticated;
+grant execute on function public.development_incident_create(uuid,text,text,text,uuid) to authenticated;
+grant execute on function public.development_incident_update(uuid,text,text,text,text,text,text,text) to authenticated;
+grant execute on function public.submit_role_final_certification(jsonb) to authenticated;
+grant execute on function public.admin_review_role_final_certification(uuid,text,text,integer) to authenticated;
+grant execute on function public.training_track_for_user(uuid) to authenticated;
+grant execute on function public.request_my_final_approval() to authenticated;
+grant execute on function public.admin_issue_candidate_agreement(uuid) to authenticated;
+grant execute on function public.request_developer_final_approval() to authenticated;
+grant execute on function public.approve_developer_candidate_final(uuid) to authenticated;
+grant execute on function public.activate_web_developer(uuid) to authenticated;
+
+-- Intentionally public: career application submission only.
+revoke execute on function public.submit_public_developer_application(text,jsonb) from public;
+grant execute on function public.submit_public_developer_application(text,jsonb) to anon, authenticated;

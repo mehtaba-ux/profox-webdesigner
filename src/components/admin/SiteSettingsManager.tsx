@@ -346,6 +346,68 @@ export default function SiteSettingsManager() {
               />
             </div>
 
+            <div className="pt-2 border-t border-slate-100">
+              <label className={labelClass}>
+                <Sparkles className="w-3.5 h-3.5 text-[#000080]" /> Website Favicon (Tab Icon)
+              </label>
+              <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center bg-slate-50 p-4 rounded-xl border border-slate-100">
+                <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center shadow-sm border border-slate-200 shrink-0 overflow-hidden">
+                  <img 
+                    src={settings.faviconUrl || '/favicon.svg'} 
+                    alt="Favicon Preview" 
+                    className="w-8 h-8 object-contain"
+                    onError={(e) => {
+                      (e.currentTarget as HTMLImageElement).src = '/favicon.svg';
+                    }}
+                  />
+                </div>
+                <div className="flex-1 w-full space-y-2">
+                  <input
+                    type="text"
+                    value={settings.faviconUrl || ''}
+                    onChange={(e) => handleChange('faviconUrl', e.target.value)}
+                    placeholder="e.g. /favicon.svg or image URL"
+                    className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs outline-none focus:border-[#000080] transition-all"
+                  />
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => handleChange('faviconUrl', '/favicon.svg')}
+                      className={`px-2.5 py-1 rounded-md text-[10px] font-bold border transition-all cursor-pointer ${
+                        settings.faviconUrl === '/favicon.svg' || !settings.faviconUrl
+                          ? 'bg-[#000080] text-white border-[#000080]'
+                          : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                      }`}
+                    >
+                      Default Geometric Fox
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleChange('faviconUrl', 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23D97706"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>')}
+                      className={`px-2.5 py-1 rounded-md text-[10px] font-bold border transition-all cursor-pointer ${
+                        settings.faviconUrl?.includes('fill="%23D97706"')
+                          ? 'bg-[#000080] text-white border-[#000080]'
+                          : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                      }`}
+                    >
+                      Golden Star
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleChange('faviconUrl', 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%230F766E"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>')}
+                      className={`px-2.5 py-1 rounded-md text-[10px] font-bold border transition-all cursor-pointer ${
+                        settings.faviconUrl?.includes('fill="%230F766E"')
+                          ? 'bg-[#000080] text-white border-[#000080]'
+                          : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                      }`}
+                    >
+                      Teal Shield
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <div className="pt-2">
               <label className={labelClass}>
                 <MessageSquare className="w-3.5 h-3.5 text-[#000080]" /> Visitor Live Chat Widget

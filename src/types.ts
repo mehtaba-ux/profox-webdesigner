@@ -1,3 +1,391 @@
+export type UserRole =
+  | 'admin'
+  | 'sales'
+  | 'project_manager'
+  | 'uiux_designer'
+  | 'content_writer'
+  | 'developer'
+  | 'qa'
+  | 'site_manager'
+  | 'editor'
+  | 'customer'
+  | 'pending'
+  // Legacy role aliases retained for compatibility only
+  | 'sales_rep'
+  | 'web_developer'
+  | 'developer_designer'
+  | 'sales_team';
+
+export type UserStatus = 'pending' | 'onboarding' | 'active' | 'inactive';
+
+export type OnboardingStatus = 'not_started' | 'in_progress' | 'completed' | 'failed';
+
+export type Department =
+  | 'Management'
+  | 'Sales'
+  | 'Project Management'
+  | 'UI/UX Design'
+  | 'Content'
+  | 'Development'
+  | 'Quality Assurance'
+  | 'General'
+  // Legacy department labels retained for existing records
+  | 'Marketing'
+  | 'Design'
+  | 'HR'
+  | 'Operations';
+
+export interface UserProfile {
+  id: string; // matches auth.users.id
+  userId?: string;
+  email: string;
+  fullName: string;
+  phone?: string;
+  country?: string;
+  timezone?: string;
+  role: UserRole;
+  department?: Department | string;
+  status: UserStatus;
+  manager?: string;
+  onboardingStatus: OnboardingStatus;
+  onboardingProgress: number;
+  avatarUrl?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Shared recruitment stage registry. Individual jobs still enforce their own ordered
+// stage policies server-side; this union exists so the shared UI can render every
+// supported pipeline without silently dropping role-specific stages.
+export type ApplicantStage =
+  | 'New Application'
+  | 'Video Pending'
+  | 'Video Review'
+  | 'Code & Portfolio Review'
+  | 'Portfolio Review'
+  | 'Initial Screening'
+  | 'Shortlisted'
+  | 'Sales Assessment'
+  | 'Technical Assessment'
+  | 'Design Assessment'
+  | 'Lead Research Test'
+  | 'Development Practical'
+  | 'Figma Practical'
+  | 'CRM Assessment'
+  | 'Technical Interview'
+  | 'Design Interview'
+  | 'Selected'
+  | 'Agreement Pending'
+  | 'One-Day Training'
+  | 'Design Academy'
+  | 'Developer Academy'
+  | 'Final Approval'
+  | 'Ready for System Access'
+  | 'Activated';
+
+export type AgreementStatus = 'not_sent' | 'sent' | 'signed' | 'declined';
+
+export interface Applicant {
+  id: string;
+  fullName: string;
+  email: string;
+  phone?: string;
+  country?: string;
+  timezone?: string;
+  position: string;
+  linkedinUrl?: string;
+  cvUrl?: string;
+  videoUrl?: string;
+  avatarUrl?: string;
+  salesExperience?: string;
+  skills?: string;
+  source?: string;
+  stage: ApplicantStage;
+  rating: number;
+  notes?: string;
+  refusalReason?: string;
+  agreementStatus: AgreementStatus;
+  onboardingStatus: OnboardingStatus;
+  onboardingProgress: number;
+  finalApproval: boolean;
+  linkedUserId?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export const APPLICANT_STAGES: ApplicantStage[] = [
+  'New Application',
+  'Video Pending',
+  'Video Review',
+  'Code & Portfolio Review',
+  'Portfolio Review',
+  'Initial Screening',
+  'Shortlisted',
+  'Sales Assessment',
+  'Technical Assessment',
+  'Design Assessment',
+  'Lead Research Test',
+  'Development Practical',
+  'Figma Practical',
+  'CRM Assessment',
+  'Technical Interview',
+  'Design Interview',
+  'Selected',
+  'Agreement Pending',
+  'One-Day Training',
+  'Design Academy',
+  'Developer Academy',
+  'Final Approval',
+  'Ready for System Access',
+  'Activated'
+];
+
+export const REFUSAL_REASONS = [
+  'Insufficient Sales Experience',
+  'English Below Requirement',
+  'Poor Introduction Video',
+  'Poor Initial Screening',
+  'Poor Sales Assessment',
+  'Lead Research Test Failed',
+  'CRM Assessment Failed',
+  'Availability Below Requirement',
+  'Equipment/Internet Issue',
+  'Commission Model Not Accepted',
+  'Agreement Declined',
+  'Training Failed',
+  'Unresponsive',
+  'Incorrect Information',
+  'Not Suitable for International Sales',
+  'Duplicate Application',
+  'Other'
+];
+
+export type LeadStatus = 'New' | 'Researching' | 'Contacted' | 'Follow-Up' | 'Interested' | 'Qualified' | 'Not Qualified';
+
+export type OpportunityStage =
+  | 'Qualified'
+  | 'Meeting Scheduled'
+  | 'Requirements Confirmed'
+  | 'Quotation Sent'
+  | 'Negotiation / Decision Pending'
+  | 'Awaiting Advance Payment'
+  | 'Won';
+
+export type OpportunityStatus = 'Open' | 'Won' | 'Lost';
+
+export type ActivityType =
+  | 'Lead Research'
+  | 'Cold Call'
+  | 'Cold Email'
+  | 'LinkedIn / Social Outreach'
+  | 'Loom Outreach'
+  | 'Follow-Up'
+  | 'Discovery Meeting'
+  | 'Meeting Follow-Up'
+  | 'Quotation Follow-Up'
+  | 'Payment Follow-Up'
+  | 'Other';
+
+export type ActivityStatus = 'Scheduled' | 'Completed' | 'Cancelled';
+
+export interface CRMLead {
+  id: string;
+  title: string;
+  companyName: string;
+  contactName?: string;
+  email?: string;
+  phone?: string;
+  website?: string;
+  country: string;
+  industry?: string;
+  source: string;
+  salespersonId?: string;
+  serviceInterest?: string;
+  estimatedValue: number;
+  currency: string;
+  status: LeadStatus;
+  loomVideoUrl?: string;
+  initialOutreachChannel: string;
+  lastContactAt?: string;
+  nextFollowUpAt?: string;
+  notes?: string;
+  selfGenerated: boolean;
+  convertedOpportunityId?: string;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CRMOpportunity {
+  id: string;
+  leadId?: string;
+  name: string;
+  companyName: string;
+  contactName?: string;
+  email?: string;
+  phone?: string;
+  website?: string;
+  country: string;
+  industry?: string;
+  source: string;
+  selfGenerated: boolean;
+  salespersonId?: string;
+  serviceInterest?: string;
+  expectedValue: number;
+  currency: string;
+  stage: OpportunityStage;
+  status: OpportunityStatus;
+  probability?: number;
+  meetingAt?: string;
+  meetingUrl?: string;
+  requirementsSummary?: string;
+  nextFollowUpAt?: string;
+  notes?: string;
+  lostReason?: string;
+  wonAt?: string;
+  lostAt?: string;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CRMActivity {
+  id: string;
+  leadId?: string;
+  opportunityId?: string;
+  assignedTo: string;
+  activityType: ActivityType;
+  subject: string;
+  dueAt: string;
+  completedAt?: string;
+  status: ActivityStatus;
+  channel?: string;
+  loomVideoUrl?: string;
+  notes?: string;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export const LEAD_STATUSES: LeadStatus[] = ['New', 'Researching', 'Contacted', 'Follow-Up', 'Interested', 'Qualified', 'Not Qualified'];
+
+export const OPPORTUNITY_STAGES: OpportunityStage[] = [
+  'Qualified',
+  'Meeting Scheduled',
+  'Requirements Confirmed',
+  'Quotation Sent',
+  'Negotiation / Decision Pending',
+  'Awaiting Advance Payment',
+  'Won'
+];
+
+export const ACTIVITY_TYPES: ActivityType[] = [
+  'Lead Research',
+  'Cold Call',
+  'Cold Email',
+  'LinkedIn / Social Outreach',
+  'Loom Outreach',
+  'Follow-Up',
+  'Discovery Meeting',
+  'Meeting Follow-Up',
+  'Quotation Follow-Up',
+  'Payment Follow-Up',
+  'Other'
+];
+
+export const OUTREACH_CHANNELS = ['Email', 'LinkedIn', 'Phone', 'Facebook', 'Instagram', 'WhatsApp', 'Other'];
+
+export const INDUSTRIES = [
+  'Roofing',
+  'HVAC',
+  'Plumbing',
+  'Home Services',
+  'Healthcare / Clinics',
+  'Dental',
+  'Hotels & Hospitality',
+  'Real Estate',
+  'Professional Services',
+  'E-commerce',
+  'Technology',
+  'Other'
+];
+
+export const LEAD_SOURCES = [
+  'Google Maps',
+  'LinkedIn',
+  'Google Search',
+  'Facebook',
+  'Instagram',
+  'Business Directory',
+  'Referral',
+  'Website',
+  'Cold Call',
+  'Cold Email',
+  'Other'
+];
+
+export const LOST_REASONS = [
+  'Price / Budget',
+  'Not Interested',
+  'No Response',
+  'Already Has Provider',
+  'Project Postponed',
+  'Competitor Selected',
+  'Decision Maker Declined',
+  'Timing Not Suitable',
+  'Not Qualified',
+  'Invalid Lead',
+  'Duplicate',
+  'Other'
+];
+
+export const QUOTATION_STATUSES: QuotationStatus[] = ['Draft', 'Ready for Approval', 'Approved', 'Sent', 'Accepted', 'Rejected', 'Expired', 'Cancelled'];
+
+export const PRODUCT_TYPES: ProductType[] = ['package', 'addon', 'care_plan', 'discovery', 'custom'];
+
+export const ROLE_LABELS: Record<UserRole, string> = {
+  admin: 'Admin',
+  sales: 'Sales Representative',
+  sales_team: 'Sales Representative',
+  sales_rep: 'Sales Representative',
+  project_manager: 'Project Manager',
+  uiux_designer: 'UI/UX Designer',
+  content_writer: 'Content Writer',
+  developer: 'Web Developer',
+  web_developer: 'Web Developer',
+  developer_designer: 'Web Developer',
+  qa: 'Quality Assurance',
+  site_manager: 'Site Manager',
+  editor: 'Editor',
+  customer: 'Customer',
+  pending: 'Pending Approval'
+};
+
+export const STATUS_LABELS: Record<UserStatus, string> = {
+  pending: 'Pending Approval',
+  onboarding: 'Onboarding',
+  active: 'Active',
+  inactive: 'Inactive'
+};
+
+export const ONBOARDING_STATUS_LABELS: Record<OnboardingStatus, string> = {
+  not_started: 'Not Started',
+  in_progress: 'In Progress',
+  completed: 'Completed',
+  failed: 'Failed'
+};
+
+export const DEPARTMENTS: Department[] = [
+  'Management',
+  'Sales',
+  'Project Management',
+  'UI/UX Design',
+  'Content',
+  'Development',
+  'Quality Assurance',
+  'General'
+];
+
 export interface ProcessStep {
   id?: string;
   step?: string;
@@ -247,6 +635,7 @@ export interface PortfolioItem {
   seo: SEOConfig;
   status: 'published' | 'draft' | 'pending';
   authorId?: string;
+  assignedTo?: string;
   createdAt: string;
   updatedAt: string;
 
@@ -334,6 +723,7 @@ export interface SiteSettings {
   chatWidgetEnabled?: boolean;
   lastUpdated: string;
   maintenanceMode?: MaintenanceConfig;
+  faviconUrl?: string;
 }
 
 export interface FeedbackResolution {
@@ -370,6 +760,173 @@ export interface DesignShowcase {
   typography?: { fontName: string; usage: string };
   projectDocuments?: { name: string; url: string; type?: string }[];
 }
+export type ProductType = 'package' | 'addon' | 'care_plan' | 'discovery' | 'custom';
+export type PriceMode = 'fixed' | 'starting_at' | 'custom';
+
+export interface SalesProduct {
+  id: string;
+  code: string;
+  name: string;
+  category: string;
+  productType: ProductType;
+  priceMode: PriceMode;
+  basePrice: number;
+  currency: string;
+  billingPeriod?: string | null;
+  shortDescription?: string;
+  fullDescription?: string;
+  scope?: string[];
+  technology?: string;
+  managerApprovalRequired: boolean;
+  active: boolean;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type QuotationStatus = 'Draft' | 'Ready for Approval' | 'Approved' | 'Sent' | 'Accepted' | 'Rejected' | 'Expired' | 'Cancelled';
+
+export type PaymentType = 
+  | 'Advance' 
+  | 'Design Milestone' 
+  | 'Staging Milestone' 
+  | 'Final Payment' 
+  | 'Full Payment' 
+  | 'Custom Milestone';
+
+export type PaymentStatus = 
+  | 'Draft' 
+  | 'Ready' 
+  | 'Sent' 
+  | 'Pending' 
+  | 'Partially Paid' 
+  | 'Verification Pending' 
+  | 'Verified' 
+  | 'Failed' 
+  | 'Cancelled' 
+  | 'Refunded' 
+  | 'Partially Refunded';
+
+export const PAYMENT_TYPES: PaymentType[] = [
+  'Advance', 
+  'Design Milestone', 
+  'Staging Milestone', 
+  'Final Payment', 
+  'Full Payment', 
+  'Custom Milestone'
+];
+
+export const PAYMENT_STATUSES: PaymentStatus[] = [
+  'Draft', 
+  'Ready', 
+  'Sent', 
+  'Pending', 
+  'Partially Paid', 
+  'Verification Pending', 
+  'Verified', 
+  'Failed', 
+  'Cancelled', 
+  'Refunded', 
+  'Partially Refunded'
+];
+
+export interface Payment {
+  id: string;
+  paymentReference: string;
+  quotationId: string;
+  opportunityId: string;
+  clientId?: string;
+  salespersonId: string;
+  customerName: string;
+  customerEmail: string;
+  paymentType: PaymentType;
+  milestoneNumber?: number;
+  milestoneLabel?: string;
+  amountDue: number;
+  amountPaid: number;
+  currency: string;
+  paymentMethod?: string;
+  paymentProvider?: string;
+  paymentLink?: string;
+  providerPaymentId?: string;
+  status: PaymentStatus;
+  dueDate?: string;
+  paidAt?: string;
+  verifiedAt?: string;
+  verifiedBy?: string;
+  notes?: string;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SalesClient {
+  id: string;
+  companyName: string;
+  primaryContactName: string;
+  email: string;
+  phone?: string;
+  website?: string;
+  country?: string;
+  industry?: string;
+  salespersonId: string;
+  sourceOpportunityId?: string;
+  firstQuotationId?: string;
+  totalSalesValue: number;
+  currency: string;
+  status: 'Active' | 'Inactive';
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Quotation {
+  id: string;
+  quotationNumber: string;
+  opportunityId?: string;
+  clientId?: string;
+  salespersonId?: string;
+  customerName: string;
+  contactName?: string;
+  email?: string;
+  phone?: string;
+  country?: string;
+  currency: string;
+  status: QuotationStatus;
+  validUntil?: string;
+  paymentTerms?: string;
+  scopeSummary?: string;
+  exclusions?: string;
+  customerNotes?: string;
+  internalNotes?: string;
+  subtotal: number;
+  total: number;
+  approvedBy?: string;
+  approvedAt?: string;
+  sentAt?: string;
+  acceptedAt?: string;
+  rejectedAt?: string;
+  createdBy?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface QuotationItem {
+  id: string;
+  quotationId: string;
+  salesProductId?: string;
+  productCodeSnapshot: string;
+  productNameSnapshot: string;
+  descriptionSnapshot?: string;
+  quantity: number;
+  unitPrice: number;
+  lineTotal: number;
+  itemType: ProductType | string;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface TeamMemberProfile {
   id: string;
   userId: string;
@@ -419,39 +976,103 @@ export interface ChatMessage {
   createdAt: string;
 }
 
-export interface ProjectMilestone {
-  id: string;
-  title: string;
-  description: string;
-  status: 'pending' | 'in_progress' | 'completed' | 'approved';
-  dueDate?: string;
-  completedAt?: string;
-}
+export type ProjectStage =
+  | 'Sales Handover'
+  | 'Client Onboarding'
+  | 'Requirements'
+  | 'Content'
+  | 'UI/UX Design'
+  | 'Client Design Approval'
+  | 'Development'
+  | 'QA'
+  | 'Client Review'
+  | 'Final Revisions'
+  | 'Launch'
+  | 'Handover'
+  | 'Completed';
 
-export interface ProjectFile {
-  id: string;
-  name: string;
-  url: string;
-  type: string;
-  uploadedAt: string;
-}
+export type ProjectStatus = 'Active' | 'Paused' | 'Cancelled' | 'Completed';
 
-export interface ClientProject {
+export type TaskStatus = 'To Do' | 'In Progress' | 'Review' | 'Changes Required' | 'Done';
+
+export type TaskPriority = 'Low' | 'Normal' | 'High' | 'Urgent';
+
+export interface Project {
   id: string;
-  clientId: string;
-  clientName: string;
-  clientEmail: string;
+  projectNumber: string;
   projectName: string;
-  status: 'planning' | 'design' | 'development' | 'testing' | 'launched';
-  progress: number; // 0-100
-  startDate: string;
-  targetEndDate: string;
-  milestones: ProjectMilestone[];
-  files: ProjectFile[];
-  notes?: string;
+  clientId: string;
+  sourceOpportunityId: string;
+  quotationId: string;
+  packageSnapshot?: string;
+  projectValue: number;
+  currency: string;
+  projectManagerId?: string;
+  stage: ProjectStage;
+  priority: TaskPriority;
+  status: ProjectStatus;
+  startDate?: string;
+  targetDate?: string;
+  completedAt?: string;
+  requirementsSummary?: string;
+  scopeSummary?: string;
+  exclusions?: string;
+  salesHandoverNotes?: string;
+  internalNotes?: string;
+  createdBy: string;
   createdAt: string;
   updatedAt: string;
 }
+
+export interface ProjectTeamMember {
+  id: string;
+  projectId: string;
+  userId: string;
+  role: string;
+  assignedAt: string;
+  // Join fields
+  user?: UserProfile;
+}
+
+export interface ProjectTask {
+  id: string;
+  projectId: string;
+  title: string;
+  description?: string;
+  department?: string;
+  assignedTo?: string;
+  createdBy: string;
+  priority: TaskPriority;
+  status: TaskStatus;
+  startDate?: string;
+  dueDate?: string;
+  completedAt?: string;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+  // Join fields
+  project?: Project;
+  assignee?: UserProfile;
+}
+
+export const PROJECT_STAGES: ProjectStage[] = [
+  'Sales Handover',
+  'Client Onboarding',
+  'Requirements',
+  'Content',
+  'UI/UX Design',
+  'Client Design Approval',
+  'Development',
+  'QA',
+  'Client Review',
+  'Final Revisions',
+  'Launch',
+  'Handover',
+  'Completed'
+];
+
+export const TASK_STATUSES: TaskStatus[] = ['To Do', 'In Progress', 'Review', 'Changes Required', 'Done'];
+export const TASK_PRIORITIES: TaskPriority[] = ['Low', 'Normal', 'High', 'Urgent'];
 
 export interface ChatConversation {
   id: string;
@@ -468,4 +1089,118 @@ export interface ChatConversation {
   lastMessageTime?: string;
   createdAt: string;
   updatedAt: string;
+}
+
+// --- Sales Commission Management Types ---
+
+export type CommissionStatus = 
+  | 'Earned' 
+  | 'Under Review' 
+  | 'Approved' 
+  | 'Paid' 
+  | 'Reversed' 
+  | 'Disputed';
+
+export const COMMISSION_STATUSES: CommissionStatus[] = [
+  'Earned',
+  'Under Review',
+  'Approved',
+  'Paid',
+  'Reversed',
+  'Disputed'
+];
+
+export interface CommissionRule {
+  id: string;
+  packageCode: string;
+  packageName: string;
+  baseRatePercent: number;
+  minRatePercent?: number;
+  maxRatePercent?: number;
+  requiresAdminApproval: boolean;
+  active: boolean;
+  sortOrder: number;
+  effectiveFrom: string;
+  description?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CommissionSettingsConfig {
+  packageRules: CommissionRule[];
+  selfGeneratedBonusPercent: number; // e.g. 5.0 (+5 percentage points)
+  performanceBonusThreshold: number; // e.g. 10 (11th sale onward)
+  performanceBonusPercent: number; // e.g. 2.0 (+2 percentage points)
+  payoutScheduleDescription: string; // e.g. '15th of the month & Last working day of the month'
+  customDealMinRate: number; // 10.0
+  customDealMaxRate: number; // 15.0
+  lastUpdated: string;
+}
+
+export interface CommissionEntry {
+  id: string;
+  entryNumber: string; // e.g. COM-2026-0001
+  salespersonId: string;
+  salespersonName: string;
+  salespersonEmail?: string;
+  clientId: string;
+  clientName: string;
+  opportunityId?: string;
+  quotationId?: string;
+  quotationNumber?: string;
+  paymentId: string;
+  paymentReference: string;
+  milestoneLabel: string;
+  packageCode: string;
+  packageName: string;
+  verifiedPaymentAmount: number;
+  currency: string;
+  baseCommissionRate: number; // e.g. 12.0
+  isSelfGenerated: boolean;
+  selfGeneratedBonusRate: number; // e.g. 5.0
+  isPerformanceBonusEligible: boolean;
+  performanceSaleRank: number; // e.g. 1st, 11th sale in month
+  performanceBonusRate: number; // e.g. 2.0
+  effectiveCommissionRate: number; // sum of rates (e.g. 12 + 5 = 17)
+  commissionAmount: number; // exact numeric calculation
+  eligibilityDate: string; // ISO date of verified payment
+  status: CommissionStatus;
+  ruleSnapshot: any; // complete snapshot of rule configuration at time of creation
+  payoutBatchId?: string;
+  payoutReference?: string;
+  paidAt?: string;
+  paidBy?: string;
+  notes?: string;
+  adminReviewNotes?: string;
+  reversalReason?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CommissionPayoutBatch {
+  id: string;
+  batchNumber: string; // e.g. POB-2026-08-15
+  title: string;
+  scheduledDate: string;
+  status: 'Draft' | 'Approved' | 'Processing' | 'Completed' | 'Cancelled';
+  totalAmount: number;
+  totalEntriesCount: number;
+  totalSalespeopleCount: number;
+  entryIds: string[];
+  processedBy?: string;
+  completedAt?: string;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CommissionStats {
+  earnedTotal: number;
+  approvedTotal: number;
+  paidTotal: number;
+  pendingReviewTotal: number;
+  earnedThisMonth: number;
+  paidThisMonth: number;
+  salesCountThisMonth: number;
+  nextPayoutSchedule: string;
 }
