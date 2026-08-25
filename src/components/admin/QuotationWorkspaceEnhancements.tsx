@@ -70,11 +70,16 @@ export default function QuotationWorkspaceEnhancements() {
   useEffect(() => { if (open && quotationId) void load(); }, [open, quotationId]);
 
   const suggestedProducts = useMemo(() => {
-    const relationships = settings?.optionalProductRelationships;
+    const relationships = settings?.optionalProductRelationships as Record<string, unknown> | undefined;
     if (!relationships || typeof relationships !== 'object' || Array.isArray(relationships) || !workspace) return [];
-    const selectedCodes = new Set((workspace.lines || []).filter((line: any) => line.lineType === 'product').map((line: any) => line.productCodeSnapshot));
+    const selectedCodes = new Set<string>(
+      (workspace.lines || [])
+        .filter((line: any) => line.lineType === 'product')
+        .map((line: any) => String(line.productCodeSnapshot || ''))
+        .filter((code: string) => Boolean(code))
+    );
     const suggestedCodes = new Set<string>();
-    selectedCodes.forEach(code => {
+    selectedCodes.forEach((code: string) => {
       const related = relationships[code];
       if (Array.isArray(related)) related.forEach((value: unknown) => { if (typeof value === 'string') suggestedCodes.add(value); });
     });
