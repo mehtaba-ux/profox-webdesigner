@@ -3,6 +3,7 @@ import { Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../../../lib/AuthContext';
 import { WorkspaceAppId } from '../../../lib/workspaceApps';
 import QuotationWorkspaceEnhancements from '../QuotationWorkspaceEnhancements';
+import QuotationApprovalDecisionBanner from '../QuotationApprovalDecisionBanner';
 import WorkspaceShell from './WorkspaceShell';
 import './AdminAppWorkspace.css';
 
@@ -32,6 +33,7 @@ export default function WorkspaceRouteFrame() {
     <WorkspaceShell activeAppId={activeWorkspaceForPath(location.pathname)} searchPlaceholder="Search ProFox workspace">
       <div className="profox-standalone-app-embed"><Outlet /></div>
       <QuotationWorkspaceEnhancements />
+      <QuotationApprovalDecisionBanner />
     </WorkspaceShell>
   );
 }
