@@ -183,6 +183,16 @@ export const quotationCpqService = {
       error: null
     };
   },
+  async getRecentProductIds(limit = 6) {
+    const { data, error } = await supabase
+      .from('quotation_items')
+      .select('sales_product_id,created_at')
+      .not('sales_product_id', 'is', null)
+      .order('created_at', { ascending: false })
+      .limit(Math.max(limit * 5, 20));
+    const unique = Array.from(new Set((data || []).map((row: any) => row.sales_product_id).filter(Boolean))).slice(0, limit);
+    return { data: unique as string[], error };
+  },
   async createDraft(quotation: CpqDraft, lines: CpqLine[]) {
     const { data: id, error } = await supabase.rpc('create_quotation_atomic', { p_quotation: quotationPayload(quotation), p_items: lines.map(linePayload) });
     if (error) return { data: null, error };
@@ -198,6 +208,9 @@ export const quotationCpqService = {
   },
   async approve(id: string, note?: string) {
     return await supabase.rpc('admin_approve_quotation_cpq', { p_quotation_id: id, p_note: note || null });
+  },
+  async setDurationOverride(id: string, min: number | null, max: number | null, note: string | null, clear = false) {
+    return await supabase.rpc('admin_set_quotation_duration_override', { p_quotation_id: id, p_min: min, p_max: max, p_note: note, p_clear: clear });
   },
   async duplicate(id: string) {
     return await supabase.rpc('duplicate_quotation_cpq', { p_quotation_id: id });
