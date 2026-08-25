@@ -6,7 +6,8 @@ import QuotationWorkspaceEnhancements from '../QuotationWorkspaceEnhancements';
 import WorkspaceShell from './WorkspaceShell';
 import './AdminAppWorkspace.css';
 
-function activeWorkspaceForPath(pathname: string): WorkspaceAppId | 'workspace' {
+function activeWorkspaceForPath(pathname: string): WorkspaceAppId | 'workspace' | 'approvals' {
+  if (pathname.startsWith('/admin/quotation-approvals')) return 'approvals';
   if (pathname.startsWith('/admin/intelligence')) return 'intelligence';
   if (pathname.startsWith('/admin/internal-chat')) return 'internal_chat';
   if (pathname.startsWith('/admin/calendar') || pathname.startsWith('/admin/meeting') || pathname.startsWith('/admin/booking')) return 'calendar';
