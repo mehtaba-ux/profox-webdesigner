@@ -35,13 +35,13 @@ function productDuration(product: any) {
 }
 
 function lineGross(line: CpqLine) { return Math.max(0, Number(line.quantity || 1) * Number(line.unitPrice || 0)); }
-function lineDiscount(line: CpqLine) {
+function lineDiscountAmount(line: CpqLine) {
   const gross = lineGross(line);
   if (line.discountType === 'percent') return Math.min(gross, gross * Math.max(0, Number(line.discountValue || 0)) / 100);
   if (line.discountType === 'fixed') return Math.min(gross, Math.max(0, Number(line.discountValue || 0)));
   return 0;
 }
-function lineNet(line: CpqLine) { return Math.max(0, lineGross(line) - lineDiscount(line)); }
+function lineNet(line: CpqLine) { return Math.max(0, lineGross(line) - lineDiscountAmount(line)); }
 
 export default function QuotationWorkspace() {
   const { quotationId } = useParams<{ quotationId: string }>();
@@ -165,7 +165,7 @@ export default function QuotationWorkspace() {
     const commercial = lines.filter(line => ['product','custom'].includes(line.lineType));
     const committed = commercial.filter(line => !line.optionalForClient);
     const subtotal = committed.reduce((sum,line)=>sum+lineGross(line),0);
-    const lineDiscount = committed.reduce((sum,line)=>sum+lineDiscount(line),0);
+    const lineDiscount = committed.reduce((sum,line)=>sum+lineDiscountAmount(line),0);
     const net = committed.reduce((sum,line)=>sum+lineNet(line),0);
     const optionalTotal = commercial.filter(line=>line.optionalForClient).reduce((sum,line)=>sum+lineNet(line),0);
     const quoteDiscount = draft.quoteDiscountType === 'percent' ? net * Math.min(100,Math.max(0,Number(draft.quoteDiscountValue||0))) / 100 : draft.quoteDiscountType === 'fixed' ? Math.min(net,Math.max(0,Number(draft.quoteDiscountValue||0))) : 0;
