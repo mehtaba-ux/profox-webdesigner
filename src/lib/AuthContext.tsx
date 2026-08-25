@@ -158,26 +158,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const isOnboarding = Boolean(user && status === 'onboarding');
   const isAdmin = Boolean(user && status === 'active' && role === 'admin');
 
-  // Staff workspace shell access. Pending users are admitted only while they are in the
-  // controlled onboarding state; workspace routing restricts that state to Sales Academy only.
+  // The common workspace shell (including the global notification bell) is available to
+  // authenticated staff without hardcoding every future employee role. This does not grant
+  // module access: app visibility and protected actions remain controlled by their existing
+  // role/permission definitions and server-side authorization. Pending onboarding retains the
+  // existing controlled shell path, while customers never enter the staff workspace.
   const isAdminOrEditor = Boolean(
-    user && 
-    (status === 'active' || status === 'onboarding') && 
-    (
-      role === 'admin' || 
-      role === 'site_manager' || 
-      role === 'editor' || 
-      role === 'developer' || 
-      role === 'web_developer' ||
-      role === 'uiux_designer' || 
-      role === 'content_writer' || 
-      role === 'qa' || 
-      role === 'project_manager' || 
-      role === 'sales' ||
-      role === 'sales_rep' ||
-      role === 'developer_designer' || 
-      role === 'sales_team' ||
-      (role === 'pending' && status === 'onboarding')
+    user && role && (
+      (status === 'active' && role !== 'customer' && role !== 'pending') ||
+      (status === 'onboarding' && role !== 'customer')
     )
   );
 
