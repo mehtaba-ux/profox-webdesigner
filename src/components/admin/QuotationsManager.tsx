@@ -9,7 +9,7 @@ import { useAuth } from '../../lib/AuthContext';
 function money(value:number,currency='USD'){try{return new Intl.NumberFormat('en-US',{style:'currency',currency}).format(Number(value||0));}catch{return `${currency} ${Number(value||0).toFixed(2)}`;}}
 function date(value?:string|null){if(!value)return '—';const d=new Date(value.length===10?`${value}T00:00:00`:value);return Number.isNaN(d.getTime())?value:d.toLocaleDateString();}
 
-export default function QuotationsManager() {
+export default function QuotationsManager({ onNavigate: _onNavigate }: { onNavigate?: (tab: any, metadata?: any) => void }) {
   const { user, isAdmin } = useAuth();
   const navigate = useNavigate();
   const [searchParams,setSearchParams] = useSearchParams();
