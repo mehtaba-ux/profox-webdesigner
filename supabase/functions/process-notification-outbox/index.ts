@@ -71,6 +71,24 @@ function render(template: string, payload: Record<string, unknown>) {
   });
 }
 
+function escapeHtml(value: unknown) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function renderHtml(template: string, payload: Record<string, unknown>) {
+  return String(template || "").replace(/{{\s*([a-zA-Z0-9_]+)\s*}}/g, (_match, key) => {
+    const value = payload[key];
+    if (value === null || value === undefined) return "";
+    if (typeof value === "object") return escapeHtml(JSON.stringify(value));
+    return escapeHtml(value);
+  });
+}
+
 function safeDisplayName(value: unknown, fallback = "ProFox") {
   const candidate = String(value || "")
     .replace(/[\r\n<>]/g, " ")
@@ -119,6 +137,7 @@ async function sendResend(
   to: string,
   subject: string,
   body: string,
+  html: string,
   overrides: { fromName: string; replyTo: string },
 ) {
   const fromEmail = String(config.fromEmail || "").trim();
@@ -128,6 +147,7 @@ async function sendResend(
     subject,
     text: body,
   };
+  if (html) payload.html = html;
   if (overrides.replyTo) payload.reply_to = overrides.replyTo;
   const response = await fetch("https://api.resend.com/emails", {
     method: "POST",
@@ -149,6 +169,7 @@ async function sendBrevo(
   to: string,
   subject: string,
   body: string,
+  html: string,
   overrides: { fromName: string; replyTo: string },
 ) {
   const payload: Record<string, unknown> = {
@@ -157,6 +178,7 @@ async function sendBrevo(
     subject,
     textContent: body,
   };
+  if (html) payload.htmlContent = html;
   if (overrides.replyTo) payload.replyTo = { email: overrides.replyTo };
   const response = await fetch("https://api.brevo.com/v3/smtp/email", {
     method: "POST",
@@ -261,8 +283,6 @@ Deno.serve(async (req: Request) => {
     return jsonResponse({ error: "Email provider is enabled but not fully configured" }, 503);
   }
 
-  // Only create one-time Auth invitation/recovery links when the same worker is capable
-  // of delivering the resulting account email. This prevents orphaned setup links.
   const contentProvisioning = await provisionSelectedContentWriters(service, supabaseUrl, serviceRoleKey, requestToken);
 
   const { data: batch, error: claimError } = await service.rpc("service_claim_notification_batch", { p_limit: 25 });
@@ -286,6 +306,7 @@ Deno.serve(async (req: Request) => {
       const payload = enrichPayload((row.payload || {}) as Record<string, unknown>);
       const subject = render(String(row.subject_template || ""), payload).slice(0, 500);
       const body = render(String(row.body_template || ""), payload).slice(0, 20000);
+      const html = row.html_template ? renderHtml(String(row.html_template), payload).slice(0, 100000) : "";
       if (!subject || !body) throw new Error("Notification template rendered empty content.");
 
       if (payload.communicationAudience === "customer") {
@@ -296,8 +317,8 @@ Deno.serve(async (req: Request) => {
 
       const overrides = resolveDeliveryOverrides(config, payload);
       const messageId = provider === "resend"
-        ? await sendResend(config, recipientEmail, subject, body, overrides)
-        : await sendBrevo(config, recipientEmail, subject, body, overrides);
+        ? await sendResend(config, recipientEmail, subject, body, html, overrides)
+        : await sendBrevo(config, recipientEmail, subject, body, html, overrides);
 
       await service.rpc("service_complete_notification", {
         p_id: row.id,
