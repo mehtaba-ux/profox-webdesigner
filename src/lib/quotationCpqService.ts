@@ -84,6 +84,7 @@ function quotationPayload(q: Partial<CpqDraft>) {
 
 function linePayload(line: CpqLine) {
   return {
+    id: line.id || null,
     sales_product_id: line.salesProductId || null,
     product_code_snapshot: line.productCodeSnapshot || 'CUSTOM',
     product_name_snapshot: line.productNameSnapshot || (line.lineType === 'section' ? 'Section' : line.lineType === 'note' ? 'Note' : 'Custom Item'),
@@ -97,7 +98,12 @@ function linePayload(line: CpqLine) {
     discount_value: Math.max(0, Number(line.discountValue || 0)),
     optional_for_client: Boolean(line.optionalForClient),
     section_key: line.sectionKey || null,
-    configuration_snapshot: line.configurationSnapshot || {}
+    configuration_snapshot: line.configurationSnapshot || {},
+    duration_min_snapshot: line.durationMinSnapshot ?? null,
+    duration_max_snapshot: line.durationMaxSnapshot ?? null,
+    duration_unit_snapshot: line.durationUnitSnapshot || 'business_days',
+    timeline_impact_snapshot: line.timelineImpactSnapshot || 'assessment_required',
+    duration_note_snapshot: line.durationNoteSnapshot || null
   };
 }
 
