@@ -119,6 +119,32 @@ export interface SalesWorkQueue {
   managerWorkload: Array<{ ownerId: string; ownerName: string; scheduled: number; overdue: number; completed30d: number; rescheduled: number }>;
 }
 
+export interface ActivityHistoryItem {
+  id: string;
+  leadId?: string;
+  opportunityId?: string;
+  assignedTo?: string;
+  ownerName?: string;
+  activityType: string;
+  subject: string;
+  dueAt: string;
+  completedAt?: string;
+  status: 'Completed' | 'Cancelled';
+  channel?: string;
+  notes?: string;
+  outcome?: string;
+  originalDueAt?: string;
+  rescheduleCount?: number;
+  lastRescheduledAt?: string;
+  lastRescheduleReason?: string;
+  companyName: string;
+  value?: number;
+  currency?: string;
+  stage?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface ActivityExecutionContext {
   activity: Record<string, any>;
   record: Record<string, any> | null;
@@ -156,6 +182,10 @@ export const crmActivityExecutionService = {
     return rpc<SalesWorkQueue>('crm_get_sales_work_queue', { p_scope: scope, p_channel: channel, p_limit: limit });
   },
 
+  getHistory(scope: 'mine' | 'team' = 'mine', limit = 100) {
+    return rpc<{ scope: 'mine' | 'team'; items: ActivityHistoryItem[] }>('crm_get_activity_history', { p_scope: scope, p_limit: limit });
+  },
+
   getConfig() {
     return rpc<ActivityExecutionConfig>('crm_get_activity_execution_config');
   },
@@ -170,6 +200,23 @@ export const crmActivityExecutionService = {
 
   getEffectiveness(days = 30, scope: 'mine' | 'team' = 'mine') {
     return rpc<ActivityEffectiveness>('crm_get_activity_effectiveness', { p_days: days, p_scope: scope });
+  },
+
+  createActivity(input: { entityType: 'lead' | 'opportunity'; entityId: string; activityType: string; subject: string; dueAt: string; notes?: string; channel?: string; assignedTo?: string | null }) {
+    return rpc<Record<string, unknown>>('crm_create_activity', {
+      p_entity_type: input.entityType,
+      p_entity_id: input.entityId,
+      p_activity_type: input.activityType,
+      p_subject: input.subject,
+      p_due_at: input.dueAt,
+      p_notes: input.notes || '',
+      p_channel: input.channel || null,
+      p_assigned_to: input.assignedTo || null,
+    });
+  },
+
+  reassignActivity(activityId: string, assignedTo: string) {
+    return rpc<Record<string, unknown>>('crm_reassign_activity', { p_activity_id: activityId, p_assigned_to: assignedTo });
   },
 
   startActivity(activityId: string) {
