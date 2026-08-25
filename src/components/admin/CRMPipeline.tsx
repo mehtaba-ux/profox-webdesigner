@@ -1,374 +1,300 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  Plus, 
-  MoreHorizontal, 
-  Briefcase, 
-  MapPin, 
-  Clock, 
-  Star, 
-  CheckCircle2, 
-  XCircle, 
-  ChevronRight,
-  Loader2,
-  Calendar,
-  LayoutGrid,
-  List as ListIcon,
-  Video,
-  DollarSign,
-  Building2,
-  User,
+import React, { useEffect, useMemo, useState } from 'react';
+import {
+  DndContext,
+  DragEndEvent,
+  DragOverlay,
+  KeyboardSensor,
+  PointerSensor,
+  useDraggable,
+  useDroppable,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
+import {
   AlertTriangle,
-  Trophy,
-  Tag,
-  Receipt
+  ArrowRight,
+  Building2,
+  Calendar,
+  CheckCircle2,
+  Clock3,
+  DollarSign,
+  ExternalLink,
+  Filter,
+  Loader2,
+  MessageSquarePlus,
+  Receipt,
+  Settings2,
+  ShieldCheck,
+  Target,
+  UserRound,
+  X,
+  XCircle,
 } from 'lucide-react';
-import { crmService } from '../../lib/crmService';
-import { CRMOpportunity, OpportunityStage, OPPORTUNITY_STAGES, LOST_REASONS } from '../../types';
+import { useNavigate } from 'react-router-dom';
+import {
+  crmService,
+  PipelineOpportunity,
+  PipelineStageConfig,
+} from '../../lib/crmService';
+import { CRMLeadDetail, OpportunityStage } from '../../types';
 import { useAuth } from '../../lib/AuthContext';
 
+const VIEW_OPTIONS = [
+  'All Open',
+  'My Pipeline',
+  'Needs Attention',
+  'Stalled Deals',
+  'No Next Activity',
+  'Follow-up Overdue',
+  'High Value',
+  'Quote Pending',
+] as const;
+type PipelineView = typeof VIEW_OPTIONS[number];
+
+type TimelineFilter = 'All' | 'Stage Changes' | 'Emails' | 'Activities' | 'Meetings' | 'Quotations' | 'Payments' | 'Notes' | 'Automation' | 'System';
+
+const timelineFilters: TimelineFilter[] = ['All', 'Stage Changes', 'Emails', 'Activities', 'Meetings', 'Quotations', 'Payments', 'Notes', 'Automation', 'System'];
+
+function hoursLabel(hours: number) {
+  if (!Number.isFinite(hours)) return '—';
+  if (hours < 24) return `${Math.max(0, Math.round(hours))}h`;
+  const days = hours / 24;
+  return `${days < 10 ? days.toFixed(1) : Math.round(days)}d`;
+}
+
+function healthClass(status: PipelineOpportunity['health']['status']) {
+  if (status === 'At Risk') return 'border-red-200 bg-red-50 text-red-700';
+  if (status === 'Needs Attention') return 'border-amber-200 bg-amber-50 text-amber-700';
+  return 'border-emerald-200 bg-emerald-50 text-emerald-700';
+}
+
+function timelineMatches(eventType: string, filter: TimelineFilter) {
+  const type = eventType.toLowerCase();
+  if (filter === 'All') return true;
+  if (filter === 'Stage Changes') return type.includes('stage');
+  if (filter === 'Emails') return type.includes('email') || type.includes('notification');
+  if (filter === 'Activities') return type.includes('activity') || type.includes('follow_up');
+  if (filter === 'Meetings') return type.includes('meeting');
+  if (filter === 'Quotations') return type.includes('quotation');
+  if (filter === 'Payments') return type.includes('payment');
+  if (filter === 'Notes') return type.includes('note');
+  if (filter === 'Automation') return type.includes('automation');
+  return !['stage', 'email', 'notification', 'activity', 'follow_up', 'meeting', 'quotation', 'payment', 'note', 'automation'].some(token => type.includes(token));
+}
+
 export default function CRMPipeline({ onNavigate }: { onNavigate?: (tab: string) => void }) {
-  const [opportunities, setOpportunities] = useState<CRMOpportunity[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedOpportunity, setSelectedOpportunity] = useState<CRMOpportunity | null>(null);
+  const navigate = useNavigate();
   const { user, isAdmin } = useAuth();
+  const [opportunities, setOpportunities] = useState<PipelineOpportunity[]>([]);
+  const [stages, setStages] = useState<PipelineStageConfig[]>([]);
+  const [scope, setScope] = useState<'team' | 'individual'>('individual');
+  const [loading, setLoading] = useState(true);
+  const [selected, setSelected] = useState<PipelineOpportunity | null>(null);
+  const [activeDrag, setActiveDrag] = useState<PipelineOpportunity | null>(null);
+  const [error, setError] = useState('');
+  const [view, setView] = useState<PipelineView>('All Open');
+  const [healthFilter, setHealthFilter] = useState('All');
+  const [ownerFilter, setOwnerFilter] = useState('All');
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }), useSensor(KeyboardSensor));
 
-  useEffect(() => {
-    fetchOpportunities();
-  }, []);
-
-  const fetchOpportunities = async () => {
-    setLoading(true);
+  const load = async (silent = false) => {
+    if (!silent) setLoading(true);
+    setError('');
     try {
-      const data = await crmService.getOpportunities();
-      setOpportunities(data);
-    } catch (err) {
-      console.error(err);
+      const data = await crmService.getPipelineCommandCenter();
+      setOpportunities(data.opportunities || []);
+      setStages((data.config?.stages || []).filter(stage => stage.active).sort((a, b) => a.order - b.order));
+      setScope(data.scope);
+      if (selected) setSelected((data.opportunities || []).find(item => item.id === selected.id) || null);
+    } catch (e: any) {
+      setError(e?.message || 'Pipeline could not be loaded.');
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
-  const filteredOpportunities = opportunities.filter(opp => {
-    return isAdmin || opp.salespersonId === user?.id;
-  });
+  useEffect(() => { void load(); }, []);
 
-  if (loading && opportunities.length === 0) {
-    return (
-      <div className="flex items-center justify-center h-[600px]">
-        <Loader2 className="w-8 h-8 animate-spin text-[#000080]" />
-      </div>
-    );
-  }
+  const owners = useMemo(() => Array.from(new Map(opportunities.filter(o => o.salespersonId).map(o => [o.salespersonId!, o.ownerName])).entries()), [opportunities]);
+  const highValueThreshold = useMemo(() => {
+    const values = opportunities.map(o => o.expectedValue).filter(Number.isFinite).sort((a, b) => b - a);
+    return values.length ? Math.max(5000, values[Math.min(Math.floor(values.length / 4), values.length - 1)] || 5000) : 5000;
+  }, [opportunities]);
+
+  const filtered = useMemo(() => opportunities.filter(opp => {
+    if (opp.status !== 'Open') return false;
+    if (ownerFilter !== 'All' && opp.salespersonId !== ownerFilter) return false;
+    if (healthFilter !== 'All' && opp.health.status !== healthFilter) return false;
+    if (view === 'My Pipeline' && opp.salespersonId !== user?.id) return false;
+    if (view === 'Needs Attention' && opp.health.status === 'Healthy') return false;
+    if (view === 'Stalled Deals' && !(opp.health.reasons.some(r => r.includes('SLA') || r.includes('activity')))) return false;
+    if (view === 'No Next Activity' && !opp.health.reasons.includes('No next activity')) return false;
+    if (view === 'Follow-up Overdue' && !opp.health.reasons.includes('Follow-up overdue')) return false;
+    if (view === 'High Value' && opp.expectedValue < highValueThreshold) return false;
+    if (view === 'Quote Pending' && !(opp.quotation && ['Sent', 'Approved', 'Ready for Approval'].includes(opp.quotation.status))) return false;
+    return true;
+  }), [opportunities, ownerFilter, healthFilter, view, user?.id, highValueThreshold]);
+
+  const pipelineValue = filtered.reduce((sum, item) => sum + item.expectedValue, 0);
+  const weightedValue = filtered.reduce((sum, item) => sum + item.expectedValue * ((item.probability || 0) / 100), 0);
+  const attentionCount = filtered.filter(item => item.health.status !== 'Healthy').length;
+
+  const handleDragEnd = async ({ active, over }: DragEndEvent) => {
+    setActiveDrag(null);
+    if (!over) return;
+    const opportunity = opportunities.find(item => item.id === String(active.id));
+    const targetStage = String(over.id);
+    if (!opportunity || opportunity.stage === targetStage) return;
+    const previous = opportunities;
+    setError('');
+    setOpportunities(current => current.map(item => item.id === opportunity.id ? { ...item, stage: targetStage as OpportunityStage } : item));
+    try {
+      await crmService.transitionOpportunity(opportunity.id, targetStage);
+      await load(true);
+    } catch (e: any) {
+      setOpportunities(previous);
+      setError(e?.message || `The opportunity could not move to ${targetStage}.`);
+    }
+  };
+
+  if (loading && opportunities.length === 0) return <div className="flex h-[600px] items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-[#000080]" /></div>;
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="space-y-5">
+      <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Sales Pipeline</h1>
-          <p className="text-sm text-slate-500">Track your opportunities from qualification to close.</p>
+          <div className="flex items-center gap-2"><h1 className="text-2xl font-black text-slate-900">Sales Pipeline Command Center</h1><span className="rounded-full border border-blue-100 bg-blue-50 px-2 py-1 text-[10px] font-black uppercase tracking-widest text-[#000080]">{scope}</span></div>
+          <p className="mt-1 text-sm text-slate-500">See deal health, next action, stage age and commercial progress without leaving the pipeline.</p>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="bg-white px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-bold text-slate-600 flex items-center gap-2">
-            Total Value: <span className="text-[#000080]">USD {filteredOpportunities.filter(o => o.status === 'Open').reduce((acc, curr) => acc + curr.expectedValue, 0).toLocaleString()}</span>
-          </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Metric label="Pipeline" value={`USD ${pipelineValue.toLocaleString()}`} />
+          <Metric label="Weighted" value={`USD ${Math.round(weightedValue).toLocaleString()}`} />
+          <Metric label="Needs attention" value={attentionCount} alert={attentionCount > 0} />
+          {isAdmin && <button onClick={() => navigate('/admin/crm-pipeline-settings')} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-700 shadow-sm hover:border-[#000080]/30"><Settings2 className="h-4 w-4" /> Pipeline settings</button>}
         </div>
       </div>
 
-      <div className="flex gap-4 overflow-x-auto pb-6 -mx-8 px-8 scrollbar-hide">
-        {OPPORTUNITY_STAGES.map(stage => {
-          const stageOpps = filteredOpportunities.filter(o => o.stage === stage && o.status === 'Open');
-          const stageTotal = stageOpps.reduce((acc, curr) => acc + curr.expectedValue, 0);
-          
-          return (
-            <div key={stage} className="min-w-[300px] w-[300px] flex flex-col gap-3">
-              <div className="flex items-center justify-between px-1">
-                <div className="space-y-0.5">
-                  <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                    {stage}
-                  </h3>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-slate-900">{stageOpps.length}</span>
-                    <span className="text-[10px] text-slate-400 font-medium">USD {stageTotal.toLocaleString()}</span>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="flex flex-col gap-3 min-h-[500px] bg-slate-50/50 rounded-2xl p-2 border border-slate-100">
-                {stageOpps.map(opp => (
-                  <div 
-                    key={opp.id}
-                    onClick={() => setSelectedOpportunity(opp)}
-                    className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm hover:shadow-md hover:border-[#000080]/30 transition-all cursor-pointer group"
-                  >
-                    <h4 className="font-bold text-slate-900 mb-1 group-hover:text-[#000080] line-clamp-1">{opp.name}</h4>
-                    <p className="text-[10px] text-slate-500 mb-3 flex items-center gap-1 font-medium">
-                      <Building2 className="w-3 h-3" /> {opp.companyName}
-                    </p>
-                    
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="text-[11px] font-black text-emerald-600">
-                        {opp.currency} {opp.expectedValue.toLocaleString()}
-                      </div>
-                      <div className="flex items-center gap-1.5 text-[10px] text-slate-400 font-bold bg-slate-50 px-1.5 py-0.5 rounded border border-slate-100">
-                        <Tag className="w-3 h-3" /> {opp.serviceInterest || 'N/A'}
-                      </div>
-                    </div>
+      {error && <div className="flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-700"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /><div><div className="font-black">Stage change blocked</div><div className="mt-0.5 text-xs font-medium">{error}</div></div></div>}
 
-                    <div className="flex items-center justify-between pt-3 border-t border-slate-50">
-                      <div className="flex items-center gap-1.5 text-[9px] text-slate-400 font-medium">
-                        <Clock className="w-3 h-3" /> {new Date(opp.createdAt).toLocaleDateString()}
-                      </div>
-                      {opp.meetingAt && (
-                        <div className="p-1 rounded-full bg-blue-50 text-[#000080] border border-blue-100" title="Meeting Scheduled">
-                          <Calendar className="w-3 h-3" />
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
-
-                {stageOpps.length === 0 && (
-                  <div className="flex-1 flex flex-col items-center justify-center p-6 text-center opacity-30">
-                    <p className="text-[10px] font-bold text-slate-400">Empty Stage</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          );
-        })}
+      <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+        <Filter className="h-4 w-4 text-slate-400" />
+        <select value={view} onChange={e => setView(e.target.value as PipelineView)} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold outline-none focus:border-[#000080]">{VIEW_OPTIONS.map(option => <option key={option}>{option}</option>)}</select>
+        <select value={healthFilter} onChange={e => setHealthFilter(e.target.value)} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold outline-none focus:border-[#000080]"><option>All</option><option>Healthy</option><option>Needs Attention</option><option>At Risk</option></select>
+        {(isAdmin || scope === 'team') && <select value={ownerFilter} onChange={e => setOwnerFilter(e.target.value)} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold outline-none focus:border-[#000080]"><option value="All">All owners</option>{owners.map(([id, name]) => <option key={id} value={id}>{name}</option>)}</select>}
+        <div className="ml-auto text-[10px] font-bold text-slate-400">Drag is only the interface. Server rules remain authoritative.</div>
       </div>
 
-      {selectedOpportunity && (
-        <OpportunityDetailModal 
-          opportunity={selectedOpportunity} 
-          onClose={() => setSelectedOpportunity(null)}
-          onUpdate={fetchOpportunities}
-          onNavigate={onNavigate}
-        />
-      )}
+      <DndContext sensors={sensors} onDragStart={({ active }) => setActiveDrag(opportunities.find(item => item.id === String(active.id)) || null)} onDragCancel={() => setActiveDrag(null)} onDragEnd={handleDragEnd}>
+        <div className="-mx-4 flex gap-4 overflow-x-auto px-4 pb-6 sm:-mx-8 sm:px-8">
+          {stages.map(stage => <PipelineColumn key={stage.name} stage={stage} opportunities={filtered.filter(item => item.stage === stage.name)} onOpen={setSelected} />)}
+        </div>
+        <DragOverlay>{activeDrag ? <PipelineCard opportunity={activeDrag} overlay onOpen={() => {}} /> : null}</DragOverlay>
+      </DndContext>
+
+      {selected && <OpportunityDrawer opportunity={selected} stages={stages} onClose={() => setSelected(null)} onUpdate={() => load(true)} onNavigate={onNavigate} />}
     </div>
   );
 }
 
-function OpportunityDetailModal({ opportunity, onClose, onUpdate, onNavigate }: { opportunity: CRMOpportunity, onClose: () => void, onUpdate: () => void, onNavigate?: (tab: string) => void }) {
-  const [loading, setLoading] = useState(false);
-  const [isMarkingLost, setIsMarkingLost] = useState(false);
-  const [lostReason, setLostReason] = useState(LOST_REASONS[0]);
-  const { isAdmin } = useAuth();
+function Metric({ label, value, alert = false }: { label: string; value: React.ReactNode; alert?: boolean }) {
+  return <div className={`rounded-xl border bg-white px-3 py-2 shadow-sm ${alert ? 'border-amber-200' : 'border-slate-200'}`}><div className="text-[9px] font-black uppercase tracking-widest text-slate-400">{label}</div><div className={`mt-0.5 text-xs font-black ${alert ? 'text-amber-700' : 'text-slate-900'}`}>{value}</div></div>;
+}
 
-  const handleStageChange = async (newStage: OpportunityStage) => {
-    setLoading(true);
-    try {
-      await crmService.updateOpportunity(opportunity.id, { stage: newStage });
-      onUpdate();
-      onClose();
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleWon = async () => {
-    setLoading(true);
-    try {
-      await crmService.markWon(opportunity.id);
-      onUpdate();
-      onClose();
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleLost = async () => {
-    setLoading(true);
-    try {
-      await crmService.markLost(opportunity.id, lostReason);
-      onUpdate();
-      onClose();
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-      <div className="bg-white rounded-3xl w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-2xl relative">
-        <div className="sticky top-0 bg-white z-10 px-8 py-6 border-b border-slate-100 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100">
-              <DollarSign className="w-6 h-6" />
-            </div>
-            <div>
-              <h2 className="text-xl font-bold text-slate-900">{opportunity.name}</h2>
-              <div className="flex items-center gap-2 mt-0.5">
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-[#000080] border border-blue-100">
-                  {opportunity.stage}
-                </span>
-                <span className="text-[10px] font-bold text-slate-400">• {opportunity.companyName}</span>
-              </div>
-            </div>
-          </div>
-          <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-400">
-            <XCircle className="w-6 h-6" />
-          </button>
-        </div>
-
-        <div className="p-8 grid md:grid-cols-3 gap-8">
-          <div className="md:col-span-2 space-y-8">
-            <section className="space-y-4">
-              <h3 className="text-xs font-bold uppercase tracking-widest text-slate-400 border-b border-slate-100 pb-2">Deal Information</h3>
-              <div className="grid grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Expected Value</label>
-                  <p className="text-base font-black text-emerald-600">{opportunity.currency} {opportunity.expectedValue.toLocaleString()}</p>
-                </div>
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Service Interest</label>
-                  <p className="text-sm font-bold text-slate-700">{opportunity.serviceInterest || 'Not specified'}</p>
-                </div>
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Source</label>
-                  <p className="text-sm font-bold text-slate-700">{opportunity.source} {opportunity.selfGenerated ? '(Self-Gen)' : ''}</p>
-                </div>
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Next Follow-Up</label>
-                  <p className="text-sm font-bold text-slate-700">{opportunity.nextFollowUpAt ? new Date(opportunity.nextFollowUpAt).toLocaleDateString() : 'Not scheduled'}</p>
-                </div>
-              </div>
-            </section>
-
-            <section className="space-y-4">
-              <h3 className="text-xs font-bold uppercase tracking-widest text-slate-400 border-b border-slate-100 pb-2">Meeting Details</h3>
-              <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100">
-                    <Calendar className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold text-slate-900">
-                      {opportunity.meetingAt ? new Date(opportunity.meetingAt).toLocaleString() : 'No meeting scheduled'}
-                    </p>
-                    <p className="text-[10px] text-slate-500">CRM-linked Sales Meeting</p>
-                  </div>
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  {opportunity.meetingUrl && (
-                    <a href={opportunity.meetingUrl} target="_blank" rel="noreferrer" className="px-4 py-1.5 bg-white border border-slate-200 rounded-lg text-[10px] font-bold text-[#000080] hover:border-[#000080] transition-all">
-                      Join Meeting
-                    </a>
-                  )}
-                  {opportunity.status === 'Open' && (
-                    <a href={`/admin/meetings?opportunityId=${opportunity.id}`} className="px-4 py-1.5 bg-[#000080] text-white border border-[#000080] rounded-lg text-[10px] font-bold hover:bg-[#000066] transition-all">
-                      {opportunity.meetingAt ? 'Manage Meetings' : 'Schedule Meeting'}
-                    </a>
-                  )}
-                </div>
-              </div>
-            </section>
-
-            <section className="space-y-4">
-              <h3 className="text-xs font-bold uppercase tracking-widest text-slate-400 border-b border-slate-100 pb-2">Requirements Summary</h3>
-              <p className="text-sm text-slate-600 bg-slate-50 p-4 rounded-xl leading-relaxed whitespace-pre-wrap">
-                {opportunity.requirementsSummary || 'No requirements captured yet.'}
-              </p>
-            </section>
-          </div>
-
-          <div className="space-y-6">
-            <div className="p-6 bg-slate-50 border border-slate-200 rounded-2xl space-y-6">
-              <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-3">Pipeline Controls</label>
-                <div className="space-y-2.5">
-                  <select 
-                    value={opportunity.stage}
-                    onChange={(e) => handleStageChange(e.target.value as OpportunityStage)}
-                    className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs font-bold outline-none focus:border-[#000080]"
-                  >
-                    {OPPORTUNITY_STAGES.map(s => <option key={s} value={s}>{s}</option>)}
-                  </select>
-
-                  <div className="grid grid-cols-2 gap-2">
-                    {opportunity.status === 'Open' ? (
-                      <>
-                        <button 
-                          onClick={handleWon}
-                          disabled={loading}
-                          className="py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold shadow-sm flex items-center justify-center gap-2 transition-all"
-                        >
-                          <Trophy className="w-4 h-4" /> Won
-                        </button>
-                        <button 
-                          onClick={() => setIsMarkingLost(true)}
-                          disabled={loading}
-                          className="py-2.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg text-xs font-bold border border-red-200 transition-all flex items-center justify-center gap-2"
-                        >
-                          <AlertTriangle className="w-4 h-4" /> Lost
-                        </button>
-                      </>
-                    ) : opportunity.status === 'Won' ? (
-                      <button 
-                        onClick={() => onNavigate?.('projects')}
-                        className="col-span-2 py-2.5 bg-[#000080] hover:bg-[#000066] text-white rounded-lg text-xs font-bold shadow-sm flex items-center justify-center gap-2 transition-all"
-                      >
-                        <Briefcase className="w-4 h-4" /> Start Delivery
-                      </button>
-                    ) : (
-                      <div className="col-span-2 py-2.5 bg-slate-100 text-slate-500 rounded-lg text-xs font-bold text-center border border-slate-200">
-                        {opportunity.status}
-                      </div>
-                    )}
-                  </div>
-
-                  {opportunity.status === 'Open' && onNavigate && (
-                    <button 
-                      onClick={() => onNavigate('quotations')}
-                      className="w-full py-2.5 bg-[#000080] hover:bg-[#000066] text-white rounded-lg text-xs font-bold shadow-sm flex items-center justify-center gap-2 transition-all"
-                    >
-                      <Receipt className="w-4 h-4" /> Create Quote
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {isMarkingLost && (
-                <div className="pt-4 border-t border-slate-200 space-y-3 animate-in slide-in-from-top-2">
-                  <p className="text-[10px] font-bold text-red-600 uppercase">Reason for Loss</p>
-                  <select 
-                    value={lostReason}
-                    onChange={(e) => setLostReason(e.target.value)}
-                    className="w-full bg-white border border-red-200 rounded-lg px-3 py-2 text-xs font-bold outline-none focus:border-red-500"
-                  >
-                    {LOST_REASONS.map(r => <option key={r} value={r}>{r}</option>)}
-                  </select>
-                  <div className="flex gap-2">
-                    <button onClick={handleLost} className="flex-1 py-2 bg-red-600 text-white rounded-lg text-xs font-bold">Confirm</button>
-                    <button onClick={() => setIsMarkingLost(false)} className="flex-1 py-2 bg-slate-200 text-slate-600 rounded-lg text-xs font-bold">Cancel</button>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="p-6 bg-slate-50 border border-slate-200 rounded-2xl space-y-4">
-              <h3 className="text-xs font-bold uppercase tracking-widest text-slate-500">Admin Meta</h3>
-              <div className="space-y-2">
-                <div className="flex justify-between text-[10px]">
-                  <span className="text-slate-400">Salesperson</span>
-                  <span className="font-bold text-slate-700 truncate max-w-[120px]">{opportunity.salespersonId}</span>
-                </div>
-                <div className="flex justify-between text-[10px]">
-                  <span className="text-slate-400">Created At</span>
-                  <span className="font-bold text-slate-700">{new Date(opportunity.createdAt).toLocaleDateString()}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+function PipelineColumn({ stage, opportunities, onOpen }: { stage: PipelineStageConfig; opportunities: PipelineOpportunity[]; onOpen: (opportunity: PipelineOpportunity) => void }) {
+  const { setNodeRef, isOver } = useDroppable({ id: stage.name });
+  const total = opportunities.reduce((sum, item) => sum + item.expectedValue, 0);
+  const weighted = opportunities.reduce((sum, item) => sum + item.expectedValue * ((item.probability || 0) / 100), 0);
+  const avgAge = opportunities.length ? opportunities.reduce((sum, item) => sum + item.stageAgeHours, 0) / opportunities.length : 0;
+  return <div className="w-[310px] min-w-[310px]">
+    <div className="mb-2 px-1">
+      <div className="flex items-start justify-between gap-2"><div><div className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: stage.color }} /><h3 className="text-[10px] font-black uppercase tracking-widest text-slate-600">{stage.name}</h3></div><div className="mt-1 flex gap-2 text-[10px] font-semibold text-slate-400"><span>{opportunities.length} deals</span><span>•</span><span>Avg {hoursLabel(avgAge)}</span></div></div><div className="text-right"><div className="text-xs font-black text-slate-900">USD {total.toLocaleString()}</div><div className="text-[9px] font-semibold text-slate-400">Weighted {Math.round(weighted).toLocaleString()}</div></div></div>
     </div>
-  );
+    <div ref={setNodeRef} className={`flex min-h-[560px] flex-col gap-3 rounded-2xl border p-2 transition-colors ${isOver ? 'border-[#000080]/40 bg-blue-50/60' : 'border-slate-100 bg-slate-50/60'}`}>
+      {opportunities.map(opportunity => <DraggablePipelineCard key={opportunity.id} opportunity={opportunity} onOpen={onOpen} />)}
+      {opportunities.length === 0 && <div className="flex min-h-32 flex-1 items-center justify-center rounded-xl border border-dashed border-slate-200 text-center text-[10px] font-bold text-slate-300">Drop permitted opportunities here</div>}
+    </div>
+  </div>;
+}
+
+function DraggablePipelineCard({ opportunity, onOpen }: { opportunity: PipelineOpportunity; onOpen: (opportunity: PipelineOpportunity) => void }) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: opportunity.id, disabled: opportunity.status !== 'Open' });
+  const style = transform ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` } : undefined;
+  return <div ref={setNodeRef} style={style} className={isDragging ? 'opacity-20' : ''} {...listeners} {...attributes}><PipelineCard opportunity={opportunity} onOpen={onOpen} /></div>;
+}
+
+function PipelineCard({ opportunity, onOpen, overlay = false }: { opportunity: PipelineOpportunity; onOpen: (opportunity: PipelineOpportunity) => void; overlay?: boolean }) {
+  const slaExceeded = opportunity.stageSlaHours > 0 && opportunity.stageAgeHours > opportunity.stageSlaHours;
+  return <article onClick={() => onOpen(opportunity)} className={`cursor-grab rounded-2xl border bg-white p-4 shadow-sm transition-all active:cursor-grabbing ${overlay ? 'w-[310px] rotate-1 shadow-xl' : 'border-slate-200 hover:border-[#000080]/30 hover:shadow-md'}`}>
+    <div className="flex items-start justify-between gap-3"><div className="min-w-0"><h4 className="truncate text-sm font-black text-slate-900">{opportunity.name}</h4><p className="mt-0.5 flex items-center gap-1 truncate text-[10px] font-semibold text-slate-500"><Building2 className="h-3 w-3 shrink-0" />{opportunity.companyName}</p></div><span className={`shrink-0 rounded-full border px-2 py-1 text-[9px] font-black ${healthClass(opportunity.health.status)}`}>{opportunity.health.status}</span></div>
+    <div className="mt-3 flex items-center justify-between gap-2"><span className="text-xs font-black text-emerald-700">{opportunity.currency} {opportunity.expectedValue.toLocaleString()}</span><span className="text-[10px] font-black text-slate-500">{opportunity.probability || 0}%</span></div>
+    <div className="mt-3 grid grid-cols-2 gap-2 text-[9px]"><Chip icon={UserRound} text={opportunity.ownerName || 'Unassigned'} /><Chip icon={Target} text={`${opportunity.leadQuality} · ${opportunity.leadScore}`} /><Chip icon={Clock3} text={`${hoursLabel(opportunity.stageAgeHours)} in stage`} danger={slaExceeded} /><Chip icon={Calendar} text={opportunity.meeting?.status || 'No meeting'} /></div>
+    {opportunity.health.reasons[0] && <div className={`mt-3 flex items-start gap-1.5 rounded-xl p-2 text-[9px] font-bold ${opportunity.health.status === 'At Risk' ? 'bg-red-50 text-red-700' : 'bg-amber-50 text-amber-700'}`}><AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />{opportunity.health.reasons[0]}</div>}
+    <div className="mt-3 rounded-xl border border-blue-100 bg-blue-50/60 p-2.5"><div className="text-[8px] font-black uppercase tracking-widest text-[#000080]/60">Next best action</div><div className="mt-1 flex items-center gap-1 text-[10px] font-black text-[#000080]">{opportunity.nextBestAction?.label || 'Review opportunity'}<ArrowRight className="h-3 w-3" /></div></div>
+    <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-3 text-[9px] font-semibold text-slate-400"><span>{opportunity.lastMeaningfulActivity?.at ? `Last ${new Date(opportunity.lastMeaningfulActivity.at).toLocaleDateString()}` : 'No recent timeline event'}</span><div className="flex gap-1">{opportunity.quotation && <Receipt className="h-3.5 w-3.5 text-cyan-600" />}{opportunity.nextActivity?.overdue && <Clock3 className="h-3.5 w-3.5 text-red-600" />}</div></div>
+  </article>;
+}
+
+function Chip({ icon: Icon, text, danger = false }: { icon: any; text: string; danger?: boolean }) {
+  return <div className={`flex items-center gap-1 rounded-lg border px-2 py-1.5 font-bold ${danger ? 'border-red-200 bg-red-50 text-red-700' : 'border-slate-100 bg-slate-50 text-slate-500'}`}><Icon className="h-3 w-3 shrink-0" /><span className="truncate">{text}</span></div>;
+}
+
+function OpportunityDrawer({ opportunity, stages, onClose, onUpdate, onNavigate }: { opportunity: PipelineOpportunity; stages: PipelineStageConfig[]; onClose: () => void; onUpdate: () => void; onNavigate?: (tab: string) => void }) {
+  const [detail, setDetail] = useState<CRMLeadDetail | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [note, setNote] = useState('');
+  const [timelineFilter, setTimelineFilter] = useState<TimelineFilter>('All');
+  const [isMarkingLost, setIsMarkingLost] = useState(false);
+  const [lostReason, setLostReason] = useState('Price / Budget');
+
+  const loadDetail = async () => {
+    if (!opportunity.leadId) return;
+    try { setDetail(await crmService.getLeadDetail(opportunity.leadId)); } catch (e: any) { setError(e?.message || 'Timeline could not be loaded.'); }
+  };
+  useEffect(() => { void loadDetail(); }, [opportunity.id]);
+
+  const transition = async (stage: string) => {
+    setLoading(true); setError('');
+    try { await crmService.transitionOpportunity(opportunity.id, stage); await onUpdate(); await loadDetail(); }
+    catch (e: any) { setError(e?.message || 'Stage change was blocked.'); }
+    finally { setLoading(false); }
+  };
+
+  const addNote = async () => {
+    if (!opportunity.leadId || !note.trim()) return;
+    setLoading(true); setError('');
+    try { await crmService.addLeadNote(opportunity.leadId, note.trim()); setNote(''); await loadDetail(); }
+    catch (e: any) { setError(e?.message || 'Note could not be added.'); }
+    finally { setLoading(false); }
+  };
+
+  const markLost = async () => {
+    setLoading(true); setError('');
+    try { await crmService.markLost(opportunity.id, lostReason); await onUpdate(); onClose(); }
+    catch (e: any) { setError(e?.message || 'Opportunity could not be closed as Lost.'); }
+    finally { setLoading(false); }
+  };
+
+  const events = (detail?.events || []).filter(event => timelineMatches(event.eventType, timelineFilter));
+  return <div className="fixed inset-0 z-[100] bg-slate-900/35" onMouseDown={e => { if (e.target === e.currentTarget) onClose(); }}>
+    <aside className="ml-auto flex h-full w-full max-w-2xl flex-col bg-white shadow-2xl">
+      <header className="flex items-start justify-between gap-4 border-b border-slate-200 px-5 py-5 sm:px-7"><div><div className="flex items-center gap-2"><span className={`rounded-full border px-2 py-1 text-[9px] font-black ${healthClass(opportunity.health.status)}`}>{opportunity.health.status}</span><span className="text-[10px] font-bold text-slate-400">{opportunity.stage}</span></div><h2 className="mt-2 text-xl font-black text-slate-900">{opportunity.name}</h2><p className="mt-1 text-xs font-semibold text-slate-500">{opportunity.companyName} · {opportunity.ownerName}</p></div><button onClick={onClose} className="rounded-full p-2 text-slate-400 hover:bg-slate-100"><X className="h-5 w-5" /></button></header>
+      <div className="flex-1 overflow-y-auto p-5 sm:p-7">
+        {error && <div className="mb-4 rounded-xl border border-red-200 bg-red-50 p-3 text-xs font-bold text-red-700">{error}</div>}
+        <section className="grid grid-cols-2 gap-3 sm:grid-cols-4"><Metric label="Value" value={`${opportunity.currency} ${opportunity.expectedValue.toLocaleString()}`} /><Metric label="Probability" value={`${opportunity.probability || 0}%`} /><Metric label="Stage age" value={hoursLabel(opportunity.stageAgeHours)} alert={opportunity.stageSlaHours > 0 && opportunity.stageAgeHours > opportunity.stageSlaHours} /><Metric label="Lead quality" value={`${opportunity.leadQuality} · ${opportunity.leadScore}`} /></section>
+        <section className="mt-5 rounded-2xl border border-blue-100 bg-blue-50/60 p-4"><div className="text-[9px] font-black uppercase tracking-widest text-[#000080]/60">Recommended next action</div><div className="mt-1 text-sm font-black text-[#000080]">{opportunity.nextBestAction?.label || 'Review opportunity'}</div><p className="mt-1 text-xs leading-5 text-slate-600">{opportunity.nextBestAction?.reason}</p>{opportunity.nextBestAction?.url && <a href={opportunity.nextBestAction.url} className="mt-3 inline-flex items-center gap-1 text-xs font-black text-[#000080]">Take action <ExternalLink className="h-3 w-3" /></a>}</section>
+        {opportunity.health.reasons.length > 0 && <section className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-4"><h3 className="text-xs font-black text-amber-800">Why this deal needs attention</h3><ul className="mt-2 space-y-1 text-xs font-semibold text-amber-700">{opportunity.health.reasons.map(reason => <li key={reason}>• {reason}</li>)}</ul></section>}
+
+        <section className="mt-6"><h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Pipeline controls</h3><div className="mt-3 flex flex-wrap gap-2">{stages.map(stage => <button key={stage.name} disabled={loading || stage.name === opportunity.stage || stage.name === 'Won'} onClick={() => void transition(stage.name)} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-[10px] font-black text-slate-700 disabled:cursor-not-allowed disabled:opacity-40 hover:border-[#000080]/30">{stage.name}</button>)}</div><p className="mt-2 text-[10px] font-semibold text-slate-400"><ShieldCheck className="mr-1 inline h-3 w-3" />Won remains controlled by verified payment. Buttons and drag-and-drop cannot bypass it.</p></section>
+
+        <section className="mt-6 grid gap-2 sm:grid-cols-4"><a href={`/admin/meetings?opportunityId=${opportunity.id}`} className="rounded-xl bg-[#000080] px-3 py-2.5 text-center text-[10px] font-black text-white">Meeting</a><button onClick={() => onNavigate?.('activities')} className="rounded-xl border border-slate-200 px-3 py-2.5 text-[10px] font-black text-slate-700">Activity</button><button onClick={() => onNavigate?.('quotations')} className="rounded-xl border border-slate-200 px-3 py-2.5 text-[10px] font-black text-slate-700">Quotation</button><button onClick={() => setIsMarkingLost(true)} className="rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-[10px] font-black text-red-700">Mark Lost</button></section>
+
+        {isMarkingLost && <section className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-4"><div className="flex items-center gap-2"><XCircle className="h-4 w-4 text-red-600" /><h3 className="text-xs font-black text-red-800">Close opportunity as Lost</h3></div><div className="mt-3 flex gap-2"><select value={lostReason} onChange={e => setLostReason(e.target.value)} className="min-w-0 flex-1 rounded-xl border border-red-200 bg-white px-3 py-2 text-xs font-bold">{['Price / Budget','Not Interested','No Response','Already Has Provider','Project Postponed','Competitor Selected','Decision Maker Declined','Timing Not Suitable','Not Qualified','Other'].map(reason => <option key={reason}>{reason}</option>)}</select><button disabled={loading} onClick={() => void markLost()} className="rounded-xl bg-red-600 px-4 py-2 text-xs font-black text-white">Confirm</button><button onClick={() => setIsMarkingLost(false)} className="rounded-xl border border-red-200 px-3 py-2 text-xs font-black text-red-700">Cancel</button></div></section>}
+
+        {opportunity.leadId && <section className="mt-7"><div className="flex items-center justify-between gap-3"><div><h3 className="text-sm font-black text-slate-900">Permanent CRM timeline</h3><p className="text-[10px] font-semibold text-slate-400">Canonical history — previous events are read-only.</p></div><span className="rounded-full bg-slate-100 px-2 py-1 text-[9px] font-black text-slate-500">{detail?.events.length || 0} events</span></div><div className="mt-3 flex gap-1 overflow-x-auto pb-1">{timelineFilters.map(filter => <button key={filter} onClick={() => setTimelineFilter(filter)} className={`whitespace-nowrap rounded-lg px-2.5 py-1.5 text-[9px] font-black ${timelineFilter === filter ? 'bg-[#000080] text-white' : 'bg-slate-100 text-slate-500'}`}>{filter}</button>)}</div><div className="mt-4 space-y-3">{events.map(event => <div key={event.id} className="rounded-xl border border-slate-200 p-3"><div className="flex items-start justify-between gap-3"><div><div className="text-xs font-black text-slate-900">{event.title}</div><div className="mt-1 text-[10px] leading-4 text-slate-500">{event.description}</div></div><time className="shrink-0 text-[9px] font-semibold text-slate-400">{new Date(event.occurredAt).toLocaleString()}</time></div><div className="mt-2 text-[9px] font-bold text-slate-400">{event.actorName} · {event.actorRole}</div></div>)}{detail && events.length === 0 && <div className="rounded-xl border border-dashed border-slate-200 p-5 text-center text-xs font-semibold text-slate-400">No timeline events match this filter.</div>}</div></section>}
+
+        {opportunity.leadId && <section className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4"><div className="flex items-center gap-2"><MessageSquarePlus className="h-4 w-4 text-[#000080]" /><h3 className="text-xs font-black text-slate-900">Add internal note</h3></div><textarea value={note} onChange={e => setNote(e.target.value)} rows={3} className="mt-3 w-full rounded-xl border border-slate-200 bg-white p-3 text-xs outline-none focus:border-[#000080]" placeholder="Add context without changing historical events…" /><div className="mt-2 flex justify-end"><button disabled={loading || !note.trim()} onClick={() => void addNote()} className="rounded-xl bg-slate-900 px-4 py-2 text-[10px] font-black text-white disabled:opacity-40">Add note</button></div></section>}
+      </div>
+    </aside>
+  </div>;
 }
