@@ -14,9 +14,87 @@ import {
 
 const asArray = <T>(value: unknown): T[] => Array.isArray(value) ? value as T[] : [];
 
+export interface PipelineStageConfig {
+  name: string;
+  order: number;
+  color: string;
+  active: boolean;
+  defaultProbability: number;
+  slaHours: number;
+  requiredFields: string[];
+  allowedPrevious: string[];
+  allowedNext: string[];
+  allowSkip: boolean;
+  allowBackward: boolean;
+  approvalRequired: boolean;
+  classification: 'open' | 'won' | 'lost';
+}
+
+export interface PipelineConfiguration {
+  version: number;
+  stages: PipelineStageConfig[];
+  health: {
+    noActivityHours: number;
+    highValueThreshold: number;
+    highValueInactivityHours: number;
+  };
+  lostReasons: string[];
+}
+
+export interface PipelineOpportunity extends CRMOpportunity {
+  ownerName: string;
+  leadScore: number;
+  leadQuality: 'High' | 'Medium' | 'Low';
+  scoreReason: string;
+  stageEnteredAt: string;
+  stageAgeHours: number;
+  stageSlaHours: number;
+  lastMeaningfulActivity?: { type?: string; title?: string; at?: string };
+  nextActivity?: { id: string; subject: string; type: string; dueAt: string; overdue: boolean };
+  meeting?: { id: string; status: string; startAt: string; outcome?: string };
+  quotation?: { id: string; status: string; sentAt?: string; viewedAt?: string; viewCount: number };
+  health: { status: 'Healthy' | 'Needs Attention' | 'At Risk'; reasons: string[] };
+  nextBestAction?: { label: string; actionKey: string; url: string; reason: string; quick?: boolean; requiresInput?: boolean };
+}
+
+export interface PipelineCommandCenter {
+  generatedAt: string;
+  scope: 'team' | 'individual';
+  config: PipelineConfiguration;
+  opportunities: PipelineOpportunity[];
+}
+
+export interface CRMAutomationAction {
+  type: 'send_email' | 'create_activity' | 'schedule_follow_up' | 'in_app_notification';
+  templateKey?: string;
+  activityType?: string;
+  subject?: string;
+  notes?: string;
+  dueMinutes?: number;
+  title?: string;
+  message?: string;
+}
+
+export interface CRMAutomationRule {
+  id: string;
+  name: string;
+  enabled: boolean;
+  trigger: string;
+  conditions: Record<string, unknown>;
+  waitMinutes: number;
+  actions: CRMAutomationAction[];
+  stopWhen: string[];
+  allowReentry?: boolean;
+}
+
+export interface CRMAutomationConfiguration {
+  version: number;
+  rules: CRMAutomationRule[];
+}
+
 export const crmService = {
   async getLeads() {
-    const { data, error } = await supabase.from('crm_leads').select('*').order('created_at', { ascending: false });
+    const { data, error } = await supabase.from('crm_leads').select('*').is('archived_at', null).order('created_at', { ascending: false });
     if (error) throw error;
     return (data || []).map(this.mapLeadFromDb);
   },
@@ -123,9 +201,71 @@ export const crmService = {
   },
 
   async getOpportunities() {
-    const { data, error } = await supabase.from('crm_opportunities').select('*').order('created_at', { ascending: false });
+    const { data, error } = await supabase.from('crm_opportunities').select('*').is('archived_at', null).order('created_at', { ascending: false });
     if (error) throw error;
     return (data || []).map(this.mapOpportunityFromDb);
+  },
+
+  async getPipelineCommandCenter(): Promise<PipelineCommandCenter> {
+    const { data, error } = await supabase.rpc('crm_get_pipeline_command_center');
+    if (error) throw error;
+    return {
+      generatedAt: data?.generatedAt || new Date().toISOString(),
+      scope: data?.scope === 'team' ? 'team' : 'individual',
+      config: data?.config as PipelineConfiguration,
+      opportunities: asArray<PipelineOpportunity>(data?.opportunities),
+    };
+  },
+
+  async getPipelineConfiguration(): Promise<PipelineConfiguration> {
+    const { data, error } = await supabase.rpc('crm_get_pipeline_configuration');
+    if (error) throw error;
+    return data as PipelineConfiguration;
+  },
+
+  async savePipelineConfiguration(config: PipelineConfiguration): Promise<PipelineConfiguration> {
+    const { data, error } = await supabase.rpc('crm_admin_save_pipeline_configuration', { p_config: config });
+    if (error) throw error;
+    return data as PipelineConfiguration;
+  },
+
+  async getPipelineAnalytics(days = 90) {
+    const { data, error } = await supabase.rpc('crm_get_pipeline_analytics', { p_days: days });
+    if (error) throw error;
+    return data;
+  },
+
+  async transitionOpportunity(id: string, targetStage: OpportunityStage | string) {
+    const { data, error } = await supabase.rpc('crm_transition_opportunity', {
+      p_opportunity_id: id,
+      p_target_stage: targetStage,
+    });
+    if (error) throw error;
+    return this.mapOpportunityFromDb(data);
+  },
+
+  async getAutomationRules(): Promise<CRMAutomationConfiguration> {
+    const { data, error } = await supabase.rpc('crm_get_automation_rules');
+    if (error) throw error;
+    return data as CRMAutomationConfiguration;
+  },
+
+  async saveAutomationRules(config: CRMAutomationConfiguration): Promise<CRMAutomationConfiguration> {
+    const { data, error } = await supabase.rpc('crm_admin_save_automation_rules', { p_config: config });
+    if (error) throw error;
+    return data as CRMAutomationConfiguration;
+  },
+
+  async stopAutomation(leadId: string, ruleId: string, reason = '') {
+    const { data, error } = await supabase.rpc('crm_stop_automation', { p_lead_id: leadId, p_rule_id: ruleId, p_reason: reason });
+    if (error) throw error;
+    return data;
+  },
+
+  async resumeAutomation(leadId: string, ruleId: string) {
+    const { data, error } = await supabase.rpc('crm_resume_automation', { p_lead_id: leadId, p_rule_id: ruleId });
+    if (error) throw error;
+    return data;
   },
 
   async updateOpportunity(id: string, updates: Partial<CRMOpportunity>) {
@@ -139,7 +279,12 @@ export const crmService = {
   },
 
   async markLost(id: string, reason: string) {
-    return this.updateOpportunity(id, { status: 'Lost', lostReason: reason, lostAt: new Date().toISOString() });
+    const { data, error } = await supabase.rpc('crm_close_opportunity_lost', {
+      p_opportunity_id: id,
+      p_lost_reason: reason,
+    });
+    if (error) throw error;
+    return this.mapOpportunityFromDb(data);
   },
 
   async getActivities() {
