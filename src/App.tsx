@@ -41,6 +41,7 @@ const MeetingPrepView = lazy(() => import('./components/admin/MeetingPrepView'))
 const MeetingManageView = lazy(() => import('./components/admin/MeetingManageView'));
 const SalesProjectHandoverView = lazy(() => import('./components/admin/SalesProjectHandoverView'));
 const NotificationAutomationAdmin = lazy(() => import('./components/admin/NotificationAutomationAdmin'));
+const CRMPipelineSettingsAdmin = lazy(() => import('./components/admin/CRMPipelineSettingsAdmin'));
 const CustomerCommunicationAdmin = lazy(() => import('./components/admin/CustomerCommunicationAdmin'));
 const BookingAnalyticsAdmin = lazy(() => import('./components/admin/BookingAnalyticsAdmin'));
 const CareerJobsAdmin = lazy(() => import('./components/admin/CareerJobsAdmin'));
@@ -161,6 +162,7 @@ export default function App() {
       <Route path="/admin/booking-analytics" element={<BookingAnalyticsAdmin/>}/>
       <Route path="/admin/meeting-settings" element={<MeetingSettingsAdmin/>}/>
       <Route path="/admin/automation-settings" element={<NotificationAutomationAdmin/>}/>
+      <Route path="/admin/crm-pipeline-settings" element={<CRMPipelineSettingsAdmin/>}/>
       <Route path="/admin/customer-communication-settings" element={<CustomerCommunicationAdmin/>}/>
       <Route path="/admin/productivity-settings" element={<ProductivitySettingsAdmin/>}/>
       <Route path="/admin/design-delivery-settings" element={<DesignDeliverySettingsAdmin/>}/>
