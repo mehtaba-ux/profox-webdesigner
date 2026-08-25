@@ -2,6 +2,7 @@ import React from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../../../lib/AuthContext';
 import { WorkspaceAppId } from '../../../lib/workspaceApps';
+import QuotationWorkspaceEnhancements from '../QuotationWorkspaceEnhancements';
 import WorkspaceShell from './WorkspaceShell';
 import './AdminAppWorkspace.css';
 
@@ -15,7 +16,7 @@ function activeWorkspaceForPath(pathname: string): WorkspaceAppId | 'workspace' 
   if (pathname.startsWith('/admin/project-handover') || pathname.startsWith('/admin/design-delivery')) return 'projects';
   if (pathname.startsWith('/admin/payment-gateway') || pathname.startsWith('/admin/automation') || pathname.startsWith('/admin/customer-communication') || pathname.startsWith('/admin/productivity-settings') || pathname.startsWith('/admin/meeting-settings')) return 'settings';
   if (pathname.startsWith('/admin/public-pricing')) return 'website';
-  if (pathname.startsWith('/admin/today') || pathname.startsWith('/admin/seller') || pathname.startsWith('/admin/sales-performance') || pathname.startsWith('/admin/payment-process')) return 'sales';
+  if (pathname.startsWith('/admin/quotations') || pathname.startsWith('/admin/today') || pathname.startsWith('/admin/seller') || pathname.startsWith('/admin/sales-performance') || pathname.startsWith('/admin/payment-process')) return 'sales';
   if (pathname.startsWith('/admin/profile')) return 'team';
   return 'workspace';
 }
@@ -29,6 +30,7 @@ export default function WorkspaceRouteFrame() {
   return (
     <WorkspaceShell activeAppId={activeWorkspaceForPath(location.pathname)} searchPlaceholder="Search ProFox workspace">
       <div className="profox-standalone-app-embed"><Outlet /></div>
+      <QuotationWorkspaceEnhancements />
     </WorkspaceShell>
   );
 }
