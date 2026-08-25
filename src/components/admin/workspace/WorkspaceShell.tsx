@@ -1,12 +1,10 @@
 import React, { ReactNode, useMemo, useState } from 'react';
 import {
-  Bell,
   ChevronDown,
   Grid3X3,
   Headphones,
   LogOut,
   Menu,
-  Search,
   UserRound,
   X
 } from 'lucide-react';
@@ -22,6 +20,8 @@ import { ROLE_LABELS } from '../../../types';
 import Logo from '../../Logo';
 import AppAvatar from './AppAvatar';
 import WorkspaceAppIcon from './WorkspaceAppIcon';
+import GlobalNotificationBell from './GlobalNotificationBell';
+import QuotationApprovalsNavButton from './QuotationApprovalsNavButton';
 
 const SELLER_ROLES = new Set(['sales', 'sales_rep', 'sales_team']);
 const SYMBOL_ROOT = '/assets/design-reference/sterling-home-symbols/icn/sidebar';
@@ -47,7 +47,7 @@ const REFERENCE_ICON: Partial<Record<WorkspaceAppId, string>> = {
 
 interface WorkspaceShellProps {
   children: ReactNode;
-  activeAppId?: WorkspaceAppId | 'workspace';
+  activeAppId?: WorkspaceAppId | 'workspace' | 'approvals';
   searchValue?: string;
   onSearchChange?: (value: string) => void;
   searchPlaceholder?: string;
@@ -73,11 +73,6 @@ export default function WorkspaceShell({
   );
   const primaryDepartment = departmentDefinitionForRole(role);
   const profilePath = SELLER_ROLES.has(String(role || '')) ? '/admin/seller-profile' : '/admin/profile';
-  const notificationsPath = SELLER_ROLES.has(String(role || ''))
-    ? '/admin/today#seller-notifications'
-    : role === 'admin'
-      ? '/admin/automation-settings'
-      : '/admin/workspace';
 
   const handleLogout = async () => {
     await logout();
@@ -116,6 +111,8 @@ export default function WorkspaceShell({
             </span>
             <span>Dashboard</span>
           </button>
+
+          <QuotationApprovalsNavButton active={activeAppId === 'approvals'} onNavigate={() => setMobileNavigationOpen(false)} />
 
           {visibleApps.map(app => {
             const active = activeAppId === app.id;
@@ -198,10 +195,7 @@ export default function WorkspaceShell({
           </div>
 
           <div className="flex shrink-0 items-center gap-2">
-            <button type="button" onClick={() => navigate(notificationsPath)} className="relative flex h-10 w-10 items-center justify-center rounded-xl text-slate-600 transition hover:bg-white" aria-label="Notifications">
-              <Bell className="h-[17px] w-[17px]" />
-              <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-[#FF0E0E] ring-2 ring-[#f4f7fb]" />
-            </button>
+            <GlobalNotificationBell userId={user?.id} />
 
             <div className="relative">
               <button type="button" onClick={() => setProfileMenuOpen(open => !open)} className="flex items-center gap-2 rounded-xl p-1.5 transition hover:bg-white" aria-expanded={profileMenuOpen}>
