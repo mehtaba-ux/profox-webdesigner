@@ -71,6 +71,7 @@ const AdminEntry = lazy(() => import('./components/admin/workspace/AdminEntry'))
 const WorkspaceRouteFrame = lazy(() => import('./components/admin/workspace/WorkspaceRouteFrame'));
 const QuotationWorkspace = lazy(() => import('./components/admin/QuotationWorkspace'));
 const QuotationSettingsAdmin = lazy(() => import('./components/admin/QuotationSettingsAdmin'));
+const QuotationApprovalsWorkspace = lazy(() => import('./components/admin/QuotationApprovalsWorkspace'));
 const CustomPageView = lazy(() => import('./pages/CustomPageView'));
 const PricingCatalogPage = lazy(() => import('./pages/PricingCatalogPage'));
 const CareersListView = lazy(() => import('./pages/CareersListView'));
@@ -141,6 +142,8 @@ export default function App() {
       <Route path="/admin/quotations/new" element={<QuotationWorkspace/>}/>
       <Route path="/admin/quotations/:quotationId" element={<QuotationWorkspace/>}/>
       <Route path="/admin/quotation-settings" element={<QuotationSettingsAdmin/>}/>
+      <Route path="/admin/quotation-approvals" element={<QuotationApprovalsWorkspace/>}/>
+      <Route path="/admin/quotation-approvals/:quotationId" element={<QuotationApprovalsWorkspace/>}/>
       <Route path="/admin/content-recruitment" element={<ContentRecruitmentDashboard/>}/>
       <Route path="/admin/uiux-recruitment" element={<UIUXRecruitmentWorkspace/>}/>
       <Route path="/admin/uiux-academy-review/:userId" element={<UIUXAcademyReviewPage/>}/>
