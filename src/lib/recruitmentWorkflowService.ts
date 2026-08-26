@@ -1,6 +1,6 @@
 import { supabase } from './supabase';
 
-export type RecruitmentSystemRole = 'sales' | 'uiux_designer' | 'developer' | 'pending' | string;
+export type RecruitmentSystemRole = 'sales' | 'uiux_designer' | 'developer' | 'content_writer' | 'pending' | string;
 
 export interface RecruitmentRubricItem {
   key: string;
@@ -151,7 +151,9 @@ function orderedStages(policies?: RecruitmentStagePolicy[]) {
 function roleDescriptor(role: RecruitmentSystemRole) {
   if (role === 'developer') return { roleLabel: 'Web Developer', academyLabel: 'Developer Academy', academyStage: 'Developer Academy' };
   if (role === 'uiux_designer') return { roleLabel: 'UI/UX Designer', academyLabel: 'Design Academy', academyStage: 'Design Academy' };
-  return { roleLabel: 'Sales Representative', academyLabel: 'Sales Academy', academyStage: 'One-Day Training' };
+  if (role === 'content_writer') return { roleLabel: 'Content Writer', academyLabel: 'Content Academy', academyStage: 'Content Academy' };
+  if (role === 'sales') return { roleLabel: 'Sales Representative', academyLabel: 'Sales Academy', academyStage: 'One-Day Training' };
+  return { roleLabel: 'Candidate', academyLabel: 'Onboarding', academyStage: '' };
 }
 
 export const recruitmentWorkflowService = {
@@ -187,13 +189,13 @@ export const recruitmentWorkflowService = {
     if (error) throw error;
     if (!data) return { jobId, title: 'Candidate', department: '', systemRole: 'pending', trainingTrack: 'general' };
     const details = data.role_details && typeof data.role_details === 'object' ? data.role_details as Record<string, any> : {};
-    const systemRole = String(details.systemRole || (data.application_type === 'sales_representative' ? 'sales' : 'pending'));
+    const systemRole = String(details.systemRole || (data.application_type === 'sales_representative' ? 'sales' : data.application_type === 'content_writer' ? 'content_writer' : 'pending'));
     return {
       jobId: data.id,
       title: String(data.title || roleDescriptor(systemRole).roleLabel),
       department: String(data.department || details.department || ''),
       systemRole,
-      trainingTrack: String(details.trainingTrack || (systemRole === 'sales' ? 'sales' : 'general')),
+      trainingTrack: String(details.trainingTrack || (systemRole === 'sales' ? 'sales' : systemRole === 'content_writer' ? 'content_delivery' : 'general')),
       workflowKey: details.workflowKey ? String(details.workflowKey) : undefined,
     };
   },
@@ -343,11 +345,11 @@ export const recruitmentWorkflowService = {
   },
 
   async approveFinal(applicantId: string, systemRole: RecruitmentSystemRole): Promise<void> {
-    const rpcName = systemRole === 'developer'
-      ? 'approve_developer_candidate_final'
-      : systemRole === 'uiux_designer'
-        ? 'approve_uiux_candidate_final'
-        : 'approve_sales_candidate_final';
+    let rpcName: 'approve_developer_candidate_final' | 'approve_uiux_candidate_final' | 'approve_sales_candidate_final';
+    if (systemRole === 'developer') rpcName = 'approve_developer_candidate_final';
+    else if (systemRole === 'uiux_designer') rpcName = 'approve_uiux_candidate_final';
+    else if (systemRole === 'sales') rpcName = 'approve_sales_candidate_final';
+    else throw new Error('This role does not use the Sales/Design/Development Final Approval action.');
     const { error } = await supabase.rpc(rpcName, { p_applicant_id: applicantId });
     if (error) throw error;
   },
@@ -363,8 +365,12 @@ export const recruitmentWorkflowService = {
       if (error) throw error;
       return;
     }
-    const { error } = await supabase.rpc('activate_salesperson', { target_user_id: userId, admin_id: adminId || null });
-    if (error) throw error;
+    if (systemRole === 'sales') {
+      const { error } = await supabase.rpc('activate_salesperson', { target_user_id: userId, admin_id: adminId || null });
+      if (error) throw error;
+      return;
+    }
+    throw new Error('This role uses its own protected certification/activation workflow and cannot fall back to Sales activation.');
   },
 
   async getWorkflowMeta(applicantId: string): Promise<RecruitmentWorkflowMeta> {
