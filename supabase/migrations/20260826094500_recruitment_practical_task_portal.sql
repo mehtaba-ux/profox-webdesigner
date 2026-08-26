@@ -125,7 +125,7 @@ language sql
 immutable
 set search_path=public,pg_temp
 as $$
-  select encode(digest(convert_to(coalesce(p_token,''),'UTF8'),'sha256'),'hex');
+  select encode(extensions.digest(convert_to(coalesce(p_token,''),'UTF8'),'sha256'),'hex');
 $$;
 revoke all on function public.recruitment_task_token_hash(text) from public,anon,authenticated;
 
@@ -319,9 +319,6 @@ end;
 $$;
 revoke all on function public.issue_recruitment_task_internal(uuid,text,text,boolean) from public,anon,authenticated;
 
--- Called only by the service-role notification worker. A fresh 256-bit token is
--- generated here, its SHA-256 hash is persisted, and the raw token is returned
--- only to the worker's in-memory render payload.
 create or replace function public.service_prepare_recruitment_task_delivery(p_task_id uuid)
 returns jsonb
 language plpgsql
@@ -341,7 +338,7 @@ begin
   if v_task.due_at<now() then raise exception 'Recruitment task deadline has passed.'; end if;
   if v_app.closed_at is not null or v_app.stage<>v_task.stage then raise exception 'Recruitment task is no longer active.'; end if;
 
-  v_token:=encode(gen_random_bytes(32),'hex');
+  v_token:=encode(extensions.gen_random_bytes(32),'hex');
   update public.recruitment_task_instances
   set token_hash=public.recruitment_task_token_hash(v_token),updated_at=now()
   where id=v_task.id;
@@ -362,8 +359,6 @@ $$;
 revoke all on function public.service_prepare_recruitment_task_delivery(uuid) from public,anon,authenticated;
 grant execute on function public.service_prepare_recruitment_task_delivery(uuid) to service_role;
 
--- Preserve the established recruitment notification pipeline. The stage-change
--- trigger adds only the opaque task instance id to the existing email payload.
 create or replace function public.queue_recruitment_email(
   p_applicant public.applicants,
   p_template_key text,
@@ -808,8 +803,6 @@ grant execute on function public.admin_revoke_recruitment_task(uuid,text) to aut
 grant execute on function public.admin_get_recruitment_task_template(text,text) to authenticated;
 grant execute on function public.admin_save_recruitment_task_template(text,text,text,text,text,text,integer,integer,integer,integer,jsonb) to authenticated;
 
--- Evaluator scoring remains a separate record and must correspond to the same
--- submitted task attempt. This prevents editing attempt #1 to score retry #2.
 create or replace function public.guard_recruitment_assessment_task_submission()
 returns trigger
 language plpgsql
@@ -912,8 +905,6 @@ on conflict(template_key) do update set
   name=excluded.name,subject_template=excluded.subject_template,body_template=excluded.body_template,
   html_template=excluded.html_template,active=true,description=excluded.description,updated_at=now();
 
--- Backfill candidates who were already waiting at Lead Research Test before this
--- feature was enabled. Idempotency prevents duplicate active attempts.
 do $$
 declare v_app record;
 begin
