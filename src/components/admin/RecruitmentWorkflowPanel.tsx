@@ -18,6 +18,7 @@ import type { ApplicantRecord } from '../../lib/applicantService';
 import { agreementService } from '../../lib/agreementService';
 import { profileService } from '../../lib/profileService';
 import { recruitmentAssessmentService } from '../../lib/recruitmentAssessmentService';
+import { recruitmentInterviewService, type RecruitmentInterviewBookingContext } from '../../lib/recruitmentInterviewService';
 import {
   recruitmentWorkflowService,
   type RecruitmentAssessment,
@@ -29,6 +30,8 @@ import {
   type RecruitmentWorkflowMeta,
 } from '../../lib/recruitmentWorkflowService';
 import { REFUSAL_REASONS, type UserProfile } from '../../types';
+import RecruitmentInterviewBookingDialog from './RecruitmentInterviewBookingDialog';
+import RecruitmentInterviewSkipDialog from './RecruitmentInterviewSkipDialog';
 
 interface Props {
   applicant: ApplicantRecord;
@@ -73,7 +76,7 @@ function errorMessage(error: unknown, fallback: string) {
   return fallback;
 }
 
-function fmt(value?: string) {
+function fmt(value?: string | null) {
   if (!value) return 'Not recorded';
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? value : date.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
@@ -85,32 +88,11 @@ function formatDuration(hours: number) {
   return `${Math.floor(hours / 24)}d ${Math.round(hours % 24)}h`;
 }
 
-function zonedLocalToDate(localValue: string, timeZone: string) {
-  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(localValue);
-  if (!match) throw new Error('Choose a valid interview date and time.');
-  const [, y, m, d, hh, mm] = match;
-  const targetUtc = Date.UTC(Number(y), Number(m) - 1, Number(d), Number(hh), Number(mm), 0);
-  const formatter = new Intl.DateTimeFormat('en-US', {
-    timeZone,
-    year: 'numeric', month: '2-digit', day: '2-digit',
-    hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23',
-  });
-  const offsetAt = (epoch: number) => {
-    const parts = Object.fromEntries(formatter.formatToParts(new Date(epoch)).filter(p => p.type !== 'literal').map(p => [p.type, p.value]));
-    const representedUtc = Date.UTC(Number(parts.year), Number(parts.month) - 1, Number(parts.day), Number(parts.hour), Number(parts.minute), Number(parts.second));
-    return representedUtc - epoch;
-  };
-  let actual = targetUtc - offsetAt(targetUtc);
-  actual = targetUtc - offsetAt(actual);
-  const date = new Date(actual);
-  if (Number.isNaN(date.getTime())) throw new Error('Choose a valid interview date and time.');
-  return date;
-}
-
 export default function RecruitmentWorkflowPanel({ applicant, currentAdminId, onChanged }: Props) {
   const [policies, setPolicies] = useState<RecruitmentStagePolicy[]>([]);
   const [assessments, setAssessments] = useState<RecruitmentAssessment[]>([]);
   const [interviews, setInterviews] = useState<RecruitmentInterview[]>([]);
+  const [bookingContext, setBookingContext] = useState<RecruitmentInterviewBookingContext | null>(null);
   const [meta, setMeta] = useState<RecruitmentWorkflowMeta | null>(null);
   const [jobContext, setJobContext] = useState<RecruitmentJobContext>({ title: applicant.position || 'Candidate', department: '', systemRole: 'pending', trainingTrack: 'general' });
   const [linkedUser, setLinkedUser] = useState<UserProfile | null>(null);
@@ -128,12 +110,8 @@ export default function RecruitmentWorkflowPanel({ applicant, currentAdminId, on
   const [evidenceUrl, setEvidenceUrl] = useState('');
   const [assessmentNotes, setAssessmentNotes] = useState('');
 
-  const defaultTimezone = applicant.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
   const [interviewOpen, setInterviewOpen] = useState(false);
-  const [interviewLocal, setInterviewLocal] = useState('');
-  const [interviewTimezone, setInterviewTimezone] = useState(defaultTimezone);
-  const [interviewDuration, setInterviewDuration] = useState(45);
-  const [meetingUrl, setMeetingUrl] = useState('');
+  const [skipInterviewOpen, setSkipInterviewOpen] = useState(false);
   const [interviewOutcome, setInterviewOutcome] = useState('');
   const [interviewStatus, setInterviewStatus] = useState<RecruitmentInterviewStatus>('Completed');
 
@@ -149,15 +127,17 @@ export default function RecruitmentWorkflowPanel({ applicant, currentAdminId, on
     setError(null);
     try {
       const workflowMeta = await recruitmentWorkflowService.getWorkflowMeta(applicant.id);
-      const [policyRows, assessmentRows, interviewRows, context] = await Promise.all([
+      const [policyRows, assessmentRows, interviewRows, context, interviewBooking] = await Promise.all([
         recruitmentWorkflowService.getStagePolicies(workflowMeta.careerJobId),
         recruitmentWorkflowService.getAssessments(applicant.id),
         recruitmentWorkflowService.getInterviews(applicant.id),
         recruitmentWorkflowService.getJobContext(workflowMeta.careerJobId),
+        recruitmentInterviewService.getBookingContext(applicant.id),
       ]);
       setPolicies(policyRows);
       setAssessments(assessmentRows);
       setInterviews(interviewRows);
+      setBookingContext(interviewBooking);
       setMeta(workflowMeta);
       setJobContext(context);
       if (applicant.linkedUserId) {
@@ -184,6 +164,7 @@ export default function RecruitmentWorkflowPanel({ applicant, currentAdminId, on
   const latestInterview = currentInterviews[0];
   const passedAssessment = latestAssessment?.status === 'Passed';
   const completedInterview = currentInterviews.some(item => item.status === 'Completed');
+  const interviewSkipped = bookingContext?.interviewSkipped === true;
   const nextStage = recruitmentWorkflowService.nextStage(String(applicant.stage), policies);
   const hasVideo = Boolean(applicant.videoUrl || applicant.videoStoragePath);
   const academyStage = descriptor.academyStage;
@@ -197,7 +178,7 @@ export default function RecruitmentWorkflowPanel({ applicant, currentAdminId, on
   const assessmentScore = rubricMax > 0 ? Math.round((rubricPoints / rubricMax) * 100) : 0;
   const passingScore = Number(policy?.passingScore || 0);
   const meetsPassingScore = assessmentScore >= passingScore;
-  const interviewPassReady = !policy?.interviewRequired || completedInterview;
+  const interviewPassReady = !policy?.interviewRequired || completedInterview || interviewSkipped;
   const passEligible = meetsPassingScore && !hasCriticalFailure && interviewPassReady;
   const parsedCriticalFailures = hasCriticalFailure
     ? criticalFailures.split('\n').map(item => item.trim()).filter(Boolean)
@@ -209,7 +190,7 @@ export default function RecruitmentWorkflowPanel({ applicant, currentAdminId, on
       : assessmentStatus === 'Passed' && hasCriticalFailure
         ? 'A critical failure blocks a Passed decision regardless of the calculated score.'
         : assessmentStatus === 'Passed' && !interviewPassReady
-          ? 'Complete the required interview before marking this assessment Passed.'
+          ? 'Complete the required interview or use the audited Admin skip before marking this assessment Passed.'
           : null;
 
   useEffect(() => {
@@ -281,24 +262,6 @@ export default function RecruitmentWorkflowPanel({ applicant, currentAdminId, on
     }, successMessage);
   };
 
-  const scheduleInterview = async () => {
-    await run(async () => {
-      const start = zonedLocalToDate(interviewLocal, interviewTimezone);
-      const end = new Date(start.getTime() + Math.max(15, interviewDuration) * 60_000);
-      await recruitmentWorkflowService.scheduleInterview({
-        applicantId: applicant.id,
-        startAt: start.toISOString(),
-        endAt: end.toISOString(),
-        timezone: interviewTimezone,
-        meetingUrl,
-        interviewerId: currentAdminId || null,
-      });
-      setInterviewOpen(false);
-      setInterviewLocal('');
-      setMeetingUrl('');
-    }, 'Recruitment interview scheduled and queued for candidate notification.');
-  };
-
   const updateLatestInterview = async () => {
     if (!latestInterview) return;
     await run(async () => {
@@ -306,10 +269,22 @@ export default function RecruitmentWorkflowPanel({ applicant, currentAdminId, on
         interviewId: latestInterview.id,
         status: interviewStatus,
         outcomeNotes: interviewOutcome,
-        meetingUrl: meetingUrl || null,
+        meetingUrl: null,
       });
       setInterviewOutcome('');
     }, `Interview marked ${interviewStatus}.`);
+  };
+
+  const interviewBooked = async () => {
+    setNotice('Recruitment interview booked. Google Meet creation and the candidate email are automatic.');
+    await onChanged();
+    await load();
+  };
+
+  const interviewSkippedByAdmin = async () => {
+    setNotice('Required interview skipped by Admin and recorded in the candidate audit trail. Any remaining recruitment gates stay protected.');
+    await onChanged();
+    await load();
   };
 
   const advance = async () => {
@@ -362,7 +337,7 @@ export default function RecruitmentWorkflowPanel({ applicant, currentAdminId, on
   }
 
   const normalAdvanceAllowed = !policy?.assessmentRequired || passedAssessment;
-  const interviewReady = !policy?.interviewRequired || completedInterview;
+  const interviewReady = !policy?.interviewRequired || completedInterview || interviewSkipped;
   const preAgreement = recruitmentWorkflowService.isBeforeStage(String(applicant.stage), 'Agreement Pending', policies);
   const overrideStages = stageOrder.filter(stage => recruitmentWorkflowService.isBeforeStage(stage, 'Agreement Pending', policies));
 
@@ -391,19 +366,27 @@ export default function RecruitmentWorkflowPanel({ applicant, currentAdminId, on
 
         {policy?.interviewRequired && (
           <div className="mt-4 rounded-xl border border-blue-100 bg-blue-50/60 p-4">
-            <div className="flex items-center justify-between gap-2"><div className="text-xs font-bold uppercase tracking-wide text-[#000080]">Required interview</div>{completedInterview ? <CheckCircle2 className="h-4 w-4 text-emerald-600" /> : <CalendarClock className="h-4 w-4 text-[#000080]" />}</div>
-            {latestInterview ? <div className="mt-2 text-xs leading-5 text-slate-600"><div className="font-semibold text-slate-800">{latestInterview.status}</div><div>{fmt(latestInterview.startAt)} · {latestInterview.timezone}</div>{latestInterview.interviewerName && <div>Interviewer: {latestInterview.interviewerName}</div>}{latestInterview.meetingUrl && <a href={latestInterview.meetingUrl} target="_blank" rel="noreferrer" className="mt-1 inline-block font-semibold text-[#000080]">Open meeting link</a>}</div> : <p className="mt-2 text-xs leading-5 text-slate-600">Schedule and complete the required interview before this stage can be marked Passed.</p>}
-            {!latestInterview && <button type="button" onClick={() => setInterviewOpen(true)} disabled={busy} className="mt-3 w-full rounded-lg bg-[#000080] px-3 py-2.5 text-xs font-bold text-white disabled:opacity-50">Schedule Interview</button>}
-            {latestInterview && latestInterview.status !== 'Completed' && (
+            <div className="flex items-center justify-between gap-2"><div className="text-xs font-bold uppercase tracking-wide text-[#000080]">Required interview</div>{completedInterview ? <CheckCircle2 className="h-4 w-4 text-emerald-600" /> : interviewSkipped ? <ShieldCheck className="h-4 w-4 text-amber-600" /> : <CalendarClock className="h-4 w-4 text-[#000080]" />}</div>
+            {interviewSkipped ? (
+              <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900"><div className="font-bold">Skipped by Administrator</div><div className="mt-1">{bookingContext?.skipReason || 'Administrative exception recorded.'}</div><div className="mt-1 text-amber-700">{bookingContext?.skippedByName ? `By ${bookingContext.skippedByName}` : 'Admin action'}{bookingContext?.skippedAt ? ` · ${fmt(bookingContext.skippedAt)}` : ''}</div></div>
+            ) : latestInterview ? (
+              <div className="mt-2 text-xs leading-5 text-slate-600"><div className="font-semibold text-slate-800">{latestInterview.status}</div><div>{fmt(latestInterview.startAt)} · {latestInterview.timezone}</div>{latestInterview.interviewerName && <div>Interviewer: {latestInterview.interviewerName}</div>}{latestInterview.meetingUrl ? <a href={latestInterview.meetingUrl} target="_blank" rel="noreferrer" className="mt-1 inline-block font-semibold text-[#000080]">Open meeting link</a> : latestInterview.status === 'Scheduled' ? <div className="mt-1 text-slate-400">Google Meet link is being created automatically.</div> : null}</div>
+            ) : <p className="mt-2 text-xs leading-5 text-slate-600">Book and complete the required interview before this stage can be marked Passed. The meeting link is generated automatically from the responsible person&apos;s connected calendar.</p>}
+
+            {!latestInterview && !interviewSkipped && <button type="button" onClick={() => setInterviewOpen(true)} disabled={busy} className="mt-3 w-full rounded-lg bg-[#000080] px-3 py-2.5 text-xs font-bold text-white disabled:opacity-50">Book Interview</button>}
+
+            {latestInterview && !interviewSkipped && latestInterview.status !== 'Completed' && (
               <div className="mt-3 space-y-2">
                 <select value={interviewStatus} onChange={event => setInterviewStatus(event.target.value as RecruitmentInterviewStatus)} className="w-full rounded-lg border border-blue-100 bg-white px-3 py-2.5 text-sm font-semibold">
                   {(['Completed', 'No Show', 'Cancelled', 'Rescheduled', 'Scheduled'] as RecruitmentInterviewStatus[]).map(status => <option key={status}>{status}</option>)}
                 </select>
                 <textarea value={interviewOutcome} onChange={event => setInterviewOutcome(event.target.value)} rows={2} placeholder="Interview outcome / notes" className="w-full rounded-lg border border-blue-100 bg-white px-3 py-2.5 text-sm outline-none focus:border-[#000080]" />
                 <button type="button" onClick={() => void updateLatestInterview()} disabled={busy} className="w-full rounded-lg border border-[#000080]/20 bg-white px-3 py-2.5 text-xs font-bold text-[#000080] disabled:opacity-50">Update Interview</button>
-                {latestInterview.status === 'Rescheduled' && <button type="button" onClick={() => setInterviewOpen(true)} className="w-full rounded-lg bg-[#000080] px-3 py-2.5 text-xs font-bold text-white">Schedule New Time</button>}
+                {(['Rescheduled', 'Cancelled', 'No Show'] as RecruitmentInterviewStatus[]).includes(latestInterview.status) && <button type="button" onClick={() => setInterviewOpen(true)} disabled={busy} className="w-full rounded-lg bg-[#000080] px-3 py-2.5 text-xs font-bold text-white disabled:opacity-50">Book New Time</button>}
               </div>
             )}
+
+            {bookingContext?.canSkip && !interviewSkipped && !completedInterview && <button type="button" onClick={() => setSkipInterviewOpen(true)} disabled={busy} className="mt-3 w-full rounded-lg border border-amber-300 bg-white px-3 py-2.5 text-xs font-bold text-amber-800 disabled:opacity-50">Skip Interview (Admin)</button>}
           </div>
         )}
 
@@ -412,7 +395,8 @@ export default function RecruitmentWorkflowPanel({ applicant, currentAdminId, on
             <div className="flex items-center justify-between gap-2"><div className="text-xs font-bold uppercase tracking-wide text-slate-500">Structured assessment</div>{passedAssessment ? <CheckCircle2 className="h-4 w-4 text-emerald-600" /> : <FileCheck2 className="h-4 w-4 text-slate-500" />}</div>
             <div className="mt-2 text-xs leading-5 text-slate-600">Passing score: <strong>{policy.passingScore ?? 0}%</strong>{latestAssessment ? <> · Latest: <strong>{latestAssessment.score}% {latestAssessment.status}</strong></> : ' · Not yet scored'}</div>
             <button type="button" onClick={openAssessmentForm} disabled={busy} className="mt-3 w-full rounded-lg bg-[#000080] px-3 py-2.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40">{latestAssessment ? 'Record New Assessment Attempt' : 'Record Assessment'}</button>
-            {policy.interviewRequired && !completedInterview && <p className="mt-2 text-xs leading-5 text-amber-700">You can record scores, Failed, or Retry Required now. Complete the required interview before choosing Passed.</p>}
+            {policy.interviewRequired && !completedInterview && !interviewSkipped && <p className="mt-2 text-xs leading-5 text-amber-700">You can record scores, Failed, or Retry Required now. Complete the required interview, or an Admin may use the audited skip exception, before choosing Passed.</p>}
+            {policy.interviewRequired && interviewSkipped && <p className="mt-2 text-xs leading-5 text-amber-700">The interview requirement was skipped by Admin. The structured assessment is still required and remains fully protected.</p>}
           </div>
         )}
 
@@ -510,7 +494,8 @@ export default function RecruitmentWorkflowPanel({ applicant, currentAdminId, on
                 </div>
                 {!meetsPassingScore && <div className="mt-3 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-800"><AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />Score is below the configured {passingScore}% passing mark.</div>}
                 {hasCriticalFailure && <div className="mt-3 flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-xs leading-5 text-red-700"><AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />A critical failure is recorded, so Passed is intentionally unavailable.</div>}
-                {policy.interviewRequired && !completedInterview && <div className="mt-3 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-800"><CalendarClock className="mt-0.5 h-4 w-4 shrink-0" />This stage requires a completed interview before Passed. You may still save Failed or Retry Required.</div>}
+                {policy.interviewRequired && !completedInterview && !interviewSkipped && <div className="mt-3 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-800"><CalendarClock className="mt-0.5 h-4 w-4 shrink-0" />This stage requires a completed interview before Passed. An Administrator may use the audited skip only when the interview genuinely should not be required.</div>}
+                {policy.interviewRequired && interviewSkipped && <div className="mt-3 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-800"><ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" />The interview requirement was administratively skipped and audited. Passed is still controlled by the score and critical-failure rules.</div>}
               </section>
 
               <section className="mt-6 space-y-4">
@@ -538,15 +523,8 @@ export default function RecruitmentWorkflowPanel({ applicant, currentAdminId, on
         </div>
       )}
 
-      {interviewOpen && (
-        <div className="fixed inset-0 z-[140] flex items-center justify-center bg-slate-950/55 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-lg rounded-3xl bg-white p-5 shadow-2xl sm:p-6">
-            <h3 className="text-lg font-bold text-slate-900">Schedule Recruitment Interview</h3><p className="mt-1 text-sm leading-6 text-slate-500">The timezone is stored with the interview so candidate communication remains unambiguous.</p>
-            <div className="mt-5 space-y-3"><input type="datetime-local" value={interviewLocal} onChange={event => setInterviewLocal(event.target.value)} className="w-full rounded-xl border border-slate-200 px-3 py-3 text-base" /><input value={interviewTimezone} onChange={event => setInterviewTimezone(event.target.value)} placeholder="Timezone, e.g. Asia/Kolkata" className="w-full rounded-xl border border-slate-200 px-3 py-3 text-base" /><input type="number" min={15} max={180} value={interviewDuration} onChange={event => setInterviewDuration(Number(event.target.value || 45))} className="w-full rounded-xl border border-slate-200 px-3 py-3 text-base" /><input value={meetingUrl} onChange={event => setMeetingUrl(event.target.value)} placeholder="Meeting URL" className="w-full rounded-xl border border-slate-200 px-3 py-3 text-base" /></div>
-            <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2"><button type="button" onClick={() => setInterviewOpen(false)} className="rounded-xl border border-slate-200 py-3 text-sm font-bold text-slate-600">Cancel</button><button type="button" onClick={() => void scheduleInterview()} disabled={busy || !interviewLocal || !interviewTimezone.trim()} className="rounded-xl bg-[#000080] py-3 text-sm font-bold text-white disabled:opacity-40">Schedule</button></div>
-          </div>
-        </div>
-      )}
+      {interviewOpen && bookingContext && <RecruitmentInterviewBookingDialog applicantId={applicant.id} candidateName={applicant.fullName} candidateTimezone={applicant.timezone} context={bookingContext} onClose={() => setInterviewOpen(false)} onBooked={interviewBooked} />}
+      {skipInterviewOpen && <RecruitmentInterviewSkipDialog applicantId={applicant.id} candidateName={applicant.fullName} stage={String(applicant.stage)} onClose={() => setSkipInterviewOpen(false)} onSkipped={interviewSkippedByAdmin} />}
     </div>
   );
 }
