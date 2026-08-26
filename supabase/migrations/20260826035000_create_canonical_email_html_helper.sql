@@ -1,4 +1,4 @@
--- Canonical ProFox email HTML helper used by the four email-library data batches.
+-- Canonical ProFox email HTML helper used by the canonical email-library data batches.
 create or replace function public.profox_build_canonical_email_html(
   p_title text,
   p_subject text,
