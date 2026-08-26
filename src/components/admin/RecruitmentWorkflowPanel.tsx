@@ -72,6 +72,23 @@ const DESIGN_CLOSE_REASONS = [
   'Other',
 ];
 
+const CONTENT_CLOSE_REASONS = [
+  'Insufficient Content Writing Experience',
+  'Portfolio Quality Below Requirement',
+  'Written English Below Requirement',
+  'Content Assessment Failed',
+  'Research & Evidence Test Failed',
+  'Interview / Collaboration Fit',
+  'Availability Below Requirement',
+  'Equipment / Internet Issue',
+  'Training Failed',
+  'Practical Certification Failed',
+  'Unresponsive',
+  'Incorrect Information',
+  'Duplicate Application',
+  'Other',
+];
+
 function errorMessage(error: unknown, fallback: string) {
   if (error && typeof error === 'object' && 'message' in error) {
     return String((error as { message?: unknown }).message || fallback);
@@ -166,6 +183,7 @@ export default function RecruitmentWorkflowPanel({ applicant, currentAdminId, on
   const latestInterview = currentInterviews[0];
   const currentTasks = useMemo(() => tasks.filter(item => item.stage === String(applicant.stage)), [tasks, applicant.stage]);
   const latestTask = currentTasks[0];
+  const isContentWriter = jobContext.systemRole === 'content_writer';
   const taskGateRequired = jobContext.systemRole === 'sales' && String(applicant.stage) === 'Lead Research Test';
   const taskReadyForAssessment = !taskGateRequired || Boolean(latestTask && ['Submitted', 'Under Review'].includes(latestTask.status));
   const passedAssessment = latestAssessment?.status === 'Passed';
@@ -174,8 +192,16 @@ export default function RecruitmentWorkflowPanel({ applicant, currentAdminId, on
   const nextStage = recruitmentWorkflowService.nextStage(String(applicant.stage), policies);
   const hasVideo = Boolean(applicant.videoUrl || applicant.videoStoragePath);
   const academyStage = descriptor.academyStage;
-  const protectedStages = ['Selected', 'Agreement Pending', academyStage, 'Final Approval', 'Ready for System Access', 'Activated'];
-  const closeReasons = jobContext.systemRole === 'developer' ? DEVELOPMENT_CLOSE_REASONS : jobContext.systemRole === 'uiux_designer' ? DESIGN_CLOSE_REASONS : REFUSAL_REASONS;
+  const protectedStages = isContentWriter
+    ? ['Selected', 'Content Academy', 'Practical Certification', 'Activated']
+    : ['Selected', 'Agreement Pending', academyStage, 'Final Approval', 'Ready for System Access', 'Activated'];
+  const closeReasons = jobContext.systemRole === 'developer'
+    ? DEVELOPMENT_CLOSE_REASONS
+    : jobContext.systemRole === 'uiux_designer'
+      ? DESIGN_CLOSE_REASONS
+      : isContentWriter
+        ? CONTENT_CLOSE_REASONS
+        : REFUSAL_REASONS;
 
   const stageHours = meta?.stageEnteredAt ? Math.max(0, (Date.now() - new Date(meta.stageEnteredAt).getTime()) / 3_600_000) : 0;
   const overdue = Boolean(policy?.slaHours && policy.slaHours > 0 && stageHours >= policy.slaHours);
@@ -298,7 +324,7 @@ export default function RecruitmentWorkflowPanel({ applicant, currentAdminId, on
       await recruitmentWorkflowService.overrideStage(applicant.id, overrideStage, overrideReason);
       setOverrideOpen(false);
       setOverrideReason('');
-    }, 'Documented pre-agreement stage correction applied.');
+    }, 'Documented pre-onboarding stage correction applied.');
   };
 
   if (loading) {
@@ -307,8 +333,9 @@ export default function RecruitmentWorkflowPanel({ applicant, currentAdminId, on
 
   const normalAdvanceAllowed = !policy?.assessmentRequired || passedAssessment;
   const interviewReady = !policy?.interviewRequired || completedInterview || interviewSkipped;
-  const preAgreement = recruitmentWorkflowService.isBeforeStage(String(applicant.stage), 'Agreement Pending', policies);
-  const overrideStages = stageOrder.filter(stage => recruitmentWorkflowService.isBeforeStage(stage, 'Agreement Pending', policies));
+  const correctionBoundary = isContentWriter ? 'Content Academy' : 'Agreement Pending';
+  const preAgreement = recruitmentWorkflowService.isBeforeStage(String(applicant.stage), correctionBoundary, policies);
+  const overrideStages = stageOrder.filter(stage => recruitmentWorkflowService.isBeforeStage(stage, correctionBoundary, policies));
 
   return (
     <div className="sticky top-0 space-y-4">
@@ -411,12 +438,14 @@ export default function RecruitmentWorkflowPanel({ applicant, currentAdminId, on
         )}
 
         <div className="mt-4 space-y-2">
-          {String(applicant.stage) === 'Selected' && applicant.agreementStatus === 'not_sent' && <button type="button" onClick={() => void issueAgreement()} disabled={busy} className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#000080] py-2.5 text-sm font-bold text-white disabled:opacity-50"><FileSignature className="h-4 w-4" />Issue & Send {descriptor.roleLabel} Agreement</button>}
-          {['Selected', 'Agreement Pending'].includes(String(applicant.stage)) && applicant.agreementStatus !== 'not_sent' && <a href={`/admin/agreements?applicant=${encodeURIComponent(applicant.id)}`} className="flex w-full items-center justify-center gap-2 rounded-lg border border-slate-200 py-2.5 text-sm font-bold text-[#000080]"><FileSignature className="h-4 w-4" />Open Agreement Record</a>}
-          {['Selected', 'Agreement Pending', academyStage].includes(String(applicant.stage)) && applicant.agreementStatus === 'signed' && <button type="button" onClick={() => void sendAcademyAccess()} disabled={busy} className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 py-2.5 text-sm font-bold text-white disabled:opacity-50"><Mail className="h-4 w-4" />{meta?.onboardingInviteCount ? `Resend ${descriptor.academyLabel} Access` : `Send ${descriptor.academyLabel} Access`}</button>}
-          {String(applicant.stage) === academyStage && <div className="rounded-lg border border-blue-100 bg-blue-50 p-3 text-sm leading-6 text-slate-600"><div className="flex items-center gap-2 font-bold text-[#000080]"><UserCheck className="h-4 w-4" />{descriptor.academyLabel}</div><p className="mt-1">The candidate must complete the assigned training track and independently reviewed final certification, then request Final Approval. Management cannot bypass these server-side gates.</p>{linkedUser && <p className="mt-2 font-semibold">Account: {linkedUser.email} · {linkedUser.status} · {linkedUser.onboardingProgress || 0}%</p>}{meta?.onboardingInviteLastSentAt && <p className="mt-1">Last access email: {fmt(meta.onboardingInviteLastSentAt)}</p>}</div>}
-          {String(applicant.stage) === 'Final Approval' && <button type="button" onClick={() => void finalApprove()} disabled={busy} className="flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-700 py-2.5 text-sm font-bold text-white disabled:opacity-50"><ShieldCheck className="h-4 w-4" />Run {descriptor.roleLabel} Final Approval Gate</button>}
-          {String(applicant.stage) === 'Ready for System Access' && <button type="button" onClick={() => void activate()} disabled={busy || !applicant.linkedUserId} className="flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-700 py-2.5 text-sm font-bold text-white disabled:opacity-50"><UserCheck className="h-4 w-4" />Activate {descriptor.roleLabel}</button>}
+          {!isContentWriter && String(applicant.stage) === 'Selected' && applicant.agreementStatus === 'not_sent' && <button type="button" onClick={() => void issueAgreement()} disabled={busy} className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#000080] py-2.5 text-sm font-bold text-white disabled:opacity-50"><FileSignature className="h-4 w-4" />Issue & Send {descriptor.roleLabel} Agreement</button>}
+          {!isContentWriter && ['Selected', 'Agreement Pending'].includes(String(applicant.stage)) && applicant.agreementStatus !== 'not_sent' && <a href={`/admin/agreements?applicant=${encodeURIComponent(applicant.id)}`} className="flex w-full items-center justify-center gap-2 rounded-lg border border-slate-200 py-2.5 text-sm font-bold text-[#000080]"><FileSignature className="h-4 w-4" />Open Agreement Record</a>}
+          {isContentWriter && ['Selected', 'Content Academy'].includes(String(applicant.stage)) && <button type="button" onClick={() => void sendAcademyAccess()} disabled={busy} className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 py-2.5 text-sm font-bold text-white disabled:opacity-50"><Mail className="h-4 w-4" />{meta?.onboardingInviteCount ? 'Resend Content Academy Access' : 'Send Content Academy Access'}</button>}
+          {!isContentWriter && ['Selected', 'Agreement Pending', academyStage].includes(String(applicant.stage)) && applicant.agreementStatus === 'signed' && <button type="button" onClick={() => void sendAcademyAccess()} disabled={busy} className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 py-2.5 text-sm font-bold text-white disabled:opacity-50"><Mail className="h-4 w-4" />{meta?.onboardingInviteCount ? `Resend ${descriptor.academyLabel} Access` : `Send ${descriptor.academyLabel} Access`}</button>}
+          {String(applicant.stage) === academyStage && <div className="rounded-lg border border-blue-100 bg-blue-50 p-3 text-sm leading-6 text-slate-600"><div className="flex items-center gap-2 font-bold text-[#000080]"><UserCheck className="h-4 w-4" />{descriptor.academyLabel}</div><p className="mt-1">{isContentWriter ? 'The candidate completes the Content Academy training track here. The protected training workflow moves the candidate into Practical Certification only after the required Academy work is complete.' : 'The candidate must complete the assigned training track and independently reviewed final certification, then request Final Approval. Management cannot bypass these server-side gates.'}</p>{linkedUser && <p className="mt-2 font-semibold">Account: {linkedUser.email} · {linkedUser.status} · {linkedUser.onboardingProgress || 0}%</p>}{meta?.onboardingInviteLastSentAt && <p className="mt-1">Last access email: {fmt(meta.onboardingInviteLastSentAt)}</p>}</div>}
+          {isContentWriter && String(applicant.stage) === 'Practical Certification' && <div className="rounded-lg border border-violet-200 bg-violet-50 p-3 text-sm leading-6 text-slate-700"><div className="flex items-center gap-2 font-bold text-violet-800"><ShieldCheck className="h-4 w-4" />Protected Practical Certification</div><p className="mt-1">Content Writer activation is controlled by the practical certification review. It cannot be advanced manually from this shared panel.</p><a href="/admin/content-recruitment" className="mt-3 inline-flex min-h-11 items-center justify-center rounded-lg bg-white px-4 py-2 text-sm font-bold text-[#000080] shadow-sm ring-1 ring-violet-200">Open Content Certification Review</a></div>}
+          {!isContentWriter && String(applicant.stage) === 'Final Approval' && <button type="button" onClick={() => void finalApprove()} disabled={busy} className="flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-700 py-2.5 text-sm font-bold text-white disabled:opacity-50"><ShieldCheck className="h-4 w-4" />Run {descriptor.roleLabel} Final Approval Gate</button>}
+          {!isContentWriter && String(applicant.stage) === 'Ready for System Access' && <button type="button" onClick={() => void activate()} disabled={busy || !applicant.linkedUserId} className="flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-700 py-2.5 text-sm font-bold text-white disabled:opacity-50"><UserCheck className="h-4 w-4" />Activate {descriptor.roleLabel}</button>}
           {String(applicant.stage) === 'Activated' && <div className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm font-bold text-emerald-700"><CheckCircle2 className="h-4 w-4" />{descriptor.roleLabel} access is active.</div>}
           {!protectedStages.includes(String(applicant.stage)) && nextStage && <button type="button" onClick={() => void advance()} disabled={busy || !normalAdvanceAllowed || !interviewReady || (String(applicant.stage) === 'Video Pending' && !hasVideo)} className="w-full rounded-lg bg-[#000080] py-2.5 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-40">Advance to {nextStage}</button>}
           {String(applicant.stage) === 'Video Pending' && !hasVideo && <p className="text-sm leading-6 text-amber-700">The introduction video must be available before Video Review.</p>}
@@ -439,7 +468,7 @@ export default function RecruitmentWorkflowPanel({ applicant, currentAdminId, on
       {preAgreement && String(applicant.stage) !== 'Activated' && (
         <section className="rounded-2xl border border-slate-200 bg-white p-4">
           <button type="button" onClick={() => setOverrideOpen(value => !value)} className="flex w-full items-center justify-between text-left text-xs font-bold uppercase tracking-[0.14em] text-slate-500"><span>Documented correction</span><ChevronDown className={`h-4 w-4 transition ${overrideOpen ? 'rotate-180' : ''}`} /></button>
-          {overrideOpen && <div className="mt-3 space-y-2"><select value={overrideStage} onChange={event => setOverrideStage(event.target.value)} className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm font-semibold">{overrideStages.map(stage => <option key={stage}>{stage}</option>)}</select><textarea value={overrideReason} onChange={event => setOverrideReason(event.target.value)} rows={2} placeholder="Specific correction reason, minimum 12 characters" className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-[#000080]" /><button type="button" onClick={() => void applyOverride()} disabled={busy || overrideReason.trim().length < 12 || overrideStage === String(applicant.stage)} className="w-full rounded-lg border border-slate-200 py-2.5 text-sm font-bold text-slate-600 disabled:opacity-40">Apply Stage Correction</button><p className="text-sm leading-6 text-slate-500">This cannot bypass Agreement, Academy, Final Approval or activation.</p></div>}
+          {overrideOpen && <div className="mt-3 space-y-2"><select value={overrideStage} onChange={event => setOverrideStage(event.target.value)} className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm font-semibold">{overrideStages.map(stage => <option key={stage}>{stage}</option>)}</select><textarea value={overrideReason} onChange={event => setOverrideReason(event.target.value)} rows={2} placeholder="Specific correction reason, minimum 12 characters" className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-[#000080]" /><button type="button" onClick={() => void applyOverride()} disabled={busy || overrideReason.trim().length < 12 || overrideStage === String(applicant.stage)} className="w-full rounded-lg border border-slate-200 py-2.5 text-sm font-bold text-slate-600 disabled:opacity-40">Apply Stage Correction</button><p className="text-sm leading-6 text-slate-500">{isContentWriter ? 'This cannot bypass Content Academy, Practical Certification or activation.' : 'This cannot bypass Agreement, Academy, Final Approval or activation.'}</p></div>}
         </section>
       )}
 
