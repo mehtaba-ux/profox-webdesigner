@@ -157,7 +157,9 @@ export default function QuotationWorkspace() {
   const initialized = useRef(false);
 
   const currentId = draft.id || (!isNew ? quotationId : undefined);
-  const locked = ['Sent', 'Accepted', 'Rejected', 'Expired', 'Cancelled'].includes(draft.status) || Boolean(draft.supersededById);
+  // Draft is the only editable commercial state. Once submitted for review or approved,
+  // the workspace must mirror the protected backend workflow instead of attempting draft saves.
+  const locked = draft.status !== 'Draft' || Boolean(draft.supersededById);
 
   const loadSummary = async (id: string) => {
     const { data, error: summaryError } = await quotationCpqService.getSummary(id);
@@ -208,6 +210,16 @@ export default function QuotationWorkspace() {
     })();
     return () => { cancelled = true; };
   }, [quotationId, isNew, isAdmin, user?.id]);
+
+  useEffect(() => {
+    if (!initialized.current || !locked) return;
+    if (autosaveTimer.current) {
+      window.clearTimeout(autosaveTimer.current);
+      autosaveTimer.current = null;
+    }
+    setSaveState('saved');
+    setError('');
+  }, [locked, draft.status]);
 
   const markDirty = () => {
     if (initialized.current && !locked) setSaveState('unsaved');
@@ -281,7 +293,10 @@ export default function QuotationWorkspace() {
   }, [lines, draft.quoteDiscountType, draft.quoteDiscountValue, draft.taxRate]);
 
   const save = async (options?: { quiet?: boolean; status?: string }) => {
-    if (locked) return currentId;
+    if (locked) {
+      setSaveState('saved');
+      return currentId;
+    }
     if (!draft.salespersonId) throw new Error('A salesperson is required.');
     setSaving(true);
     setSaveState('saving');
@@ -384,6 +399,7 @@ export default function QuotationWorkspace() {
       }
       await loadSummary(id);
       setSaveState('saved');
+      setError('');
     } catch (err: any) {
       setError(err?.message || 'Could not request approval.');
     }
@@ -402,6 +418,8 @@ export default function QuotationWorkspace() {
       setLines(workspace.data.lines);
     }
     await loadSummary(currentId);
+    setSaveState('saved');
+    setError('');
   };
 
   const duplicate = async () => {
@@ -434,14 +452,12 @@ export default function QuotationWorkspace() {
   };
 
   const openSend = async () => {
-    try {
-      const id = await save();
-      if (!id) return;
-      await loadSummary(id);
-      setSendSubject(`Your ProFox proposal is ready: ${draft.quotationNumber || ''}`);
-      setSendMessage('Thank you for the opportunity to prepare this proposal. Please review the scope, investment, timeline and payment plan using the secure link.');
-      setSendOpen(true);
-    } catch {}
+    if (draft.status !== 'Approved' || !currentId) return;
+    setError('');
+    await loadSummary(currentId);
+    setSendSubject(`Your ProFox proposal is ready: ${draft.quotationNumber || ''}`);
+    setSendMessage('Thank you for the opportunity to prepare this proposal. Please review the scope, investment, timeline and payment plan using the secure link.');
+    setSendOpen(true);
   };
 
   const send = async () => {
@@ -455,6 +471,8 @@ export default function QuotationWorkspace() {
     setSummary(result.data);
     const workspace = await quotationCpqService.getWorkspace(currentId);
     if (workspace.data) setDraft(workspace.data.quotation);
+    setSaveState('saved');
+    setError('');
     setSendOpen(false);
   };
 
@@ -497,7 +515,9 @@ export default function QuotationWorkspace() {
     <div className="mx-auto grid max-w-[1800px] gap-6 px-4 py-6 lg:grid-cols-[minmax(0,1fr)_360px] lg:px-7">
       <main className="space-y-5">
         {error && <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-700">{error}</div>}
-        {locked && <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4 text-sm font-semibold text-blue-800">This quotation is locked to protect customer-visible commercial history. Create a revision for material changes.</div>}
+        {draft.status === 'Ready for Approval' && <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm font-semibold text-amber-800">This quotation is under review. Commercial fields are locked until Management approves it or returns it for changes.</div>}
+        {draft.status === 'Approved' && <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-semibold text-emerald-800">This quotation is approved and locked for editing. You can preview it and continue directly with Send Quotation.</div>}
+        {locked && !['Ready for Approval', 'Approved'].includes(draft.status) && <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4 text-sm font-semibold text-blue-800">This quotation is locked to protect customer-visible commercial history. Create a revision for material changes.</div>}
         {draft.supersededById && <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm font-semibold text-amber-800">This revision is superseded. Open the current revision before sending or accepting changes.</div>}
 
         <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
