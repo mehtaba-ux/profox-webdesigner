@@ -1,5 +1,10 @@
 import { supabase } from './supabase';
-import type { RecruitmentRubricItem, RecruitmentStagePolicy, RecruitmentSystemRole } from './recruitmentWorkflowService';
+import type {
+  RecruitmentRubricItem,
+  RecruitmentSourceFunnelRow,
+  RecruitmentStagePolicy,
+  RecruitmentSystemRole,
+} from './recruitmentWorkflowService';
 
 export interface RecruitmentPipelineJob {
   jobId: string;
@@ -142,5 +147,21 @@ export const recruitmentPipelineService = {
   async restoreStage(stageId: string): Promise<void> {
     const { error } = await supabase.rpc('admin_restore_recruitment_stage', { p_stage_id: stageId });
     if (error) throw error;
+  },
+
+  async getSourceFunnel(jobId?: string | null): Promise<RecruitmentSourceFunnelRow[]> {
+    const { data, error } = jobId
+      ? await supabase.rpc('admin_get_recruitment_source_funnel', { p_job_id: jobId })
+      : await supabase.rpc('admin_get_recruitment_source_funnel');
+    if (error) throw error;
+    return asArray<any>(data).map(row => ({
+      source: String(row?.source || 'Unknown'),
+      campaign: String(row?.campaign || ''),
+      applications: Number(row?.applications || 0),
+      shortlisted: Number(row?.shortlisted || 0),
+      selected: Number(row?.selected || 0),
+      activated: Number(row?.activated || 0),
+      closed: Number(row?.closed || 0),
+    }));
   },
 };
