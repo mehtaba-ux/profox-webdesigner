@@ -48,6 +48,10 @@ function asArray<T>(value: unknown): T[] {
   return Array.isArray(value) ? value as T[] : [];
 }
 
+function signalPipelineChanged() {
+  if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('profox:recruitment-pipeline-changed'));
+}
+
 function normalizeStage(row: any): RecruitmentPipelineStage {
   return {
     id: String(row?.id || ''),
@@ -109,6 +113,7 @@ export const recruitmentPipelineService = {
       p_rubric: stage.rubric,
     });
     if (error) throw error;
+    signalPipelineChanged();
   },
 
   async createStage(input: RecruitmentStageCreateInput): Promise<void> {
@@ -123,6 +128,7 @@ export const recruitmentPipelineService = {
       p_rubric: input.rubric || [],
     });
     if (error) throw error;
+    signalPipelineChanged();
   },
 
   async reorderStages(jobId: string, orderedStageIds: string[]): Promise<void> {
@@ -131,22 +137,26 @@ export const recruitmentPipelineService = {
       p_stage_ids: orderedStageIds,
     });
     if (error) throw error;
+    signalPipelineChanged();
   },
 
   async removeStage(stageId: string): Promise<RecruitmentStageRemovalResult> {
     const { data, error } = await supabase.rpc('admin_remove_recruitment_stage', { p_stage_id: stageId });
     if (error) throw error;
-    return {
+    const result: RecruitmentStageRemovalResult = {
       success: Boolean(data?.success),
       action: data?.action === 'archived' ? 'archived' : 'deleted',
       stage: String(data?.stage || ''),
       historyReferences: Number(data?.historyReferences || 0),
     };
+    signalPipelineChanged();
+    return result;
   },
 
   async restoreStage(stageId: string): Promise<void> {
     const { error } = await supabase.rpc('admin_restore_recruitment_stage', { p_stage_id: stageId });
     if (error) throw error;
+    signalPipelineChanged();
   },
 
   async getSourceFunnel(jobId?: string | null): Promise<RecruitmentSourceFunnelRow[]> {
