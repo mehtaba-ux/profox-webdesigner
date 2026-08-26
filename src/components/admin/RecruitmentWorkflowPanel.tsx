@@ -4,12 +4,14 @@ import {
   CalendarClock,
   CheckCircle2,
   ChevronDown,
+  ClipboardList,
   Clock3,
   FileCheck2,
   FileSignature,
   Loader2,
   Mail,
   RefreshCw,
+  Settings2,
   ShieldCheck,
   UserCheck,
   XCircle,
@@ -18,6 +20,7 @@ import type { ApplicantRecord } from '../../lib/applicantService';
 import { agreementService } from '../../lib/agreementService';
 import { profileService } from '../../lib/profileService';
 import { recruitmentInterviewService, type RecruitmentInterviewBookingContext } from '../../lib/recruitmentInterviewService';
+import { recruitmentTaskService, type AdminRecruitmentTask } from '../../lib/recruitmentTaskService';
 import {
   recruitmentWorkflowService,
   type RecruitmentAssessment,
@@ -31,6 +34,7 @@ import { REFUSAL_REASONS, type UserProfile } from '../../types';
 import RecruitmentAssessmentDialog, { type RecruitmentAssessmentDialogMode } from './RecruitmentAssessmentDialog';
 import RecruitmentInterviewBookingDialog from './RecruitmentInterviewBookingDialog';
 import RecruitmentInterviewSkipDialog from './RecruitmentInterviewSkipDialog';
+import RecruitmentTaskReviewDialog from './RecruitmentTaskReviewDialog';
 
 interface Props {
   applicant: ApplicantRecord;
@@ -91,6 +95,8 @@ export default function RecruitmentWorkflowPanel({ applicant, currentAdminId, on
   const [policies, setPolicies] = useState<RecruitmentStagePolicy[]>([]);
   const [assessments, setAssessments] = useState<RecruitmentAssessment[]>([]);
   const [interviews, setInterviews] = useState<RecruitmentInterview[]>([]);
+  const [tasks, setTasks] = useState<AdminRecruitmentTask[]>([]);
+  const [selectedTask, setSelectedTask] = useState<AdminRecruitmentTask | null>(null);
   const [bookingContext, setBookingContext] = useState<RecruitmentInterviewBookingContext | null>(null);
   const [meta, setMeta] = useState<RecruitmentWorkflowMeta | null>(null);
   const [jobContext, setJobContext] = useState<RecruitmentJobContext>({ title: applicant.position || 'Candidate', department: '', systemRole: 'pending', trainingTrack: 'general' });
@@ -120,19 +126,22 @@ export default function RecruitmentWorkflowPanel({ applicant, currentAdminId, on
     setError(null);
     try {
       const workflowMeta = await recruitmentWorkflowService.getWorkflowMeta(applicant.id);
-      const [policyRows, assessmentRows, interviewRows, context, interviewBooking] = await Promise.all([
+      const [policyRows, assessmentRows, interviewRows, taskRows, context, interviewBooking] = await Promise.all([
         recruitmentWorkflowService.getStagePolicies(workflowMeta.careerJobId),
         recruitmentWorkflowService.getAssessments(applicant.id),
         recruitmentWorkflowService.getInterviews(applicant.id),
+        recruitmentTaskService.listForApplicant(applicant.id),
         recruitmentWorkflowService.getJobContext(workflowMeta.careerJobId),
         recruitmentInterviewService.getBookingContext(applicant.id),
       ]);
       setPolicies(policyRows);
       setAssessments(assessmentRows);
       setInterviews(interviewRows);
+      setTasks(taskRows);
       setBookingContext(interviewBooking);
       setMeta(workflowMeta);
       setJobContext(context);
+      if (selectedTask) setSelectedTask(taskRows.find(item => item.id === selectedTask.id) || null);
       if (applicant.linkedUserId) {
         const { data } = await profileService.getProfile(applicant.linkedUserId);
         setLinkedUser(data || null);
@@ -155,6 +164,10 @@ export default function RecruitmentWorkflowPanel({ applicant, currentAdminId, on
   const latestAssessment = currentAssessments[0];
   const currentInterviews = useMemo(() => interviews.filter(item => item.stage === String(applicant.stage)), [interviews, applicant.stage]);
   const latestInterview = currentInterviews[0];
+  const currentTasks = useMemo(() => tasks.filter(item => item.stage === String(applicant.stage)), [tasks, applicant.stage]);
+  const latestTask = currentTasks[0];
+  const taskGateRequired = jobContext.systemRole === 'sales' && String(applicant.stage) === 'Lead Research Test';
+  const taskReadyForAssessment = !taskGateRequired || Boolean(latestTask && ['Submitted', 'Under Review'].includes(latestTask.status));
   const passedAssessment = latestAssessment?.status === 'Passed';
   const completedInterview = currentInterviews.some(item => item.status === 'Completed');
   const interviewSkipped = bookingContext?.interviewSkipped === true;
@@ -188,6 +201,10 @@ export default function RecruitmentWorkflowPanel({ applicant, currentAdminId, on
   };
 
   const openNewAssessment = () => {
+    if (!taskReadyForAssessment) {
+      setError('The candidate must submit the current Lead Research Test attempt before evaluator scoring can be recorded.');
+      return;
+    }
     setAssessmentMode('new');
     setError(null);
     setNotice(null);
@@ -196,6 +213,10 @@ export default function RecruitmentWorkflowPanel({ applicant, currentAdminId, on
 
   const openEditAssessment = () => {
     if (!latestAssessment) return;
+    if (!taskReadyForAssessment) {
+      setError('The current Lead Research Test retry must be submitted before this stage can be assessed again.');
+      return;
+    }
     setAssessmentMode('edit');
     setError(null);
     setNotice(null);
@@ -338,6 +359,17 @@ export default function RecruitmentWorkflowPanel({ applicant, currentAdminId, on
           </div>
         )}
 
+        {(taskGateRequired || currentTasks.length > 0) && (
+          <div className="mt-4 rounded-2xl border border-indigo-200 bg-indigo-50/50 p-4 sm:p-5">
+            <div className="flex items-start justify-between gap-3">
+              <div><div className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-[#000080]"><ClipboardList className="h-4 w-4"/>Candidate practical task</div><p className="mt-1 text-sm leading-6 text-slate-600">Candidate submission and evaluator scoring are stored separately. Final assessment is unlocked only after the current task attempt is submitted.</p></div>
+              <a href="/admin/recruitment-task-settings" className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-indigo-200 bg-white px-2.5 py-2 text-xs font-bold text-[#000080]"><Settings2 className="h-3.5 w-3.5"/>Settings</a>
+            </div>
+            {latestTask ? <div className="mt-4"><div className="grid gap-3 sm:grid-cols-3"><div className="rounded-xl border border-indigo-100 bg-white p-3.5"><div className="text-xs font-bold uppercase tracking-wide text-slate-500">Status</div><div className="mt-1 text-base font-black text-slate-900">{latestTask.status}</div></div><div className="rounded-xl border border-indigo-100 bg-white p-3.5"><div className="text-xs font-bold uppercase tracking-wide text-slate-500">Attempt</div><div className="mt-1 text-base font-black text-slate-900">#{latestTask.attemptNo} of {latestTask.maxAttempts}</div></div><div className="rounded-xl border border-indigo-100 bg-white p-3.5"><div className="text-xs font-bold uppercase tracking-wide text-slate-500">Deadline</div><div className="mt-1 text-sm font-bold leading-5 text-slate-900">{fmt(latestTask.dueAt)}</div></div></div><div className="mt-3 text-sm leading-6 text-slate-600">{latestTask.submittedAt ? <>Submitted: <strong className="text-slate-900">{fmt(latestTask.submittedAt)}</strong></> : latestTask.lastSavedAt ? <>Last draft saved: <strong className="text-slate-900">{fmt(latestTask.lastSavedAt)}</strong></> : latestTask.viewedAt ? <>Candidate opened task: <strong className="text-slate-900">{fmt(latestTask.viewedAt)}</strong></> : <>Secure task issued: <strong className="text-slate-900">{fmt(latestTask.issuedAt)}</strong></>}</div><button type="button" onClick={()=>setSelectedTask(latestTask)} className="mt-4 w-full rounded-xl bg-[#000080] px-4 py-3 text-sm font-bold text-white">{latestTask.submittedAt ? 'Review Submission' : 'Manage Candidate Task'}</button>{!taskReadyForAssessment && <p className="mt-3 text-sm leading-6 text-amber-800">Waiting for final candidate submission. Assessment scoring is intentionally locked until this attempt is submitted.</p>}</div> : <div className="mt-4 rounded-xl border border-dashed border-indigo-200 bg-white p-4 text-sm leading-6 text-slate-600">The secure task has not been issued yet. Entering Lead Research Test automatically creates and emails the task; refresh if this candidate was already at the stage before the task system was enabled.</div>}
+            {currentTasks.length > 1 && <div className="mt-3 text-xs font-semibold text-slate-500">{currentTasks.length} task attempts are preserved in this candidate history.</div>}
+          </div>
+        )}
+
         {policy?.assessmentRequired && (
           <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
             <div className="flex items-center justify-between gap-3">
@@ -361,17 +393,18 @@ export default function RecruitmentWorkflowPanel({ applicant, currentAdminId, on
                   {latestAssessment.evaluatedAt && <> · Saved: <strong className="text-slate-900">{fmt(latestAssessment.evaluatedAt)}</strong></>}
                 </div>
                 <div className="mt-4 grid gap-2 sm:grid-cols-2">
-                  <button type="button" onClick={openEditAssessment} disabled={busy} className="rounded-xl bg-[#000080] px-4 py-3 text-sm font-bold text-white transition hover:bg-[#000066] disabled:opacity-50">Edit Assessment</button>
-                  <button type="button" onClick={openNewAssessment} disabled={busy} className="rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-bold text-slate-700 transition hover:border-[#000080]/30 hover:text-[#000080] disabled:opacity-50">Record New Attempt</button>
+                  <button type="button" onClick={openEditAssessment} disabled={busy || !taskReadyForAssessment} className="rounded-xl bg-[#000080] px-4 py-3 text-sm font-bold text-white transition hover:bg-[#000066] disabled:opacity-40">Edit Assessment</button>
+                  <button type="button" onClick={openNewAssessment} disabled={busy || !taskReadyForAssessment} className="rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-bold text-slate-700 transition hover:border-[#000080]/30 hover:text-[#000080] disabled:opacity-40">Record New Attempt</button>
                 </div>
               </div>
             ) : (
               <div className="mt-4">
                 <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm leading-6 text-slate-600">No assessment has been saved for this stage yet.</div>
-                <button type="button" onClick={openNewAssessment} disabled={busy} className="mt-3 w-full rounded-xl bg-[#000080] px-4 py-3 text-sm font-bold text-white transition hover:bg-[#000066] disabled:opacity-50">Record Assessment</button>
+                <button type="button" onClick={openNewAssessment} disabled={busy || !taskReadyForAssessment} className="mt-3 w-full rounded-xl bg-[#000080] px-4 py-3 text-sm font-bold text-white transition hover:bg-[#000066] disabled:opacity-40">Record Assessment</button>
               </div>
             )}
 
+            {taskGateRequired && !taskReadyForAssessment && <p className="mt-3 text-sm leading-6 text-amber-800">Lead Research Test evidence must be submitted first. Open the Candidate Practical Task section to monitor or manage the secure task.</p>}
             {policy.interviewRequired && !completedInterview && !interviewSkipped && <p className="mt-3 text-sm leading-6 text-amber-800">You can save scoring as Failed or Retry Required now. Complete the required interview, or use the audited Admin skip when appropriate, before selecting Passed.</p>}
             {policy.interviewRequired && interviewSkipped && <p className="mt-3 text-sm leading-6 text-amber-800">The interview requirement was skipped by Admin. The structured assessment remains protected by its score and critical-failure rules.</p>}
           </div>
@@ -433,6 +466,7 @@ export default function RecruitmentWorkflowPanel({ applicant, currentAdminId, on
         />
       )}
 
+      {selectedTask && <RecruitmentTaskReviewDialog task={selectedTask} candidateName={applicant.fullName} onClose={()=>setSelectedTask(null)} onChanged={async()=>{await onChanged();await load();}}/>}
       {interviewOpen && bookingContext && <RecruitmentInterviewBookingDialog applicantId={applicant.id} candidateName={applicant.fullName} candidateTimezone={applicant.timezone} context={bookingContext} onClose={() => setInterviewOpen(false)} onBooked={interviewBooked} />}
       {skipInterviewOpen && <RecruitmentInterviewSkipDialog applicantId={applicant.id} candidateName={applicant.fullName} stage={String(applicant.stage)} onClose={() => setSkipInterviewOpen(false)} onSkipped={interviewSkippedByAdmin} />}
     </div>

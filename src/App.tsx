@@ -64,6 +64,7 @@ const OutreachMessagingAdmin = lazy(() => import('./components/admin/OutreachMes
 const MockCallAutomationAdmin = lazy(() => import('./components/admin/MockCallAutomationAdmin'));
 const ContentRecruitmentDashboard = lazy(() => import('./components/admin/ContentRecruitmentDashboard'));
 const InternalChat = lazy(() => import('./components/admin/InternalChat'));
+const RecruitmentTaskSettingsAdmin = lazy(() => import('./components/admin/RecruitmentTaskSettingsAdmin'));
 const MockCallEvaluatorWorkspace = lazy(() => import('./components/sales/MockCallEvaluatorWorkspace'));
 const WorkspaceLauncher = lazy(() => import('./components/admin/workspace/WorkspaceLauncher'));
 const AdminAppWorkspace = lazy(() => import('./components/admin/workspace/AdminAppWorkspace'));
@@ -93,6 +94,7 @@ const PublicQuotationReview = lazy(() => import('./pages/PublicQuotationReview')
 const PublicPaymentCheckout = lazy(() => import('./pages/PublicPaymentCheckout'));
 const SalesPartnerAgreementSign = lazy(() => import('./pages/SalesPartnerAgreementSign'));
 const SalesOnboardingSetup = lazy(() => import('./pages/SalesOnboardingSetup'));
+const RecruitmentTaskPage = lazy(() => import('./pages/RecruitmentTaskPage'));
 const ClientDashboard = lazy(() => import('./components/client/ClientDashboard'));
 
 function LegacyPageRedirect() {
@@ -131,6 +133,7 @@ export default function App() {
     <Route path="/quotation/review/:token" element={<PublicQuotationReview/>}/>
     <Route path="/pay/:token" element={<PublicPaymentCheckout/>}/>
     <Route path="/agreement/sign/:token" element={<SalesPartnerAgreementSign/>}/>
+    <Route path="/recruitment/task/:token" element={<RecruitmentTaskPage/>}/>
     <Route path="/careers/:slug/apply" element={<DeveloperApplicationPage/>}/>
     <Route path="/sales-onboarding/setup" element={<SalesOnboardingSetup/>}/>
     <Route path="/team-onboarding/setup" element={<SalesOnboardingSetup/>}/>
@@ -189,8 +192,9 @@ export default function App() {
       <Route path="/admin/niche-catalog" element={<NicheCatalogAdmin/>}/>
       <Route path="/admin/niche-assessment" element={<NicheAssessmentAdmin/>}/>
       <Route path="/admin/lead-research" element={<LeadResearchAdmin/>}/>
-      <Route path="/admin/loom-outreach" element={<LoomOutreachAdmin/>}/>
       <Route path="/admin/outreach-messaging" element={<OutreachMessagingAdmin/>}/>
+      <Route path="/admin/loom-outreach" element={<LoomOutreachAdmin/>}/>
+      <Route path="/admin/recruitment-task-settings" element={<RecruitmentTaskSettingsAdmin/>}/>
     </Route>
     <Route path="/admin/workspace" element={<WorkspaceLauncher/>}/>
     <Route path="/admin/app/:appId" element={<AdminAppWorkspace/>}/>

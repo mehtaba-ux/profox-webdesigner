@@ -62,6 +62,26 @@ function enrichPayload(raw: Record<string, unknown>) {
   return payload;
 }
 
+async function enrichSecureRecruitmentTaskPayload(
+  service: ReturnType<typeof createClient>,
+  raw: Record<string, unknown>,
+) {
+  const taskInstanceId = String(raw.taskInstanceId || "").trim();
+  if (!taskInstanceId) return raw;
+
+  const { data, error } = await service.rpc("service_prepare_recruitment_task_delivery", {
+    p_task_id: taskInstanceId,
+  });
+  if (error) throw new Error(`Secure recruitment task link preparation failed: ${error.message}`);
+  const taskUrl = String(data?.taskUrl || "").trim();
+  if (!taskUrl) throw new Error("Secure recruitment task link preparation returned no task URL.");
+
+  // The raw task token exists only in this in-memory delivery payload. The
+  // notification outbox stores taskInstanceId, while Postgres stores only the
+  // SHA-256 token hash used by the public task endpoint.
+  return { ...raw, ...(data || {}) } as Record<string, unknown>;
+}
+
 function render(template: string, payload: Record<string, unknown>) {
   return String(template || "").replace(/{{\s*([a-zA-Z0-9_]+)\s*}}/g, (_match, key) => {
     const value = payload[key];
@@ -303,7 +323,8 @@ Deno.serve(async (req: Request) => {
       }
       if (!recipientEmail) throw new Error("Notification has no deliverable email address.");
 
-      const payload = enrichPayload((row.payload || {}) as Record<string, unknown>);
+      let payload = enrichPayload((row.payload || {}) as Record<string, unknown>);
+      payload = await enrichSecureRecruitmentTaskPayload(service, payload);
       const subject = render(String(row.subject_template || ""), payload).slice(0, 500);
       const body = render(String(row.body_template || ""), payload).slice(0, 20000);
       const html = row.html_template ? renderHtml(String(row.html_template), payload).slice(0, 100000) : "";
