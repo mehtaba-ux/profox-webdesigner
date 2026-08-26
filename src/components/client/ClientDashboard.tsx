@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertCircle,
   ArrowRight,
@@ -22,6 +22,7 @@ import { projectService } from '../../lib/projectService';
 import { supabase } from '../../lib/supabase';
 import { Payment, PROJECT_STAGES, ProjectStage } from '../../types';
 import ClientDevelopmentHandover from './ClientDevelopmentHandover';
+import ClientRelationshipHistory from './ClientRelationshipHistory';
 
 function getErrorMessage(error: unknown, fallback: string) {
   if (error && typeof error === 'object' && 'message' in error) {
@@ -31,11 +32,17 @@ function getErrorMessage(error: unknown, fallback: string) {
 }
 
 export default function ClientDashboard() {
-  const { user, profile, loading: authLoading, logout } = useAuth();
+  const { user, profile, loading: authLoading, logout, refreshProfile } = useAuth();
+  const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
+  const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [authError, setAuthError] = useState('');
+  const [authNotice, setAuthNotice] = useState('');
   const [authBusy, setAuthBusy] = useState(false);
+  const [portalClaiming, setPortalClaiming] = useState(false);
+  const [portalClaimError, setPortalClaimError] = useState('');
+  const claimAttempt = useRef('');
   const [projects, setProjects] = useState<any[]>([]);
   const [selectedProject, setSelectedProject] = useState<any | null>(null);
   const [payments, setPayments] = useState<Payment[]>([]);
@@ -46,6 +53,21 @@ export default function ClientDashboard() {
   const [actionError, setActionError] = useState('');
 
   const hasPortalAccess = Boolean(user && profile?.role === 'customer' && profile?.status === 'active');
+
+  useEffect(() => {
+    if (!user || !profile || !['pending', 'customer'].includes(profile.role)) return;
+    if (profile.role === 'customer' && profile.status === 'active') return;
+    const key = `${user.id}:${profile.role}:${profile.status}`;
+    if (claimAttempt.current === key) return;
+    claimAttempt.current = key;
+    setPortalClaiming(true);
+    setPortalClaimError('');
+    void supabase.rpc('customer_portal_claim_identity').then(async ({ error }) => {
+      if (error) setPortalClaimError(error.message || 'This verified account could not be linked to a ProFox relationship yet.');
+      else await refreshProfile();
+      setPortalClaiming(false);
+    });
+  }, [user?.id, profile?.role, profile?.status, refreshProfile]);
 
   const loadProjects = async () => {
     if (!hasPortalAccess) return;
@@ -73,6 +95,7 @@ export default function ClientDashboard() {
       setProjects([]);
       setSelectedProject(null);
       setPayments([]);
+      claimAttempt.current = '';
     }
   }, [hasPortalAccess, user?.id]);
 
@@ -80,13 +103,25 @@ export default function ClientDashboard() {
     setPayments(Array.isArray(selectedProject?.payments) ? selectedProject.payments as Payment[] : []);
   }, [selectedProject?.id]);
 
-  const handleSignIn = async (event: React.FormEvent) => {
+  const handleAuth = async (event: React.FormEvent) => {
     event.preventDefault();
     setAuthBusy(true);
     setAuthError('');
+    setAuthNotice('');
     const normalizedEmail = email.trim().toLowerCase();
-    const { error } = await supabase.auth.signInWithPassword({ email: normalizedEmail, password });
-    if (error) setAuthError('Invalid email/password or portal account is not ready yet.');
+    if (authMode === 'signin') {
+      const { error } = await supabase.auth.signInWithPassword({ email: normalizedEmail, password });
+      if (error) setAuthError('Invalid email/password or this portal account has not been confirmed yet.');
+    } else {
+      const { data, error } = await supabase.auth.signUp({
+        email: normalizedEmail,
+        password,
+        options: { data: { full_name: fullName.trim() } }
+      });
+      if (error) setAuthError(error.message || 'Portal account could not be created.');
+      else if (data.session) setAuthNotice('Account created. Your verified ProFox relationship will be linked automatically.');
+      else setAuthNotice('Account created. Please verify your email, then return here and sign in. Your existing ProFox history will link automatically.');
+    }
     setAuthBusy(false);
   };
 
@@ -172,19 +207,26 @@ export default function ClientDashboard() {
         <div className="w-full max-w-md overflow-hidden rounded-[2.5rem] border border-slate-100 bg-white shadow-2xl">
           <div className="bg-[#000080] p-10 text-center text-white">
             <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-white/10"><Lock className="h-8 w-8" /></div>
-            <h1 className="text-2xl font-black">Secure Client Portal</h1>
-            <p className="mt-2 text-sm text-blue-200">Sign in with the account explicitly linked to your verified ProFox client record.</p>
+            <h1 className="text-2xl font-black">Secure Customer Portal</h1>
+            <p className="mt-2 text-sm text-blue-200">Your verified email connects your ProFox history from first enquiry through quotations, conversations, payments and projects.</p>
           </div>
-          <form onSubmit={handleSignIn} className="space-y-5 p-8">
+          <form onSubmit={handleAuth} className="space-y-5 p-8">
             {authError && <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs font-medium text-amber-800">{authError}</div>}
+            {authNotice && <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs font-medium text-emerald-800">{authNotice}</div>}
+            {authMode === 'signup' && <label className="block"><span className="mb-1.5 block text-[10px] font-black uppercase tracking-wider text-slate-500">Your Name</span><input required value={fullName} onChange={event => setFullName(event.target.value)} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm outline-none focus:border-[#000080]" /></label>}
             <label className="block"><span className="mb-1.5 block text-[10px] font-black uppercase tracking-wider text-slate-500">Email</span><div className="relative"><Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><input type="email" required autoComplete="email" value={email} onChange={event => setEmail(event.target.value)} className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-3 text-sm outline-none focus:border-[#000080]" /></div></label>
-            <label className="block"><span className="mb-1.5 block text-[10px] font-black uppercase tracking-wider text-slate-500">Password</span><input type="password" required autoComplete="current-password" value={password} onChange={event => setPassword(event.target.value)} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm outline-none focus:border-[#000080]" /></label>
-            <button type="submit" disabled={authBusy} className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#000080] py-3.5 text-sm font-bold text-white disabled:opacity-50">{authBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}Sign In</button>
-            <button type="button" disabled={authBusy} onClick={() => void handlePasswordReset()} className="w-full text-center text-xs font-bold text-[#000080] hover:underline">Forgot password?</button>
+            <label className="block"><span className="mb-1.5 block text-[10px] font-black uppercase tracking-wider text-slate-500">Password</span><input type="password" required minLength={6} autoComplete={authMode === 'signin' ? 'current-password' : 'new-password'} value={password} onChange={event => setPassword(event.target.value)} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm outline-none focus:border-[#000080]" /></label>
+            <button type="submit" disabled={authBusy} className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#000080] py-3.5 text-sm font-bold text-white disabled:opacity-50">{authBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}{authMode === 'signin' ? 'Sign In' : 'Create Portal Account'}</button>
+            <button type="button" disabled={authBusy} onClick={() => { setAuthMode(current => current === 'signin' ? 'signup' : 'signin'); setAuthError(''); setAuthNotice(''); }} className="w-full text-center text-xs font-bold text-[#000080] hover:underline">{authMode === 'signin' ? 'First time here? Create a portal account' : 'Already have an account? Sign in'}</button>
+            {authMode === 'signin' && <button type="button" disabled={authBusy} onClick={() => void handlePasswordReset()} className="w-full text-center text-xs font-bold text-slate-500 hover:underline">Forgot password?</button>}
           </form>
         </div>
       </div>
     );
+  }
+
+  if (portalClaiming) {
+    return <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-slate-50"><Loader2 className="h-8 w-8 animate-spin text-[#000080]" /><p className="text-sm font-semibold text-slate-500">Linking your verified ProFox relationship history...</p></div>;
   }
 
   if (!hasPortalAccess) {
@@ -192,8 +234,9 @@ export default function ClientDashboard() {
       <div className="flex min-h-screen items-center justify-center bg-slate-50 p-4">
         <div className="w-full max-w-lg rounded-[2rem] border border-slate-200 bg-white p-8 text-center shadow-xl">
           <ShieldCheck className="mx-auto h-12 w-12 text-[#000080]" />
-          <h1 className="mt-4 text-xl font-black text-slate-900">Portal access is not active</h1>
-          <p className="mt-2 text-sm leading-relaxed text-slate-500">You are signed in as <strong>{user.email}</strong>, but this account is not currently linked to an active client workspace. ProFox must verify and link the account before project data becomes available.</p>
+          <h1 className="mt-4 text-xl font-black text-slate-900">Relationship history could not be linked</h1>
+          <p className="mt-2 text-sm leading-relaxed text-slate-500">You are signed in as <strong>{user.email}</strong>. Portal history is available only when this verified email matches an existing ProFox enquiry, conversation, quotation, payment or client record.</p>
+          {portalClaimError && <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs font-semibold text-amber-800">{portalClaimError}</div>}
           <button type="button" onClick={() => void logout()} className="mt-6 rounded-xl border border-slate-200 px-5 py-2.5 text-xs font-bold text-slate-700">Sign Out</button>
         </div>
       </div>
@@ -208,7 +251,7 @@ export default function ClientDashboard() {
     <div className="min-h-screen bg-slate-50 pb-16">
       <header className="sticky top-0 z-40 bg-[#000080] text-white shadow-lg">
         <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-5">
-          <div className="flex items-center gap-3"><div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/10"><Briefcase className="h-5 w-5" /></div><div><div className="text-sm font-black uppercase tracking-widest">ProFox Delivery</div><div className="text-[10px] font-bold text-blue-300">Secure Client Portal</div></div></div>
+          <div className="flex items-center gap-3"><div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/10"><Briefcase className="h-5 w-5" /></div><div><div className="text-sm font-black uppercase tracking-widest">ProFox Relationship</div><div className="text-[10px] font-bold text-blue-300">Secure Customer Portal</div></div></div>
           <div className="flex items-center gap-4"><div className="hidden text-right sm:block"><div className="text-xs font-bold">{profile?.fullName || user.email}</div><div className="text-[10px] text-blue-300">{user.email}</div></div><button type="button" onClick={() => void logout()} className="rounded-xl border border-white/10 p-2.5 text-blue-200 hover:bg-white/10 hover:text-white" title="Sign out"><LogOut className="h-4 w-4" /></button></div>
         </div>
       </header>
@@ -216,8 +259,10 @@ export default function ClientDashboard() {
       <main className="mx-auto max-w-7xl space-y-8 px-5 py-8">
         {projectError && <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700"><AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />{projectError}</div>}
 
+        <ClientRelationshipHistory />
+
         {projects.length === 0 ? (
-          <div className="rounded-[2rem] border border-slate-200 bg-white p-12 text-center shadow-sm"><Briefcase className="mx-auto h-12 w-12 text-slate-300" /><h2 className="mt-4 text-xl font-black text-slate-900">No project is available yet</h2><p className="mt-2 text-sm text-slate-500">Your account is valid, but no active project is currently linked to this client workspace.</p></div>
+          <div className="rounded-[2rem] border border-slate-200 bg-white p-12 text-center shadow-sm"><Briefcase className="mx-auto h-12 w-12 text-slate-300" /><h2 className="mt-4 text-xl font-black text-slate-900">No active project yet</h2><p className="mt-2 text-sm text-slate-500">Your relationship history is available above even before payment. When a verified sale creates a project, it will appear here automatically without creating a new customer history.</p></div>
         ) : selectedProject && (
           <>
             <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
@@ -257,7 +302,7 @@ export default function ClientDashboard() {
 
               <aside className="space-y-5">
                 <div className="rounded-[2rem] border border-slate-200 bg-white p-7 shadow-sm"><h2 className="flex items-center gap-2 text-base font-black text-slate-900"><Receipt className="h-5 w-5 text-[#000080]" />Payment Summary</h2><div className="mt-5 space-y-3"><Mini label="Total Requested" value={`${selectedProject.currency || 'USD'} ${totalDue.toLocaleString()}`} /><Mini label="Confirmed Received" value={`${selectedProject.currency || 'USD'} ${totalPaid.toLocaleString()}`} /><Mini label="Outstanding" value={`${selectedProject.currency || 'USD'} ${outstanding.toLocaleString()}`} /></div><div className="mt-5 space-y-2">{payments.map(payment => <div key={payment.id} className="rounded-xl border border-slate-100 bg-slate-50 p-3"><div className="flex items-center justify-between gap-2"><span className="text-[10px] font-black uppercase text-slate-600">{payment.paymentType}</span><span className="text-[9px] font-black uppercase text-[#000080]">{payment.status}</span></div><div className="mt-1 text-xs font-bold text-slate-900">{payment.currency} {payment.amountPaid.toLocaleString()} / {payment.amountDue.toLocaleString()}</div>{payment.paymentLink && payableStatuses.has(payment.status) && payment.amountPaid < payment.amountDue && <a href={payment.paymentLink} target="_blank" rel="noreferrer" className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-[#000080] px-3 py-2 text-[10px] font-black text-white">Pay this milestone<ExternalLink className="h-3 w-3" /></a>}</div>)}</div>{outstanding > 0 && ['Final Revisions', 'Launch'].includes(selectedProject.stage) && <div className="mt-4 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-[11px] text-amber-800"><Clock className="mt-0.5 h-4 w-4 shrink-0" />The final balance must be verified before the project can enter Launch.</div>}</div>
-                <div className="rounded-[2rem] bg-slate-900 p-7 text-white"><div className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-blue-300"><ShieldCheck className="h-4 w-4" />Secure Access</div><p className="mt-3 text-xs leading-relaxed text-slate-300">This workspace is authorized by your signed-in account link. Project, task, payment, approval, and released handover records are filtered server-side for this client only.</p></div>
+                <div className="rounded-[2rem] bg-slate-900 p-7 text-white"><div className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-blue-300"><ShieldCheck className="h-4 w-4" />Secure Access</div><p className="mt-3 text-xs leading-relaxed text-slate-300">This workspace is authorized by your verified account link. Relationship, conversation, quotation, project, task and payment records are filtered server-side for this customer identity only.</p></div>
               </aside>
             </div>
           </>
