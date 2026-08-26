@@ -1,5 +1,13 @@
 import { supabase } from './supabase';
 
+export type RecruitmentInterviewSetupKind =
+  | 'company_settings'
+  | 'availability'
+  | 'google_connection'
+  | 'google_sync'
+  | 'google_meet'
+  | '';
+
 export interface RecruitmentInterviewBookingContext {
   interviewRequired: boolean;
   interviewerId: string;
@@ -10,7 +18,10 @@ export interface RecruitmentInterviewBookingContext {
   providerLabel: string;
   calendarReady: boolean;
   setupRequired: boolean;
+  setupKind: RecruitmentInterviewSetupKind;
+  setupTitle: string;
   setupMessage: string;
+  setupActionLabel: string;
   setupUrl: string;
   canBook: boolean;
   canSkip: boolean;
@@ -57,6 +68,13 @@ export interface RecruitmentInterviewSkipResult {
 
 function normalizeContext(value: unknown): RecruitmentInterviewBookingContext {
   const row = (value && typeof value === 'object' ? value : {}) as Record<string, unknown>;
+  const setupKind = String(row.setupKind || '') as RecruitmentInterviewSetupKind;
+  const fallbackUrl = setupKind === 'company_settings'
+    ? '/admin/meeting-settings?source=recruitment'
+    : setupKind === 'availability'
+      ? '/admin/booking-setup?source=recruitment'
+      : '/admin/calendar?section=google&source=recruitment';
+
   return {
     interviewRequired: row.interviewRequired === true,
     interviewerId: String(row.interviewerId || ''),
@@ -67,8 +85,11 @@ function normalizeContext(value: unknown): RecruitmentInterviewBookingContext {
     providerLabel: String(row.providerLabel || 'Google Meet'),
     calendarReady: row.calendarReady === true,
     setupRequired: row.setupRequired === true,
+    setupKind,
+    setupTitle: String(row.setupTitle || 'Meeting setup required'),
     setupMessage: String(row.setupMessage || ''),
-    setupUrl: String(row.setupUrl || '/admin/meetings?tab=availability'),
+    setupActionLabel: String(row.setupActionLabel || 'Open Meeting Setup'),
+    setupUrl: String(row.setupUrl || fallbackUrl),
     canBook: row.canBook === true,
     canSkip: row.canSkip === true,
     interviewCompleted: row.interviewCompleted === true,
