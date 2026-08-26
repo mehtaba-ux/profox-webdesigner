@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Check, Clock3, History, Loader2, Plus, Sparkles, X } from 'lucide-react';
+import { Check, Clock3, History, Loader2, Mail, Plus, Sparkles, X } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '../../lib/AuthContext';
 import { quotationCpqService } from '../../lib/quotationCpqService';
@@ -34,9 +34,36 @@ export default function QuotationWorkspaceEnhancements() {
   const [overrideNote, setOverrideNote] = useState('');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [quotationMeta, setQuotationMeta] = useState<any>(null);
+  const [resendOpen, setResendOpen] = useState(false);
+  const [resendLoading, setResendLoading] = useState(false);
+  const [resendRecipient, setResendRecipient] = useState('');
+  const [resendCc, setResendCc] = useState('');
+  const [resendSubject, setResendSubject] = useState('');
+  const [resendMessage, setResendMessage] = useState('');
+  const [resendError, setResendError] = useState('');
+  const [resendNotice, setResendNotice] = useState('');
 
   useEffect(() => {
-    setOpen(false); setWorkspace(null); setSummary(null); setMessage(''); setError('');
+    setOpen(false);
+    setWorkspace(null);
+    setSummary(null);
+    setMessage('');
+    setError('');
+    setQuotationMeta(null);
+    setResendOpen(false);
+    setResendError('');
+    setResendNotice('');
+
+    if (!quotationId) return;
+    let cancelled = false;
+    void supabase
+      .from('quotations')
+      .select('id,quotation_number,email,send_cc,send_subject,send_message,status,superseded_by_id,resend_count,last_resent_at')
+      .eq('id', quotationId)
+      .single()
+      .then(({ data }) => { if (!cancelled && data) setQuotationMeta(data); });
+    return () => { cancelled = true; };
   }, [quotationId]);
 
   const load = async () => {
@@ -88,6 +115,7 @@ export default function QuotationWorkspaceEnhancements() {
 
   const recentProducts = useMemo(() => recentIds.map(id => products.find((p: any) => p.id === id)).filter(Boolean), [recentIds, products]);
   const draftEditable = workspace?.quotation?.status === 'Draft' && !workspace?.quotation?.supersededById;
+  const canResend = quotationMeta?.status === 'Sent' && !quotationMeta?.superseded_by_id;
 
   const addSuggested = async (productId: string) => {
     if (!quotationId || !draftEditable) return;
@@ -120,12 +148,99 @@ export default function QuotationWorkspaceEnhancements() {
     setSaving(false);
   };
 
+  const openResend = async () => {
+    if (!quotationId) return;
+    setResendOpen(true);
+    setResendLoading(true);
+    setResendError('');
+    setResendNotice('');
+    const { data, error: loadError } = await supabase
+      .from('quotations')
+      .select('id,quotation_number,email,send_cc,send_subject,send_message,status,superseded_by_id,resend_count,last_resent_at')
+      .eq('id', quotationId)
+      .single();
+    setResendLoading(false);
+    if (loadError || !data) {
+      setResendError(loadError?.message || 'Could not load resend details.');
+      return;
+    }
+    setQuotationMeta(data);
+    if (data.status !== 'Sent' || data.superseded_by_id) {
+      setResendError(data.superseded_by_id
+        ? 'This quotation has been superseded. Open the current revision instead.'
+        : 'Only a quotation that has already been sent can be resent.');
+      return;
+    }
+    setResendRecipient(data.email || '');
+    setResendCc(Array.isArray(data.send_cc) ? data.send_cc.join(', ') : '');
+    setResendSubject(data.send_subject || `Your ProFox proposal is ready: ${data.quotation_number || ''}`);
+    setResendMessage('As requested, I am resending your ProFox proposal. Please use the secure link to review the same approved quotation.');
+  };
+
+  const resendQuotation = async () => {
+    if (!quotationId || !resendRecipient.trim()) return;
+    setResendLoading(true);
+    setResendError('');
+    const cc = resendCc.split(',').map(value => value.trim()).filter(Boolean);
+    const { data, error: resendRpcError } = await supabase.rpc('resend_quotation_professional', {
+      p_quotation_id: quotationId,
+      p_recipient: resendRecipient.trim(),
+      p_cc: cc,
+      p_subject: resendSubject.trim() || null,
+      p_message: resendMessage.trim() || null
+    });
+    setResendLoading(false);
+    if (resendRpcError) {
+      setResendError(resendRpcError.message);
+      return;
+    }
+    const result = data as any;
+    setQuotationMeta((current: any) => ({
+      ...(current || {}),
+      status: 'Sent',
+      resend_count: Number(result?.resendCount || (current?.resend_count || 0) + 1),
+      last_resent_at: result?.lastResentAt || new Date().toISOString()
+    }));
+    setResendOpen(false);
+    setResendNotice(`Quotation resent successfully${result?.resendCount ? ` · Resend ${result.resendCount}` : ''}.`);
+    window.setTimeout(() => setResendNotice(''), 6000);
+  };
+
   if (!quotationId) return null;
 
   return <>
-    <button onClick={() => setOpen(true)} className="fixed bottom-6 right-6 z-40 inline-flex items-center gap-2 rounded-2xl bg-[#000080] px-4 py-3 text-xs font-black text-white shadow-xl shadow-slate-900/20 hover:bg-[#000067]" title="Quotation productivity tools">
+    {canResend && <button onClick={() => void openResend()} className="fixed bottom-20 right-6 z-40 inline-flex items-center gap-2 rounded-2xl border border-[#000080]/20 bg-white px-4 py-3 text-xs font-black text-[#000080] shadow-xl shadow-slate-900/15 hover:bg-slate-50 max-sm:right-4" title="Resend this same sent quotation to the client">
+      <Mail className="h-4 w-4"/>Resend Quotation
+    </button>}
+    {resendNotice && <div className="fixed bottom-36 right-6 z-50 max-w-sm rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs font-bold text-emerald-800 shadow-xl max-sm:left-4 max-sm:right-4"><Check className="mr-1.5 inline h-4 w-4"/>{resendNotice}</div>}
+    <button onClick={() => setOpen(true)} className="fixed bottom-6 right-6 z-40 inline-flex items-center gap-2 rounded-2xl bg-[#000080] px-4 py-3 text-xs font-black text-white shadow-xl shadow-slate-900/20 hover:bg-[#000067] max-sm:right-4" title="Quotation productivity tools">
       <Sparkles className="h-4 w-4"/>CPQ Assist
     </button>
+
+    {resendOpen && <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/60 p-4" onMouseDown={event => { if (event.target === event.currentTarget && !resendLoading) setResendOpen(false); }}>
+      <div className="max-h-[90dvh] w-full max-w-2xl overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl sm:p-7">
+        <div className="flex items-start justify-between gap-4">
+          <div><p className="text-[10px] font-black uppercase tracking-[0.16em] text-[#FF0E0E]">Customer Delivery</p><h2 className="mt-1 text-xl font-black text-slate-950">Resend Quotation</h2><p className="mt-1 text-xs leading-5 text-slate-500">Send the same locked quotation again without creating a new quotation or revision.</p></div>
+          <button disabled={resendLoading} onClick={() => setResendOpen(false)} className="rounded-xl p-2 text-slate-500 hover:bg-slate-100 disabled:opacity-40"><X className="h-5 w-5"/></button>
+        </div>
+
+        <div className="mt-5 rounded-2xl border border-blue-100 bg-blue-50 p-4 text-xs leading-5 text-blue-900">
+          <p className="font-black">Same approved proposal, same secure review flow.</p>
+          <p className="mt-1">Resending does not change pricing, approval, payment schedule, sent status, or customer view history. The original secure proposal link is reused whenever available.</p>
+          {quotationMeta && <p className="mt-2 text-[11px] font-semibold text-blue-700">Previously resent {Number(quotationMeta.resend_count || 0)} time{Number(quotationMeta.resend_count || 0) === 1 ? '' : 's'}{quotationMeta.last_resent_at ? ` · Last ${new Date(quotationMeta.last_resent_at).toLocaleString()}` : ''}</p>}
+        </div>
+
+        {resendLoading && !resendRecipient ? <div className="flex min-h-[220px] items-center justify-center"><Loader2 className="h-7 w-7 animate-spin text-[#000080]"/></div> : <div className="mt-5 space-y-4">
+          {resendError && <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-xs font-semibold text-red-700">{resendError}</div>}
+          <label className="block"><span className="mb-1 block text-xs font-bold text-slate-700">Recipient</span><input type="email" value={resendRecipient} onChange={event => setResendRecipient(event.target.value)} className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-[#000080]" placeholder="client@example.com"/></label>
+          <label className="block"><span className="mb-1 block text-xs font-bold text-slate-700">CC <span className="font-normal text-slate-400">(comma separated)</span></span><input value={resendCc} onChange={event => setResendCc(event.target.value)} className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-[#000080]" placeholder="manager@example.com, accounts@example.com"/></label>
+          <label className="block"><span className="mb-1 block text-xs font-bold text-slate-700">Email Subject</span><input value={resendSubject} onChange={event => setResendSubject(event.target.value)} className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-[#000080]"/></label>
+          <label className="block"><span className="mb-1 block text-xs font-bold text-slate-700">Personal Message</span><textarea rows={4} value={resendMessage} onChange={event => setResendMessage(event.target.value)} className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm leading-6 outline-none focus:border-[#000080]"/></label>
+          <div className="flex flex-col-reverse gap-2 pt-1 sm:flex-row sm:justify-end"><button disabled={resendLoading} onClick={() => setResendOpen(false)} className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-bold text-slate-700 disabled:opacity-40">Cancel</button><button disabled={resendLoading || !resendRecipient.trim()} onClick={() => void resendQuotation()} className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#000080] px-5 py-2.5 text-sm font-black text-white disabled:cursor-not-allowed disabled:opacity-40">{resendLoading ? <Loader2 className="h-4 w-4 animate-spin"/> : <Mail className="h-4 w-4"/>}Resend Quotation</button></div>
+        </div>}
+      </div>
+    </div>}
+
     {open && <div className="fixed inset-0 z-[70] flex justify-end bg-slate-950/45" onMouseDown={e => { if (e.target === e.currentTarget) setOpen(false); }}>
       <aside className="h-full w-full max-w-md overflow-y-auto bg-white p-6 shadow-2xl">
         <div className="flex items-start justify-between"><div><p className="text-[10px] font-black uppercase tracking-[0.16em] text-[#FF0E0E]">ProFox CPQ</p><h2 className="mt-1 text-xl font-black">Quotation Assist</h2><p className="mt-1 text-xs leading-5 text-slate-500">Catalog recommendations, recent products and protected Admin timeline controls. Commercial facts stay server-authoritative.</p></div><button onClick={() => setOpen(false)} className="rounded-lg p-2 hover:bg-slate-100"><X className="h-5 w-5"/></button></div>
