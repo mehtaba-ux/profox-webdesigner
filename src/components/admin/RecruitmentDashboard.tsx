@@ -23,9 +23,11 @@ import {
   type RecruitmentPipelineJob,
   type RecruitmentPipelineStage,
 } from '../../lib/recruitmentPipelineService';
+import { recruitmentTaskService, type AdminRecruitmentTask } from '../../lib/recruitmentTaskService';
 import RecruitmentApplicantDetailModal from './RecruitmentApplicantDetailModal';
 import RecruitmentManualApplicantModal from './RecruitmentManualApplicantModal';
 import RecruitmentOperationsControls from './RecruitmentOperationsControls';
+import RecruitmentTaskReviewDialog from './RecruitmentTaskReviewDialog';
 
 function getErrorMessage(error: unknown, fallback: string) {
   if (error && typeof error === 'object' && 'message' in error) return String((error as any).message || fallback);
@@ -59,6 +61,18 @@ export default function RecruitmentDashboard() {
   const [showClosed, setShowClosed] = useState(false);
   const [selectedApplicant, setSelectedApplicant] = useState<ApplicantRecord | null>(null);
   const [isAdding, setIsAdding] = useState(false);
+  const [deepLinkedTask, setDeepLinkedTask] = useState<AdminRecruitmentTask | null>(null);
+  const [deepLinkedCandidateName, setDeepLinkedCandidateName] = useState('');
+  const [deepLinkLoading, setDeepLinkLoading] = useState(false);
+  const [deepLinkHandled, setDeepLinkHandled] = useState(false);
+  const [deepLinkTarget] = useState(() => {
+    if (typeof window === 'undefined') return { applicantId: '', taskId: '' };
+    const params = new URLSearchParams(window.location.search);
+    return {
+      applicantId: params.get('applicantId') || '',
+      taskId: params.get('taskId') || '',
+    };
+  });
 
   const fetchApplicants = async () => {
     const rows = await applicantService.getApplicants();
@@ -101,6 +115,65 @@ export default function RecruitmentDashboard() {
     window.addEventListener('profox:recruitment-pipeline-changed', refresh);
     return () => window.removeEventListener('profox:recruitment-pipeline-changed', refresh);
   }, [selectedJobId, selectedDepartment, selectedApplicant?.id]);
+
+  useEffect(() => {
+    if (loading || deepLinkHandled || !deepLinkTarget.applicantId || !deepLinkTarget.taskId) return;
+    const applicant = applicants.find(item => item.id === deepLinkTarget.applicantId);
+    if (!applicant) {
+      setError('The candidate linked from this recruitment notification is no longer available.');
+      setDeepLinkHandled(true);
+      return;
+    }
+
+    let cancelled = false;
+    setDeepLinkLoading(true);
+    void recruitmentTaskService.listForApplicant(applicant.id)
+      .then(tasks => {
+        if (cancelled) return;
+        const task = tasks.find(item => item.id === deepLinkTarget.taskId);
+        if (!task) {
+          setError('The submitted Lead Research Test linked from this notification could not be found.');
+          return;
+        }
+        setDeepLinkedCandidateName(applicant.fullName);
+        setDeepLinkedTask(task);
+        setError(null);
+      })
+      .catch(err => {
+        if (!cancelled) setError(getErrorMessage(err, 'Unable to open the submitted Lead Research Test.'));
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setDeepLinkLoading(false);
+          setDeepLinkHandled(true);
+        }
+      });
+    return () => { cancelled = true; };
+  }, [applicants, deepLinkHandled, deepLinkTarget.applicantId, deepLinkTarget.taskId, loading]);
+
+  const clearTaskDeepLink = () => {
+    setDeepLinkedTask(null);
+    setDeepLinkedCandidateName('');
+    if (typeof window === 'undefined') return;
+    const url = new URL(window.location.href);
+    url.searchParams.delete('applicantId');
+    url.searchParams.delete('taskId');
+    window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}${url.hash}`);
+  };
+
+  const refreshDeepLinkedTask = async () => {
+    if (!deepLinkTarget.applicantId || !deepLinkTarget.taskId) return;
+    try {
+      const [, tasks] = await Promise.all([
+        fetchApplicants(),
+        recruitmentTaskService.listForApplicant(deepLinkTarget.applicantId),
+      ]);
+      const fresh = tasks.find(item => item.id === deepLinkTarget.taskId);
+      if (fresh) setDeepLinkedTask(fresh);
+    } catch (err) {
+      setError(getErrorMessage(err, 'Unable to refresh the submitted Lead Research Test.'));
+    }
+  };
 
   const departments = useMemo(() => Array.from(new Set(jobs.map(job => job.department || 'Unassigned'))).sort(), [jobs]);
   const departmentJobs = useMemo(() => jobs.filter(job => selectedDepartment === 'all' || job.department === selectedDepartment), [jobs, selectedDepartment]);
@@ -168,6 +241,7 @@ export default function RecruitmentDashboard() {
     <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm"><div className="flex flex-wrap gap-2"><button type="button" onClick={() => void selectDepartment('all')} className={`min-h-11 rounded-xl px-4 text-sm font-black transition ${selectedDepartment === 'all' ? 'bg-[#000080] text-white' : 'border border-slate-200 bg-white text-slate-600 hover:border-[#000080]/30'}`}>All Recruitment</button>{departments.map(department => <button type="button" key={department} onClick={() => void selectDepartment(department)} className={`min-h-11 rounded-xl px-4 text-sm font-black transition ${selectedDepartment === department ? 'bg-[#000080] text-white' : 'border border-slate-200 bg-white text-slate-600 hover:border-[#000080]/30'}`}>{department}</button>)}</div>{selectedDepartment !== 'all' && departmentJobs.length > 1 && <div className="mt-3 border-t border-slate-100 pt-3"><label className="block max-w-xl"><span className="mb-1 block text-xs font-black uppercase text-slate-500">Job / hiring pipeline</span><select value={selectedJobId} onChange={event => void selectJob(event.target.value)} className="min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-bold text-slate-700 outline-none focus:border-[#000080]">{departmentJobs.map(job => <option key={job.jobId} value={job.jobId}>{job.title}</option>)}</select></label></div>}</div>
 
     {error && <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700"><AlertCircle className="mt-0.5 h-4 w-4 shrink-0" /><span>{error}</span></div>}
+    {deepLinkLoading && <div className="flex items-center gap-2 rounded-xl border border-blue-100 bg-blue-50 p-4 text-sm font-bold text-[#000080]"><Loader2 className="h-4 w-4 animate-spin" />Opening submitted Lead Research Test...</div>}
 
     <div className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:flex-row sm:items-center"><div className="relative flex-1"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><input type="search" value={searchTerm} onChange={event => setSearchTerm(event.target.value)} placeholder="Search candidate, role, email, country or reference..." className="min-h-11 w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-4 text-sm outline-none focus:border-[#000080]" /></div><label className="flex min-h-11 items-center gap-2 rounded-xl border border-slate-200 px-3 text-sm font-bold text-slate-500"><input type="checkbox" checked={showClosed} onChange={event => setShowClosed(event.target.checked)} className="h-4 w-4 accent-[#000080]" />Show closed</label>{selectedDepartment !== 'all' && <div className="flex rounded-xl border border-slate-200 bg-slate-50 p-1"><button type="button" onClick={() => setView('board')} aria-label="Board view" className={`flex h-9 w-9 items-center justify-center rounded-lg ${view === 'board' ? 'bg-white text-[#000080] shadow-sm' : 'text-slate-400'}`}><LayoutGrid className="h-4 w-4" /></button><button type="button" onClick={() => setView('list')} aria-label="List view" className={`flex h-9 w-9 items-center justify-center rounded-lg ${view === 'list' ? 'bg-white text-[#000080] shadow-sm' : 'text-slate-400'}`}><ListIcon className="h-4 w-4" /></button></div>}<button type="button" onClick={() => void loadAll()} disabled={loading} className="flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 text-slate-400 hover:text-[#000080] disabled:opacity-50"><RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} /></button></div>
 
@@ -178,6 +252,7 @@ export default function RecruitmentDashboard() {
 
     {selectedApplicant && <RecruitmentApplicantDetailModal applicant={selectedApplicant} onClose={() => setSelectedApplicant(null)} onUpdate={async () => { await fetchApplicants(); }} />}
     {isAdding && <RecruitmentManualApplicantModal onClose={() => setIsAdding(false)} onUpdate={async () => { await fetchApplicants(); }} />}
+    {deepLinkedTask && <RecruitmentTaskReviewDialog task={deepLinkedTask} candidateName={deepLinkedCandidateName || 'Candidate'} onClose={clearTaskDeepLink} onChanged={refreshDeepLinkedTask} />}
   </div>;
 }
 
