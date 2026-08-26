@@ -232,5 +232,18 @@ export const quotationCpqService = {
   },
   async respondPublic(token: string, response: 'accept' | 'reject' | 'request_changes', note = '') {
     return await supabase.rpc('respond_public_quotation', { p_token: token, p_response: response, p_note: note });
+  },
+  async getPublicConversation(token: string) {
+    return await supabase.rpc('public_quotation_conversation_get', { p_token: token });
+  },
+  async heartbeatPublicConversation(token: string) {
+    return await supabase.rpc('public_quotation_conversation_heartbeat', { p_token: token });
+  },
+  async sendPublicConversationMessage(token: string, message: string, requestChange = false) {
+    return await supabase.rpc('public_quotation_conversation_send_message', {
+      p_token: token,
+      p_message: message,
+      p_request_change: requestChange
+    });
   }
 };
