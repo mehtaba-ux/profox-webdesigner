@@ -88,6 +88,16 @@ function lineNet(line: CpqLine) {
   return Math.max(0, lineGross(line) - lineDiscountAmount(line));
 }
 
+const PRIMARY_PRODUCT_TYPES = new Set(['package', 'discovery', 'custom']);
+
+function isPrimaryProductType(productType?: string | null) {
+  return PRIMARY_PRODUCT_TYPES.has(String(productType || '').toLowerCase());
+}
+
+function isPrimaryLine(line: CpqLine) {
+  return line.lineType === 'product' && isPrimaryProductType(line.itemType);
+}
+
 function catalogLine(product: any, order: number, optional = false): CpqLine {
   const timeline = catalogTimelineSnapshot(product);
   return {
@@ -249,6 +259,19 @@ export default function QuotationWorkspace() {
   );
 
   const addProduct = (product: any, optional = false) => {
+    if (isPrimaryProductType(product.productType)) {
+      const selectedPlan = lines.find(isPrimaryLine);
+      if (selectedPlan) {
+        setError(selectedPlan.salesProductId === product.id
+          ? `${product.name} is already selected as the primary plan.`
+          : `Only one primary pricing plan can be selected per quotation. Remove ${selectedPlan.productNameSnapshot} before selecting ${product.name}. You can still add multiple add-ons and care plans.`);
+        return;
+      }
+      setError('');
+      setLineState([...lines, catalogLine(product, lines.length * 10, false)]);
+      return;
+    }
+    setError('');
     setLineState([...lines, catalogLine(product, lines.length * 10, optional)]);
   };
 
@@ -256,6 +279,10 @@ export default function QuotationWorkspace() {
   const updateLine = (index: number, changes: Partial<CpqLine>) => setLineState(lines.map((line, i) => i === index ? { ...line, ...changes } : line));
   const removeLine = (index: number) => setLineState(lines.filter((_, i) => i !== index));
   const duplicateLine = (index: number) => {
+    if (isPrimaryLine(lines[index])) {
+      setError('A primary pricing plan cannot be duplicated. Each quotation may contain only one primary plan.');
+      return;
+    }
     const clone = { ...lines[index], id: undefined, productNameSnapshot: `${lines[index].productNameSnapshot}` };
     setLineState([...lines.slice(0, index + 1), clone, ...lines.slice(index + 1)]);
   };
@@ -376,11 +403,18 @@ export default function QuotationWorkspace() {
     const defaultCodes = Array.isArray(template.defaultProductCodes) ? template.defaultProductCodes : [];
     const optionalCodes = Array.isArray(template.optionalProductCodes) ? template.optionalProductCodes : [];
     const next = [...lines];
+    let primaryPresent = next.some(isPrimaryLine);
     [...defaultCodes, ...optionalCodes].forEach((code: string) => {
       if (existingCodes.has(code)) return;
       const product: any = products.find((p: any) => p.code === code);
       if (!product) return;
-      next.push(catalogLine(product, next.length * 10, optionalCodes.includes(code)));
+      if (isPrimaryProductType(product.productType)) {
+        if (primaryPresent) return;
+        next.push(catalogLine(product, next.length * 10, false));
+        primaryPresent = true;
+      } else {
+        next.push(catalogLine(product, next.length * 10, optionalCodes.includes(code)));
+      }
       existingCodes.add(code);
     });
     if (next.length !== lines.length) setLineState(next);
@@ -537,7 +571,7 @@ export default function QuotationWorkspace() {
 
         {activePanel === 'scope' && <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 p-4">
-            <div><h2 className="font-black">Products & Services</h2><p className="text-xs text-slate-500">Sales Catalog timelines are snapshotted automatically. Sellers only enter timing when a quotation-specific estimate is genuinely required.</p></div>
+            <div><h2 className="font-black">Products & Services</h2><p className="text-xs text-slate-500">Select one primary pricing plan per quotation. Add-ons and care plans can be added in any required combination. Sales Catalog timelines are snapshotted automatically.</p></div>
             {!locked && <div className="flex flex-wrap gap-2"><button onClick={() => setCatalogOpen(true)} className="rounded-xl bg-[#000080] px-3 py-2 text-xs font-bold text-white"><PackagePlus className="mr-1.5 inline h-3.5 w-3.5" />Add from Catalog</button><button onClick={() => addUtilityLine('custom')} className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold"><Plus className="mr-1 inline h-3.5 w-3.5" />Custom Line</button><button onClick={() => addUtilityLine('section')} className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold">Section</button><button onClick={() => addUtilityLine('note')} className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold">Note</button></div>}
           </div>
           <div className="overflow-x-auto">
@@ -553,8 +587,8 @@ export default function QuotationWorkspace() {
                   <td className="p-3">{['product', 'custom'].includes(line.lineType) ? <div className="flex gap-1"><select disabled={locked} value={line.discountType} onChange={e => updateLine(index, { discountType: e.target.value as any, discountValue: 0 })} className="w-20 rounded-lg border border-slate-200 px-1 py-1.5"><option value="none">None</option><option value="percent">%</option><option value="fixed">Fixed</option></select>{line.discountType !== 'none' && <input disabled={locked} type="number" min={0} value={line.discountValue} onChange={e => updateLine(index, { discountValue: Number(e.target.value) || 0 })} className="w-16 rounded-lg border border-slate-200 px-2 py-1.5" />}</div> : '—'}</td>
                   <td className="p-3 text-right font-black">{['product', 'custom'].includes(line.lineType) ? money(lineNet(line), draft.currency) : '—'}</td>
                   <td className="p-3"><QuotationLineTimeline line={line} locked={locked} isAdmin={isAdmin} onChange={changes => updateLine(index, changes)} /></td>
-                  <td className="p-3">{['product', 'custom'].includes(line.lineType) ? <label className="inline-flex items-center gap-1"><input disabled={locked} type="checkbox" checked={line.optionalForClient} onChange={e => updateLine(index, { optionalForClient: e.target.checked })} /><span className="text-[10px]">Client option</span></label> : '—'}</td>
-                  <td className="p-3"><div className="flex justify-end gap-1"><button disabled={locked || index === 0} onClick={() => moveLine(index, -1)} className="rounded p-1 hover:bg-slate-100"><ChevronUp className="h-3.5 w-3.5" /></button><button disabled={locked || index === lines.length - 1} onClick={() => moveLine(index, 1)} className="rounded p-1 hover:bg-slate-100"><ChevronDown className="h-3.5 w-3.5" /></button><button disabled={locked} onClick={() => duplicateLine(index)} className="rounded p-1 hover:bg-slate-100"><Copy className="h-3.5 w-3.5" /></button><button disabled={locked} onClick={() => removeLine(index)} className="rounded p-1 text-red-500 hover:bg-red-50"><Trash2 className="h-3.5 w-3.5" /></button></div></td>
+                  <td className="p-3">{isPrimaryLine(line) ? <span className="rounded-full bg-[#000080]/10 px-2 py-1 text-[10px] font-extrabold text-[#000080]">Primary plan</span> : ['product', 'custom'].includes(line.lineType) ? <label className="inline-flex items-center gap-1"><input disabled={locked} type="checkbox" checked={line.optionalForClient} onChange={e => updateLine(index, { optionalForClient: e.target.checked })} /><span className="text-[10px]">Client option</span></label> : '—'}</td>
+                  <td className="p-3"><div className="flex justify-end gap-1"><button disabled={locked || index === 0} onClick={() => moveLine(index, -1)} className="rounded p-1 hover:bg-slate-100"><ChevronUp className="h-3.5 w-3.5" /></button><button disabled={locked || index === lines.length - 1} onClick={() => moveLine(index, 1)} className="rounded p-1 hover:bg-slate-100"><ChevronDown className="h-3.5 w-3.5" /></button><button disabled={locked || isPrimaryLine(line)} title={isPrimaryLine(line) ? 'Only one primary plan is allowed per quotation.' : 'Duplicate line'} onClick={() => duplicateLine(index)} className="rounded p-1 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-35"><Copy className="h-3.5 w-3.5" /></button><button disabled={locked} onClick={() => removeLine(index)} className="rounded p-1 text-red-500 hover:bg-red-50"><Trash2 className="h-3.5 w-3.5" /></button></div></td>
                 </tr>)}
               </tbody>
             </table>
@@ -595,14 +629,14 @@ export default function QuotationWorkspace() {
 
     {catalogOpen && <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4" onMouseDown={e => { if (e.target === e.currentTarget) setCatalogOpen(false); }}>
       <div className="max-h-[85vh] w-full max-w-5xl overflow-hidden rounded-3xl bg-white shadow-2xl">
-        <div className="flex items-center justify-between border-b p-5"><div><h2 className="text-lg font-black">Sales Catalog</h2><p className="text-xs text-slate-500">Select existing catalog data. Pricing and timeline are snapshotted into the quotation without creating duplicate products.</p></div><button onClick={() => setCatalogOpen(false)}><X className="h-5 w-5" /></button></div>
+        <div className="flex items-center justify-between border-b p-5"><div><h2 className="text-lg font-black">Sales Catalog</h2><p className="text-xs text-slate-500">Choose one primary pricing plan, then add as many add-ons or care plans as the project requires. Pricing and timeline are snapshotted without duplicating Catalog data.</p></div><button onClick={() => setCatalogOpen(false)}><X className="h-5 w-5" /></button></div>
         <div className="grid gap-3 border-b p-4 md:grid-cols-[1fr_180px_180px]"><div className="relative"><Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" /><input autoFocus value={catalogSearch} onChange={e => setCatalogSearch(e.target.value)} placeholder="Search product, package, add-on…" className="w-full rounded-xl border border-slate-200 py-2.5 pl-9 pr-3 text-sm" /></div><select value={catalogType} onChange={e => setCatalogType(e.target.value)} className="rounded-xl border border-slate-200 px-3 text-sm"><option value="all">All types</option><option value="package">Packages</option><option value="addon">Add-ons</option><option value="care_plan">Care plans</option><option value="discovery">Discovery</option><option value="custom">Custom catalog</option></select><select value={catalogCategory} onChange={e => setCatalogCategory(e.target.value)} className="rounded-xl border border-slate-200 px-3 text-sm"><option value="all">All categories</option>{categories.map(category => <option key={category}>{category}</option>)}</select></div>
-        <div className="max-h-[58vh] overflow-y-auto p-4"><div className="grid gap-3 md:grid-cols-2">{filteredProducts.map((product: any) => <div key={product.id} className="rounded-2xl border border-slate-200 p-4 hover:border-[#000080]/40"><div className="flex items-start justify-between gap-3"><div><p className="text-[10px] font-extrabold uppercase tracking-wide text-[#000080]">{product.productType.replace('_', ' ')} · {product.category}</p><h3 className="mt-1 font-black">{product.name}</h3><p className="mt-1 text-xs leading-5 text-slate-500">{product.shortDescription}</p></div><p className="whitespace-nowrap text-sm font-black">{money(product.basePrice, product.currency || draft.currency)}</p></div><div className="mt-3 flex items-center justify-between gap-3"><p className={`flex items-center gap-1 text-[10px] font-semibold ${catalogTimelineSnapshot(product).status === 'missing' ? 'text-amber-700' : 'text-slate-500'}`}><Clock3 className="h-3 w-3" />{productDuration(product)}</p><div className="flex gap-2"><button onClick={() => addProduct(product, true)} className="rounded-lg border border-slate-200 px-2.5 py-1.5 text-[10px] font-bold">Add Optional</button><button onClick={() => addProduct(product, false)} className="rounded-lg bg-[#000080] px-2.5 py-1.5 text-[10px] font-bold text-white">Add</button></div></div></div>)}{filteredProducts.length === 0 && <div className="col-span-full py-10 text-center text-sm text-slate-400">No catalog items match this search.</div>}</div></div>
+        <div className="max-h-[58vh] overflow-y-auto p-4"><div className="grid gap-3 md:grid-cols-2">{filteredProducts.map((product: any) => <div key={product.id} className="rounded-2xl border border-slate-200 p-4 hover:border-[#000080]/40"><div className="flex items-start justify-between gap-3"><div><p className="text-[10px] font-extrabold uppercase tracking-wide text-[#000080]">{product.productType.replace('_', ' ')} · {product.category}</p><h3 className="mt-1 font-black">{product.name}</h3><p className="mt-1 text-xs leading-5 text-slate-500">{product.shortDescription}</p></div><p className="whitespace-nowrap text-sm font-black">{money(product.basePrice, product.currency || draft.currency)}</p></div><div className="mt-3 flex items-center justify-between gap-3"><p className={`flex items-center gap-1 text-[10px] font-semibold ${catalogTimelineSnapshot(product).status === 'missing' ? 'text-amber-700' : 'text-slate-500'}`}><Clock3 className="h-3 w-3" />{productDuration(product)}</p><div className="flex gap-2"><button disabled={isPrimaryProductType(product.productType)} onClick={() => addProduct(product, true)} className="rounded-lg border border-slate-200 px-2.5 py-1.5 text-[10px] font-bold disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400">{isPrimaryProductType(product.productType) ? 'Primary plan' : 'Add Optional'}</button><button onClick={() => addProduct(product, false)} className="rounded-lg bg-[#000080] px-2.5 py-1.5 text-[10px] font-bold text-white">{isPrimaryProductType(product.productType) ? 'Select Plan' : 'Add'}</button></div></div></div>)}{filteredProducts.length === 0 && <div className="col-span-full py-10 text-center text-sm text-slate-400">No catalog items match this search.</div>}</div></div>
       </div>
     </div>}
 
     {previewOpen && summary?.presentation && <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/70 p-4 sm:p-8"><div className="mx-auto mb-4 flex max-w-[1040px] justify-end gap-2 no-print"><button onClick={() => window.print()} className="rounded-xl bg-white px-4 py-2 text-sm font-bold"><Printer className="mr-2 inline h-4 w-4" />Print / Save PDF</button><button onClick={() => setPreviewOpen(false)} className="rounded-xl bg-white p-2"><X className="h-5 w-5" /></button></div><QuotationProposal presentation={summary.presentation} /></div>}
 
-    {sendOpen && <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4"><div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl"><div className="flex items-start justify-between"><div><h2 className="text-xl font-black">Send Quotation</h2><p className="mt-1 text-xs text-slate-500">Final readiness is checked server-side before customer delivery.</p></div><button onClick={() => setSendOpen(false)}><X className="h-5 w-5" /></button></div><div className="mt-5 grid gap-2 sm:grid-cols-2">{[['CRM Opportunity linked', readiness?.opportunityLinked], ['Customer email available', readiness?.emailAvailable], ['At least one product/service', readiness?.hasProductOrService], ['Pricing valid', readiness?.pricingValid], ['Timeline confirmed', readiness?.timelineConfirmed], ['Payment schedule valid', readiness?.paymentScheduleValid], ['Required approval completed', readiness?.approvalCompleted], ['Expiration date valid', readiness?.expirationValid]].map(([label, ok]: any) => <div key={label} className={`rounded-xl border p-3 text-xs font-bold ${ok ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-red-200 bg-red-50 text-red-700'}`}>{ok ? '✓' : '×'} {label}</div>)}</div><div className="mt-5 space-y-3"><label className="block"><span className="mb-1 block text-xs font-bold">Recipient</span><input value={draft.email || ''} onChange={e => updateDraft({ email: e.target.value })} className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm" /></label><label className="block"><span className="mb-1 block text-xs font-bold">CC <span className="font-normal text-slate-400">(comma separated)</span></span><input value={sendCc} onChange={e => setSendCc(e.target.value)} className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm" /></label><label className="block"><span className="mb-1 block text-xs font-bold">Email Subject</span><input value={sendSubject} onChange={e => setSendSubject(e.target.value)} className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm" /></label><label className="block"><span className="mb-1 block text-xs font-bold">Personal Message</span><textarea rows={4} value={sendMessage} onChange={e => setSendMessage(e.target.value)} className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm" /></label></div><div className="mt-5 flex justify-end gap-2"><button onClick={() => setSendOpen(false)} className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-bold">Cancel</button><button disabled={!readiness?.readyToSend} onClick={send} className="rounded-xl bg-[#000080] px-5 py-2 text-sm font-extrabold text-white disabled:cursor-not-allowed disabled:opacity-40"><Mail className="mr-2 inline h-4 w-4" />Review Your Proposal</button></div></div></div>}
+    {sendOpen && <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4"><div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl"><div className="flex items-start justify-between"><div><h2 className="text-xl font-black">Send Quotation</h2><p className="mt-1 text-xs text-slate-500">Final readiness is checked server-side before customer delivery.</p></div><button onClick={() => setSendOpen(false)}><X className="h-5 w-5" /></button></div><div className="mt-5 grid gap-2 sm:grid-cols-2">{[['CRM Opportunity linked', readiness?.opportunityLinked], ['Customer email available', readiness?.emailAvailable], ['At least one product/service', readiness?.hasProductOrService], ['Pricing valid', readiness?.pricingValid], ['Timeline confirmed', readiness?.timelineConfirmed], ['Payment schedule valid', readiness?.paymentScheduleValid], ['Required approval completed', readiness?.approvalCompleted], ['Expiration date valid', readiness?.expirationValid]].map(([label, ok]: any) => <div key={label} className={`rounded-xl border p-3 text-xs font-bold ${ok ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-red-200 bg-red-50 text-red-700'}`}>{ok ? '✓' : '×'} {label}</div>)}</div>{!readiness?.paymentScheduleValid && presentation?.paymentPlan?.error && <div className="mt-3 rounded-xl border border-red-200 bg-red-50 p-3 text-xs font-semibold leading-5 text-red-700">{presentation.paymentPlan.error}</div>}<div className="mt-5 space-y-3"><label className="block"><span className="mb-1 block text-xs font-bold">Recipient</span><input value={draft.email || ''} onChange={e => updateDraft({ email: e.target.value })} className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm" /></label><label className="block"><span className="mb-1 block text-xs font-bold">CC <span className="font-normal text-slate-400">(comma separated)</span></span><input value={sendCc} onChange={e => setSendCc(e.target.value)} className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm" /></label><label className="block"><span className="mb-1 block text-xs font-bold">Email Subject</span><input value={sendSubject} onChange={e => setSendSubject(e.target.value)} className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm" /></label><label className="block"><span className="mb-1 block text-xs font-bold">Personal Message</span><textarea rows={4} value={sendMessage} onChange={e => setSendMessage(e.target.value)} className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm" /></label></div><div className="mt-5 flex justify-end gap-2"><button onClick={() => setSendOpen(false)} className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-bold">Cancel</button><button disabled={!readiness?.readyToSend} onClick={send} className="rounded-xl bg-[#000080] px-5 py-2 text-sm font-extrabold text-white disabled:cursor-not-allowed disabled:opacity-40"><Mail className="mr-2 inline h-4 w-4" />Review Your Proposal</button></div></div></div>}
   </div>;
 }
