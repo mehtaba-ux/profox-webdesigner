@@ -32,5 +32,29 @@ export const agreementService = {
   resend(agreementId: string) { return rpc<any>('admin_resend_sales_partner_agreement', { p_agreement_id: agreementId }); },
   getForApplicant(applicantId: string) { return rpc<any>('admin_get_sales_partner_agreement', { p_applicant_id: applicantId }); },
   list() { return rpc<any[]>('admin_list_sales_partner_agreements'); },
-  verify(agreementId: string, signerName: string, signerTitle: string, signatureSvg: string) { return rpc<any>('admin_verify_sales_partner_agreement', { p_agreement_id: agreementId, p_signer_name: signerName, p_signer_title: signerTitle, p_signature_svg: signatureSvg }); }
+  async verify(agreementId: string, signerName: string, signerTitle: string, signatureSvg: string) {
+    const result = await rpc<any>('admin_verify_sales_partner_agreement', { p_agreement_id: agreementId, p_signer_name: signerName, p_signer_title: signerTitle, p_signature_svg: signatureSvg });
+
+    // The Admin screen historically refreshed the list after verification but could
+    // leave its selected agreement snapshot at "Partner Signed" when the page was
+    // opened without an applicant query parameter. Canonicalize the successful
+    // result to the same page with that applicant selected so both panels reload
+    // from the verified database record. Verification itself is idempotent server-side.
+    if (typeof window !== 'undefined' && result?.success === true) {
+      try {
+        const agreements = await rpc<any[]>('admin_list_sales_partner_agreements');
+        const current = (agreements || []).find((item: any) => item?.id === agreementId);
+        const applicantId = String(current?.applicantId || current?.applicant_id || '').trim();
+        if (applicantId) {
+          const url = new URL(window.location.href);
+          url.searchParams.set('applicant', applicantId);
+          window.location.replace(url.toString());
+        }
+      } catch (refreshError) {
+        console.warn('Agreement verified but canonical Admin refresh could not be prepared.', refreshError);
+      }
+    }
+
+    return result;
+  }
 };
