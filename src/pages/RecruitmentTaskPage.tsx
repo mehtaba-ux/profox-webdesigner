@@ -479,7 +479,7 @@ function Summary({ label, value }: { label: string; value: string }) {
 
 function Field({ label, required, help, error, inputId, onBlur, children }: { label: string; required?: boolean; help?: string; error?: string; inputId: string; onBlur?: () => void; children: ReactElement<any> }) {
   const errorId = `${inputId}-error`;
-  const control = isValidElement(children) ? cloneElement(children, {
+  const control = isValidElement<any>(children) ? cloneElement(children, {
     id: inputId,
     'aria-invalid': error ? true : undefined,
     'aria-describedby': error ? errorId : undefined,
