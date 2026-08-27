@@ -10,7 +10,7 @@ import WorkspaceShell from './WorkspaceShell';
 import './AdminAppWorkspace.css';
 
 const SELLER_ROLES = new Set(['sales', 'sales_rep', 'sales_team']);
-const SALES_SETUP_SUPPORT_PATHS = ['/admin/seller-profile', '/admin/calendar', '/admin/booking-setup'];
+const SALES_SETUP_SUPPORT_PATHS = ['/admin/seller-profile', '/admin/booking-setup'];
 
 function activeWorkspaceForPath(pathname: string): WorkspaceAppId | 'workspace' | 'approvals' {
   if (pathname.startsWith('/admin/quotation-approvals')) return 'approvals';
