@@ -1,6 +1,7 @@
 import React from 'react';
 import { ShieldCheck } from 'lucide-react';
 import LegacyConfigurationCenter from './ConfigurationCenterLegacy';
+import ProfessionalIntegrationsAdmin from './ProfessionalIntegrationsAdmin';
 
 /**
  * Compatibility wrapper around non-commercial configuration tools.
@@ -33,6 +34,7 @@ export default function ConfigurationCenter() {
           </div>
         </div>
       </div>
+      <ProfessionalIntegrationsAdmin />
       <div className="legacy-configuration-center">
         <LegacyConfigurationCenter />
       </div>

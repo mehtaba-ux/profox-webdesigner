@@ -47,6 +47,17 @@ async function hasSignedInSession() {
   return Boolean(data.session?.user);
 }
 
+function normalizeInboxMessage(value: any): ChatMessage {
+  return {
+    ...value,
+    senderType: value?.senderType === 'staff' ? 'sales_rep' : value?.senderType,
+    senderName: String(value?.senderName || value?.fromEmail || ''),
+    messageText: String(value?.messageText || ''),
+    isInternalNote: Boolean(value?.isInternalNote),
+    createdAt: String(value?.createdAt || new Date().toISOString()),
+  } as ChatMessage;
+}
+
 // Small audible notification used by the seller inbox. It only runs after a
 // user gesture, which keeps it compatible with browser autoplay restrictions.
 export const playChatChime = () => {
@@ -182,11 +193,22 @@ export const getChatMessages = async (conversationId: string): Promise<ChatMessa
     return asArray<ChatMessage>(data);
   }
 
-  const { data, error } = await supabase.rpc('sales_chat_get_messages', {
+  // Staff use the canonical client timeline. It reuses the existing Sales Chat
+  // conversation and merges external client email into that same thread; it does
+  // not create a second inbox or a second customer/conversation identity.
+  const { data, error } = await supabase.rpc('sales_client_inbox_timeline', {
     p_conversation_id: conversationId,
   });
-  if (error) throw rpcError(error, 'Messages could not be loaded.');
-  return asArray<ChatMessage>(data);
+  if (!error) return asArray<any>(data).map(normalizeInboxMessage);
+
+  // Compatibility fallback for development environments that have not applied
+  // the provider-neutral migration yet. Production uses the unified RPC above.
+  if (!/sales_client_inbox_timeline|function .* does not exist/i.test(error.message || '')) {
+    throw rpcError(error, 'Messages could not be loaded.');
+  }
+  const legacy = await supabase.rpc('sales_chat_get_messages', { p_conversation_id: conversationId });
+  if (legacy.error) throw rpcError(legacy.error, 'Messages could not be loaded.');
+  return asArray<ChatMessage>(legacy.data);
 };
 
 export const sendChatMessage = async (input: {
