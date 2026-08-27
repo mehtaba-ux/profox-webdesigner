@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { AlertTriangle, Loader2, ShieldCheck } from 'lucide-react';
 import type { ApplicantRecord } from '../../lib/applicantService';
-import { useAuth } from '../../lib/AuthContext';
 import { supabase } from '../../lib/supabase';
 
 type TestBypassStatus = {
@@ -25,28 +24,39 @@ function messageFromError(error: unknown, fallback: string) {
 }
 
 export default function SalesAcademyTestBypassControl({ applicant, onChanged }: { applicant: ApplicantRecord; onChanged: () => Promise<void> }) {
-  const { isAdmin } = useAuth();
   const [status, setStatus] = useState<TestBypassStatus | null>(null);
+  const [authorized, setAuthorized] = useState(false);
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const loadStatus = async () => {
-    if (!isAdmin || !applicant.linkedUserId) return;
+    if (!applicant.linkedUserId || String(applicant.stage) !== 'Sales Academy Training') {
+      setAuthorized(false);
+      setStatus(null);
+      return;
+    }
+
     setLoading(true);
     setError(null);
     try {
-      const { data, error: rpcError } = await supabase.rpc('admin_get_sales_academy_test_bypass_status', { p_user_id: applicant.linkedUserId });
+      const { data, error: rpcError } = await supabase.rpc('admin_get_sales_academy_test_bypass_status', {
+        p_user_id: applicant.linkedUserId,
+      });
       if (rpcError) throw rpcError;
       setStatus((data || null) as TestBypassStatus | null);
+      setAuthorized(true);
     } catch (err) {
-      setError(messageFromError(err, 'Could not verify the one-time Academy test bypass.'));
+      const message = messageFromError(err, 'Could not verify the one-time Academy test bypass.');
+      setAuthorized(false);
+      setStatus(null);
+      if (!/admin access required/i.test(message)) setError(message);
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { void loadStatus(); }, [isAdmin, applicant.id, applicant.linkedUserId, applicant.stage]);
+  useEffect(() => { void loadStatus(); }, [applicant.id, applicant.linkedUserId, applicant.stage]);
 
   const applyTestBypass = async () => {
     if (!applicant.linkedUserId || !status?.eligible || busy) return;
@@ -72,7 +82,8 @@ export default function SalesAcademyTestBypassControl({ applicant, onChanged }: 
     }
   };
 
-  if (!isAdmin || !applicant.linkedUserId || String(applicant.stage) !== 'Sales Academy Training') return null;
+  if (!applicant.linkedUserId || String(applicant.stage) !== 'Sales Academy Training') return null;
+  if (!authorized && !loading) return null;
 
   return (
     <div className="rounded-xl border border-amber-300 bg-amber-50 p-3.5 text-sm leading-6 text-amber-950">
