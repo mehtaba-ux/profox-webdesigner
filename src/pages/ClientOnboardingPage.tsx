@@ -27,6 +27,10 @@ export default function ClientOnboardingPage() {
   const [notice, setNotice] = useState('');
   const [dirty, setDirty] = useState(false);
   const initialized = useRef(false);
+  const responsesRef = useRef<Record<string, string>>({});
+  const editVersion = useRef(0);
+  const savingRef = useRef(false);
+  const queuedAutosave = useRef(false);
 
   const load = async () => {
     setLoading(true);
@@ -44,7 +48,11 @@ export default function ClientOnboardingPage() {
     if (!existing.website && customer.website) existing.website = customer.website;
     if (!existing.phone && customer.phone) existing.phone = customer.phone;
     if (!existing.country && customer.country) existing.country = customer.country;
+    responsesRef.current = existing;
+    editVersion.current = 0;
+    queuedAutosave.current = false;
     setResponses(existing);
+    setDirty(false);
     initialized.current = true;
     setLoading(false);
   };
@@ -74,30 +82,60 @@ export default function ClientOnboardingPage() {
   const progress = requiredCount ? Math.round((completedRequired / requiredCount) * 100) : 100;
 
   const save = async (submit: boolean, quiet = false) => {
-    if (saving || data?.status === 'Completed') return;
+    if (data?.status === 'Completed') return;
+    if (savingRef.current) {
+      if (!submit) queuedAutosave.current = true;
+      return;
+    }
+
+    savingRef.current = true;
     setSaving(true);
     if (!quiet) { setError(''); setNotice(''); }
+
+    const versionAtStart = editVersion.current;
+    const payload = { ...responsesRef.current };
+    let completedNow = false;
+
     const { data: result, error: saveError } = await supabase.rpc('public_client_onboarding_save', {
       p_token: token,
-      p_responses: responses,
+      p_responses: payload,
       p_submit: submit
     });
+
     if (saveError) {
       setError(errorMessage(saveError, submit ? 'Onboarding could not be completed.' : 'Your progress could not be saved.'));
     } else if (submit) {
+      completedNow = true;
       setData((current: any) => ({ ...current, status: 'Completed', completedAt: result?.completedAt || new Date().toISOString() }));
       setDirty(false);
+      queuedAutosave.current = false;
       setNotice('Onboarding completed successfully. Your Client Portal access is being prepared.');
       if (result?.nextUrl) window.setTimeout(() => window.location.assign(result.nextUrl), 1000);
     } else {
-      setDirty(false);
-      if (!quiet) setNotice('Progress saved.');
+      const newerEdits = editVersion.current !== versionAtStart;
+      setDirty(newerEdits);
+      if (newerEdits) queuedAutosave.current = true;
+      if (!quiet && !newerEdits) setNotice('Progress saved.');
     }
+
+    savingRef.current = false;
     setSaving(false);
+
+    const followUp = queuedAutosave.current;
+    queuedAutosave.current = false;
+    if (followUp && !completedNow) {
+      window.setTimeout(() => void save(false, true), 0);
+    }
   };
 
   const update = (key: string, value: string) => {
-    setResponses(current => ({ ...current, [key]: value }));
+    editVersion.current += 1;
+    setResponses(current => {
+      const next = { ...current, [key]: value };
+      responsesRef.current = next;
+      return next;
+    });
+    if (savingRef.current) queuedAutosave.current = true;
     setDirty(true);
   };
 
