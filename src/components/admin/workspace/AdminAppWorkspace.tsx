@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { ChevronRight, ExternalLink } from 'lucide-react';
 import { Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import AdminDashboard from '../AdminDashboard';
+import ClientOnboardingOperations from '../ClientOnboardingOperations';
 import { useAuth } from '../../../lib/AuthContext';
 import {
   canAccessWorkspaceApp,
@@ -52,6 +53,8 @@ export default function AdminAppWorkspace() {
   }
   if (!requestedTab) return <Navigate to={getWorkspaceAppLaunchPath(app, role, status)} replace />;
 
+  const showClientOnboardingOperations = app.id === 'projects' && requestedTab === 'projects' && (role === 'admin' || role === 'project_manager');
+
   const openItem = (item: WorkspaceNavItem) => {
     if (item.path) navigate(item.path, { state: { fromWorkspaceApp: app.id } });
     else if (item.tab) navigate(`/admin/app/${app.id}?tab=${encodeURIComponent(item.tab)}`);
@@ -97,6 +100,7 @@ export default function AdminAppWorkspace() {
       </div>
 
       <div className="profox-admin-app-embed min-h-0">
+        {showClientOnboardingOperations && <ClientOnboardingOperations />}
         <AdminDashboard key={`${app.id}:${location.search}`} />
       </div>
     </WorkspaceShell>
