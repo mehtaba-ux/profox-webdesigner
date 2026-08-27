@@ -54,6 +54,9 @@ function resolveLessonIndex(lessonCount: number, item?: UserProgress, checkpoint
   const saved = Number(checkpoint?.lessonIndex);
   if (Number.isInteger(saved) && saved >= 0) return Math.min(saved, lessonCount - 1);
   const percent = Math.max(0, Math.min(100, Number(item?.progress_percent || 0)));
+  // Legacy module starts used 10% as a placeholder. Without a real resume checkpoint,
+  // that must still mean "start at Lesson 1", not "skip to Lesson 2".
+  if (percent <= 10) return 0;
   const derived = Math.floor((percent / 100) * lessonCount);
   return Math.min(Math.max(derived, 0), lessonCount - 1);
 }
@@ -140,7 +143,9 @@ export default function MyTraining() {
       setCurrentLessonIndex(
         isSpecializedModule(module.slug)
           ? 0
-          : resolveLessonIndex(loadedLessons.length, currentProgress, resumeResult.data)
+          : startedNow
+            ? 0
+            : resolveLessonIndex(loadedLessons.length, currentProgress, resumeResult.data)
       );
 
       if (startedNow) await loadData();
@@ -183,6 +188,19 @@ export default function MyTraining() {
     return true;
   };
 
+  const handlePreviousLesson = async () => {
+    if (!selectedModule || currentLessonIndex <= 0) return;
+    const previousIndex = currentLessonIndex - 1;
+    setCurrentLessonIndex(previousIndex);
+
+    const currentProgress = getModuleProgress(selectedModule.id);
+    const isComplete = currentProgress?.status === 'Passed' || currentProgress?.status === 'Completed';
+    if (!isComplete && !isSpecializedModule(selectedModule.slug)) {
+      const resume = await academyResumeService.save(selectedModule.id, { view: 'lesson', lessonIndex: previousIndex });
+      if (resume.error) console.error('Unable to save lesson resume checkpoint:', resume.error);
+    }
+  };
+
   const handleCompleteLessonModule = async () => {
     if (!selectedModule) return;
     const currentProgress = getModuleProgress(selectedModule.id);
@@ -191,7 +209,13 @@ export default function MyTraining() {
     if (currentLessonIndex < selectedLessons.length - 1) {
       const nextIndex = currentLessonIndex + 1;
       setCurrentLessonIndex(nextIndex);
-      const percent = Math.round((nextIndex / Math.max(selectedLessons.length, 1)) * 100);
+
+      const isComplete = currentProgress.status === 'Passed' || currentProgress.status === 'Completed';
+      if (isComplete) return;
+
+      const calculatedPercent = Math.round((nextIndex / Math.max(selectedLessons.length, 1)) * 100);
+      // Revision must never move recorded progress backwards.
+      const percent = Math.max(Number(currentProgress.progress_percent || 0), calculatedPercent);
       const [{ error }, resume] = await Promise.all([
         trainingService.updateProgress(currentProgress.id, { progress_percent: percent }),
         academyResumeService.save(selectedModule.id, { view: 'lesson', lessonIndex: nextIndex })
@@ -201,6 +225,7 @@ export default function MyTraining() {
       return;
     }
 
+    if (currentProgress.status === 'Passed' || currentProgress.status === 'Completed') return;
     if (await markCurrentModuleComplete()) exitSelectedModule();
   };
 
@@ -582,35 +607,53 @@ export default function MyTraining() {
               onboardingStatus={profile?.onboardingStatus}
             />
           ) : (
-            <div className="space-y-8 rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
+            <div className="space-y-8 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-8">
               <div className="border-b border-slate-100 pb-6">
                 <div className="text-[10px] font-black uppercase tracking-widest text-[#000080]">{selectedModule.slug}</div>
-                <h2 className="text-2xl font-bold text-slate-900">{selectedModule.title}</h2>
-                <p className="mt-1 text-xs text-slate-500">{selectedModule.description}</p>
+                <h2 className="mt-1 text-2xl font-bold leading-tight text-slate-900 sm:text-3xl">{selectedModule.title}</h2>
+                <p className="mt-2 text-sm leading-6 text-slate-500">{selectedModule.description}</p>
               </div>
 
               {selectedLessons.length > 0 && selectedLessons[currentLessonIndex] && (
-                <div className="space-y-6">
-                  <div className="text-xs font-bold uppercase tracking-wider text-[#000080]">
-                    Lesson {currentLessonIndex + 1} of {selectedLessons.length}: {selectedLessons[currentLessonIndex].title}
+                <div className="mx-auto w-full max-w-4xl space-y-5 sm:space-y-6">
+                  <div className="rounded-2xl border border-[#000080]/10 bg-[#000080]/[0.03] px-4 py-4 sm:px-6">
+                    <div className="text-xs font-bold uppercase tracking-[0.14em] text-[#000080]">
+                      Lesson {currentLessonIndex + 1} of {selectedLessons.length}
+                    </div>
+                    <h3 className="mt-1.5 text-xl font-bold leading-snug text-slate-900 sm:text-2xl">
+                      {selectedLessons[currentLessonIndex].title}
+                    </h3>
                   </div>
-                  <div className="prose prose-slate max-w-none rounded-2xl border border-slate-200/80 bg-slate-50 p-6 text-xs leading-relaxed text-slate-700">
+                  <div className="prose prose-slate max-w-none rounded-2xl border border-slate-200/80 bg-slate-50/70 p-5 text-[15px] leading-7 text-slate-700 sm:p-8 sm:text-base sm:leading-8 prose-headings:mt-8 prose-headings:mb-4 prose-headings:font-bold prose-headings:leading-tight prose-headings:text-slate-900 prose-p:my-4 prose-li:my-2 prose-ul:my-5 prose-ol:my-5 prose-strong:font-bold prose-strong:text-slate-900">
                     <ReactMarkdown>{selectedLessons[currentLessonIndex].content}</ReactMarkdown>
                   </div>
                 </div>
               )}
 
-              <div className="flex items-center justify-between border-t border-slate-100 pt-6">
-                <span className="text-xs text-slate-400">Step {currentLessonIndex + 1} of {selectedLessons.length || 1}</span>
-                {!selectedCompleted && (
-                  <button
-                    onClick={() => void handleCompleteLessonModule()}
-                    className="flex cursor-pointer items-center gap-2 rounded-xl bg-[#000080] px-8 py-3.5 text-xs font-bold text-white shadow-lg transition-all hover:bg-[#000066]"
-                  >
-                    <span>{currentLessonIndex < selectedLessons.length - 1 ? 'Next Lesson' : 'Complete Module'}</span>
-                    <ChevronRight className="h-4 w-4" />
-                  </button>
-                )}
+              <div className="flex flex-col gap-4 border-t border-slate-100 pt-6 sm:flex-row sm:items-center sm:justify-between">
+                <span className="text-sm font-medium text-slate-500">Step {currentLessonIndex + 1} of {selectedLessons.length || 1}</span>
+                <div className="flex w-full flex-col-reverse gap-3 sm:w-auto sm:flex-row sm:items-center">
+                  {currentLessonIndex > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => void handlePreviousLesson()}
+                      className="flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-6 py-3 text-sm font-bold text-slate-700 transition-all hover:border-[#000080] hover:text-[#000080]"
+                    >
+                      <ArrowLeft className="h-4 w-4" />
+                      <span>Previous Lesson</span>
+                    </button>
+                  )}
+                  {(currentLessonIndex < selectedLessons.length - 1 || !selectedCompleted) && (
+                    <button
+                      type="button"
+                      onClick={() => void handleCompleteLessonModule()}
+                      className="flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-xl bg-[#000080] px-7 py-3 text-sm font-bold text-white shadow-lg transition-all hover:bg-[#000066]"
+                    >
+                      <span>{currentLessonIndex < selectedLessons.length - 1 ? 'Next Lesson' : 'Complete Module'}</span>
+                      <ChevronRight className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           )}
