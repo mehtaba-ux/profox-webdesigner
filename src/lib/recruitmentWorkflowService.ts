@@ -110,7 +110,7 @@ const SALES_FALLBACK_STAGES = [
   'CRM Assessment',
   'Selected',
   'Agreement Pending',
-  'One-Day Training',
+  'Sales Academy Training',
   'Final Approval',
   'Ready for System Access',
   'Activated',
@@ -152,7 +152,7 @@ function roleDescriptor(role: RecruitmentSystemRole) {
   if (role === 'developer') return { roleLabel: 'Web Developer', academyLabel: 'Developer Academy', academyStage: 'Developer Academy' };
   if (role === 'uiux_designer') return { roleLabel: 'UI/UX Designer', academyLabel: 'Design Academy', academyStage: 'Design Academy' };
   if (role === 'content_writer') return { roleLabel: 'Content Writer', academyLabel: 'Content Academy', academyStage: 'Content Academy' };
-  if (role === 'sales') return { roleLabel: 'Sales Representative', academyLabel: 'Sales Academy', academyStage: 'One-Day Training' };
+  if (role === 'sales') return { roleLabel: 'Sales Representative', academyLabel: 'Sales Academy', academyStage: 'Sales Academy Training' };
   return { roleLabel: 'Candidate', academyLabel: 'Onboarding', academyStage: '' };
 }
 
