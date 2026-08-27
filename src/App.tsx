@@ -95,7 +95,8 @@ const PublicPaymentCheckout = lazy(() => import('./pages/PublicPaymentCheckout')
 const SalesPartnerAgreementSign = lazy(() => import('./pages/SalesPartnerAgreementSign'));
 const SalesOnboardingSetup = lazy(() => import('./pages/SalesOnboardingSetup'));
 const RecruitmentTaskPage = lazy(() => import('./pages/RecruitmentTaskPage'));
-const ClientDashboard = lazy(() => import('./components/client/ClientDashboard'));
+const ClientPortalEntry = lazy(() => import('./components/client/ClientPortalEntry'));
+const ClientOnboardingPage = lazy(() => import('./pages/ClientOnboardingPage'));
 
 function LegacyPageRedirect() {
   const { slug = '' } = useParams<{ slug: string }>();
@@ -132,6 +133,7 @@ export default function App() {
     </Route>
     <Route path="/quotation/review/:token" element={<PublicQuotationReview/>}/>
     <Route path="/pay/:token" element={<PublicPaymentCheckout/>}/>
+    <Route path="/client-onboarding/:token" element={<ClientOnboardingPage/>}/>
     <Route path="/agreement/sign/:token" element={<SalesPartnerAgreementSign/>}/>
     <Route path="/recruitment/task/:token" element={<RecruitmentTaskPage/>}/>
     <Route path="/careers/:slug/apply" element={<DeveloperApplicationPage/>}/>
@@ -139,7 +141,7 @@ export default function App() {
     <Route path="/team-onboarding/setup" element={<SalesOnboardingSetup/>}/>
     <Route path="/design-academy" element={<DesignAcademyPage/>}/>
     <Route path="/academy/final-certification" element={<RoleFinalCertificationPage/>}/>
-    <Route path="/client-portal" element={<ClientDashboard/>}/>
+    <Route path="/client-portal" element={<ClientPortalEntry/>}/>
     <Route path="/sales/mock-call-evaluator" element={<MockCallEvaluatorWorkspace/>}/>
     <Route element={<WorkspaceRouteFrame/>}>
       <Route path="/admin/quotations/new" element={<QuotationWorkspace/>}/>
