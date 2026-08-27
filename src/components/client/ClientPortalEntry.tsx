@@ -25,7 +25,7 @@ export default function ClientPortalEntry() {
   const [authNotice, setAuthNotice] = useState('');
   const [claimBusy, setClaimBusy] = useState(false);
   const [claimError, setClaimError] = useState('');
-  const [recoveryMode, setRecoveryMode] = useState(() => window.location.hash.includes('type=recovery') || searchParams.get('type') === 'recovery');
+  const [recoveryMode, setRecoveryMode] = useState(() => window.location.hash.includes('type=recovery') || searchParams.get('type') === 'recovery' || searchParams.get('recovery') === '1');
   const [recoveryPassword, setRecoveryPassword] = useState('');
   const [recoveryConfirm, setRecoveryConfirm] = useState('');
   const [recoveryBusy, setRecoveryBusy] = useState(false);
@@ -117,8 +117,10 @@ export default function ClientPortalEntry() {
     if (!normalizedEmail) { setAuthError('Enter your registered Client Portal email first.'); return; }
     setAuthBusy(true);
     setAuthError('');
-    const suffix = inviteToken ? `?invite=${encodeURIComponent(inviteToken)}` : '';
-    const { error } = await supabase.auth.resetPasswordForEmail(normalizedEmail, { redirectTo: `${window.location.origin}/client-portal${suffix}` });
+    const recoveryParams = new URLSearchParams({ recovery: '1' });
+    if (inviteToken) recoveryParams.set('invite', inviteToken);
+    const redirectTo = `${window.location.origin}/client-portal?${recoveryParams.toString()}`;
+    const { error } = await supabase.auth.resetPasswordForEmail(normalizedEmail, { redirectTo });
     setAuthNotice(error ? '' : 'If this email has a Client Portal account, a password reset link has been sent.');
     if (error) setAuthError('Password reset email could not be sent.');
     setAuthBusy(false);
