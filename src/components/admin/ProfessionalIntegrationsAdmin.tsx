@@ -1,7 +1,19 @@
 import React, { useEffect, useState } from 'react';
-import { CalendarDays, CheckCircle2, Loader2, Mail, RefreshCw, Save, ShieldCheck, Video } from 'lucide-react';
+import {
+  Activity,
+  AlertTriangle,
+  CalendarDays,
+  CheckCircle2,
+  Loader2,
+  Mail,
+  RefreshCw,
+  Save,
+  ShieldCheck,
+  Video,
+} from 'lucide-react';
 import {
   professionalIntegrationService,
+  type ProfessionalIntegrationHealth,
   type ProfessionalIntegrationsConfig,
 } from '../../lib/professionalIntegrationService';
 
@@ -36,8 +48,24 @@ function Toggle({ checked, onChange, label, detail, disabled = false }: {
   );
 }
 
+function Metric({ label, value, warning = false }: { label: string; value: number; warning?: boolean }) {
+  return (
+    <div className={`rounded-xl border px-3 py-2.5 ${warning && value > 0 ? 'border-amber-200 bg-amber-50' : 'border-slate-200 bg-white'}`}>
+      <div className={`text-lg font-black ${warning && value > 0 ? 'text-amber-800' : 'text-slate-950'}`}>{value}</div>
+      <div className="mt-0.5 text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">{label}</div>
+    </div>
+  );
+}
+
+function formatTimestamp(value: string | null | undefined) {
+  if (!value) return 'None';
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? 'Unknown' : parsed.toLocaleString();
+}
+
 export default function ProfessionalIntegrationsAdmin() {
   const [config, setConfig] = useState<ProfessionalIntegrationsConfig | null>(null);
+  const [health, setHealth] = useState<ProfessionalIntegrationHealth | null>(null);
   const [clientId, setClientId] = useState('');
   const [clientSecret, setClientSecret] = useState('');
   const [organizationId, setOrganizationId] = useState('');
@@ -45,16 +73,22 @@ export default function ProfessionalIntegrationsAdmin() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [healthError, setHealthError] = useState('');
   const [message, setMessage] = useState('');
 
   const load = async () => {
-    setLoading(true); setError('');
+    setLoading(true); setError(''); setHealthError('');
     try {
       const next = await professionalIntegrationService.getAdminConfig();
       setConfig(next);
       setClientId(next.zohoClientIdHint || '');
       setOrganizationId(next.zohoOrganizationId || '');
       setDataCenter(next.zohoDataCenter || 'in');
+      try {
+        setHealth(await professionalIntegrationService.getAdminHealth());
+      } catch (err) {
+        setHealthError(errorMessage(err, 'Integration health could not be loaded.'));
+      }
     } catch (err) { setError(errorMessage(err, 'Professional integration settings could not be loaded.')); }
     finally { setLoading(false); }
   };
@@ -84,6 +118,12 @@ export default function ProfessionalIntegrationsAdmin() {
       const next = await professionalIntegrationService.savePolicy(config);
       setConfig(next);
       setMessage('Professional integration policy saved. ProFox remains the operational source of truth.');
+      try {
+        setHealth(await professionalIntegrationService.getAdminHealth());
+        setHealthError('');
+      } catch (err) {
+        setHealthError(errorMessage(err, 'Integration health could not be refreshed.'));
+      }
     } catch (err) { setError(errorMessage(err, 'Professional integration policy could not be saved.')); }
     finally { setBusy(false); }
   };
@@ -92,6 +132,10 @@ export default function ProfessionalIntegrationsAdmin() {
   if (!config) return <div className="rounded-2xl border border-red-200 bg-red-50 p-5 text-sm font-semibold text-red-700">{error || 'Professional integrations are unavailable.'}</div>;
 
   const zohoLocked = !config.zohoProviderConfigured;
+  const currentIssues = health
+    ? health.google.deadLetter + health.google.reconnectRequired + health.zoho.errorAccounts + health.mailboxes.error + health.clientInbox.deliveryIssues
+    : 0;
+
   return (
     <section className="space-y-5 rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -110,6 +154,58 @@ export default function ProfessionalIntegrationsAdmin() {
         <div className="rounded-2xl border border-slate-200 p-4"><Mail className="h-5 w-5 text-[#000080]" /><div className="mt-2 text-sm font-black">Mail</div><div className="mt-1 text-xs text-slate-500">Brevo remains transactional delivery. Zoho Mail is for staff professional mailboxes and Client Inbox sync.</div></div>
         <div className="rounded-2xl border border-slate-200 p-4"><CalendarDays className="h-5 w-5 text-[#000080]" /><div className="mt-2 text-sm font-black">Calendar</div><div className="mt-1 text-xs text-slate-500">Google remains the default. Zoho Calendar can be selected later per policy/account without duplicating ProFox meetings.</div></div>
         <div className="rounded-2xl border border-slate-200 p-4"><Video className="h-5 w-5 text-[#000080]" /><div className="mt-2 text-sm font-black">Meetings</div><div className="mt-1 text-xs text-slate-500">Google Meet remains available. Zoho Meeting stays dormant until explicitly configured and enabled.</div></div>
+      </div>
+
+      <div className="rounded-3xl border border-slate-200 bg-slate-50/70 p-5">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <div className="flex items-center gap-2 text-sm font-black text-slate-950"><Activity className="h-4 w-4 text-[#000080]" />Integration health</div>
+            <p className="mt-1 text-xs leading-5 text-slate-500">Operational counts only. OAuth tokens, secrets and message contents are never returned by this health view.</p>
+          </div>
+          {health && (
+            <div className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] ${currentIssues > 0 ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'}`}>
+              {currentIssues > 0 ? <AlertTriangle className="h-3.5 w-3.5" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
+              {currentIssues > 0 ? `${currentIssues} item${currentIssues === 1 ? '' : 's'} need attention` : 'Operational'}
+            </div>
+          )}
+        </div>
+
+        {healthError && <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs font-semibold text-amber-800">{healthError}</div>}
+        {health && (
+          <div className="mt-4 space-y-4">
+            <div>
+              <div className="mb-2 text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Google calendar sync</div>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-8">
+                <Metric label="Connected" value={health.google.connectedAccounts} />
+                <Metric label="Active provider" value={health.google.activeProviderAccounts} />
+                <Metric label="Pending" value={health.google.pending} />
+                <Metric label="Retry" value={health.google.retry} warning />
+                <Metric label="Processing" value={health.google.processing} />
+                <Metric label="Reconnect" value={health.google.reconnectRequired} warning />
+                <Metric label="Dead letter" value={health.google.deadLetter} warning />
+                <Metric label="Skipped" value={health.google.skipped} />
+              </div>
+              <div className="mt-2 text-[11px] text-slate-500">Oldest pending/retry: <span className="font-bold text-slate-700">{formatTimestamp(health.google.oldestPendingAt)}</span>. Historical failed jobs retained: <span className="font-bold text-slate-700">{health.google.failedHistorical}</span>.</div>
+            </div>
+
+            <div className="grid gap-3 md:grid-cols-3">
+              <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                <div className="text-xs font-black text-slate-900">Zoho connections</div>
+                <div className="mt-3 grid grid-cols-2 gap-2"><Metric label="Connected" value={health.zoho.connectedAccounts} /><Metric label="Errors" value={health.zoho.errorAccounts} warning /></div>
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                <div className="text-xs font-black text-slate-900">Professional mailboxes</div>
+                <div className="mt-3 grid grid-cols-2 gap-2"><Metric label="Active" value={health.mailboxes.active} /><Metric label="Provisioning" value={health.mailboxes.provisioning} /><Metric label="Errors" value={health.mailboxes.error} warning /><Metric label="Suspended" value={health.mailboxes.suspended} /></div>
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                <div className="text-xs font-black text-slate-900">Unified Client Inbox</div>
+                <div className="mt-3 grid grid-cols-2 gap-2"><Metric label="Last 24 hours" value={health.clientInbox.messagesLast24Hours} /><Metric label="Delivery issues" value={health.clientInbox.deliveryIssues} warning /></div>
+                <p className="mt-2 text-[11px] leading-4 text-slate-500">External rich HTML is suppressed in the staff timeline until a trusted sanitizer is present in the ingestion path.</p>
+              </div>
+            </div>
+            <div className="text-[10px] text-slate-400">Health generated: {formatTimestamp(health.generatedAt)}</div>
+          </div>
+        )}
       </div>
 
       <div className="rounded-3xl border border-blue-100 bg-blue-50/50 p-5">
