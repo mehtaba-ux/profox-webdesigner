@@ -21,6 +21,36 @@ export interface ProfessionalIntegrationsConfig {
   zohoClientSecretStored: boolean;
 }
 
+export interface ProfessionalIntegrationHealth {
+  generatedAt: string;
+  google: {
+    connectedAccounts: number;
+    activeProviderAccounts: number;
+    pending: number;
+    retry: number;
+    processing: number;
+    reconnectRequired: number;
+    failedHistorical: number;
+    deadLetter: number;
+    skipped: number;
+    oldestPendingAt: string | null;
+  };
+  zoho: {
+    connectedAccounts: number;
+    errorAccounts: number;
+  };
+  mailboxes: {
+    active: number;
+    provisioning: number;
+    error: number;
+    suspended: number;
+  };
+  clientInbox: {
+    messagesLast24Hours: number;
+    deliveryIssues: number;
+  };
+}
+
 const DEFAULT_CONFIG: ProfessionalIntegrationsConfig = {
   zohoEnabled: false,
   zohoMailEnabled: false,
@@ -36,6 +66,25 @@ const DEFAULT_CONFIG: ProfessionalIntegrationsConfig = {
   zohoProviderConfigured: false,
   zohoClientIdHint: '',
   zohoClientSecretStored: false,
+};
+
+const DEFAULT_HEALTH: ProfessionalIntegrationHealth = {
+  generatedAt: '',
+  google: {
+    connectedAccounts: 0,
+    activeProviderAccounts: 0,
+    pending: 0,
+    retry: 0,
+    processing: 0,
+    reconnectRequired: 0,
+    failedHistorical: 0,
+    deadLetter: 0,
+    skipped: 0,
+    oldestPendingAt: null,
+  },
+  zoho: { connectedAccounts: 0, errorAccounts: 0 },
+  mailboxes: { active: 0, provisioning: 0, error: 0, suspended: 0 },
+  clientInbox: { messagesLast24Hours: 0, deliveryIssues: 0 },
 };
 
 function normalize(value: any): ProfessionalIntegrationsConfig {
@@ -58,6 +107,43 @@ function normalize(value: any): ProfessionalIntegrationsConfig {
   };
 }
 
+function count(value: unknown) {
+  const parsed = Number(value || 0);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
+}
+
+function normalizeHealth(value: any): ProfessionalIntegrationHealth {
+  return {
+    generatedAt: String(value?.generatedAt || ''),
+    google: {
+      connectedAccounts: count(value?.google?.connectedAccounts),
+      activeProviderAccounts: count(value?.google?.activeProviderAccounts),
+      pending: count(value?.google?.pending),
+      retry: count(value?.google?.retry),
+      processing: count(value?.google?.processing),
+      reconnectRequired: count(value?.google?.reconnectRequired),
+      failedHistorical: count(value?.google?.failedHistorical),
+      deadLetter: count(value?.google?.deadLetter),
+      skipped: count(value?.google?.skipped),
+      oldestPendingAt: value?.google?.oldestPendingAt ? String(value.google.oldestPendingAt) : null,
+    },
+    zoho: {
+      connectedAccounts: count(value?.zoho?.connectedAccounts),
+      errorAccounts: count(value?.zoho?.errorAccounts),
+    },
+    mailboxes: {
+      active: count(value?.mailboxes?.active),
+      provisioning: count(value?.mailboxes?.provisioning),
+      error: count(value?.mailboxes?.error),
+      suspended: count(value?.mailboxes?.suspended),
+    },
+    clientInbox: {
+      messagesLast24Hours: count(value?.clientInbox?.messagesLast24Hours),
+      deliveryIssues: count(value?.clientInbox?.deliveryIssues),
+    },
+  };
+}
+
 function throwRpc(error: any, fallback: string): never {
   throw new Error(error?.message || fallback);
 }
@@ -67,6 +153,12 @@ export const professionalIntegrationService = {
     const { data, error } = await supabase.rpc('admin_get_professional_integrations');
     if (error) throwRpc(error, 'Professional integration settings could not be loaded.');
     return normalize(data);
+  },
+
+  async getAdminHealth(): Promise<ProfessionalIntegrationHealth> {
+    const { data, error } = await supabase.rpc('admin_get_integration_health');
+    if (error) throwRpc(error, 'Integration health could not be loaded.');
+    return normalizeHealth(data || DEFAULT_HEALTH);
   },
 
   async saveZohoProvider(input: {
