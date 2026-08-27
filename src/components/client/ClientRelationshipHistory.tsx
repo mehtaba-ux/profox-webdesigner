@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { FileText, Loader2, MessageSquareText, RefreshCw, Send, ShieldCheck } from 'lucide-react';
+import { ClipboardList, FileText, Loader2, MessageSquareText, RefreshCw, Send, ShieldCheck } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 
 function money(value: unknown, currency = 'USD') {
@@ -34,6 +34,7 @@ export default function ClientRelationshipHistory() {
   const quotations = Array.isArray(data?.quotations) ? data.quotations : [];
   const payments = Array.isArray(data?.payments) ? data.payments : [];
   const projects = Array.isArray(data?.projects) ? data.projects : [];
+  const onboardings = Array.isArray(data?.onboardings) ? data.onboardings : [];
   const selected = useMemo(() => conversations.find((item: any) => item.id === selectedConversationId) || null, [conversations, selectedConversationId]);
 
   const sendReply = async () => {
@@ -60,7 +61,7 @@ export default function ClientRelationshipHistory() {
         <div>
           <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-[#000080]"><ShieldCheck className="h-4 w-4" />Permanent Relationship History</div>
           <h2 className="mt-2 text-xl font-black text-slate-900">Your ProFox history stays with you</h2>
-          <p className="mt-1 max-w-3xl text-xs leading-5 text-slate-500">Conversations, customer-facing quotations, payments and projects remain connected to your verified account from the first enquiry onward.</p>
+          <p className="mt-1 max-w-3xl text-xs leading-5 text-slate-500">Conversations, onboarding submissions, customer-facing quotations, payments and projects remain connected to your verified account from the first enquiry onward.</p>
           {data?.identity?.email && <p className="mt-2 text-[11px] font-semibold text-slate-500">Verified relationship: {data.identity.email} · {data.identity.relationshipStatus === 'client' ? 'Client' : 'Prospect'}</p>}
         </div>
         <button type="button" onClick={() => void load()} className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-black text-slate-700 hover:bg-slate-50"><RefreshCw className="h-4 w-4" />Refresh</button>
@@ -68,8 +69,9 @@ export default function ClientRelationshipHistory() {
 
       {error && <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-xs font-semibold text-red-700">{error}</div>}
 
-      <div className="grid gap-4 sm:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <Metric label="Conversations" value={String(conversations.length)} />
+        <Metric label="Onboardings" value={String(onboardings.length)} />
         <Metric label="Quotations" value={String(quotations.length)} />
         <Metric label="Payments" value={String(payments.length)} />
         <Metric label="Projects" value={String(projects.length)} />
@@ -102,6 +104,21 @@ export default function ClientRelationshipHistory() {
             <div className="border-t border-slate-200 p-5"><textarea rows={3} maxLength={4000} value={reply} onChange={event => setReply(event.target.value)} placeholder="Continue this conversation..." className="w-full resize-none rounded-2xl border border-slate-200 p-3 text-sm outline-none focus:border-[#000080]"/><div className="mt-3 flex justify-end"><button type="button" disabled={sending || !reply.trim()} onClick={() => void sendReply()} className="inline-flex items-center gap-2 rounded-xl bg-[#000080] px-5 py-2.5 text-xs font-black text-white disabled:opacity-40">{sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}Send Message</button></div></div>
           </>}
         </div>
+      </div>
+
+      <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+        <h3 className="flex items-center gap-2 text-sm font-black text-slate-900"><ClipboardList className="h-4 w-4 text-[#000080]" />Client Onboarding History</h3>
+        <p className="mt-1 text-xs leading-5 text-slate-500">Your submitted onboarding information remains attached to the project it was provided for.</p>
+        <div className="mt-4 space-y-4">{onboardings.length === 0 ? <p className="text-xs text-slate-400">No onboarding submission is available yet.</p> : onboardings.map((onboarding: any) => (
+          <details key={onboarding.id} className="overflow-hidden rounded-2xl border border-slate-100 bg-slate-50">
+            <summary className="cursor-pointer list-none p-4"><div className="flex flex-wrap items-center justify-between gap-3"><div><div className="text-xs font-black text-slate-900">{onboarding.projectNumber} · {onboarding.projectName}</div><div className="mt-1 text-[10px] text-slate-400">{onboarding.completedAt ? `Completed ${new Date(onboarding.completedAt).toLocaleString()}` : onboarding.status}</div></div><span className={`rounded-full px-2.5 py-1 text-[9px] font-black uppercase ${onboarding.status === 'Completed' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>{onboarding.status}</span></div></summary>
+            <div className="grid gap-3 border-t border-slate-200 bg-white p-4 md:grid-cols-2">{(onboarding.fields || []).map((field: any) => {
+              const value = onboarding.responses?.[field.key];
+              if (value == null || String(value).trim() === '') return null;
+              return <div key={field.key} className={field.type === 'textarea' ? 'md:col-span-2' : ''}><div className="text-[9px] font-black uppercase tracking-wider text-slate-400">{field.label || field.key}</div><div className="mt-1 whitespace-pre-wrap break-words text-xs leading-5 text-slate-700">{String(value)}</div></div>;
+            })}</div>
+          </details>
+        ))}</div>
       </div>
 
       <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
