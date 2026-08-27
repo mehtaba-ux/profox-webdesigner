@@ -17,6 +17,12 @@ binding = "ASSETS"
 ENVIRONMENT = "production"
 SUPABASE_URL = "https://calabtayklhltyiriiwo.supabase.co"
 
+# The deployment supplies this through --secrets-file from the protected GitHub
+# environment. Declaring it here makes Wrangler warn locally and reject a
+# production deploy that would leave authenticated R2 uploads unusable.
+[secrets]
+required = ["SUPABASE_PUBLISHABLE_KEY"]
+
 # Configure SUPABASE_PUBLISHABLE_KEY as an encrypted Worker secret before deploy.
 # If the media API is hosted on a different origin from the application, also add
 # an ALLOWED_ORIGINS Worker variable containing a comma-separated origin list.

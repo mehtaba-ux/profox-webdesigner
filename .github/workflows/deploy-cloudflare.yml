@@ -26,7 +26,8 @@ jobs:
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
       VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
-      PUBLIC_APP_URL: ${{ inputs.public_app_url || vars.PROFOX_PUBLIC_APP_URL }}
+      SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY || secrets.VITE_SUPABASE_ANON_KEY }}
+      PUBLIC_APP_URL: ${{ inputs.public_app_url || vars.PROFOX_PUBLIC_APP_URL || 'https://www.profoxwebdesigner.com' }}
 
     steps:
       - name: Checkout
@@ -46,7 +47,7 @@ jobs:
         run: |
           set -euo pipefail
           missing=0
-          for name in CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID VITE_SUPABASE_URL VITE_SUPABASE_ANON_KEY; do
+          for name in CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID VITE_SUPABASE_URL VITE_SUPABASE_ANON_KEY SUPABASE_PUBLISHABLE_KEY; do
             if [ -z "${!name:-}" ]; then
               echo "::error::$name is not configured for the production GitHub environment."
               missing=1
@@ -59,11 +60,17 @@ jobs:
       - name: TypeScript check
         run: npm run lint
 
+      - name: Prepare encrypted Worker runtime configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          printf 'SUPABASE_PUBLISHABLE_KEY=%s\n' "$SUPABASE_PUBLISHABLE_KEY" > "$RUNNER_TEMP/profox-worker-secrets.env"
+
       - name: Deploy existing Cloudflare Worker
-        run: npx wrangler deploy
+        run: npx wrangler deploy --secrets-file "$RUNNER_TEMP/profox-worker-secrets.env"
 
       - name: Verify public Worker health
-        if: ${{ env.PUBLIC_APP_URL != '' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -77,6 +84,12 @@ jobs:
           if (payload.runtime !== 'cloudflare-worker') {
             throw new Error(`Unexpected runtime: ${payload.runtime ?? 'missing'}`);
           }
+          if (payload.r2StorageBound !== true) {
+            throw new Error('The production R2 media bucket is not bound.');
+          }
+          if (payload.r2WriteAuthConfigured !== true) {
+            throw new Error('The production Worker cannot authenticate profile uploads.');
+          }
           console.log(`Verified Cloudflare Worker health at ${new Date().toISOString()}`);
           NODE
 
@@ -84,9 +97,4 @@ jobs:
         if: ${{ always() }}
         shell: bash
         run: |
-          if [ -n "${PUBLIC_APP_URL:-}" ]; then
-            echo "Public health target: ${PUBLIC_APP_URL%/}/api/health" >> "$GITHUB_STEP_SUMMARY"
-          else
-            echo "Deployment ran without public-domain verification because PROFOX_PUBLIC_APP_URL / workflow input is not configured." >> "$GITHUB_STEP_SUMMARY"
-            echo "The public production deployment gate remains open until /api/health is verified on the real application URL." >> "$GITHUB_STEP_SUMMARY"
-          fi
+          echo "Public health target: ${PUBLIC_APP_URL%/}/api/health" >> "$GITHUB_STEP_SUMMARY"
