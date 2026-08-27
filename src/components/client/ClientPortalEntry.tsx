@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ArrowRight, KeyRound, Loader2, Lock, LogOut, Mail, ShieldCheck, UserPlus } from 'lucide-react';
+import { ArrowRight, CheckCircle2, KeyRound, Loader2, Lock, LogOut, Mail, ShieldCheck, UserPlus } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../lib/AuthContext';
 import { supabase } from '../../lib/supabase';
@@ -25,6 +25,12 @@ export default function ClientPortalEntry() {
   const [authNotice, setAuthNotice] = useState('');
   const [claimBusy, setClaimBusy] = useState(false);
   const [claimError, setClaimError] = useState('');
+  const [recoveryMode, setRecoveryMode] = useState(() => window.location.hash.includes('type=recovery') || searchParams.get('type') === 'recovery');
+  const [recoveryPassword, setRecoveryPassword] = useState('');
+  const [recoveryConfirm, setRecoveryConfirm] = useState('');
+  const [recoveryBusy, setRecoveryBusy] = useState(false);
+  const [recoveryError, setRecoveryError] = useState('');
+  const [recoveryComplete, setRecoveryComplete] = useState(false);
   const claimAttempt = useRef('');
 
   useEffect(() => {
@@ -45,6 +51,17 @@ export default function ClientPortalEntry() {
       setInviteLoading(false);
     });
   }, [inviteToken]);
+
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(event => {
+      if (event === 'PASSWORD_RECOVERY') {
+        setRecoveryMode(true);
+        setRecoveryError('');
+        setRecoveryComplete(false);
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, []);
 
   useEffect(() => {
     if (!user || !profile || profile.role === 'customer' && profile.status === 'active') return;
@@ -107,8 +124,68 @@ export default function ClientPortalEntry() {
     setAuthBusy(false);
   };
 
+  const updateRecoveredPassword = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setRecoveryError('');
+    if (!user) {
+      setRecoveryError('This password recovery link is no longer valid. Request a new password reset email.');
+      return;
+    }
+    if (recoveryPassword.length < 6) {
+      setRecoveryError('Password must be at least 6 characters.');
+      return;
+    }
+    if (recoveryPassword !== recoveryConfirm) {
+      setRecoveryError('Passwords do not match.');
+      return;
+    }
+
+    setRecoveryBusy(true);
+    const { error } = await supabase.auth.updateUser({ password: recoveryPassword });
+    if (error) {
+      setRecoveryError(messageOf(error, 'Your password could not be updated. Request a new recovery link and try again.'));
+    } else {
+      setRecoveryComplete(true);
+      setRecoveryPassword('');
+      setRecoveryConfirm('');
+      const cleanUrl = inviteToken ? `/client-portal?invite=${encodeURIComponent(inviteToken)}` : '/client-portal';
+      window.history.replaceState({}, document.title, cleanUrl);
+    }
+    setRecoveryBusy(false);
+  };
+
   if (loading || inviteLoading || claimBusy) {
     return <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-slate-50"><Loader2 className="h-8 w-8 animate-spin text-[#000080]" /><p className="text-sm font-semibold text-slate-500">{claimBusy ? 'Activating your secure Client Portal…' : 'Loading secure Client Portal…'}</p></div>;
+  }
+
+  if (recoveryMode) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-50 p-4">
+        <div className="w-full max-w-md overflow-hidden rounded-[2.5rem] border border-slate-100 bg-white shadow-2xl">
+          <div className="bg-[#000080] p-9 text-center text-white">
+            <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-white/10">{recoveryComplete ? <CheckCircle2 className="h-8 w-8" /> : <KeyRound className="h-8 w-8" />}</div>
+            <h1 className="text-2xl font-black">{recoveryComplete ? 'Password Updated' : 'Set a New Password'}</h1>
+            <p className="mt-2 text-sm leading-6 text-blue-200">{recoveryComplete ? 'Your Client Portal password has been changed securely.' : 'Choose a new password for your verified ProFox Client Portal account.'}</p>
+          </div>
+
+          {recoveryComplete ? (
+            <div className="space-y-5 p-8 text-center">
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-xs font-semibold leading-5 text-emerald-800">Your new password is active. Continue to your Client Portal.</div>
+              <button type="button" onClick={() => setRecoveryMode(false)} className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#000080] py-3.5 text-sm font-bold text-white"><ArrowRight className="h-4 w-4" />Continue to Client Portal</button>
+            </div>
+          ) : (
+            <form onSubmit={updateRecoveredPassword} className="space-y-5 p-8">
+              {recoveryError && <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-xs font-semibold text-red-700">{recoveryError}</div>}
+              {!user && <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs font-semibold text-amber-800">This recovery session is unavailable or expired. Return to sign in and request a new password reset email.</div>}
+              <label className="block"><span className="mb-1.5 block text-[10px] font-black uppercase tracking-wider text-slate-500">New Password</span><div className="relative"><KeyRound className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><input type="password" required minLength={6} autoComplete="new-password" value={recoveryPassword} onChange={event => setRecoveryPassword(event.target.value)} className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-3 text-sm outline-none focus:border-[#000080]" /></div></label>
+              <label className="block"><span className="mb-1.5 block text-[10px] font-black uppercase tracking-wider text-slate-500">Confirm New Password</span><div className="relative"><KeyRound className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><input type="password" required minLength={6} autoComplete="new-password" value={recoveryConfirm} onChange={event => setRecoveryConfirm(event.target.value)} className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-3 text-sm outline-none focus:border-[#000080]" /></div></label>
+              <button type="submit" disabled={recoveryBusy || !user} className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#000080] py-3.5 text-sm font-bold text-white disabled:opacity-50">{recoveryBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}Update Password</button>
+              <button type="button" disabled={recoveryBusy} onClick={() => setRecoveryMode(false)} className="w-full text-center text-xs font-bold text-slate-500 hover:underline">Return to sign in</button>
+            </form>
+          )}
+        </div>
+      </div>
+    );
   }
 
   if (user && profile?.role === 'customer' && profile.status === 'active') return <ClientDashboard />;
