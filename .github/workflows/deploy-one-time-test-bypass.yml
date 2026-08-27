@@ -1,0 +1,74 @@
+name: Deploy ProFox Production Once - Test Bypass
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: profox-production-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Cloudflare production deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: production
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+      VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+      PUBLIC_APP_URL: ${{ vars.PROFOX_PUBLIC_APP_URL }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Validate deployment configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          missing=0
+          for name in CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID VITE_SUPABASE_URL VITE_SUPABASE_ANON_KEY; do
+            if [ -z "${!name:-}" ]; then
+              echo "::error::$name is not configured for the production GitHub environment."
+              missing=1
+            fi
+          done
+          if [ "$missing" -ne 0 ]; then
+            exit 1
+          fi
+
+      - name: TypeScript check
+        run: npm run lint
+
+      - name: Deploy existing Cloudflare Worker
+        run: npx wrangler deploy
+
+      - name: Verify public Worker health
+        if: ${{ env.PUBLIC_APP_URL != '' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          url="${PUBLIC_APP_URL%/}/api/health"
+          payload="$(curl --fail --silent --show-error --location --max-time 30 "$url")"
+          HEALTH_PAYLOAD="$payload" node --input-type=module <<'NODE'
+          const payload = JSON.parse(process.env.HEALTH_PAYLOAD || '{}');
+          if (payload.status !== 'ok') throw new Error(`Unexpected health status: ${payload.status ?? 'missing'}`);
+          if (payload.runtime !== 'cloudflare-worker') throw new Error(`Unexpected runtime: ${payload.runtime ?? 'missing'}`);
+          console.log(`Verified Cloudflare Worker health at ${new Date().toISOString()}`);
+          NODE
