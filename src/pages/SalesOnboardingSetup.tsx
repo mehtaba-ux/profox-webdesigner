@@ -10,6 +10,8 @@ const TRACK_COPY: Record<string, { academy: string; access: string }> = {
   web_development: { academy: 'ProFox Developer Academy', access: 'Production Development workspace and client-project access' }
 };
 
+const ALLOWED_TOKEN_TYPES = new Set(['invite', 'recovery']);
+
 export default function SalesOnboardingSetup() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -25,24 +27,57 @@ export default function SalesOnboardingSetup() {
 
   const routeDefaultTrack = location.pathname.includes('/team-onboarding/') ? 'content_delivery' : 'sales';
   const track = searchParams.get('track') || routeDefaultTrack;
+  const tokenHash = searchParams.get('token_hash') || '';
+  const tokenType = searchParams.get('type') || '';
   const copy = useMemo(() => TRACK_COPY[track] || { academy: 'ProFox Academy', access: 'Production workspace access' }, [track]);
 
   useEffect(() => {
     let mounted = true;
-    let timer: number | undefined;
-    const check = async () => {
-      const { data } = await supabase.auth.getSession();
-      if (!mounted) return;
-      if (data?.session?.user) { setSessionReady(true); setChecking(false); }
-      else timer = window.setTimeout(() => { if (!mounted) return; setSessionReady(false); setChecking(false); }, 1800);
+
+    const establishSession = async () => {
+      setChecking(true);
+      setError(null);
+      try {
+        const { data: existing, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError) throw sessionError;
+        if (!mounted) return;
+        if (existing?.session?.user) {
+          setSessionReady(true);
+          return;
+        }
+
+        if (!tokenHash || !ALLOWED_TOKEN_TYPES.has(tokenType)) {
+          setSessionReady(false);
+          return;
+        }
+
+        const { data, error: verifyError } = await supabase.auth.verifyOtp({
+          token_hash: tokenHash,
+          type: tokenType as 'invite' | 'recovery'
+        });
+        if (verifyError) throw verifyError;
+        if (!mounted) return;
+        if (!data?.session?.user) throw new Error('The secure Academy invitation could not establish a session.');
+
+        setSessionReady(true);
+        const cleanParams = new URLSearchParams();
+        cleanParams.set('track', track);
+        window.history.replaceState({}, document.title, `${location.pathname}?${cleanParams.toString()}`);
+      } catch (err) {
+        if (!mounted) return;
+        const text = err && typeof err === 'object' && 'message' in err
+          ? String((err as any).message)
+          : 'This secure Academy invitation could not be verified.';
+        setError(text);
+        setSessionReady(false);
+      } finally {
+        if (mounted) setChecking(false);
+      }
     };
-    void check();
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: string, session: any) => {
-      if (!mounted) return;
-      if (session?.user) { if (timer) window.clearTimeout(timer); setSessionReady(true); setChecking(false); }
-    });
-    return () => { mounted = false; if (timer) window.clearTimeout(timer); subscription.unsubscribe(); };
-  }, []);
+
+    void establishSession();
+    return () => { mounted = false; };
+  }, [location.pathname, tokenHash, tokenType, track]);
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -53,8 +88,15 @@ export default function SalesOnboardingSetup() {
     try {
       const { error: updateError } = await supabase.auth.updateUser({ password });
       if (updateError) throw updateError;
+
+      if (track === 'sales') {
+        const { error: academyError } = await supabase.rpc('start_sales_academy_training');
+        if (academyError) throw new Error(academyError.message || 'Your Sales Academy training window could not be started.');
+      }
+
       setComplete(true);
-      window.setTimeout(() => navigate('/admin', { replace: true }), 900);
+      const destination = track === 'sales' ? '/admin/app/sales_academy?tab=training' : '/admin';
+      window.setTimeout(() => navigate(destination, { replace: true }), 900);
     } catch (err) {
       const text = err && typeof err === 'object' && 'message' in err ? String((err as any).message) : 'Your password could not be saved.';
       setError(text);
@@ -69,9 +111,10 @@ export default function SalesOnboardingSetup() {
           <div className="mt-5 text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">{copy.academy}</div>
           <h1 className="mt-1 text-2xl font-black text-slate-900">Set up your account</h1>
           <p className="mt-2 text-sm leading-6 text-slate-500">Create your password to enter the {copy.academy.replace('ProFox ', '')}. {copy.access} remains locked until required training, Final Certification and Management activation are complete.</p>
+          {track === 'sales' && <p className="mt-3 rounded-xl border border-blue-100 bg-blue-50 px-3 py-2 text-xs leading-5 text-blue-800">Your 10-day Sales Academy completion window starts only after this account setup is successfully completed.</p>}
         </div>
         <div className="p-6 sm:p-8">
-          {checking ? <div className="flex min-h-[220px] flex-col items-center justify-center text-center"><Loader2 className="h-7 w-7 animate-spin text-[#000080]" /><p className="mt-3 text-xs font-bold text-slate-500">Verifying your secure invitation...</p></div> : complete ? <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5 text-center"><CheckCircle2 className="mx-auto h-8 w-8 text-emerald-600" /><h2 className="mt-3 text-base font-black text-emerald-800">Account ready</h2><p className="mt-1 text-xs leading-5 text-emerald-700">Your password is saved. Opening your {copy.academy.replace('ProFox ', '')} workspace now.</p></div> : !sessionReady ? <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5"><div className="flex items-start gap-3"><AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" /><div><h2 className="text-sm font-black text-amber-800">This setup link is not active</h2><p className="mt-1 text-xs leading-5 text-amber-700">The invitation may have expired or already been used. Return to the newest {copy.academy} access email. If needed, ask the recruitment team to resend access from your candidate record.</p></div></div></div> : <form onSubmit={submit} className="space-y-5">
+          {checking ? <div className="flex min-h-[220px] flex-col items-center justify-center text-center"><Loader2 className="h-7 w-7 animate-spin text-[#000080]" /><p className="mt-3 text-xs font-bold text-slate-500">Verifying your secure invitation...</p></div> : complete ? <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5 text-center"><CheckCircle2 className="mx-auto h-8 w-8 text-emerald-600" /><h2 className="mt-3 text-base font-black text-emerald-800">Account ready</h2><p className="mt-1 text-xs leading-5 text-emerald-700">Your password is saved. Opening your {copy.academy.replace('ProFox ', '')} workspace now.</p></div> : !sessionReady ? <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5"><div className="flex items-start gap-3"><AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" /><div><h2 className="text-sm font-black text-amber-800">This setup link is not active</h2><p className="mt-1 text-xs leading-5 text-amber-700">{error || `The invitation may have expired or already been used. Return to the newest ${copy.academy} access email. If needed, ask the recruitment team to resend access from your candidate record.`}</p></div></div></div> : <form onSubmit={submit} className="space-y-5">
             {error && <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-xs leading-5 text-red-700"><AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />{error}</div>}
             <label className="block"><span className="mb-1.5 block text-[10px] font-black uppercase tracking-wide text-slate-500">New password</span><div className="relative"><input type={showPassword ? 'text' : 'password'} autoComplete="new-password" value={password} onChange={event => setPassword(event.target.value)} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 pr-11 text-sm outline-none focus:border-[#000080]" /><button type="button" onClick={() => setShowPassword(value => !value)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" aria-label={showPassword ? 'Hide password' : 'Show password'}>{showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button></div><p className="mt-1.5 text-[10px] leading-4 text-slate-400">Use at least 12 characters and choose a password you do not reuse elsewhere.</p></label>
             <label className="block"><span className="mb-1.5 block text-[10px] font-black uppercase tracking-wide text-slate-500">Confirm password</span><input type={showPassword ? 'text' : 'password'} autoComplete="new-password" value={confirmPassword} onChange={event => setConfirmPassword(event.target.value)} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-[#000080]" /></label>
