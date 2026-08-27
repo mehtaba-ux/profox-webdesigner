@@ -1,0 +1,38 @@
+create or replace function public.admin_resend_client_portal_invitation(p_onboarding_id uuid)
+returns jsonb language plpgsql security definer set search_path to 'public','extensions','pg_temp' as $function$
+declare v_o public.client_onboardings%rowtype; v_project public.projects%rowtype; v_client public.clients%rowtype; v_identity public.customer_identities%rowtype; v_cfg jsonb; v_days integer; v_token text; v_hash text; v_base text; v_url text; v_count integer; v_queued uuid;
+begin
+  if auth.uid() is null then raise exception 'Authentication required.'; end if;
+  select * into v_o from public.client_onboardings where id=p_onboarding_id for update; if not found then raise exception 'Client onboarding record not found.'; end if;
+  select * into v_project from public.projects where id=v_o.project_id;
+  if not public.is_admin() and (v_project.project_manager_id is distinct from auth.uid() or not public.has_active_role(array['project_manager'])) then raise exception 'Only Admin or the assigned active Project Manager may resend portal activation.'; end if;
+  if v_o.status<>'Completed' then raise exception 'Portal activation can only be sent after client onboarding is complete.'; end if;
+  select * into v_client from public.clients where id=v_o.client_id;
+  select * into v_identity from public.customer_identities where id=v_o.customer_identity_id;
+  if v_identity.linked_user_id is not null and exists(select 1 from public.user_profiles u where u.id=v_identity.linked_user_id and u.role='customer' and u.status='active') then return jsonb_build_object('alreadyLinked',true,'clientPortalUrl','/client-portal'); end if;
+  v_cfg:=public.client_onboarding_config(); v_days:=greatest(1,least(30,coalesce((v_cfg->>'portalInviteExpiryDays')::integer,7)));
+  v_token:=encode(extensions.gen_random_bytes(32),'hex'); v_hash:=encode(extensions.digest(v_token,'sha256'),'hex'); v_count:=least(v_o.portal_invite_count+1,100);
+  select nullif(btrim(config_value->>'url'),'') into v_base from public.system_configuration where config_key='public_app_base_url'; v_base:=rtrim(coalesce(v_base,'https://www.profoxwebdesigner.com'),'/'); v_url:=v_base||'/client-portal?invite='||v_token;
+  update public.client_onboardings set portal_activation_token_hash=v_hash,portal_activation_issued_at=now(),portal_activation_expires_at=now()+make_interval(days=>v_days),portal_activation_claimed_at=null,portal_invite_count=v_count,updated_at=now() where id=v_o.id;
+  v_queued:=public.service_queue_customer_communication('customer-client-portal-invitation:'||v_o.id::text||':'||v_count::text,'customer_client_portal_invitation',v_identity.email,v_client.salesperson_id,v_client.primary_contact_name,v_client.company_name,jsonb_build_object('onboardingId',v_o.id,'projectId',v_project.id,'projectNumber',v_project.project_number,'projectName',v_project.project_name,'portalActivationUrl',v_url),now());
+  update public.client_onboardings set portal_invite_last_sent_at=case when v_queued is not null then now() else portal_invite_last_sent_at end,updated_at=now() where id=v_o.id;
+  return jsonb_build_object('onboardingId',v_o.id,'portalInvitationQueued',v_queued is not null,'inviteCount',v_count);
+end;$function$;
+revoke all on function public.admin_resend_client_portal_invitation(uuid) from public,anon;
+grant execute on function public.admin_resend_client_portal_invitation(uuid) to authenticated,service_role,postgres;
+
+create or replace function public.client_get_relationship_history()
+returns jsonb language plpgsql stable security definer set search_path to 'public','pg_temp' as $function$
+declare v_uid uuid:=auth.uid(); v_identity public.customer_identities%rowtype; v_quotations jsonb; v_conversations jsonb; v_payments jsonb; v_projects jsonb; v_onboardings jsonb;
+begin
+ if v_uid is null then raise exception 'Authentication required.'; end if;
+ if not exists(select 1 from public.user_profiles p where p.id=v_uid and p.role='customer' and p.status='active') then raise exception 'Active customer portal access required.'; end if;
+ select * into v_identity from public.customer_identities where linked_user_id=v_uid;
+ if not found then raise exception 'No customer relationship is linked to this portal account.'; end if;
+ select coalesce(jsonb_agg(jsonb_build_object('id',q.id,'quotationNumber',q.quotation_number,'status',q.status,'customerName',q.customer_name,'total',q.total,'currency',q.currency,'validUntil',q.valid_until,'revisionNumber',q.revision_number,'sentAt',q.sent_at,'acceptedAt',q.accepted_at,'rejectedAt',q.rejected_at,'isSuperseded',q.superseded_by_id is not null,'createdAt',q.created_at) order by q.created_at desc),'[]'::jsonb) into v_quotations from public.quotations q where q.customer_identity_id=v_identity.id and q.status in ('Sent','Accepted','Rejected','Expired','Cancelled');
+ select coalesce(jsonb_agg(jsonb_build_object('id',c.id,'conversationKind',c.conversation_kind,'quotationId',c.quotation_id,'quotationNumber',q.quotation_number,'customerName',c.customer_name,'status',c.status,'sellerName',coalesce(nullif(btrim(up.full_name),''),'ProFox representative'),'lastMessage',c.last_message,'lastMessageTime',c.last_message_time,'createdAt',c.created_at,'updatedAt',c.updated_at,'messages',coalesce((select jsonb_agg(public.sales_chat_message_json(m) order by m.created_at) from public.sales_chat_messages m where m.conversation_id=c.id and not m.is_internal_note),'[]'::jsonb)) order by c.updated_at desc),'[]'::jsonb) into v_conversations from public.sales_chat_conversations c left join public.quotations q on q.id=c.quotation_id left join public.user_profiles up on up.id=c.current_sales_id where c.customer_identity_id=v_identity.id;
+ select coalesce(jsonb_agg(jsonb_build_object('id',p.id,'paymentReference',p.payment_reference,'quotationId',p.quotation_id,'paymentType',p.payment_type,'milestoneLabel',p.milestone_label,'amountDue',p.amount_due,'amountPaid',p.amount_paid,'currency',p.currency,'status',p.status,'dueDate',p.due_date,'paidAt',p.paid_at,'verifiedAt',p.verified_at,'createdAt',p.created_at) order by p.created_at desc),'[]'::jsonb) into v_payments from public.payments p where p.customer_identity_id=v_identity.id;
+ select coalesce(jsonb_agg(jsonb_build_object('id',pr.id,'projectNumber',pr.project_number,'projectName',pr.project_name,'status',pr.status,'stage',pr.stage,'projectValue',pr.project_value,'currency',pr.currency,'startDate',pr.start_date,'targetDate',pr.target_date,'createdAt',pr.created_at,'onboardingStatus',coalesce(o.status,'Not Created'),'onboardingCompletedAt',o.completed_at) order by pr.created_at desc),'[]'::jsonb) into v_projects from public.projects pr join public.clients cl on cl.id=pr.client_id left join public.client_onboardings o on o.project_id=pr.id where cl.customer_identity_id=v_identity.id;
+ select coalesce(jsonb_agg(jsonb_build_object('id',o.id,'projectId',o.project_id,'projectNumber',pr.project_number,'projectName',pr.project_name,'status',o.status,'formVersion',o.form_version,'responses',o.responses,'fields',o.field_schema,'submittedAt',o.submitted_at,'completedAt',o.completed_at,'createdAt',o.created_at) order by o.created_at desc),'[]'::jsonb) into v_onboardings from public.client_onboardings o join public.projects pr on pr.id=o.project_id where o.customer_identity_id=v_identity.id;
+ return jsonb_build_object('identity',jsonb_build_object('id',v_identity.id,'email',v_identity.email,'displayName',v_identity.display_name,'relationshipStatus',v_identity.relationship_status,'firstSeenAt',v_identity.first_seen_at),'quotations',v_quotations,'conversations',v_conversations,'payments',v_payments,'projects',v_projects,'onboardings',v_onboardings);
+end;$function$;
