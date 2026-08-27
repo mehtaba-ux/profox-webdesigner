@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, CalendarClock, CheckCircle2, Clock3 } from 'lucide-react';
+import { AlertTriangle, CalendarClock, CheckCircle2, Clock3, PauseCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/AuthContext';
 
@@ -10,6 +10,8 @@ type DeadlineState = {
   completedAt?: string | null;
   secondsRemaining?: number | null;
   overdue?: boolean;
+  pausedForReview?: boolean;
+  reviewWaitStartedAt?: string | null;
 };
 
 function formatRemaining(milliseconds: number) {
@@ -57,9 +59,11 @@ export default function SalesAcademyDeadlineBanner() {
     if (!Number.isFinite(dueMs)) return null;
     const remainingMs = dueMs - now;
     const completed = Boolean(deadline.completedAt) || ['Final Approval', 'Ready for System Access', 'Activated'].includes(String(deadline.stage || ''));
-    const overdue = !completed && remainingMs <= 0;
+    const paused = !completed && deadline.pausedForReview === true;
+    const overdue = !completed && !paused && remainingMs <= 0;
     return {
       completed,
+      paused,
       overdue,
       remaining: formatRemaining(remainingMs),
       deadlineLabel: due.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
@@ -74,6 +78,19 @@ export default function SalesAcademyDeadlineBanner() {
         <div className="flex items-start gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-900">
           <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" />
           <div><div className="text-sm font-black">Sales Academy training completed</div><p className="mt-1 text-xs leading-5 text-emerald-700">Your training window is complete. Continue following the Final Approval and activation instructions shown in your workspace.</p></div>
+        </div>
+      </div>
+    );
+  }
+
+  if (view.paused) {
+    return (
+      <div className="mx-auto max-w-7xl px-4 pt-4 md:px-8">
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 shadow-sm">
+          <div className="flex items-start gap-3">
+            <PauseCircle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+            <div><div className="text-sm font-black text-amber-900">Training countdown paused for Management review</div><p className="mt-1 text-xs leading-5 text-amber-800">A required submission is waiting for ProFox review. Your remaining training time is protected while this review is pending. When the final pending review is resolved, the deadline will automatically move forward by the exact review-wait duration.</p><div className="mt-2 text-[11px] font-bold text-amber-900"><span className="inline-flex items-center gap-1.5"><Clock3 className="h-3.5 w-3.5" />{view.remaining} protected time remaining</span></div></div>
+          </div>
         </div>
       </div>
     );
