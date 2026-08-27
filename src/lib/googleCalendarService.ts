@@ -84,10 +84,11 @@ export const googleCalendarService = {
     };
   },
 
-  async startConnection(reconnect = false): Promise<string> {
+  async startConnection(reconnect = false, returnPath = '/admin/calendar'): Promise<string> {
+    const safeReturnPath = returnPath.startsWith('/admin/') ? returnPath : '/admin/calendar';
     const payload = await invokeOAuth({
       action: reconnect ? 'reconnect' : 'start',
-      returnPath: '/admin/calendar'
+      returnPath: safeReturnPath
     });
     const authorizationUrl = String(payload.authorizationUrl || '');
     if (!authorizationUrl.startsWith('https://accounts.google.com/')) {
