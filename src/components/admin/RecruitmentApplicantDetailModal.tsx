@@ -18,6 +18,7 @@ import {
   type ApplicantTimelineEvent,
 } from '../../lib/applicantService';
 import { useAuth } from '../../lib/AuthContext';
+import { recruitmentWorkflowService, type RecruitmentSystemRole } from '../../lib/recruitmentWorkflowService';
 import RecruitmentWorkflowPanel from './RecruitmentWorkflowPanel';
 
 interface Props {
@@ -52,6 +53,7 @@ function displayValue(value: unknown): string {
 export default function RecruitmentApplicantDetailModal({ applicant, onClose, onUpdate }: Props) {
   const { user } = useAuth();
   const [current, setCurrent] = useState(applicant);
+  const [systemRole, setSystemRole] = useState<RecruitmentSystemRole>('pending');
   const [tab, setTab] = useState<'overview' | 'application' | 'timeline'>('overview');
   const [snapshot, setSnapshot] = useState<ApplicantReviewSnapshot | null>(null);
   const [timeline, setTimeline] = useState<ApplicantTimelineEvent[]>([]);
@@ -66,16 +68,18 @@ export default function RecruitmentApplicantDetailModal({ applicant, onClose, on
     try {
       const fresh = await applicantService.getApplicantById(applicant.id);
       setCurrent(fresh);
-      const [review, events, cv, video] = await Promise.all([
+      const [review, events, cv, video, context] = await Promise.all([
         applicantService.getApplicantReviewSnapshot(applicant.id),
         applicantService.getApplicantTimeline(applicant.id),
         fresh.cvStoragePath ? applicantService.getSecureApplicationFileUrl(fresh.cvStoragePath) : Promise.resolve(fresh.cvUrl || ''),
         fresh.videoStoragePath ? applicantService.getSecureApplicationFileUrl(fresh.videoStoragePath) : Promise.resolve(fresh.videoUrl || ''),
+        recruitmentWorkflowService.getJobContext(fresh.careerJobId),
       ]);
       setSnapshot(review);
       setTimeline(events);
       setCvUrl(cv);
       setVideoUrl(video);
+      setSystemRole(context.systemRole);
     } catch (err) {
       setError(errorMessage(err, 'Could not load the complete candidate record.'));
     } finally {
@@ -90,13 +94,15 @@ export default function RecruitmentApplicantDetailModal({ applicant, onClose, on
     await load();
   };
 
+  const currentStageLabel = recruitmentWorkflowService.stageLabel(String(current.stage || 'Not set'), systemRole);
+
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 p-2 backdrop-blur-sm sm:p-4">
       <div className="flex max-h-[96vh] w-full max-w-7xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl">
         <header className="flex shrink-0 items-start justify-between gap-4 border-b border-slate-100 px-5 py-5 sm:px-8">
           <div>
             <div className="flex flex-wrap items-center gap-2"><h2 className="text-xl font-black text-slate-900">{current.fullName}</h2>{current.applicationReference && <span className="rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-black text-slate-500">{current.applicationReference}</span>}</div>
-            <div className="mt-2 flex flex-wrap items-center gap-2"><span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-black text-slate-600">{current.careerJobTitle || current.position}</span><span className="rounded-full border border-blue-100 bg-blue-50 px-2.5 py-1 text-xs font-black text-[#000080]">{current.stage}</span>{current.finalApproval && <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-black text-emerald-700">Final Approved</span>}{current.refusalReason && <span className="rounded-full border border-red-200 bg-red-50 px-2.5 py-1 text-xs font-black text-red-700">Closed</span>}</div>
+            <div className="mt-2 flex flex-wrap items-center gap-2"><span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-black text-slate-600">{current.careerJobTitle || current.position}</span><span className="rounded-full border border-blue-100 bg-blue-50 px-2.5 py-1 text-xs font-black text-[#000080]">{currentStageLabel}</span>{current.finalApproval && <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-black text-emerald-700">Final Approved</span>}{current.refusalReason && <span className="rounded-full border border-red-200 bg-red-50 px-2.5 py-1 text-xs font-black text-red-700">Closed</span>}</div>
           </div>
           <button type="button" onClick={onClose} className="flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 text-slate-400 hover:bg-slate-50"><XCircle className="h-5 w-5" /></button>
         </header>
@@ -109,7 +115,7 @@ export default function RecruitmentApplicantDetailModal({ applicant, onClose, on
         <div className="min-h-0 flex-1 overflow-y-auto">
           {error && <div className="mx-5 mt-5 flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 sm:mx-8"><AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />{error}</div>}
           {loading ? <div className="flex min-h-[420px] items-center justify-center"><Loader2 className="h-7 w-7 animate-spin text-[#000080]" /></div> : <div className="grid gap-8 p-5 sm:p-8 xl:grid-cols-[minmax(0,1fr)_360px]">
-            <main>{tab === 'overview' ? <Overview applicant={current} snapshot={snapshot} cvUrl={cvUrl} videoUrl={videoUrl} /> : tab === 'application' ? <ApplicationDetail applicant={current} snapshot={snapshot} cvUrl={cvUrl} videoUrl={videoUrl} /> : <Timeline events={timeline} />}</main>
+            <main>{tab === 'overview' ? <Overview applicant={current} snapshot={snapshot} cvUrl={cvUrl} videoUrl={videoUrl} systemRole={systemRole} /> : tab === 'application' ? <ApplicationDetail applicant={current} snapshot={snapshot} cvUrl={cvUrl} videoUrl={videoUrl} /> : <Timeline events={timeline} />}</main>
             <aside>{current.refusalReason ? <div className="rounded-2xl border border-red-200 bg-red-50 p-5"><div className="flex items-center gap-2 text-sm font-black text-red-700"><XCircle className="h-5 w-5" />Candidate closed</div><p className="mt-2 text-sm leading-6 text-red-700">{current.refusalReason}</p><p className="mt-3 text-xs leading-5 text-slate-500">The record and timeline remain available for audit. Reopening is intentionally outside the normal workflow.</p></div> : <RecruitmentWorkflowPanel applicant={current} currentAdminId={user?.id} onChanged={workflowChanged} />}</aside>
           </div>}
         </div>
@@ -118,10 +124,11 @@ export default function RecruitmentApplicantDetailModal({ applicant, onClose, on
   );
 }
 
-function Overview({ applicant, snapshot, cvUrl, videoUrl }: { applicant: ApplicantRecord; snapshot: ApplicantReviewSnapshot | null; cvUrl: string; videoUrl: string }) {
+function Overview({ applicant, snapshot, cvUrl, videoUrl, systemRole }: { applicant: ApplicantRecord; snapshot: ApplicantReviewSnapshot | null; cvUrl: string; videoUrl: string; systemRole: RecruitmentSystemRole }) {
   const answers = snapshot?.answers && Object.keys(snapshot.answers).length ? snapshot.answers : applicant.applicationAnswers;
+  const stageLabel = recruitmentWorkflowService.stageLabel(String(applicant.stage || 'Not set'), systemRole);
   return <div className="space-y-7">
-    <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4"><Summary label="Application" value={applicant.applicationReference || 'Legacy record'} /><Summary label="Completeness" value={snapshot ? `${snapshot.completenessPercent}%` : 'Unscored'} tone={snapshot?.readyForReview ? 'success' : 'default'} /><Summary label="Role" value={applicant.careerJobTitle || applicant.position || 'Candidate'} /><Summary label="Current stage" value={String(applicant.stage || 'Not set')} /></section>
+    <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4"><Summary label="Application" value={applicant.applicationReference || 'Legacy record'} /><Summary label="Completeness" value={snapshot ? `${snapshot.completenessPercent}%` : 'Unscored'} tone={snapshot?.readyForReview ? 'success' : 'default'} /><Summary label="Role" value={applicant.careerJobTitle || applicant.position || 'Candidate'} /><Summary label="Current stage" value={stageLabel} /></section>
     {snapshot && <section className="rounded-2xl border border-slate-200 bg-white p-5"><div className="flex flex-wrap items-center justify-between gap-3"><div><h3 className="font-black text-slate-900">Application readiness</h3><p className="mt-1 text-sm text-slate-500">Checks are derived from the candidate’s Job Post and canonical application record.</p></div><span className={`rounded-full px-3 py-1.5 text-xs font-black ${snapshot.readyForReview ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>{snapshot.passedChecks}/{snapshot.totalChecks} checks</span></div><div className="mt-5 grid gap-2 sm:grid-cols-2">{snapshot.checks.map(check => <div key={check.key} className={`flex items-start gap-2 rounded-xl border p-3 text-sm ${check.passed ? 'border-emerald-100 bg-emerald-50/60' : 'border-amber-100 bg-amber-50/60'}`}>{check.passed ? <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" /> : <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />}<div><div className="font-bold text-slate-700">{check.label}</div>{check.detail && <div className="mt-1 text-xs text-slate-500">{check.detail}</div>}</div></div>)}</div></section>}
     <section><SectionLabel>Candidate snapshot</SectionLabel><div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3"><Info label="Email"><a className="font-bold text-[#000080] hover:underline" href={`mailto:${applicant.email}`}>{applicant.email}</a></Info><Info label="Phone">{applicant.phone || 'Not provided'}</Info><Info label="Country / Time zone">{applicant.country || 'Not provided'}{applicant.timezone ? ` · ${applicant.timezone}` : ''}</Info><Info label="Current role">{applicant.currentJobTitle || 'Not provided'}</Info><Info label="Recruiting for">{applicant.careerJobTitle || applicant.position || 'Not provided'}</Info><Info label="Submitted">{formatDateTime(applicant.applicationSubmittedAt || applicant.createdAt)}</Info></div>{applicant.linkedinUrl && <a href={applicant.linkedinUrl} target="_blank" rel="noreferrer" className="mt-4 inline-flex items-center gap-2 text-sm font-black text-[#000080]">Open LinkedIn <ExternalLink className="h-4 w-4" /></a>}</section>
     <Materials applicant={applicant} snapshot={snapshot} cvUrl={cvUrl} videoUrl={videoUrl} />
