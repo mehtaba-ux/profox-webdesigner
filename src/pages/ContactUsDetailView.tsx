@@ -1,11 +1,10 @@
-import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { Mail, Phone, MapPin, Send, MessageSquare, Sparkles, Loader2, CheckCircle } from 'lucide-react';
+import React from 'react';
+import { motion } from 'motion/react';
+import { Mail, Phone, MapPin, Send, MessageSquare, Sparkles } from 'lucide-react';
 import { useCMS } from '../lib/CMSProvider';
-import { cn } from '../lib/utils';
 import HeroReviewProof from '../components/HeroReviewProof';
+import QualifiedContactForm from '../components/QualifiedContactForm';
 import { resolveSiteSettings } from '../lib/siteSettings';
-import { leadService } from '../lib/leadService';
 
 export default function ContactUsDetailView({ page }: { page?: any }) {
   const { content } = useCMS();
@@ -13,37 +12,10 @@ export default function ContactUsDetailView({ page }: { page?: any }) {
   const headingFont = theme.fontFamily || 'Inter';
   const siteSettings = resolveSiteSettings(content.siteSettings);
 
-  const [formData, setFormData] = useState({
-    fullName: '',
-    email: '',
-    subject: 'Web Design & Development',
-    message: ''
-  });
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isSuccess, setIsSuccess] = useState(false);
-  const [error, setError] = useState('');
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-    setError('');
-
-    const res = await leadService.submitLead(formData);
-    
-    if (res.success) {
-      setIsSuccess(true);
-      setFormData({ fullName: '', email: '', subject: 'Web Design & Development', message: '' });
-      setTimeout(() => setIsSuccess(false), 5000);
-    } else {
-      setError(res.error || 'Something went wrong. Please try again.');
-    }
-    setIsSubmitting(false);
-  };
-  
   // Load blueprint data if present - Priority 1: Exact template ID match
   const blueprints = content.template_blueprints || [];
   const blueprint = blueprints.find((b: any) => b.id === page?.template);
-  
+
   // Get template data - Priority: Page specific data > Blueprint defaults
   const data = page?.serviceDetailData || page?.data || blueprint?.defaultData || {};
   const hero = data.hero || {
@@ -55,11 +27,6 @@ export default function ContactUsDetailView({ page }: { page?: any }) {
     title: "Get in Touch",
     subtitle: "Have a project in mind? Let's discuss how we can help your business grow.",
     locations: []
-  };
-  const form = data.form || {
-    title: "Send us a Message",
-    subtitle: "We'll get back to you within 24 hours.",
-    buttonText: "Send Inquiry"
   };
   const trustedBy = data.trustedBy || {
     showSlider: true,
@@ -98,7 +65,7 @@ export default function ContactUsDetailView({ page }: { page?: any }) {
         </div>
       );
     }
-    
+
     let className = "text-slate-900 drop-shadow-md shrink-0 opacity-70 hover:opacity-100 transition-all ";
     if (item.style === 'black') className += "text-3xl font-black";
     else if (item.style === 'italic') className += "text-4xl font-serif italic";
@@ -119,7 +86,7 @@ export default function ContactUsDetailView({ page }: { page?: any }) {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6 }}
             >
-              <h1 
+              <h1
                 className="text-5xl md:text-7xl font-bold text-slate-900 leading-tight mb-6 tracking-tight"
                 style={{ fontFamily: headingFont }}
               >
@@ -132,7 +99,7 @@ export default function ContactUsDetailView({ page }: { page?: any }) {
             </motion.div>
           </div>
         </div>
-        
+
         {/* Background Decorative Element */}
         <div className="absolute top-0 right-0 w-1/2 h-full bg-[#000080]/5 -skew-x-12 translate-x-1/4 z-0" />
       </section>
@@ -141,7 +108,7 @@ export default function ContactUsDetailView({ page }: { page?: any }) {
       <section className="py-24">
         <div className="max-w-[1400px] mx-auto px-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-start">
-            
+
             {/* Left: Contact Info & Locations */}
             <div className="space-y-12">
               <div className="space-y-4">
@@ -160,7 +127,7 @@ export default function ContactUsDetailView({ page }: { page?: any }) {
                   email: siteSettings.contactEmail,
                   phone: siteSettings.contactPhone,
                 }].map((loc: any, idx: number) => (
-                  <motion.div 
+                  <motion.div
                     key={idx}
                     initial={{ opacity: 0, x: -20 }}
                     whileInView={{ opacity: 1, x: 0 }}
@@ -215,113 +182,8 @@ export default function ContactUsDetailView({ page }: { page?: any }) {
               </div>
             </div>
 
-            {/* Right: Inquiry Form */}
-            <div className="bg-white border border-slate-200 p-8 sm:p-12 rounded-[40px] shadow-2xl relative">
-              <div className="space-y-8">
-                <div className="space-y-2 text-center lg:text-left">
-                  <h2 className="text-3xl font-bold text-slate-900" style={{ fontFamily: headingFont }}>
-                    {form.title}
-                  </h2>
-                  <p className="text-slate-500">
-                    {form.subtitle}
-                  </p>
-                </div>
-
-                <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Full Name</label>
-                    <input 
-                      type="text" 
-                      required
-                      value={formData.fullName}
-                      onChange={(e) => setFormData(prev => ({ ...prev, fullName: e.target.value }))}
-                      placeholder="John Doe"
-                      className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3.5 text-sm focus:bg-white focus:border-[#000080] focus:ring-4 focus:ring-[#000080]/5 outline-none transition-all"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Email Address</label>
-                    <input 
-                      type="email" 
-                      required
-                      value={formData.email}
-                      onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-                      placeholder="john@company.com"
-                      className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3.5 text-sm focus:bg-white focus:border-[#000080] focus:ring-4 focus:ring-[#000080]/5 outline-none transition-all"
-                    />
-                  </div>
-                  <div className="sm:col-span-2 space-y-1.5">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Subject</label>
-                    <select 
-                      value={formData.subject}
-                      onChange={(e) => setFormData(prev => ({ ...prev, subject: e.target.value }))}
-                      className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3.5 text-sm focus:bg-white focus:border-[#000080] focus:ring-4 focus:ring-[#000080]/5 outline-none transition-all appearance-none"
-                    >
-                      <option>Web Design & Development</option>
-                      <option>Digital Strategy</option>
-                      <option>Marketing Automation</option>
-                      <option>Other Inquiry</option>
-                    </select>
-                  </div>
-                  <div className="sm:col-span-2 space-y-1.5">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Your Message</label>
-                    <textarea 
-                      rows={5}
-                      required
-                      value={formData.message}
-                      onChange={(e) => setFormData(prev => ({ ...prev, message: e.target.value }))}
-                      placeholder="Tell us about your project goals..."
-                      className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3.5 text-sm focus:bg-white focus:border-[#000080] focus:ring-4 focus:ring-[#000080]/5 outline-none transition-all resize-none"
-                    />
-                  </div>
-                  <div className="sm:col-span-2 pt-2">
-                    <button 
-                      type="submit"
-                      disabled={isSubmitting}
-                      className={cn(
-                        "w-full font-bold py-4 rounded-2xl shadow-xl transition-all flex items-center justify-center gap-2 group cursor-pointer",
-                        isSuccess ? "bg-green-600 text-white shadow-green-900/10" : "bg-[#000080] hover:bg-[#000066] text-white shadow-blue-900/10",
-                        isSubmitting && "opacity-70 cursor-not-allowed"
-                      )}
-                    >
-                      {isSubmitting ? (
-                        <>
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                          <span>Sending Inquiry...</span>
-                        </>
-                      ) : isSuccess ? (
-                        <>
-                          <CheckCircle className="w-4 h-4" />
-                          <span>Message Sent Successfully!</span>
-                        </>
-                      ) : (
-                        <>
-                          <span>{form.buttonText}</span>
-                          <Send className="w-4 h-4 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
-                        </>
-                      )}
-                    </button>
-                  </div>
-                  
-                  <AnimatePresence>
-                    {error && (
-                      <motion.div 
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
-                        exit={{ opacity: 0, height: 0 }}
-                        className="sm:col-span-2 text-red-500 text-xs font-bold text-center pt-2"
-                      >
-                        {error}
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </form>
-
-                <p className="text-[10px] text-slate-400 text-center uppercase tracking-widest">
-                  We respect your privacy. No spam, ever.
-                </p>
-              </div>
-            </div>
+            {/* Right: conversion-optimized inquiry experience configured from Admin */}
+            <QualifiedContactForm />
           </div>
         </div>
       </section>
