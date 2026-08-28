@@ -33,6 +33,14 @@ export interface SalesAccountSetupStatus {
   progressPercent: number;
 }
 
+export interface ProfessionalMailboxFirstLogin {
+  available: boolean;
+  workEmail: string;
+  temporaryPassword: string;
+  oneTimePassword: boolean;
+  reason: string;
+}
+
 function normalizeStatus(value: any): SalesAccountSetupStatus {
   const calendarProvider = value?.calendarProvider === 'zoho' ? 'zoho' : 'google';
   const meetingProvider = value?.meetingProvider === 'zoho_meeting' ? 'zoho_meeting' : 'google_meet';
@@ -74,6 +82,16 @@ function normalizeStatus(value: any): SalesAccountSetupStatus {
   };
 }
 
+function normalizeMailboxFirstLogin(value: any): ProfessionalMailboxFirstLogin {
+  return {
+    available: Boolean(value?.available),
+    workEmail: String(value?.workEmail || ''),
+    temporaryPassword: value?.available ? String(value?.temporaryPassword || '') : '',
+    oneTimePassword: Boolean(value?.oneTimePassword),
+    reason: String(value?.reason || ''),
+  };
+}
+
 export const salesAccountSetupService = {
   async getMyStatus(): Promise<SalesAccountSetupStatus> {
     const { data, error } = await supabase.rpc('get_my_sales_account_setup_status');
@@ -85,5 +103,11 @@ export const salesAccountSetupService = {
     const { data, error } = await supabase.rpc('advance_my_sales_crm_setup_tour', { p_step: step });
     if (error) throw error;
     return normalizeStatus(data);
+  },
+
+  async getMyProfessionalMailboxFirstLogin(): Promise<ProfessionalMailboxFirstLogin> {
+    const { data, error } = await supabase.rpc('get_my_professional_mailbox_first_login');
+    if (error) throw error;
+    return normalizeMailboxFirstLogin(data);
   },
 };
