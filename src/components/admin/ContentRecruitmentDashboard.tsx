@@ -11,10 +11,9 @@ import { useAuth } from '../../lib/AuthContext';
 import ContentPracticalReviewPanel from './ContentPracticalReviewPanel';
 
 const CONTENT_REFUSAL_REASONS = [
-  'Insufficient Content Writing Experience','Portfolio Quality Below Requirement','Written English Below Requirement',
-  'Content Assessment Failed','Research & Evidence Test Failed','Interview / Collaboration Fit',
-  'Availability Below Requirement','Equipment/Internet Issue','Training Failed','Practical Certification Failed',
-  'Unresponsive','Incorrect Information','Duplicate Application','Other'
+  'Video / Resume Review Below Requirement','Insufficient Content Writing Experience','Portfolio Quality Below Requirement','Written English Below Requirement',
+  'Content Assessment Failed','Project-Based Agreement Declined','Content Academy Failed','Practical Certification Failed',
+  'Availability Below Requirement','Equipment/Internet Issue','Unresponsive','Incorrect Information','Duplicate Application','Other'
 ];
 
 const CONTENT_STAGE_LABELS: Record<string,string> = {
