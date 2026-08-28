@@ -46,6 +46,12 @@ function normalizedSavedScores(rubric: RecruitmentRubricItem[], saved?: Record<s
   }, {});
 }
 
+function assessmentStageLabel(stage: string) {
+  if (stage === 'Sales Assessment') return 'Sales Suitability Assessment';
+  if (stage === 'Lead Research Test') return 'Lead Research Assessment';
+  return stage;
+}
+
 export default function RecruitmentAssessmentDialog({
   applicantId,
   candidateName,
@@ -60,6 +66,7 @@ export default function RecruitmentAssessmentDialog({
   onSaved,
 }: Props) {
   const editing = mode === 'edit' && Boolean(assessment);
+  const stageLabel = assessmentStageLabel(stage);
   const rubric = useMemo(
     () => editing && assessment?.rubric?.length ? assessment.rubric : policy.rubric || [],
     [assessment, editing, policy.rubric],
@@ -150,7 +157,7 @@ export default function RecruitmentAssessmentDialog({
       const attemptLabel = editing && assessment ? `Assessment attempt #${assessment.attemptNo}` : 'New assessment attempt';
       const message = status === 'Passed'
         ? `${attemptLabel} saved as Passed. Candidate advanced to ${nextStage || 'the next valid stage'}.`
-        : `${attemptLabel} saved as ${status}. The candidate remains in ${stage}.`;
+        : `${attemptLabel} saved as ${status}. The candidate remains in ${stageLabel}.`;
       await onSaved(message);
     } catch (err) {
       const message = err && typeof err === 'object' && 'message' in err
@@ -175,7 +182,7 @@ export default function RecruitmentAssessmentDialog({
                   {editing && assessment ? `Editing attempt #${assessment.attemptNo}` : 'New attempt'}
                 </span>
               </div>
-              <h2 className="mt-2 text-2xl font-bold tracking-tight text-slate-950 sm:text-3xl">{stage}</h2>
+              <h2 className="mt-2 text-2xl font-bold tracking-tight text-slate-950 sm:text-3xl">{stageLabel}</h2>
               <p className="mt-2 max-w-2xl text-base leading-7 text-slate-600">
                 {editing
                   ? `Review and update the saved scoring for ${candidateName}. These values are loaded from the persisted assessment and will remain after refresh or navigation.`
