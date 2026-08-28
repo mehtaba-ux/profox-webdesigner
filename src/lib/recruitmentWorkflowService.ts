@@ -106,15 +106,28 @@ const SALES_FALLBACK_STAGES = [
   'Initial Screening',
   'Shortlisted',
   'Sales Assessment',
-  'Lead Research Test',
-  'CRM Assessment',
   'Selected',
   'Agreement Pending',
   'Sales Academy Training',
+  'Sales Practical Assessment',
+  'Lead Research Test',
+  'CRM Assessment',
+  'Final Certification',
   'Final Approval',
   'Ready for System Access',
   'Activated',
 ];
+
+const SALES_STAGE_LABELS: Record<string, string> = {
+  'New Application': 'Application',
+  'Video Pending': 'Application - Video Required',
+  'Sales Assessment': 'Sales Suitability Assessment',
+  'Selected': 'Conditional Selected',
+  'Agreement Pending': 'Agreement',
+  'Sales Academy Training': 'Sales Academy',
+  'Lead Research Test': 'Lead Research Assessment',
+  'Ready for System Access': 'System Access',
+};
 
 function asArray<T>(value: unknown): T[] {
   return Array.isArray(value) ? (value as T[]) : [];
@@ -156,11 +169,16 @@ function roleDescriptor(role: RecruitmentSystemRole) {
   return { roleLabel: 'Candidate', academyLabel: 'Onboarding', academyStage: '' };
 }
 
+function stageLabel(stage: string, role: RecruitmentSystemRole = 'sales') {
+  return role === 'sales' ? SALES_STAGE_LABELS[stage] || stage : stage;
+}
+
 export const recruitmentWorkflowService = {
   // Kept for backward compatibility only. New workflow UI uses job-specific policies.
   stages: SALES_FALLBACK_STAGES,
 
   roleDescriptor,
+  stageLabel,
 
   stageOrder(policies?: RecruitmentStagePolicy[]) {
     return orderedStages(policies);
