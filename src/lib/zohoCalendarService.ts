@@ -18,6 +18,14 @@ export interface ZohoCalendarConnectionStatus {
 
 const endpoint = `${String(import.meta.env.VITE_SUPABASE_URL || '').replace(/\/$/, '')}/functions/v1/zoho-calendar-oauth`;
 
+function responseError(payload: unknown) {
+  if (payload && typeof payload === 'object' && 'error' in payload) {
+    const value = (payload as { error?: unknown }).error;
+    if (value) return String(value);
+  }
+  return 'Zoho Calendar request failed.';
+}
+
 async function invoke<T>(body: Record<string, unknown>): Promise<T> {
   const { data: sessionData } = await supabase.auth.getSession();
   const token = sessionData.session?.access_token;
@@ -27,8 +35,8 @@ async function invoke<T>(body: Record<string, unknown>): Promise<T> {
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(String(payload?.error || 'Zoho Calendar request failed.'));
+  const payload: unknown = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(responseError(payload));
   return payload as T;
 }
 
