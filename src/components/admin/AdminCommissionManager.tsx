@@ -385,7 +385,7 @@ export default function AdminCommissionManager() {
                       <td className="px-4 py-4 text-right font-black text-[#000080]">{money(entry.commissionAmount, entry.currency)}</td>
                       <td className="px-4 py-4 text-center"><StatusBadge status={entry.status} /></td>
                       <td className="px-4 py-4"><div className="flex flex-wrap justify-end gap-1.5">
-                        {entry.packageCode === 'PF-CUSTOM' && entry.status !== 'Paid' && entry.status !== 'Reversed' && <ActionButton label="Set Rate" icon={<Sliders className="h-3.5 w-3.5" />} busy={actionKey === `rate-${entry.id}`} onClick={() => setCustomRate(entry)} />}
+                        {entry.packageCode === 'PF-CUSTOM' && entry.status !== 'Paid' && entry.status !== 'Reversed' && !entry.payoutBatchId && <ActionButton label="Set Rate" icon={<Sliders className="h-3.5 w-3.5" />} busy={actionKey === `rate-${entry.id}`} onClick={() => setCustomRate(entry)} />}
                         {entry.status !== 'Paid' && entry.status !== 'Reversed' && !entry.payoutBatchId && <ActionButton label="Adjust" icon={<Sliders className="h-3.5 w-3.5" />} busy={actionKey === `adjust-${entry.id}`} onClick={() => adjustEntry(entry)} />}
                         {entry.status === 'Earned' && <ActionButton label="Approve" busy={actionKey === `approve-${entry.id}`} onClick={() => void approveEntry(entry)} />}
                         {entry.status === 'Under Review' && entry.packageCode !== 'PF-CUSTOM' && <ActionButton label="Approve" busy={actionKey === `approve-${entry.id}`} onClick={() => void approveEntry(entry)} />}
