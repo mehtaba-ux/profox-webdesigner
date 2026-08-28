@@ -8,10 +8,14 @@ import {
   Circle,
   Clock3,
   Compass,
+  Copy,
+  EyeOff,
   FileText,
   Handshake,
+  KeyRound,
   ListTodo,
   Loader2,
+  Mail,
   RefreshCw,
   ShieldCheck,
   Sparkles,
@@ -25,6 +29,7 @@ import { googleCalendarService } from '../../lib/googleCalendarService';
 import { profileService } from '../../lib/profileService';
 import {
   salesAccountSetupService,
+  type ProfessionalMailboxFirstLogin,
   type SalesAccountSetupStatus,
 } from '../../lib/salesAccountSetupService';
 import ProfileImageUploader from './workspace/ProfileImageUploader';
@@ -67,10 +72,10 @@ const CRM_TOUR = [
     title: 'Run meetings through the connected calendar',
     location: 'Calendar & Meetings',
     icon: CalendarDays,
-    summary: 'Use the ProFox meeting workflow with your connected Google Calendar and Google Meet rather than creating disconnected meeting records.',
+    summary: 'Use the ProFox meeting workflow with your assigned calendar and meeting provider rather than creating disconnected meeting records.',
     points: [
       'Confirm the prospect timezone before scheduling.',
-      'Use Google Meet creation so the meeting link stays attached to the scheduled event.',
+      'Use the configured meeting provider so the join link stays attached to the scheduled CRM meeting.',
       'Reschedule the existing meeting when plans change and record the outcome after the call.',
     ],
   },
@@ -124,6 +129,8 @@ export default function SalesAccountSetup({ onCompleted }: { onCompleted?: () =>
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [photoSaving, setPhotoSaving] = useState(false);
+  const [mailboxBusy, setMailboxBusy] = useState(false);
+  const [mailboxCredential, setMailboxCredential] = useState<ProfessionalMailboxFirstLogin | null>(null);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [avatarUrl, setAvatarUrl] = useState(profile?.avatarUrl || '');
@@ -152,6 +159,7 @@ export default function SalesAccountSetup({ onCompleted }: { onCompleted?: () =>
   }, [profile?.avatarUrl]);
 
   useEffect(() => {
+    setMailboxCredential(null);
     void load();
   }, [user?.id]);
 
@@ -208,6 +216,44 @@ export default function SalesAccountSetup({ onCompleted }: { onCompleted?: () =>
     }
   };
 
+  const revealMailboxCredential = async () => {
+    if (mailboxBusy) return;
+    setMailboxBusy(true);
+    setError('');
+    setMessage('');
+    try {
+      const credential = await salesAccountSetupService.getMyProfessionalMailboxFirstLogin();
+      if (!credential.available || !credential.temporaryPassword) {
+        setMailboxCredential(null);
+        if (credential.reason === 'already_retrieved_or_existing_account') {
+          setMessage('No unretrieved first-login password is available. It may already have been retrieved, or this mailbox already existed before ProFox provisioning.');
+        } else if (credential.reason === 'mailbox_not_active') {
+          setMessage('Your professional mailbox is not active yet. Refresh the setup checks after provisioning finishes.');
+        } else {
+          setMessage('A first-login password is not available for this mailbox. If you cannot sign in, contact a ProFox administrator for a secure reset.');
+        }
+        return;
+      }
+      setMailboxCredential(credential);
+      setMessage('First-login password revealed. ProFox has now removed the stored password from its secure vault. Copy it now and change it when you first sign in.');
+    } catch (err) {
+      setError(errorMessage(err, 'Your first-login mailbox password could not be retrieved.'));
+    } finally {
+      setMailboxBusy(false);
+    }
+  };
+
+  const copySecureValue = async (value: string, label: string) => {
+    setError('');
+    try {
+      if (!navigator.clipboard?.writeText) throw new Error('Clipboard access is unavailable in this browser.');
+      await navigator.clipboard.writeText(value);
+      setMessage(`${label} copied to your clipboard.`);
+    } catch (err) {
+      setError(errorMessage(err, `${label} could not be copied.`));
+    }
+  };
+
   const completeTourStep = async () => {
     if (!status || busy) return;
     const expected = status.crmTourStep + 1;
@@ -234,20 +280,25 @@ export default function SalesAccountSetup({ onCompleted }: { onCompleted?: () =>
   const technicalReady = Boolean(
     status?.profilePhotoReady &&
     status?.timezoneReady &&
-    status?.googleCalendarConnected &&
-    status?.googleMeetReady &&
+    (!status.professionalEmailRequired || status.professionalEmailReady) &&
+    status?.calendarConnected &&
+    status?.meetingReady &&
     status?.availabilityReady,
   );
 
-  const currentTour = CRM_TOUR[reviewStep - 1];
-  const TourIcon = currentTour.icon;
-  const completedRequirements = useMemo(() => status ? [
+  const technicalChecks = useMemo(() => status ? [
     status.profilePhotoReady,
     status.timezoneReady,
-    status.googleCalendarConnected,
-    status.googleMeetReady,
+    ...(status.professionalEmailRequired ? [status.professionalEmailReady] : []),
+    status.calendarConnected,
+    status.meetingReady,
     status.availabilityReady,
-  ].filter(Boolean).length : 0, [status]);
+  ] : [], [status]);
+
+  const completedRequirements = technicalChecks.filter(Boolean).length;
+  const requiredCount = technicalChecks.length;
+  const currentTour = CRM_TOUR[reviewStep - 1];
+  const TourIcon = currentTour.icon;
 
   if (loading) {
     return <div className="flex min-h-[520px] items-center justify-center"><div className="text-center"><Loader2 className="mx-auto h-8 w-8 animate-spin text-[#000080]" /><p className="mt-3 text-sm font-semibold text-slate-500">Preparing your Sales workspace…</p></div></div>;
@@ -257,6 +308,48 @@ export default function SalesAccountSetup({ onCompleted }: { onCompleted?: () =>
     return <div className="mx-auto max-w-xl rounded-3xl border border-red-200 bg-red-50 p-6 text-sm font-semibold text-red-700">{error || 'Sales account setup is unavailable.'}</div>;
   }
 
+  const calendarProviderLabel = status.calendarProvider === 'zoho' ? 'Zoho Calendar' : 'Google Calendar';
+  const meetingProviderLabel = status.meetingProvider === 'zoho_meeting' ? 'Zoho Meeting' : 'Google Meet';
+  const calendarAccountEmail = status.calendarProvider === 'zoho' ? status.zohoAccountEmail : status.googleAccountEmail;
+  const professionalEmailVisible = status.professionalEmailRequired || status.mailProvider === 'zoho' || Boolean(status.workEmail);
+  const zohoMailboxReady = status.mailProvider === 'zoho' && status.professionalEmailReady && Boolean(status.workEmail);
+
+  const mailboxAccessPanel = zohoMailboxReady ? (
+    <div className="mt-4 rounded-2xl border border-blue-100 bg-blue-50/60 p-4">
+      <div className="flex items-start gap-3">
+        <KeyRound className="mt-0.5 h-4 w-4 shrink-0 text-[#000080]" />
+        <div className="min-w-0 flex-1">
+          <div className="text-xs font-black text-slate-900">First login to Zoho Mail</div>
+          <p className="mt-1 text-[11px] leading-5 text-slate-600">The temporary password can be revealed only once. Reveal it only when you are ready to copy it and sign in. ProFox deletes the stored secret as soon as it is revealed.</p>
+        </div>
+      </div>
+
+      {mailboxCredential?.available && mailboxCredential.temporaryPassword ? (
+        <div className="mt-4 space-y-3 rounded-2xl border border-amber-200 bg-white p-4">
+          <div>
+            <div className="text-[10px] font-black uppercase tracking-wide text-slate-400">Work email</div>
+            <div className="mt-1 break-all text-sm font-black text-slate-900">{mailboxCredential.workEmail || status.workEmail}</div>
+          </div>
+          <div>
+            <div className="text-[10px] font-black uppercase tracking-wide text-amber-700">Temporary password · visible once</div>
+            <div className="mt-1 break-all rounded-xl bg-slate-950 px-3 py-2.5 font-mono text-sm font-bold text-white">{mailboxCredential.temporaryPassword}</div>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-3">
+            <button type="button" onClick={() => void copySecureValue(mailboxCredential.workEmail || status.workEmail, 'Work email')} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-xs font-black text-slate-700"><Copy className="h-4 w-4" />Copy email</button>
+            <button type="button" onClick={() => void copySecureValue(mailboxCredential.temporaryPassword, 'Temporary password')} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-[#000080] px-3 text-xs font-black text-white"><Copy className="h-4 w-4" />Copy password</button>
+            <button type="button" onClick={() => setMailboxCredential(null)} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-xs font-black text-slate-600"><EyeOff className="h-4 w-4" />Hide credential</button>
+          </div>
+          <p className="text-[10px] font-semibold leading-4 text-amber-800">After you hide or leave this screen, ProFox cannot reveal this password again. Use Zoho's secure password reset flow if you lose it.</p>
+        </div>
+      ) : (
+        <button type="button" onClick={() => void revealMailboxCredential()} disabled={mailboxBusy} className="mt-4 inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-[#000080] px-4 text-xs font-black text-white disabled:opacity-50">
+          {mailboxBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <KeyRound className="h-4 w-4" />}
+          Reveal first-login password once
+        </button>
+      )}
+    </div>
+  ) : null;
+
   if (status.setupCompleted) {
     return (
       <div className="mx-auto max-w-3xl py-10">
@@ -264,7 +357,17 @@ export default function SalesAccountSetup({ onCompleted }: { onCompleted?: () =>
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-3xl bg-emerald-100 text-emerald-700"><BadgeCheck className="h-8 w-8" /></div>
           <div className="mt-5 text-[10px] font-black uppercase tracking-[0.18em] text-emerald-700">Sales account ready</div>
           <h1 className="mt-2 text-2xl font-black text-slate-950 sm:text-3xl">Your ProFox Sales workspace is ready.</h1>
-          <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-slate-600">Your professional identity, Calendar, Google Meet, working availability and CRM orientation are all verified. Keep these connections healthy so customers and the ProFox team can rely on your workspace.</p>
+          <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-slate-600">Your professional identity, {calendarProviderLabel}, {meetingProviderLabel}, working availability and CRM orientation are verified. Keep these connections healthy so customers and the ProFox team can rely on your workspace.</p>
+          {zohoMailboxReady && (
+            <div className="mx-auto mt-6 max-w-xl text-left">
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <div className="flex items-start gap-3"><Mail className="mt-0.5 h-5 w-5 shrink-0 text-[#000080]" /><div><div className="text-xs font-black uppercase tracking-wide text-[#000080]">Professional email</div><div className="mt-1 break-all text-sm font-black text-slate-900">{status.workEmail}</div></div></div>
+                {mailboxAccessPanel}
+              </div>
+            </div>
+          )}
+          {error && <div className="mx-auto mt-4 max-w-xl rounded-2xl border border-red-200 bg-red-50 p-4 text-left text-sm font-semibold leading-6 text-red-700">{error}</div>}
+          {message && <div className="mx-auto mt-4 max-w-xl rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-left text-sm font-semibold leading-6 text-emerald-800">{message}</div>}
           <button type="button" onClick={() => navigate('/admin/today')} className="mt-7 inline-flex min-h-12 items-center gap-2 rounded-xl bg-[#000080] px-6 text-sm font-black text-white hover:bg-[#000066]">Open my Sales workspace <ArrowRight className="h-4 w-4" /></button>
         </div>
       </div>
@@ -284,7 +387,7 @@ export default function SalesAccountSetup({ onCompleted }: { onCompleted?: () =>
             <div className="rounded-2xl border border-white/20 bg-white/10 p-4 backdrop-blur-sm lg:min-w-[220px]">
               <div className="flex items-center justify-between text-xs font-bold text-blue-100"><span>Account setup</span><span>{status.progressPercent}%</span></div>
               <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/20"><div className="h-full rounded-full bg-white transition-all" style={{ width: `${status.progressPercent}%` }} /></div>
-              <div className="mt-2 text-[10px] leading-4 text-blue-200">{completedRequirements}/5 technical requirements · {status.crmTourStep}/6 CRM guide steps</div>
+              <div className="mt-2 text-[10px] leading-4 text-blue-200">{completedRequirements}/{requiredCount} technical requirements · {status.crmTourStep}/6 CRM guide steps</div>
             </div>
           </div>
         </div>
@@ -296,10 +399,10 @@ export default function SalesAccountSetup({ onCompleted }: { onCompleted?: () =>
       <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div><div className="text-[10px] font-black uppercase tracking-[0.16em] text-[#000080]">Part 1 · Mandatory account setup</div><h2 className="mt-1 text-xl font-black">Make your account customer-ready</h2><p className="mt-1 text-sm leading-6 text-slate-500">These are real system checks. They cannot be completed by simply ticking a box.</p></div>
-          <button type="button" onClick={() => void load()} disabled={busy || photoSaving} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 px-3 text-xs font-black text-slate-600 hover:border-blue-200 hover:text-[#000080] disabled:opacity-50"><RefreshCw className="h-4 w-4" />Refresh checks</button>
+          <button type="button" onClick={() => void load()} disabled={busy || photoSaving || mailboxBusy} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 px-3 text-xs font-black text-slate-600 hover:border-blue-200 hover:text-[#000080] disabled:opacity-50"><RefreshCw className="h-4 w-4" />Refresh checks</button>
         </div>
 
-        <div className="mt-6 grid gap-5 lg:grid-cols-2">
+        <div className={`mt-6 grid gap-5 ${professionalEmailVisible ? 'lg:grid-cols-3' : 'lg:grid-cols-2'}`}>
           <div className="rounded-3xl border border-slate-200 p-5 sm:p-6">
             <div className="flex items-start gap-3"><div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-[#000080]"><UserRound className="h-5 w-5" /></div><div><div className="text-xs font-black uppercase tracking-wide text-[#000080]">Step A · Professional identity</div><h3 className="mt-1 text-lg font-black">Use a professional profile photo</h3><p className="mt-1 text-xs leading-5 text-slate-500">Customers and teammates will see this image in profile, calendar and connected collaboration views.</p></div></div>
             <div className="mt-5"><ProfileImageUploader value={avatarUrl} name={profile?.fullName || user?.email} onChange={url => void saveProfessionalPhoto(url)} disabled={photoSaving} professionalRequired /></div>
@@ -310,24 +413,40 @@ export default function SalesAccountSetup({ onCompleted }: { onCompleted?: () =>
             <button type="button" onClick={() => navigate('/admin/seller-profile')} className="mt-4 text-xs font-black text-[#000080] hover:underline">Review full profile & timezone →</button>
           </div>
 
+          {professionalEmailVisible && (
+            <div className="rounded-3xl border border-slate-200 p-5 sm:p-6">
+              <div className="flex items-start gap-3"><div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-700"><Mail className="h-5 w-5" /></div><div><div className="text-xs font-black uppercase tracking-wide text-indigo-700">Step B · Professional email</div><h3 className="mt-1 text-lg font-black">Use your ProFox work mailbox</h3><p className="mt-1 text-xs leading-5 text-slate-500">Your login email remains separate. Customer email is sent only through the professional mailbox assigned to your ProFox account.</p></div></div>
+              <div className="mt-5 grid gap-2">
+                <Requirement complete={status.professionalEmailReady} label="Professional mailbox active" detail={status.workEmail || (status.professionalEmailRequired ? 'ProFox is preparing your professional mailbox.' : 'Professional email is not required for this account.')} />
+              </div>
+              {mailboxAccessPanel}
+            </div>
+          )}
+
           <div className="rounded-3xl border border-slate-200 p-5 sm:p-6">
-            <div className="flex items-start gap-3"><div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-rose-50 text-rose-700"><CalendarDays className="h-5 w-5" /></div><div><div className="text-xs font-black uppercase tracking-wide text-rose-700">Step B · Calendar & meetings</div><h3 className="mt-1 text-lg font-black">Connect Google Calendar + Google Meet</h3><p className="mt-1 text-xs leading-5 text-slate-500">This is mandatory for Sales. It prevents booking conflicts and keeps meeting links connected to the real CRM meeting workflow.</p></div></div>
+            <div className="flex items-start gap-3"><div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-rose-50 text-rose-700"><CalendarDays className="h-5 w-5" /></div><div><div className="text-xs font-black uppercase tracking-wide text-rose-700">Step {professionalEmailVisible ? 'C' : 'B'} · Calendar & meetings</div><h3 className="mt-1 text-lg font-black">Connect {calendarProviderLabel} + {meetingProviderLabel}</h3><p className="mt-1 text-xs leading-5 text-slate-500">Your assigned providers prevent booking conflicts and keep meeting links connected to the real CRM meeting workflow.</p></div></div>
             <div className="mt-5 grid gap-2">
-              <Requirement complete={status.googleCalendarConnected} label="Google Calendar connected" detail={status.googleAccountEmail || 'Connect the Google account you will use for ProFox sales meetings.'} />
-              <Requirement complete={status.googleMeetReady} label="Google Meet enabled" detail="Eligible ProFox meetings must be able to create a Google Meet link." />
+              <Requirement complete={status.calendarConnected} label={`${calendarProviderLabel} connected`} detail={calendarAccountEmail || (status.calendarProvider === 'zoho' ? 'Zoho Calendar is managed through the ProFox professional integration.' : 'Connect the Google account you will use for ProFox sales meetings.')} />
+              <Requirement complete={status.meetingReady} label={`${meetingProviderLabel} enabled`} detail={`Eligible ProFox meetings must be able to create a ${meetingProviderLabel} join link.`} />
               <Requirement complete={status.availabilityReady} label="Working availability configured" detail={status.availabilityReady ? `Working hours saved${status.workStart && status.workEnd ? ` · ${status.workStart}–${status.workEnd}` : ''}.` : 'Set your working days, hours, buffers and booking availability.'} />
             </div>
             <div className="mt-4 grid gap-2 sm:grid-cols-2">
-              {!status.googleCalendarConnected ? (
-                <button type="button" onClick={() => void connectGoogle()} disabled={busy} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#000080] px-4 text-xs font-black text-white disabled:opacity-50">{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <CalendarDays className="h-4 w-4" />}Connect Google Calendar</button>
-              ) : !status.googleMeetReady ? (
-                <button type="button" onClick={() => void enableGoogleMeet()} disabled={busy} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#000080] px-4 text-xs font-black text-white disabled:opacity-50">{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Video className="h-4 w-4" />}Enable Google Meet</button>
+              {status.calendarProvider === 'google' && status.meetingProvider === 'google_meet' ? (
+                !status.googleCalendarConnected ? (
+                  <button type="button" onClick={() => void connectGoogle()} disabled={busy} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#000080] px-4 text-xs font-black text-white disabled:opacity-50">{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <CalendarDays className="h-4 w-4" />}Connect Google Calendar</button>
+                ) : !status.googleMeetReady ? (
+                  <button type="button" onClick={() => void enableGoogleMeet()} disabled={busy} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#000080] px-4 text-xs font-black text-white disabled:opacity-50">{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Video className="h-4 w-4" />}Enable Google Meet</button>
+                ) : (
+                  <div className="flex min-h-11 items-center justify-center gap-2 rounded-xl bg-emerald-50 px-4 text-xs font-black text-emerald-700"><CheckCircle2 className="h-4 w-4" />Calendar & Meet ready</div>
+                )
+              ) : status.calendarConnected && status.meetingReady ? (
+                <div className="flex min-h-11 items-center justify-center gap-2 rounded-xl bg-emerald-50 px-4 text-xs font-black text-emerald-700"><CheckCircle2 className="h-4 w-4" />{calendarProviderLabel} & {meetingProviderLabel} ready</div>
               ) : (
-                <div className="flex min-h-11 items-center justify-center gap-2 rounded-xl bg-emerald-50 px-4 text-xs font-black text-emerald-700"><CheckCircle2 className="h-4 w-4" />Calendar & Meet ready</div>
+                <div className="flex min-h-11 items-center justify-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 text-center text-xs font-black leading-5 text-amber-800"><ShieldCheck className="h-4 w-4 shrink-0" />Managed by ProFox · refresh after provider setup completes</div>
               )}
               <button type="button" onClick={() => navigate('/admin/booking-setup')} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-xs font-black text-slate-700 hover:border-blue-200 hover:text-[#000080]"><Clock3 className="h-4 w-4" />Set working availability</button>
             </div>
-            <p className="mt-3 text-[10px] leading-4 text-slate-400">Google Calendar is used as a synchronized availability and meeting layer. ProFox remains the authoritative CRM and meeting record.</p>
+            <p className="mt-3 text-[10px] leading-4 text-slate-400">The external provider is a synchronized availability and meeting layer. ProFox remains the authoritative CRM and meeting record.</p>
           </div>
         </div>
       </section>
@@ -339,7 +458,7 @@ export default function SalesAccountSetup({ onCompleted }: { onCompleted?: () =>
         </div>
 
         {!technicalReady ? (
-          <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-5"><div className="flex items-start gap-3"><ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-amber-700" /><div><div className="font-black text-amber-950">Finish the mandatory account setup first</div><p className="mt-1 text-sm leading-6 text-amber-800">The CRM tour unlocks after your professional photo, timezone, Google Calendar, Google Meet and working availability are verified.</p></div></div></div>
+          <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-5"><div className="flex items-start gap-3"><ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-amber-700" /><div><div className="font-black text-amber-950">Finish the mandatory account setup first</div><p className="mt-1 text-sm leading-6 text-amber-800">The CRM tour unlocks after your professional identity, required work email, assigned calendar, meeting provider and working availability are verified.</p></div></div></div>
         ) : (
           <div className="mt-6 grid gap-5 lg:grid-cols-[240px_minmax(0,1fr)]">
             <div className="space-y-2">
@@ -372,7 +491,7 @@ export default function SalesAccountSetup({ onCompleted }: { onCompleted?: () =>
       </section>
 
       <section className="rounded-3xl border border-slate-200 bg-slate-50 p-5 sm:p-6">
-        <div className="flex items-start gap-3"><ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-[#000080]" /><div><h3 className="text-sm font-black text-slate-900">Why this setup is mandatory</h3><p className="mt-1 text-xs leading-5 text-slate-500">A professional identity builds trust, an accurate calendar prevents scheduling failures, Google Meet keeps customer meetings reliable, and disciplined CRM usage protects the customer journey. If a required connection is later removed, ProFox will ask you to restore it before continuing normal Sales work.</p></div></div>
+        <div className="flex items-start gap-3"><ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-[#000080]" /><div><h3 className="text-sm font-black text-slate-900">Why this setup is mandatory</h3><p className="mt-1 text-xs leading-5 text-slate-500">A professional identity builds trust, an accurate calendar prevents scheduling failures, the assigned meeting provider keeps customer meetings reliable, and disciplined CRM usage protects the customer journey. If a required connection is later removed, ProFox will ask you to restore it before continuing normal Sales work.</p></div></div>
       </section>
     </div>
   );
