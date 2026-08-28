@@ -95,6 +95,7 @@ const PublicPaymentCheckout = lazy(() => import('./pages/PublicPaymentCheckout')
 const SalesPartnerAgreementSign = lazy(() => import('./pages/SalesPartnerAgreementSign'));
 const SalesOnboardingSetup = lazy(() => import('./pages/SalesOnboardingSetup'));
 const RecruitmentTaskPage = lazy(() => import('./pages/RecruitmentTaskPage'));
+const ContentPortfolioTaskPage = lazy(() => import('./pages/ContentPortfolioTaskPage'));
 const ClientPortalEntry = lazy(() => import('./components/client/ClientPortalEntry'));
 const ClientOnboardingPage = lazy(() => import('./pages/ClientOnboardingPage'));
 
@@ -136,6 +137,7 @@ export default function App() {
     <Route path="/client-onboarding/:token" element={<ClientOnboardingPage/>}/>
     <Route path="/agreement/sign/:token" element={<SalesPartnerAgreementSign/>}/>
     <Route path="/recruitment/task/:token" element={<RecruitmentTaskPage/>}/>
+    <Route path="/recruitment/content-portfolio/:token" element={<ContentPortfolioTaskPage/>}/>
     <Route path="/careers/:slug/apply" element={<DeveloperApplicationPage/>}/>
     <Route path="/sales-onboarding/setup" element={<SalesOnboardingSetup/>}/>
     <Route path="/team-onboarding/setup" element={<SalesOnboardingSetup/>}/>
