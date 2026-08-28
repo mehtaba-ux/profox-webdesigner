@@ -1,0 +1,4 @@
+-- Remote migration-history marker for 20260828152454.
+-- The replayable final-state reconciliation is stored in the adjacent
+-- 20260828153000_content_creator_recruitment_final_reconciliation.sql migration.
+-- Production already contained the reconciled state when this version was recorded.
