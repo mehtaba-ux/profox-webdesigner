@@ -108,6 +108,7 @@ function connectionStatus(value: unknown): ZohoMailConnectionStatus {
 }
 function count(value: unknown) { const parsed = Number(value || 0); return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0; }
 function throwRpc(error: any, fallback: string): never { throw new Error(error?.message || fallback); }
+function isMaskedCredential(value: string) { return value.includes('•') || value.includes('...') || value.includes('***'); }
 
 function normalize(value: any): ProfessionalIntegrationsConfig {
   return {
@@ -169,8 +170,13 @@ export const professionalIntegrationService = {
     return normalizeHealth(data || DEFAULT_HEALTH);
   },
   async saveZohoProvider(input: { clientId: string; clientSecret?: string; organizationId: string; dataCenter: string }): Promise<ProfessionalIntegrationsConfig> {
+    const rawClientId = input.clientId.trim();
+    const clientId = isMaskedCredential(rawClientId) ? '' : rawClientId;
     const { data, error } = await supabase.rpc('admin_set_zoho_provider', {
-      p_client_id: input.clientId.trim(), p_client_secret: input.clientSecret?.trim() || '', p_organization_id: input.organizationId.trim(), p_data_center: input.dataCenter.trim(),
+      p_client_id: clientId,
+      p_client_secret: input.clientSecret?.trim() || '',
+      p_organization_id: input.organizationId.trim(),
+      p_data_center: input.dataCenter.trim(),
     });
     if (error) throwRpc(error, 'Zoho provider configuration could not be saved.');
     return normalize(data);
@@ -186,9 +192,14 @@ export const professionalIntegrationService = {
     const { data, error } = await supabase.rpc('admin_list_professional_mailbox_canary_candidates');
     if (error) throwRpc(error, 'Mailbox canary candidates could not be loaded.');
     return (Array.isArray(data) ? data : []).map((row: any) => ({
-      userId: String(row?.user_id || ''), displayName: String(row?.display_name || ''), email: String(row?.email || ''),
-      role: String(row?.role || ''), department: String(row?.department || ''), eligible: Boolean(row?.eligible),
-      mailboxStatus: String(row?.mailbox_status || 'not_configured'), workEmail: String(row?.work_email || ''),
+      userId: String(row?.userId ?? row?.user_id ?? ''),
+      displayName: String(row?.displayName ?? row?.display_name ?? ''),
+      email: String(row?.email ?? ''),
+      role: String(row?.role ?? ''),
+      department: String(row?.department ?? ''),
+      eligible: Boolean(row?.eligible),
+      mailboxStatus: String(row?.mailboxStatus ?? row?.mailbox_status ?? 'not_configured'),
+      workEmail: String(row?.workEmail ?? row?.work_email ?? ''),
     })).filter((row: MailboxCanaryCandidate) => Boolean(row.userId));
   },
   async queueMailboxCanary(userId: string): Promise<string> {
