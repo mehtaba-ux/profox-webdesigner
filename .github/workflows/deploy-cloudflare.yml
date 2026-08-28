@@ -7,6 +7,13 @@ on:
         description: Public application URL to verify after deploy (optional until the production URL is configured)
         required: false
         type: string
+  workflow_run:
+    workflows:
+      - ProFox CRM CI
+    types:
+      - completed
+    branches:
+      - main
 
 permissions:
   contents: read
@@ -18,6 +25,15 @@ concurrency:
 jobs:
   deploy:
     name: Cloudflare production deploy
+    if: >-
+      ${{
+        github.event_name == 'workflow_dispatch' ||
+        (
+          github.event_name == 'workflow_run' &&
+          github.event.workflow_run.conclusion == 'success' &&
+          github.event.workflow_run.head_branch == 'main'
+        )
+      }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     environment: production
@@ -30,8 +46,10 @@ jobs:
       PUBLIC_APP_URL: ${{ inputs.public_app_url || vars.PROFOX_PUBLIC_APP_URL || 'https://www.profoxwebdesigner.com' }}
 
     steps:
-      - name: Checkout
+      - name: Checkout tested main commit
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
 
       - name: Setup Node 22
         uses: actions/setup-node@v4
