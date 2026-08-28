@@ -1,6 +1,17 @@
 import { supabase, dbProcedure } from './supabase';
 import { ContactLead } from '../types';
 
+export interface PublicLeadSubmissionPayload {
+  answers?: Record<string, string>;
+  attribution?: Record<string, string>;
+  honeypot?: string;
+  // Legacy keys remain supported while older contact surfaces are phased out.
+  fullName?: string;
+  email?: string;
+  subject?: string;
+  message?: string;
+}
+
 export const leadService = {
   async getAllLeads(): Promise<ContactLead[]> {
     const { data, error } = await dbProcedure.getContentById('leads_database');
@@ -11,12 +22,12 @@ export const leadService = {
     return Array.isArray(data?.leads) ? data.leads : [];
   },
 
-  async submitLead(leadData: Omit<ContactLead, 'id' | 'createdAt' | 'status' | 'source'>): Promise<{ success: boolean; error?: string }> {
+  async submitLead(leadData: PublicLeadSubmissionPayload): Promise<{ success: boolean; error?: string; reference?: string }> {
     try {
       const { data, error } = await supabase.rpc('submit_public_crm_lead', { p_payload: leadData });
       if (error) throw error;
       if (data?.success !== true) throw new Error('The enquiry could not be added to CRM.');
-      return { success: true };
+      return { success: true, reference: data?.reference ? String(data.reference) : undefined };
     } catch (err: any) {
       console.error('Lead submission failed:', err);
       return { success: false, error: err.message };
@@ -27,7 +38,6 @@ export const leadService = {
     try {
       const allLeads = await this.getAllLeads();
       const updatedLeads = allLeads.map(l => l.id === leadId ? { ...l, status } : l);
-      
       const { error } = await dbProcedure.upsertContentItem('leads_database', { leads: updatedLeads });
       if (error) throw error;
       return { success: true };
@@ -40,7 +50,6 @@ export const leadService = {
     try {
       const allLeads = await this.getAllLeads();
       const updatedLeads = allLeads.filter(l => l.id !== leadId);
-      
       const { error } = await dbProcedure.upsertContentItem('leads_database', { leads: updatedLeads });
       if (error) throw error;
       return { success: true };
