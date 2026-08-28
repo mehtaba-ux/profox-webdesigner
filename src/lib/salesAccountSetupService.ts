@@ -6,6 +6,7 @@ export interface SalesAccountSetupStatus {
   timezoneReady: boolean;
   professionalEmailRequired: boolean;
   professionalEmailReady: boolean;
+  professionalEmailCredentialPending: boolean;
   workEmail: string;
   mailProvider: 'none' | 'zoho';
   calendarProvider: 'google' | 'zoho';
@@ -50,6 +51,7 @@ function normalizeStatus(value: any): SalesAccountSetupStatus {
     timezoneReady: Boolean(value?.timezoneReady),
     professionalEmailRequired: Boolean(value?.professionalEmailRequired),
     professionalEmailReady: value?.professionalEmailReady === undefined ? true : Boolean(value?.professionalEmailReady),
+    professionalEmailCredentialPending: Boolean(value?.professionalEmailCredentialPending),
     workEmail: String(value?.workEmail || ''),
     mailProvider: value?.mailProvider === 'zoho' ? 'zoho' : 'none',
     calendarProvider,
