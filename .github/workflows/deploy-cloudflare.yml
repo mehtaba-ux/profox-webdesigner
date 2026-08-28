@@ -140,6 +140,11 @@ jobs:
           console.log(`Verified Cloudflare Worker health at ${new Date().toISOString()}`);
           NODE
 
+      - name: Verify deployed frontend configuration and public content
+        env:
+          VERIFY_DEPLOYED_APP: 'true'
+        run: node scripts/verify-public-content.mjs
+
       - name: Record verification status
         if: ${{ always() }}
         shell: bash

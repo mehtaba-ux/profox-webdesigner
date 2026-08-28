@@ -37,6 +37,48 @@ if (!embedded) {
   throw new Error('The production bundle does not contain the validated Supabase publishable key.');
 }
 
+async function fetchChecked(url, label) {
+  const response = await fetch(url, {
+    cache: 'no-store',
+    headers: { 'cache-control': 'no-cache' },
+    redirect: 'follow'
+  });
+  if (!response.ok) throw new Error(`${label} returned HTTP ${response.status}.`);
+  return response;
+}
+
+async function verifyDeployedApplication() {
+  const publicAppUrl = String(process.env.PUBLIC_APP_URL || '').trim().replace(/\/$/, '');
+  if (!/^https:\/\//.test(publicAppUrl)) {
+    throw new Error('PUBLIC_APP_URL is required for deployed frontend verification.');
+  }
+
+  const cacheBuster = encodeURIComponent(process.env.GITHUB_SHA || String(Date.now()));
+  const homeResponse = await fetchChecked(`${publicAppUrl}/?deployment=${cacheBuster}`, 'Public application');
+  const homeHtml = await homeResponse.text();
+  const scriptPaths = [...homeHtml.matchAll(/<script[^>]+src=["']([^"']+)["']/gi)]
+    .map((match) => match[1])
+    .filter((source) => source.startsWith('/assets/index-') && source.endsWith('.js'));
+
+  if (scriptPaths.length !== 1) {
+    throw new Error('The deployed application entry bundle could not be identified uniquely.');
+  }
+
+  const entryUrl = new URL(scriptPaths[0], publicAppUrl);
+  entryUrl.searchParams.set('deployment', cacheBuster);
+  const entryBundle = await (await fetchChecked(entryUrl, 'Deployed entry bundle')).text();
+  if (!entryBundle.includes(publishableKey)) {
+    throw new Error('The deployed frontend does not contain the validated Supabase publishable key.');
+  }
+
+  await Promise.all([
+    fetchChecked(`${publicAppUrl}/pricing?deployment=${cacheBuster}`, 'Pricing route'),
+    fetchChecked(`${publicAppUrl}/careers?deployment=${cacheBuster}`, 'Careers route')
+  ]);
+
+  console.log('Deployed frontend configuration and public routes verified.');
+}
+
 const supabase = createClient(supabaseUrl, publishableKey, {
   auth: { persistSession: false, autoRefreshToken: false }
 });
@@ -71,3 +113,7 @@ if (jobs.length === 0) throw new Error('The public Careers page has no published
 if (packages.length === 0) throw new Error('The public Pricing page has no public packages.');
 
 console.log(`Public content verified: ${packages.length} pricing packages and ${jobs.length} career jobs.`);
+
+if (process.env.VERIFY_DEPLOYED_APP === 'true') {
+  await verifyDeployedApplication();
+}
