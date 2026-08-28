@@ -45,13 +45,18 @@ export interface ProfessionalMailboxFirstLogin {
 function normalizeStatus(value: any): SalesAccountSetupStatus {
   const calendarProvider = value?.calendarProvider === 'zoho' ? 'zoho' : 'google';
   const meetingProvider = value?.meetingProvider === 'zoho_meeting' ? 'zoho_meeting' : 'google_meet';
+  const professionalEmailRequired = Boolean(value?.professionalEmailRequired);
+  const professionalEmailReady = value?.professionalEmailReady === undefined ? true : Boolean(value?.professionalEmailReady);
+  const professionalEmailCredentialPending = professionalEmailRequired
+    ? (!professionalEmailReady || Boolean(value?.professionalEmailCredentialPending))
+    : Boolean(value?.professionalEmailCredentialPending);
   return {
     userId: String(value?.userId || ''),
     profilePhotoReady: Boolean(value?.profilePhotoReady),
     timezoneReady: Boolean(value?.timezoneReady),
-    professionalEmailRequired: Boolean(value?.professionalEmailRequired),
-    professionalEmailReady: value?.professionalEmailReady === undefined ? true : Boolean(value?.professionalEmailReady),
-    professionalEmailCredentialPending: Boolean(value?.professionalEmailCredentialPending),
+    professionalEmailRequired,
+    professionalEmailReady,
+    professionalEmailCredentialPending,
     workEmail: String(value?.workEmail || ''),
     mailProvider: value?.mailProvider === 'zoho' ? 'zoho' : 'none',
     calendarProvider,
