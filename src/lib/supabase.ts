@@ -12,6 +12,10 @@ const isPlaceholder = (val: string) =>
   val === 'undefined' ||
   val === 'null';
 
+const isValidPublicKey = (val: string) =>
+  /^sb_publishable_[A-Za-z0-9_-]{20,}$/.test(val) ||
+  /^eyJ[A-Za-z0-9._-]{100,}$/.test(val);
+
 const isValidUrl = (urlStr: string) => {
   try {
     const parsed = new URL(urlStr);
@@ -22,7 +26,12 @@ const isValidUrl = (urlStr: string) => {
 };
 
 const isConfigured = Boolean(
-  rawUrl && rawKey && !isPlaceholder(rawUrl) && !isPlaceholder(rawKey) && isValidUrl(rawUrl)
+  rawUrl &&
+  rawKey &&
+  !isPlaceholder(rawUrl) &&
+  !isPlaceholder(rawKey) &&
+  isValidUrl(rawUrl) &&
+  isValidPublicKey(rawKey)
 );
 
 let clientInstance: any = null;
