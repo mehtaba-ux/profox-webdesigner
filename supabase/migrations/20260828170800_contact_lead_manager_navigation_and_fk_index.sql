@@ -1,5 +1,5 @@
 -- Final release hardening for the qualified contact lead workflow.
--- Keep assignment managers aligned with roles that can safely reach the CRM Leads workspace,
+-- Keep assignment managers aligned with roles that can already reach the CRM Leads workspace,
 -- and cover the round-robin cursor foreign key reported by Supabase advisors.
 
 create index if not exists idx_crm_lead_assignment_state_last_salesperson_id
@@ -19,7 +19,7 @@ begin
   select coalesce(jsonb_agg(jsonb_build_object('id',u.id,'name',coalesce(nullif(btrim(u.full_name),''),u.email),'email',u.email,'role',u.role,'department',coalesce(u.department,'')) order by coalesce(nullif(btrim(u.full_name),''),u.email)),'[]'::jsonb)
   into v_staff from public.user_profiles u
   where u.status='active'
-    and u.role in ('sales','sales_rep','sales_team','site_manager');
+    and u.role in ('sales','sales_rep','sales_team');
   select coalesce(jsonb_agg(jsonb_build_object('id',u.id,'name',coalesce(nullif(btrim(u.full_name),''),u.email),'email',u.email,'role',u.role) order by coalesce(nullif(btrim(u.full_name),''),u.email)),'[]'::jsonb)
   into v_sales from public.user_profiles u
   where u.status='active' and u.onboarding_status='completed' and u.role in ('sales','sales_rep','sales_team');
@@ -59,9 +59,9 @@ begin
       select 1 from public.user_profiles u
       where u.id=v_uid::uuid
         and u.status='active'
-        and u.role in ('sales','sales_rep','sales_team','site_manager')
+        and u.role in ('sales','sales_rep','sales_team')
     ) then
-      raise exception 'Assignment managers must be active CRM-capable staff.';
+      raise exception 'Assignment managers must be active CRM Sales staff.';
     end if;
   end loop;
   for v_uid in select jsonb_array_elements_text(coalesce(p_assignment->'eligibleSalespersonIds','[]'::jsonb)) loop
