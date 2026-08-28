@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'motion/react';
 import { ArrowLeft, ArrowRight, Check, CheckCircle2, Loader2, LockKeyhole, Send, Sparkles } from 'lucide-react';
 import { leadService } from '../lib/leadService';
+import { useCMS } from '../lib/CMSProvider';
 import {
   contactLeadFormService,
   DEFAULT_PUBLIC_CONTACT_FORM,
@@ -43,12 +44,14 @@ function collectAttribution(): Record<string, string> {
 }
 
 function inputClass(hasError: boolean) {
-  return `w-full rounded-xl border bg-slate-50 px-3.5 py-2.5 text-sm text-slate-900 outline-none transition-all placeholder:text-slate-400 focus:bg-white focus:ring-4 ${
+  return `w-full rounded-xl border bg-slate-50/80 px-3.5 py-2.5 text-sm font-medium text-slate-900 outline-none transition-all placeholder:font-normal placeholder:text-slate-400 focus:bg-white focus:ring-4 ${
     hasError ? 'border-rose-300 focus:border-rose-500 focus:ring-rose-100' : 'border-slate-200 focus:border-[#000080] focus:ring-[#000080]/5'
   }`;
 }
 
 export default function QualifiedContactForm() {
+  const { content } = useCMS();
+  const buttonRadius = content.theme?.buttonRadius || 'rounded-lg';
   const [config, setConfig] = useState<PublicContactFormConfiguration>(DEFAULT_PUBLIC_CONTACT_FORM);
   const [loadingConfig, setLoadingConfig] = useState(true);
   const [stepIndex, setStepIndex] = useState(0);
@@ -236,18 +239,18 @@ export default function QualifiedContactForm() {
   };
 
   if (!config.enabled) {
-    return <div className="rounded-[32px] border border-slate-200 bg-white p-8 text-center shadow-xl"><h3 className="text-xl font-black text-slate-900">Project enquiries are temporarily paused.</h3><p className="mt-2 text-sm leading-6 text-slate-500">Please use the email or phone details on this page and our team will be happy to help.</p></div>;
+    return <div className="rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-[0_16px_45px_rgba(15,23,42,0.06)]"><h3 className="pf-card-title text-slate-950">Project enquiries are temporarily paused.</h3><p className="mt-2 text-sm leading-6 text-slate-500">Please use the email or phone details on this page and our team will be happy to help.</p></div>;
   }
 
   if (success) {
     return (
-      <div id="project-enquiry-form" className="rounded-[36px] border border-emerald-200 bg-white p-7 text-center shadow-2xl sm:p-10">
+      <div id="project-enquiry-form" className="rounded-3xl border border-emerald-200 bg-white p-7 text-center shadow-[0_18px_55px_rgba(15,23,42,0.08)] sm:p-10">
         <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700"><CheckCircle2 className="h-7 w-7" /></div>
-        <div className="mt-4 text-[10px] font-black uppercase tracking-[.2em] text-emerald-700">Enquiry received</div>
-        <h2 className="mt-2 text-3xl font-black tracking-tight text-slate-950">{config.experience.successTitle}</h2>
+        <div className="pf-eyebrow mt-4 text-emerald-700">Enquiry received</div>
+        <h2 className="mt-2 text-3xl font-semibold tracking-[-0.04em] text-slate-950">{config.experience.successTitle}</h2>
         <p className="mx-auto mt-3 max-w-lg text-sm leading-6 text-slate-600">{config.experience.successMessage}</p>
-        {reference && <div className="mx-auto mt-5 w-fit rounded-xl bg-slate-50 px-4 py-2 text-xs font-black text-slate-600">Reference: {reference}</div>}
-        <button type="button" onClick={() => setSuccess(false)} className="mt-6 rounded-xl border border-slate-200 bg-white px-5 py-3 text-xs font-black text-slate-700 hover:bg-slate-50">Send another enquiry</button>
+        {reference && <div className="mx-auto mt-5 w-fit rounded-xl bg-slate-50 px-4 py-2 text-xs font-semibold text-slate-600">Reference: {reference}</div>}
+        <button type="button" onClick={() => setSuccess(false)} className={`mt-6 border border-slate-200 bg-white px-5 py-3 text-xs font-bold text-slate-700 transition-colors hover:bg-slate-50 ${buttonRadius}`}>Send another enquiry</button>
       </div>
     );
   }
@@ -256,25 +259,25 @@ export default function QualifiedContactForm() {
   const finalStep = safeStepIndex === steps.length - 1;
 
   return (
-    <div id="project-enquiry-form" className="relative overflow-hidden rounded-[36px] border border-slate-200 bg-white p-5 shadow-2xl sm:p-7 lg:p-8">
-      <div className="absolute right-0 top-0 h-36 w-36 translate-x-1/3 -translate-y-1/3 rounded-full bg-[#000080]/5 blur-2xl" />
+    <div id="project-enquiry-form" className="relative overflow-hidden rounded-3xl border border-slate-200/90 bg-white p-5 shadow-[0_18px_55px_rgba(15,23,42,0.08)] sm:p-7 lg:p-8">
+      <div className="absolute right-0 top-0 h-36 w-36 translate-x-1/3 -translate-y-1/3 rounded-full bg-[var(--brand-primary)]/[0.05] blur-2xl" />
       <div className="relative">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-[.18em] text-[#000080]"><Sparkles className="h-4 w-4" />{config.experience.eyebrow}</div>
-          <div className="text-[10px] font-bold text-slate-400">{config.experience.estimatedTime}</div>
+          <div className="pf-eyebrow inline-flex items-center gap-2 text-[var(--brand-primary)]"><Sparkles className="h-4 w-4" />{config.experience.eyebrow}</div>
+          <div className="text-xs font-semibold text-slate-400">{config.experience.estimatedTime}</div>
         </div>
-        <h2 className="mt-2.5 text-2xl font-black tracking-tight text-slate-950 sm:text-3xl">{config.experience.title}</h2>
+        <h2 className="mt-2.5 text-2xl font-semibold tracking-[-0.04em] text-slate-950 sm:text-3xl">{config.experience.title}</h2>
         <p className="mt-1.5 max-w-xl text-xs leading-5 text-slate-500 sm:text-sm">{config.experience.subtitle}</p>
 
         <div className="mt-4">
-          <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-[.14em] text-slate-400"><span>Step {safeStepIndex + 1} of {Math.max(steps.length, 1)}</span><span>{Math.round(progress)}%</span></div>
-          <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-[#000080] transition-all duration-300" style={{ width: `${progress}%` }} /></div>
+          <div className="flex items-center justify-between text-xs font-bold tracking-[.06em] text-slate-400"><span>Step {safeStepIndex + 1} of {Math.max(steps.length, 1)}</span><span>{Math.round(progress)}%</span></div>
+          <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-[var(--brand-primary)] transition-all duration-300" style={{ width: `${progress}%` }} /></div>
         </div>
 
         {currentStep && (
-          <div className="mt-4 rounded-2xl border border-slate-100 bg-slate-50/80 px-4 py-2.5">
-            <div className="text-sm font-black text-slate-900">{currentStep.title}</div>
-            {currentStep.subtitle && <div className="mt-0.5 text-[11px] leading-4 text-slate-500">{currentStep.subtitle}</div>}
+          <div className="mt-4 rounded-2xl border border-slate-100 bg-[var(--brand-surface)]/70 px-4 py-2.5">
+            <div className="pf-card-title text-slate-950">{currentStep.title}</div>
+            {currentStep.subtitle && <div className="mt-0.5 text-xs leading-4 text-slate-500">{currentStep.subtitle}</div>}
           </div>
         )}
 
@@ -295,7 +298,7 @@ export default function QualifiedContactForm() {
                   : 'grid gap-1.5 sm:grid-cols-2';
                 return (
                   <div key={field.id} className={full ? 'sm:col-span-2' : ''}>
-                    <label className="mb-1 block text-[11px] font-black text-slate-700 sm:text-xs">{field.label}{field.required && <span className="ml-1 text-rose-500">*</span>}</label>
+                    <label className="mb-1 block text-xs font-semibold text-slate-700">{field.label}{field.required && <span className="ml-1 text-rose-500">*</span>}</label>
                     {field.type === 'textarea' ? (
                       <textarea rows={3} value={value} onChange={event => setAnswer(field.id, event.target.value)} placeholder={field.placeholder} maxLength={field.maxLength || 4000} className={`${inputClass(Boolean(error))} resize-y lg:resize-none`} />
                     ) : field.type === 'single_select' && field.display === 'cards' ? (
@@ -307,7 +310,7 @@ export default function QualifiedContactForm() {
                               key={option.value}
                               type="button"
                               onClick={() => setAnswer(field.id, option.value)}
-                              className={`flex min-h-10 items-center justify-between gap-2 rounded-xl border px-3 py-2 text-left text-[11px] font-bold leading-4 transition-all ${selected ? 'border-[#000080] bg-[#000080]/5 text-[#000080] ring-2 ring-[#000080]/10' : 'border-slate-200 bg-white text-slate-700 hover:-translate-y-0.5 hover:border-slate-300 hover:bg-slate-50 hover:shadow-sm'}`}
+                              className={`flex min-h-10 items-center justify-between gap-2 rounded-xl border px-3 py-2 text-left text-[11px] font-semibold leading-4 transition-all ${selected ? 'border-[#000080] bg-[#000080]/5 text-[#000080] ring-2 ring-[#000080]/10' : 'border-slate-200 bg-white text-slate-700 hover:-translate-y-0.5 hover:border-slate-300 hover:bg-slate-50 hover:shadow-sm'}`}
                             >
                               <span>{option.label}</span>
                               <span className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border ${selected ? 'border-[#000080] bg-[#000080] text-white' : 'border-slate-300 text-transparent'}`}><Check className="h-2.5 w-2.5" /></span>
@@ -321,7 +324,7 @@ export default function QualifiedContactForm() {
                       <input type={field.type} value={value} onChange={event => setAnswer(field.id, event.target.value)} placeholder={field.placeholder} maxLength={field.maxLength || 500} autoComplete={field.purpose === 'fullName' ? 'name' : field.purpose === 'email' ? 'email' : field.purpose === 'phone' ? 'tel' : field.purpose === 'companyName' ? 'organization' : undefined} className={inputClass(Boolean(error))} />
                     )}
                     {field.helpText && <p className="mt-1 text-[10px] leading-4 text-slate-400">{field.helpText}</p>}
-                    {error && <p className="mt-1 text-[10px] font-bold leading-4 text-rose-600">{error}</p>}
+                    {error && <p className="mt-1 text-[10px] font-semibold leading-4 text-rose-600">{error}</p>}
                   </div>
                 );
               })}
@@ -329,18 +332,18 @@ export default function QualifiedContactForm() {
 
             <div className="absolute -left-[10000px] top-auto h-px w-px overflow-hidden" aria-hidden="true"><label>Company fax<input tabIndex={-1} autoComplete="off" value={honeypot} onChange={event => setHoneypot(event.target.value)} /></label></div>
 
-            {submitError && <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-xs font-bold leading-5 text-rose-700">{submitError}</div>}
+            {submitError && <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-xs font-semibold leading-5 text-rose-700">{submitError}</div>}
 
             <div className="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <div>{safeStepIndex > 0 && <button type="button" onClick={previousStep} disabled={submitting} className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-xs font-black text-slate-700 transition-all hover:border-slate-300 hover:bg-slate-50 disabled:opacity-50"><ArrowLeft className="h-4 w-4" />{config.experience.previousLabel}</button>}</div>
+              <div>{safeStepIndex > 0 && <button type="button" onClick={previousStep} disabled={submitting} className={`inline-flex min-h-10 items-center gap-2 border border-slate-200 bg-white px-4 text-xs font-bold text-slate-700 transition-all hover:border-slate-300 hover:bg-slate-50 disabled:opacity-50 ${buttonRadius}`}><ArrowLeft className="h-4 w-4" />{config.experience.previousLabel}</button>}</div>
               {!finalStep ? (
-                <button type="button" onClick={nextStep} disabled={loadingConfig} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-[#000080] px-5 text-xs font-black text-white shadow-lg shadow-blue-950/10 transition-all hover:-translate-y-0.5 hover:bg-[#000066] hover:shadow-xl disabled:opacity-60">{config.experience.nextLabel}<ArrowRight className="h-4 w-4" /></button>
+                <button type="button" onClick={nextStep} disabled={loadingConfig} className={`inline-flex min-h-10 items-center justify-center gap-2 bg-[var(--brand-primary)] px-5 text-xs font-bold text-white shadow-[0_12px_30px_rgba(0,0,128,0.16)] transition-all hover:-translate-y-0.5 hover:bg-[var(--brand-primary-hover)] hover:shadow-[0_16px_36px_rgba(0,0,128,0.2)] disabled:opacity-60 ${buttonRadius}`}>{config.experience.nextLabel}<ArrowRight className="h-4 w-4" /></button>
               ) : (
-                <button type="submit" disabled={submitting} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-[#000080] px-5 text-xs font-black text-white shadow-lg shadow-blue-950/10 transition-all hover:-translate-y-0.5 hover:bg-[#000066] hover:shadow-xl disabled:opacity-60">{submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}{submitting ? 'Sending securely…' : config.experience.submitLabel}</button>
+                <button type="submit" disabled={submitting} className={`inline-flex min-h-10 items-center justify-center gap-2 bg-[var(--brand-primary)] px-5 text-xs font-bold text-white shadow-[0_12px_30px_rgba(0,0,128,0.16)] transition-all hover:-translate-y-0.5 hover:bg-[var(--brand-primary-hover)] hover:shadow-[0_16px_36px_rgba(0,0,128,0.2)] disabled:opacity-60 ${buttonRadius}`}>{submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}{submitting ? 'Sending securely…' : config.experience.submitLabel}</button>
               )}
             </div>
 
-            <div className="mt-3 flex items-start justify-center gap-2 text-center text-[10px] font-semibold leading-4 text-slate-400"><LockKeyhole className="mt-0.5 h-3.5 w-3.5 shrink-0" /><span>{config.experience.privacyText}</span></div>
+            <div className="mt-3 flex items-start justify-center gap-2 text-center text-[10px] font-medium leading-4 text-slate-400"><LockKeyhole className="mt-0.5 h-3.5 w-3.5 shrink-0" /><span>{config.experience.privacyText}</span></div>
           </form>
         </motion.div>
       </div>
