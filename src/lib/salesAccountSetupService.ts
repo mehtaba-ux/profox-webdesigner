@@ -6,6 +6,7 @@ export interface SalesAccountSetupStatus {
   timezoneReady: boolean;
   professionalEmailRequired: boolean;
   professionalEmailReady: boolean;
+  professionalEmailCredentialPending: boolean;
   workEmail: string;
   mailProvider: 'none' | 'zoho';
   calendarProvider: 'google' | 'zoho';
@@ -33,6 +34,14 @@ export interface SalesAccountSetupStatus {
   progressPercent: number;
 }
 
+export interface ProfessionalMailboxFirstLogin {
+  available: boolean;
+  workEmail: string;
+  temporaryPassword: string;
+  oneTimePassword: boolean;
+  reason: string;
+}
+
 function normalizeStatus(value: any): SalesAccountSetupStatus {
   const calendarProvider = value?.calendarProvider === 'zoho' ? 'zoho' : 'google';
   const meetingProvider = value?.meetingProvider === 'zoho_meeting' ? 'zoho_meeting' : 'google_meet';
@@ -42,6 +51,7 @@ function normalizeStatus(value: any): SalesAccountSetupStatus {
     timezoneReady: Boolean(value?.timezoneReady),
     professionalEmailRequired: Boolean(value?.professionalEmailRequired),
     professionalEmailReady: value?.professionalEmailReady === undefined ? true : Boolean(value?.professionalEmailReady),
+    professionalEmailCredentialPending: Boolean(value?.professionalEmailCredentialPending),
     workEmail: String(value?.workEmail || ''),
     mailProvider: value?.mailProvider === 'zoho' ? 'zoho' : 'none',
     calendarProvider,
@@ -74,11 +84,27 @@ function normalizeStatus(value: any): SalesAccountSetupStatus {
   };
 }
 
+function normalizeMailboxFirstLogin(value: any): ProfessionalMailboxFirstLogin {
+  return {
+    available: Boolean(value?.available),
+    workEmail: String(value?.workEmail || ''),
+    temporaryPassword: String(value?.temporaryPassword || ''),
+    oneTimePassword: Boolean(value?.oneTimePassword),
+    reason: String(value?.reason || ''),
+  };
+}
+
 export const salesAccountSetupService = {
   async getMyStatus(): Promise<SalesAccountSetupStatus> {
     const { data, error } = await supabase.rpc('get_my_sales_account_setup_status');
     if (error) throw error;
     return normalizeStatus(data);
+  },
+
+  async getMyProfessionalMailboxFirstLogin(): Promise<ProfessionalMailboxFirstLogin> {
+    const { data, error } = await supabase.rpc('get_my_professional_mailbox_first_login');
+    if (error) throw error;
+    return normalizeMailboxFirstLogin(data);
   },
 
   async advanceCrmTour(step: number): Promise<SalesAccountSetupStatus> {
