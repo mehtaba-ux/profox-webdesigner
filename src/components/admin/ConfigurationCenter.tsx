@@ -3,6 +3,7 @@ import { ShieldCheck } from 'lucide-react';
 import LegacyConfigurationCenter from './ConfigurationCenterLegacy';
 import ProfessionalIntegrationsAdmin from './ProfessionalIntegrationsAdmin';
 import ContactLeadFormAdmin from './ContactLeadFormAdmin';
+import QuoteEnquiryResponsePolicyAdmin from './QuoteEnquiryResponsePolicyAdmin';
 
 /**
  * Compatibility wrapper around non-commercial configuration tools.
@@ -36,6 +37,7 @@ export default function ConfigurationCenter() {
         </div>
       </div>
       <ContactLeadFormAdmin />
+      <QuoteEnquiryResponsePolicyAdmin />
       <ProfessionalIntegrationsAdmin />
       <div className="legacy-configuration-center">
         <LegacyConfigurationCenter />
