@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { talentPartnerService } from './talentPartnerService';
 
 export interface DeveloperApplicationPayload {
   fullName: string;
@@ -73,6 +74,8 @@ export const developerHiringService = {
       p_application: payload
     });
     if (error) throw new Error(error.message || 'We could not submit your Web Developer application.');
-    return (data || { success: false }) as DeveloperApplicationResult;
+    const result = (data || { success: false }) as DeveloperApplicationResult;
+    if (result.success && result.reference) void talentPartnerService.claimApplication(result.reference, application.email);
+    return result;
   }
 };

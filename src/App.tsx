@@ -16,6 +16,7 @@ import { getPagePath } from './lib/seoUrls';
 import HomePageLoader from './components/HomePageLoader';
 import HomeScrollProgress from './components/HomeScrollProgress';
 import ScrollToTop from './components/ScrollToTop';
+import TalentPartnerReferralTracker from './components/TalentPartnerReferralTracker';
 import { ConfirmProvider } from './components/admin/ConfirmContext';
 
 const MeetingsWorkspace = lazy(() => import('./components/admin/MeetingsWorkspace'));
@@ -45,6 +46,7 @@ const CRMPipelineSettingsAdmin = lazy(() => import('./components/admin/CRMPipeli
 const CustomerCommunicationAdmin = lazy(() => import('./components/admin/CustomerCommunicationAdmin'));
 const BookingAnalyticsAdmin = lazy(() => import('./components/admin/BookingAnalyticsAdmin'));
 const CareerJobsAdmin = lazy(() => import('./components/admin/CareerJobsAdmin'));
+const TalentPartnerAdmin = lazy(() => import('./components/admin/TalentPartnerAdmin'));
 const UIUXRecruitmentWorkspace = lazy(() => import('./components/admin/UIUXRecruitmentWorkspace'));
 const SalesCareerProgression = lazy(() => import('./components/admin/SalesCareerProgression'));
 const SalesAgreementAdmin = lazy(() => import('./components/admin/SalesAgreementAdmin'));
@@ -78,6 +80,8 @@ const PricingCatalogPage = lazy(() => import('./pages/PricingCatalogPage'));
 const CareersListView = lazy(() => import('./pages/CareersListView'));
 const CareerJobDetailPage = lazy(() => import('./pages/CareerJobDetailPage'));
 const DeveloperApplicationPage = lazy(() => import('./pages/DeveloperApplicationPage'));
+const TalentPartnerPortal = lazy(() => import('./pages/TalentPartnerPortal'));
+const TalentPartnerReferralRedirect = lazy(() => import('./pages/TalentPartnerReferralRedirect'));
 const RoleFinalCertificationPage = lazy(() => import('./pages/RoleFinalCertificationPage'));
 const DesignAcademyPage = lazy(() => import('./pages/DesignAcademyPage'));
 const UIUXAcademyReviewPage = lazy(() => import('./pages/UIUXAcademyReviewPage'));
@@ -127,11 +131,15 @@ function RouteLoading() {
 }
 
 export default function App() {
-  return <AuthProvider><CMSProvider><ConfirmProvider><ScrollToTop/><Suspense fallback={<RouteLoading/>}><ProductivityCommandPalette/><Routes>
+  return <AuthProvider><CMSProvider><ConfirmProvider><ScrollToTop/><Suspense fallback={<RouteLoading/>}><ProductivityCommandPalette/><TalentPartnerReferralTracker/><Routes>
     <Route element={<MainLayout/>}>
       <Route path="/" element={<HomePage/>}/><Route path="/p/:slug" element={<LegacyPageRedirect/>}/><Route path="/page/:slug" element={<LegacyPageRedirect/>}/>
       <Route path="/about" element={<Navigate to="/about-us" replace/>}/><Route path="/about-us" element={<CustomPageView/>}/><Route path="/pricing" element={<PricingCatalogPage/>}/><Route path="/careers" element={<CareersListView/>}/><Route path="/careers/:slug" element={<CareerJobDetailPage/>}/><Route path="/jobs" element={<Navigate to="/careers" replace/>}/><Route path="/carriers" element={<Navigate to="/careers" replace/>}/><Route path="/carear" element={<Navigate to="/careers" replace/>}/><Route path="/offers" element={<Navigate to="/careers" replace/>}/><Route path="/contact" element={<Navigate to="/contact-us" replace/>}/><Route path="/contact-us" element={<CustomPageView/>}/><Route path="/blog" element={<BlogList/>}/><Route path="/blog/:slug" element={<BlogPostView/>}/><Route path="/services/:slug" element={<ServiceDetailView/>}/><Route path="/portfolio" element={<PortfolioList/>}/><Route path="/portfolio/:slug" element={<PortfolioDetailView/>}/><Route path="/book" element={<Navigate to="/book-a-meeting" replace/>}/><Route path="/book-a-meeting" element={<PublicBookingPage/>}/><Route path="/manage-booking/:token" element={<BookingManagementPage/>}/><Route path="/privacy-policy" element={<PrivacyPolicy defaultTab="privacy"/>}/><Route path="/privacy" element={<Navigate to="/privacy-policy" replace/>}/><Route path="/terms" element={<Navigate to="/terms-and-conditions" replace/>}/><Route path="/terms-of-use" element={<Navigate to="/terms-and-conditions" replace/>}/><Route path="/terms-and-conditions" element={<PrivacyPolicy defaultTab="terms"/>}/><Route path="/cookie-policy" element={<PrivacyPolicy defaultTab="cookies"/>}/><Route path="/cookies" element={<Navigate to="/cookie-policy" replace/>}/><Route path="/leave-feedback" element={<LeaveFeedback/>}/><Route path="/:slug" element={<CustomPageView/>}/>
     </Route>
+    <Route path="/r/:partnerCode/:jobSlug" element={<TalentPartnerReferralRedirect/>}/>
+    <Route path="/talent-partner" element={<TalentPartnerPortal/>}/>
+    <Route path="/talent-partner/login" element={<TalentPartnerPortal/>}/>
+    <Route path="/partner" element={<Navigate to="/talent-partner" replace/>}/>
     <Route path="/quotation/review/:token" element={<PublicQuotationReview/>}/>
     <Route path="/pay/:token" element={<PublicPaymentCheckout/>}/>
     <Route path="/client-onboarding/:token" element={<ClientOnboardingPage/>}/>
@@ -153,6 +161,7 @@ export default function App() {
       <Route path="/admin/quotation-approvals/:quotationId" element={<QuotationApprovalsWorkspace/>}/>
       <Route path="/admin/content-recruitment" element={<ContentRecruitmentDashboard/>}/>
       <Route path="/admin/uiux-recruitment" element={<UIUXRecruitmentWorkspace/>}/>
+      <Route path="/admin/talent-partners" element={<TalentPartnerAdmin/>}/>
       <Route path="/admin/uiux-academy-review/:userId" element={<UIUXAcademyReviewPage/>}/>
       <Route path="/admin/academy-certification-reviews" element={<AcademyCertificationReviewQueue/>}/>
       <Route path="/admin/payment-gateway-settings" element={<PaymentGatewaySettingsAdmin/>}/>

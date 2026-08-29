@@ -158,26 +158,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const isOnboarding = Boolean(user && status === 'onboarding');
   const isAdmin = Boolean(user && status === 'active' && role === 'admin');
 
+  // External Talent Partners use their dedicated portal and are intentionally excluded from
+  // the internal employee workspace even when their partner account itself is active.
+  const isExternalTalentPartner = String(role || '') === 'talent_partner';
+
   // The common workspace shell (including the global notification bell) is available to
   // authenticated staff without hardcoding every future employee role. This does not grant
   // module access: app visibility and protected actions remain controlled by their existing
   // role/permission definitions and server-side authorization. Pending onboarding retains the
-  // existing controlled shell path, while customers never enter the staff workspace.
+  // existing controlled shell path, while customers and Talent Partners never enter the staff workspace.
   const isAdminOrEditor = Boolean(
-    user && role && (
+    user && role && !isExternalTalentPartner && (
       (status === 'active' && role !== 'customer' && role !== 'pending') ||
       (status === 'onboarding' && role !== 'customer')
     )
   );
 
   const hasRole = useCallback((...rolesToCheck: UserRole[]): boolean => {
-    if (!user || status !== 'active' || !role) return false;
+    if (!user || status !== 'active' || !role || String(role) === 'talent_partner') return false;
     if (role === 'admin') return true; // Admins satisfy role checks
     return rolesToCheck.includes(role);
   }, [user, status, role]);
 
   const hasPermission = useCallback((permission: string): boolean => {
-    if (!user || status !== 'active' || !role) return false;
+    if (!user || status !== 'active' || !role || String(role) === 'talent_partner') return false;
     if (role === 'admin') return true;
     
     switch (permission) {

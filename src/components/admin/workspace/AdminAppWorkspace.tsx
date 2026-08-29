@@ -16,6 +16,14 @@ import WorkspaceAppIcon from './WorkspaceAppIcon';
 import WorkspaceShell from './WorkspaceShell';
 import './AdminAppWorkspace.css';
 
+const TALENT_PARTNER_ITEM: WorkspaceNavItem = {
+  id: 'talent-partners',
+  label: 'Talent Partners',
+  path: '/admin/talent-partners',
+  section: 'Hiring Pipelines',
+  roles: ['admin']
+};
+
 export default function AdminAppWorkspace() {
   const { appId } = useParams<{ appId: string }>();
   const navigate = useNavigate();
@@ -25,10 +33,13 @@ export default function AdminAppWorkspace() {
   const [navigationQuery, setNavigationQuery] = useState('');
 
   const app = getWorkspaceApp(appId);
-  const visibleItems = useMemo(
-    () => app?.items.filter(item => canAccessWorkspaceItem(item, role, status)) || [],
-    [app, role, status]
-  );
+  const visibleItems = useMemo(() => {
+    const items = app?.items.filter(item => canAccessWorkspaceItem(item, role, status)) || [];
+    if (app?.id === 'recruitment' && role === 'admin' && status === 'active' && !items.some(item => item.id === TALENT_PARTNER_ITEM.id)) {
+      return [...items, TALENT_PARTNER_ITEM];
+    }
+    return items;
+  }, [app, role, status]);
   const searchedItems = useMemo(() => {
     const query = navigationQuery.trim().toLowerCase();
     if (!query) return visibleItems;

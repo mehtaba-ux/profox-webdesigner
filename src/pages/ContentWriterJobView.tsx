@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, CheckCircle2, FileText, Loader2, ShieldCheck, UploadCloud, Video } from 'lucide-react';
 import type { CareerJob } from '../lib/careerService';
 import { applicantService } from '../lib/applicantService';
+import { talentPartnerService } from '../lib/talentPartnerService';
 import { supabase } from '../lib/supabase';
 
 interface Props { job: CareerJob }
@@ -43,13 +44,17 @@ export default function ContentWriterJobView({job}:Props){
       setUploadLabel('Uploading introduction video');setProgress(0);
       const uploadedVideo=await applicantService.uploadPublicApplicationFile(form.email.trim().toLowerCase(),'video',video,setProgress);
       setUploadLabel('Submitting application');
+      const params=new URLSearchParams(window.location.search);
       const result=await supabase.rpc('submit_public_content_writer_application',{p_application:{
         ...form,
         fullName:form.fullName.trim(),email:form.email.trim().toLowerCase(),timezone:Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC',
-        availableHoursPerWeek:Number(form.availableHoursPerWeek),cvStoragePath:uploadedCv.path,videoStoragePath:uploadedVideo.path
+        availableHoursPerWeek:Number(form.availableHoursPerWeek),cvStoragePath:uploadedCv.path,videoStoragePath:uploadedVideo.path,
+        utmSource:params.get('utm_source')||'',utmMedium:params.get('utm_medium')||'',utmCampaign:params.get('utm_campaign')||'',
+        utmContent:params.get('utm_content')||'',utmTerm:params.get('utm_term')||'',landingPage:window.location.pathname,referrerUrl:document.referrer||''
       }});
       if(result.error)throw result.error;
       if(!result.data?.success)throw new Error(result.data?.error||'Your application could not be submitted.');
+      if(result.data.reference)void talentPartnerService.claimApplication(result.data.reference,form.email);
       setReference(result.data.reference||'Submitted');window.scrollTo({top:0,behavior:'smooth'});
     }catch(err:any){setError(err?.message||'Your application could not be submitted. Please try again.');}
     finally{setBusy(false);setUploadLabel('');}

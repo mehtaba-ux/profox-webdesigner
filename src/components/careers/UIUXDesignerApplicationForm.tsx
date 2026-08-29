@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { CheckCircle2, ExternalLink, FileText, Loader2, Send, ShieldCheck, UploadCloud } from 'lucide-react';
 import type { CareerJob } from '../../lib/careerService';
 import { applicantService } from '../../lib/applicantService';
+import { talentPartnerService } from '../../lib/talentPartnerService';
 import { supabase } from '../../lib/supabase';
 
 const input = 'w-full rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-sm text-slate-900 outline-none transition focus:border-[#000080] focus:ring-4 focus:ring-blue-100';
@@ -60,6 +61,7 @@ export default function UIUXDesignerApplicationForm({ job }: { job: CareerJob })
       const { data, error: rpcError } = await supabase.rpc('submit_public_uiux_application',{p_job_slug:job.slug,p_application:payload});
       if (rpcError) throw rpcError;
       if (!data?.success) throw new Error(data?.error || 'Application could not be submitted.');
+      if (data.reference) void talentPartnerService.claimApplication(data.reference, form.email);
       setSubmitted({reference:data.reference,duplicate:Boolean(data.duplicate)});
     } catch (err:any) {
       setError(err?.message || 'We could not submit your application. Please review the fields and try again.');
