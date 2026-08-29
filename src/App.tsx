@@ -46,7 +46,7 @@ const CRMPipelineSettingsAdmin = lazy(() => import('./components/admin/CRMPipeli
 const CustomerCommunicationAdmin = lazy(() => import('./components/admin/CustomerCommunicationAdmin'));
 const BookingAnalyticsAdmin = lazy(() => import('./components/admin/BookingAnalyticsAdmin'));
 const CareerJobsAdmin = lazy(() => import('./components/admin/CareerJobsAdmin'));
-const TalentPartnerAdmin = lazy(() => import('./components/admin/TalentPartnerAdmin'));
+const TalentPartnerAdminHub = lazy(() => import('./components/admin/TalentPartnerAdminHub'));
 const UIUXRecruitmentWorkspace = lazy(() => import('./components/admin/UIUXRecruitmentWorkspace'));
 const SalesCareerProgression = lazy(() => import('./components/admin/SalesCareerProgression'));
 const SalesAgreementAdmin = lazy(() => import('./components/admin/SalesAgreementAdmin'));
@@ -81,6 +81,7 @@ const CareersListView = lazy(() => import('./pages/CareersListView'));
 const CareerJobDetailPage = lazy(() => import('./pages/CareerJobDetailPage'));
 const DeveloperApplicationPage = lazy(() => import('./pages/DeveloperApplicationPage'));
 const TalentPartnerPortal = lazy(() => import('./pages/TalentPartnerPortal'));
+const TalentPartnerPayoutSetup = lazy(() => import('./pages/TalentPartnerPayoutSetup'));
 const TalentPartnerReferralRedirect = lazy(() => import('./pages/TalentPartnerReferralRedirect'));
 const RoleFinalCertificationPage = lazy(() => import('./pages/RoleFinalCertificationPage'));
 const DesignAcademyPage = lazy(() => import('./pages/DesignAcademyPage'));
@@ -139,6 +140,7 @@ export default function App() {
     <Route path="/r/:partnerCode/:jobSlug" element={<TalentPartnerReferralRedirect/>}/>
     <Route path="/talent-partner" element={<TalentPartnerPortal/>}/>
     <Route path="/talent-partner/login" element={<TalentPartnerPortal/>}/>
+    <Route path="/talent-partner/payout-setup" element={<TalentPartnerPayoutSetup/>}/>
     <Route path="/partner" element={<Navigate to="/talent-partner" replace/>}/>
     <Route path="/quotation/review/:token" element={<PublicQuotationReview/>}/>
     <Route path="/pay/:token" element={<PublicPaymentCheckout/>}/>
@@ -161,7 +163,7 @@ export default function App() {
       <Route path="/admin/quotation-approvals/:quotationId" element={<QuotationApprovalsWorkspace/>}/>
       <Route path="/admin/content-recruitment" element={<ContentRecruitmentDashboard/>}/>
       <Route path="/admin/uiux-recruitment" element={<UIUXRecruitmentWorkspace/>}/>
-      <Route path="/admin/talent-partners" element={<TalentPartnerAdmin/>}/>
+      <Route path="/admin/talent-partners" element={<TalentPartnerAdminHub/>}/>
       <Route path="/admin/uiux-academy-review/:userId" element={<UIUXAcademyReviewPage/>}/>
       <Route path="/admin/academy-certification-reviews" element={<AcademyCertificationReviewQueue/>}/>
       <Route path="/admin/payment-gateway-settings" element={<PaymentGatewaySettingsAdmin/>}/>
