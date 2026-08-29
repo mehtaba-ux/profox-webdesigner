@@ -145,7 +145,7 @@ function Retention({data,users,run}:{data:TalentPartnerAdminData;users:any[];run
 function Payouts({data,users,run}:{data:TalentPartnerAdminData;users:any[];run:any}) {
   const [transactions,setTransactions]=useState<Record<string,string>>({});
   const name=(id:string)=>users.find(u=>u.id===id)?.full_name||'Partner';
-  return <div className="space-y-6"><Panel title="Create payout batch" icon={WalletCards}><p className="text-sm leading-6 text-slate-500">Only Approved rewards whose hold period has ended and whose partner/currency total meets the configured minimum payout are included.</p><button onClick={()=>run(()=>talentPartnerService.adminCreatePayoutBatch(),'Payout batch created.')} className="btn-primary mt-4">Create payout batch</button></Panel><Panel title="Partner payouts"><div className="space-y-3">{data.payouts.map(p=><div key={p.id} className="rounded-xl border border-slate-200 p-4"><div className="flex flex-col justify-between gap-3 lg:flex-row lg:items-center"><div><div className="text-sm font-black text-slate-900">{name(p.partner_user_id)} · {money(p.amount,p.currency)}</div><div className="mt-1 text-xs text-slate-500">{p.entry_count} reward entries · {p.payout_method_snapshot||'method not set'}</div></div><Status value={p.status}/></div>{p.status==='Ready'&&<div className="mt-4 flex flex-col gap-2 sm:flex-row"><input value={transactions[p.id]||''} onChange={e=>setTransactions(v=>({...v,[p.id]:e.target.value}))} placeholder="Payment transaction/reference ID" className="input flex-1"/><button disabled={!transactions[p.id]?.trim()} onClick={()=>run(()=>talentPartnerService.adminMarkPayoutPaid(p.id,transactions[p.id]),'Payout marked paid.')} className="btn-primary">Confirm paid</button></div>}</div>)}{!data.payouts.length&&<Empty text="No Talent Partner payouts yet."/>}</div></Panel></div>;
+  return <div className="space-y-6"><Panel title="Create payout batch" icon={WalletCards}><p className="text-sm leading-6 text-slate-500">Only Approved rewards whose hold period has ended and whose partner/currency total meets the configured minimum payout are included. Each payout batch is restricted to one currency.</p><button onClick={()=>run(()=>talentPartnerService.adminCreatePayoutBatch(),'Payout batch created.')} className="btn-primary mt-4">Create payout batch</button></Panel><Panel title="Partner payouts"><div className="space-y-3">{data.payouts.map(p=><div key={p.id} className="rounded-xl border border-slate-200 p-4"><div className="flex flex-col justify-between gap-3 lg:flex-row lg:items-center"><div><div className="text-sm font-black text-slate-900">{name(p.partner_user_id)} · {money(p.amount,p.currency)}</div><div className="mt-1 text-xs text-slate-500">{p.entry_count} reward entries · {p.payout_method_snapshot||'method not set'}</div></div><Status value={p.status}/></div>{p.status==='Ready'&&<div className="mt-4 flex flex-col gap-2 sm:flex-row"><input value={transactions[p.id]||''} onChange={e=>setTransactions(v=>({...v,[p.id]:e.target.value}))} placeholder="Payment transaction/reference ID" className="input flex-1"/><button disabled={!transactions[p.id]?.trim()} onClick={()=>run(()=>talentPartnerService.adminMarkPayoutPaid(p.id,transactions[p.id]),'Payout marked paid.')} className="btn-primary">Confirm paid</button></div>}</div>)}{!data.payouts.length&&<Empty text="No Talent Partner payouts yet."/>}</div></Panel></div>;
 }
 
 function Attribution({data,users,visits,run}:{data:TalentPartnerAdminData;users:any[];visits:any[];run:any}) {
@@ -166,9 +166,47 @@ function Resources({data,run}:{data:TalentPartnerAdminData;run:any}) {
 }
 
 function ProgramSettings({settings,run}:{settings:any;run:any}) {
-  const [enabled,setEnabled]=useState(settings.enabled!==false); const [windowDays,setWindowDays]=useState(Number(settings.attribution_window_days||30)); const [hold,setHold]=useState(Number(settings.payout_hold_days||14)); const [min,setMin]=useState(Number(settings.minimum_payout||0)); const [currency,setCurrency]=useState(settings.default_currency||'USD'); const [approval,setApproval]=useState(settings.require_admin_approval!==false); const [terms,setTerms]=useState(settings.terms_version||'2026-08-29');
-  const save=(e:FormEvent)=>{e.preventDefault();void run(()=>talentPartnerService.adminSaveSettings({enabled,attributionWindowDays:windowDays,payoutHoldDays:hold,minimumPayout:min,defaultCurrency:currency,requireAdminApproval:approval,termsVersion:terms}),'Talent Partner program settings saved.')};
-  return <Panel title="Program settings" icon={Settings2}><form onSubmit={save} className="grid gap-4 lg:grid-cols-2"><Toggle label="Talent Partner registration & tracking enabled" checked={enabled} onChange={setEnabled}/><Toggle label="Admin approval required" checked={approval} onChange={setApproval}/><Input label="Attribution window (days)" type="number" value={windowDays} onChange={v=>setWindowDays(Number(v))}/><Input label="Default payout hold (days)" type="number" value={hold} onChange={v=>setHold(Number(v))}/><Input label="Minimum payout" type="number" value={min} onChange={v=>setMin(Number(v))}/><Input label="Default currency" value={currency} onChange={setCurrency}/><Input label="Terms version" value={terms} onChange={setTerms}/><div className="flex items-end"><button className="btn-primary">Save program settings</button></div></form></Panel>;
+  const initialThresholds=Object.entries(settings.minimum_payout_by_currency||{}).sort(([a],[b])=>a.localeCompare(b)).map(([code,value])=>`${code}:${Number(value)}`).join('\n');
+  const [enabled,setEnabled]=useState(settings.enabled!==false);
+  const [windowDays,setWindowDays]=useState(Number(settings.attribution_window_days||30));
+  const [hold,setHold]=useState(Number(settings.payout_hold_days||14));
+  const [min,setMin]=useState(Number(settings.minimum_payout||0));
+  const [currencyMinimums,setCurrencyMinimums]=useState(initialThresholds);
+  const [currency,setCurrency]=useState(settings.default_currency||'USD');
+  const [approval,setApproval]=useState(settings.require_admin_approval!==false);
+  const [terms,setTerms]=useState(settings.terms_version||'2026-08-29');
+
+  const parseCurrencyMinimums=()=>{
+    const result:Record<string,number>={};
+    for(const raw of currencyMinimums.split(/\r?\n|,/)){
+      const line=raw.trim();
+      if(!line)continue;
+      const parts=line.split(':');
+      const code=(parts[0]||'').trim().toUpperCase();
+      const amount=Number((parts[1]||'').trim());
+      if(parts.length!==2||!/^[A-Z]{3}$/.test(code)||!Number.isFinite(amount)||amount<0){
+        throw new Error('Currency minimums must use one entry per line, for example USD:50 or INR:2500.');
+      }
+      result[code]=amount;
+    }
+    return result;
+  };
+
+  const save=(e:FormEvent)=>{
+    e.preventDefault();
+    void run(async()=>talentPartnerService.adminSaveSettings({
+      enabled,
+      attributionWindowDays:windowDays,
+      payoutHoldDays:hold,
+      minimumPayout:min,
+      minimumPayoutsByCurrency:parseCurrencyMinimums(),
+      defaultCurrency:currency.trim().toUpperCase(),
+      requireAdminApproval:approval,
+      termsVersion:terms
+    }),'Talent Partner program settings saved.');
+  };
+
+  return <Panel title="Program settings" icon={Settings2}><form onSubmit={save} className="grid gap-4 lg:grid-cols-2"><Toggle label="Talent Partner registration & tracking enabled" checked={enabled} onChange={setEnabled}/><Toggle label="Admin approval required" checked={approval} onChange={setApproval}/><Input label="Attribution window (days)" type="number" value={windowDays} onChange={v=>setWindowDays(Number(v))}/><Input label="Default payout hold (days)" type="number" value={hold} onChange={v=>setHold(Number(v))}/><Input label="Default minimum payout" type="number" value={min} onChange={v=>setMin(Number(v))}/><Input label="Default currency" value={currency} onChange={v=>setCurrency(v.toUpperCase().replace(/[^A-Z]/g,'').slice(0,3))}/><div className="lg:col-span-2"><label className="label">Currency-specific minimum payouts</label><textarea value={currencyMinimums} onChange={e=>setCurrencyMinimums(e.target.value)} rows={4} className="input resize-y" placeholder={'USD:50\nINR:2500\nGBP:40'}/><p className="mt-1.5 text-[10px] leading-5 text-slate-500">Optional overrides. Enter one three-letter currency and amount per line. Any currency not listed here uses the default minimum payout above.</p></div><Input label="Terms version" value={terms} onChange={setTerms}/><div className="flex items-end"><button className="btn-primary">Save program settings</button></div></form></Panel>;
 }
 
 function Kpi({icon:Icon,label,value,detail}:{icon:any;label:string;value:any;detail?:string}){return <div className="rounded-2xl border border-slate-200 bg-white p-4"><div className="flex items-center justify-between"><span className="text-[9px] font-black uppercase tracking-wider text-slate-400">{label}</span><Icon className="h-4 w-4 text-[#000080]"/></div><div className="mt-2 text-2xl font-black text-[#071126]">{value}</div>{detail&&<div className="mt-1 text-[10px] text-slate-500">{detail}</div>}</div>}
