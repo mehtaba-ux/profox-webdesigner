@@ -1,4 +1,12 @@
 import { supabase } from './supabase';
+import {
+  enqueuePendingTalentPartnerClaim,
+  isTerminalTalentPartnerClaimReason,
+  markPendingTalentPartnerClaimAttempt,
+  readPendingTalentPartnerClaims,
+  removePendingTalentPartnerClaim,
+  type PendingTalentPartnerClaim
+} from './talentPartnerClaimQueue';
 
 const ATTRIBUTION_KEY = 'profox:talent-partner-attribution:v1';
 const SESSION_KEY = 'profox:talent-partner-session:v1';
@@ -105,6 +113,7 @@ export interface TalentPartnerDashboard {
 
 export interface TalentPartnerAdminData {
   settings: any;
+  readiness: any;
   partners: any[];
   plans: any[];
   jobs: any[];
@@ -178,6 +187,24 @@ function referrerHost() {
 
 function safeError(error: any, fallback: string) {
   return error?.message || error?.error_description || fallback;
+}
+
+async function attemptPendingApplicationClaim(claim: PendingTalentPartnerClaim) {
+  const marked = markPendingTalentPartnerClaimAttempt(claim);
+  try {
+    const { data, error } = await supabase.rpc('public_claim_talent_partner_application', {
+      p_application_reference: marked.applicationReference,
+      p_email: marked.email,
+      p_partner_code: marked.partnerCode,
+      p_session_id: marked.sessionId
+    });
+    if (error) return { success: false, error: error.message, retryable: true };
+    const result = (data || { success: false }) as any;
+    if (result.success || isTerminalTalentPartnerClaimReason(result.reason)) removePendingTalentPartnerClaim(marked);
+    return result;
+  } catch (error: any) {
+    return { success: false, error: safeError(error, 'Referral attribution could not be confirmed.'), retryable: true };
+  }
 }
 
 export const talentPartnerService = {
@@ -272,18 +299,31 @@ export const talentPartnerService = {
   async claimApplication(applicationReference?: string, email?: string) {
     const attribution = readAttribution();
     if (!applicationReference || !email || !attribution) return { success: false, skipped: true };
-    try {
-      const { data, error } = await supabase.rpc('public_claim_talent_partner_application', {
-        p_application_reference: applicationReference,
-        p_email: email.trim().toLowerCase(),
-        p_partner_code: attribution.partnerCode,
-        p_session_id: attribution.sessionId
-      });
-      if (error) return { success: false, error: error.message };
-      return data || { success: false };
-    } catch (error: any) {
-      return { success: false, error: safeError(error, 'Referral attribution could not be confirmed.') };
-    }
+
+    // Persist before the first await. The application itself is canonical and must never fail
+    // because attribution has a transient network issue, but a successful submission must also
+    // not lose its referral simply because the visitor closes or navigates away immediately.
+    const pending = enqueuePendingTalentPartnerClaim({
+      applicationReference: applicationReference.trim(),
+      email: email.trim().toLowerCase(),
+      partnerCode: attribution.partnerCode,
+      sessionId: attribution.sessionId
+    }) || {
+      applicationReference: applicationReference.trim(),
+      email: email.trim().toLowerCase(),
+      partnerCode: attribution.partnerCode,
+      sessionId: attribution.sessionId,
+      createdAt: new Date().toISOString(),
+      attempts: 0
+    };
+    return attemptPendingApplicationClaim(pending);
+  },
+
+  async retryPendingApplicationClaims(limit = 5) {
+    const claims = readPendingTalentPartnerClaims().slice(0, Math.max(1, Math.min(10, Number(limit) || 5)));
+    const results: any[] = [];
+    for (const claim of claims) results.push(await attemptPendingApplicationClaim(claim));
+    return results;
   },
 
   async signUp(fullName: string, email: string, password: string) {
@@ -340,8 +380,9 @@ export const talentPartnerService = {
   },
 
   async getAdminData(): Promise<TalentPartnerAdminData> {
-    const [settings, partners, plans, jobs, referrals, applicants, rewards, payoutBatches, payouts, completedProjects, projectTeam, resources] = await Promise.all([
+    const [settings, readiness, partners, plans, jobs, referrals, applicants, rewards, payoutBatches, payouts, completedProjects, projectTeam, resources] = await Promise.all([
       supabase.from('talent_partner_program_settings').select('*').eq('id', 'default').maybeSingle(),
+      supabase.rpc('admin_get_talent_partner_readiness'),
       supabase.from('talent_partner_profiles').select('*').order('created_at', { ascending: false }),
       supabase.from('talent_partner_reward_plans').select('*'),
       supabase.from('career_jobs').select('id,slug,title,department,application_type,status,role_details').order('display_order'),
@@ -354,10 +395,10 @@ export const talentPartnerService = {
       supabase.from('project_team').select('project_id,user_id,role,assigned_at'),
       supabase.from('talent_partner_resources').select('*').order('sort_order').order('created_at')
     ]);
-    const failures = [settings, partners, plans, jobs, referrals, applicants, rewards, payoutBatches, payouts, completedProjects, projectTeam, resources].filter((result: any) => result.error);
+    const failures = [settings, readiness, partners, plans, jobs, referrals, applicants, rewards, payoutBatches, payouts, completedProjects, projectTeam, resources].filter((result: any) => result.error);
     if (failures.length) throw new Error(failures[0].error.message || 'Talent Partner administration data could not be loaded.');
     return {
-      settings: settings.data || {}, partners: partners.data || [], plans: plans.data || [], jobs: jobs.data || [],
+      settings: settings.data || {}, readiness: readiness.data || {}, partners: partners.data || [], plans: plans.data || [], jobs: jobs.data || [],
       referrals: referrals.data || [], applicants: applicants.data || [], rewards: rewards.data || [],
       payoutBatches: payoutBatches.data || [], payouts: payouts.data || [], completedProjects: completedProjects.data || [],
       projectTeam: projectTeam.data || [], resources: resources.data || []
