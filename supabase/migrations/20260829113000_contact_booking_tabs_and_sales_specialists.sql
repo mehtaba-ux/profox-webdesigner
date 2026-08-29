@@ -133,73 +133,36 @@ as $function$
   order by b.sort_order,coalesce(nullif(b.display_name,''),p.full_name),b.salesperson_id;
 $function$;
 
--- Preserve the existing native slot algorithm while aligning accepted Sales role aliases.
-create or replace function public.get_public_booking_slots_native_base(p_salesperson_id uuid, p_from_date date default null::date, p_days integer default 14)
-returns table(start_at timestamptz,end_at timestamptz,timezone text,duration_minutes integer)
-language plpgsql
-stable security definer
-set search_path to 'public','pg_temp'
-as $function$
+-- Keep the proven native slot algorithm and atomic booking RPC intact; only align their legacy role predicates.
+do $patch_booking_roles$
 declare
-  v_timezone text; v_working_days integer[]; v_work_start time; v_work_end time; v_calendar_active boolean;
-  v_duration integer; v_buffer_before integer; v_buffer_after integer; v_slot_interval integer; v_max_advance integer;
-  v_min_notice integer; v_public_active boolean; v_meeting_active boolean; v_today date; v_start_date date; v_end_date date; v_days integer;
+  v_oid oid;
+  v_sql text;
+  v_name text;
 begin
-  select
-    coalesce(nullif(c.timezone,''),nullif(p.timezone,''),nullif(ms.config_value->>'defaultTimezone',''),'UTC'),
-    coalesce(c.working_days,array[1,2,3,4,5]::integer[]),coalesce(c.work_start,'09:00'::time),coalesce(c.work_end,'17:00'::time),coalesce(c.active,true),
-    b.meeting_duration_minutes,
-    coalesce(c.buffer_before_minutes,greatest(coalesce((ms.config_value->>'bufferBeforeMinutes')::integer,0),0)),
-    coalesce(c.buffer_after_minutes,greatest(coalesce((ms.config_value->>'bufferAfterMinutes')::integer,0),0)),
-    least(greatest(coalesce((pbs.config_value->>'slotIntervalMinutes')::integer,15),5),120),
-    least(greatest(coalesce((pbs.config_value->>'maxAdvanceDays')::integer,60),1),365),
-    greatest(coalesce((ms.config_value->>'minimumBookingNoticeMinutes')::integer,0),0),
-    coalesce((pbs.config_value->>'active')::boolean,false),coalesce((ms.config_value->>'active')::boolean,true)
-  into v_timezone,v_working_days,v_work_start,v_work_end,v_calendar_active,v_duration,v_buffer_before,v_buffer_after,
-       v_slot_interval,v_max_advance,v_min_notice,v_public_active,v_meeting_active
-  from public.public_booking_profiles b
-  join public.user_profiles p on p.id=b.salesperson_id
-  left join public.user_calendar_settings c on c.user_id=b.salesperson_id
-  left join public.system_configuration ms on ms.config_key='meeting_settings'
-  left join public.system_configuration pbs on pbs.config_key='public_booking_settings'
-  where b.salesperson_id=p_salesperson_id
-    and b.is_public is true and b.accepting_bookings is true and p.status='active'
-    and (p.role='admin' or (p.role in ('sales','sales_rep','sales_team') and p.onboarding_status='completed'));
+  foreach v_name in array array['get_public_booking_slots_native_base','book_public_sales_meeting'] loop
+    select p.oid into v_oid
+    from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+    where n.nspname='public' and p.proname=v_name
+    order by p.oid desc limit 1;
 
-  if not found or v_public_active is not true or v_meeting_active is not true or v_calendar_active is not true then return; end if;
-  if not exists(select 1 from pg_timezone_names where name=v_timezone) then return; end if;
+    if v_oid is null then raise exception 'Expected booking function % was not found.',v_name; end if;
+    v_sql := pg_get_functiondef(v_oid);
 
-  v_days := least(greatest(coalesce(p_days,14),1),31);
-  v_today := (now() at time zone v_timezone)::date;
-  v_start_date := greatest(coalesce(p_from_date,v_today),v_today);
-  v_end_date := least(v_start_date+(v_days-1),v_today+v_max_advance);
-  if v_start_date>v_end_date then return; end if;
+    if v_name='get_public_booking_slots_native_base' then
+      if position('p.role IN (''sales'',''sales_rep'',''sales_team'',''admin'')' in v_sql)>0 then continue; end if;
+      if position('p.role IN (''sales'',''admin'')' in v_sql)=0 then raise exception 'Native slot role predicate changed unexpectedly; refusing unsafe patch.'; end if;
+      v_sql := replace(v_sql,'p.role IN (''sales'',''admin'')','p.role IN (''sales'',''sales_rep'',''sales_team'',''admin'')');
+    else
+      if position('up.role IN (''sales'',''sales_rep'',''sales_team'',''admin'')' in v_sql)>0 then continue; end if;
+      if position('up.role IN (''sales'',''admin'')' in v_sql)=0 then raise exception 'Public booking role predicate changed unexpectedly; refusing unsafe patch.'; end if;
+      v_sql := replace(v_sql,'up.role IN (''sales'',''admin'')','up.role IN (''sales'',''sales_rep'',''sales_team'',''admin'')');
+    end if;
 
-  return query
-  with dates as (
-    select gs::date as d from generate_series(v_start_date::timestamp,v_end_date::timestamp,interval '1 day') gs
-    where extract(dow from gs)::integer=any(v_working_days)
-  ), slot_candidates as (
-    select
-      ((d.d+v_work_start)+(n*make_interval(mins=>v_slot_interval))) at time zone v_timezone as slot_start,
-      (((d.d+v_work_start)+(n*make_interval(mins=>v_slot_interval))) at time zone v_timezone)+make_interval(mins=>v_duration) as slot_end
-    from dates d
-    cross join lateral generate_series(0,floor(greatest(extract(epoch from ((d.d+v_work_end)-(d.d+v_work_start)-make_interval(mins=>v_duration)))/60.0,-1)/v_slot_interval)::integer) n
-  )
-  select s.slot_start,s.slot_end,v_timezone,v_duration
-  from slot_candidates s
-  where s.slot_start>=now()+make_interval(mins=>v_min_notice)
-    and not exists(select 1 from public.booking_availability_blocks b where b.user_id=p_salesperson_id and b.start_at<s.slot_end and b.end_at>s.slot_start)
-    and not exists(
-      select 1 from public.sales_meetings m
-      where m.salesperson_id=p_salesperson_id and m.status in ('Scheduled','Rescheduled')
-        and m.start_at<s.slot_end+make_interval(mins=>greatest(coalesce(v_buffer_after,0),0))
-        and m.end_at>s.slot_start-make_interval(mins=>greatest(coalesce(v_buffer_before,0),0))
-    )
-  order by s.slot_start
-  limit 500;
+    execute v_sql;
+  end loop;
 end;
-$function$;
+$patch_booking_roles$;
 
 -- External busy-time checks are provider aware. Each helper safely no-ops when its provider is not effective.
 create or replace function public.get_public_booking_slots(p_salesperson_id uuid,p_from_date date default null::date,p_days integer default 14)
@@ -214,25 +177,3 @@ as $function$
     and not public.has_zoho_calendar_conflict(p_salesperson_id,s.start_at,s.end_at,null)
   order by s.start_at;
 $function$;
-
--- The existing atomic booking RPC contains the same legacy Sales-role predicate. Patch only that predicate,
--- preserving all CRM, idempotency, activity, meeting and notification behavior already implemented there.
-do $patch_booking_role$
-declare
-  v_oid oid;
-  v_sql text;
-begin
-  select p.oid into v_oid
-  from pg_proc p join pg_namespace n on n.oid=p.pronamespace
-  where n.nspname='public'
-    and p.proname='book_public_sales_meeting'
-    and pg_get_function_identity_arguments(p.oid)='p_request_key uuid, p_salesperson_id uuid, p_start_at timestamp with time zone, p_visitor_timezone text, p_contact_name text, p_email text, p_phone text, p_company_name text, p_website text, p_country text, p_industry text, p_service_interest text, p_qualification_answers jsonb, p_honeypot text';
-
-  if v_oid is null then raise exception 'Expected public booking RPC was not found.'; end if;
-  v_sql := pg_get_functiondef(v_oid);
-  if position('up.role IN (''sales'',''sales_rep'',''sales_team'',''admin'')' in v_sql)>0 then return; end if;
-  if position('up.role IN (''sales'',''admin'')' in v_sql)=0 then raise exception 'Public booking role predicate changed unexpectedly; refusing unsafe patch.'; end if;
-  v_sql := replace(v_sql,'up.role IN (''sales'',''admin'')','up.role IN (''sales'',''sales_rep'',''sales_team'',''admin'')');
-  execute v_sql;
-end;
-$patch_booking_role$;
