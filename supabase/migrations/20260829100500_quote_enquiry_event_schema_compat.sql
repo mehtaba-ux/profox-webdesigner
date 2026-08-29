@@ -1,6 +1,127 @@
--- Align the fast-response audit events with the canonical CRM lead-event schema.
--- Reuses crm_write_lead_event so actor snapshots, descriptions and dedupe behavior stay consistent.
+-- Canonical CRM compatibility and hardening for the quote-enquiry fast-response workflow.
+-- Keeps every audit event, assignment timestamp and first-response signal on the existing CRM primitives.
 
+-- Bulk/equal distribution currently update salesperson_id directly. Stamp assigned_at here so every
+-- assignment path has one authoritative SLA start time and the notification dedupe key stays stable.
+create or replace function public.crm_prepare_quote_response_sla()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_settings jsonb;
+  v_sla integer;
+begin
+  if new.source <> 'Website Contact Form' then
+    return new;
+  end if;
+
+  -- A genuine customer-contact timestamp already recorded by the CRM satisfies first response.
+  if tg_op = 'UPDATE'
+     and new.first_response_at is null
+     and old.first_response_at is null
+     and new.salesperson_id is not null
+     and new.last_contact_at is distinct from old.last_contact_at
+     and new.last_contact_at is not null then
+    new.first_response_at := new.last_contact_at;
+    new.accepted_at := coalesce(new.accepted_at, new.last_contact_at);
+  end if;
+
+  if tg_op = 'INSERT' or new.salesperson_id is distinct from old.salesperson_id then
+    if new.salesperson_id is null then
+      if new.first_response_at is null then
+        new.accepted_at := null;
+        new.first_response_due_at := null;
+        new.first_response_sla_minutes := null;
+      end if;
+    elsif new.first_response_at is null then
+      v_settings := public.crm_quote_response_settings();
+      v_sla := (v_settings->>'firstResponseSlaMinutes')::integer;
+      new.assigned_at := now();
+      new.accepted_at := null;
+      new.first_response_sla_minutes := v_sla;
+      new.first_response_due_at := new.assigned_at + make_interval(mins => v_sla);
+    end if;
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_crm_prepare_quote_response_sla on public.crm_leads;
+create trigger trg_crm_prepare_quote_response_sla
+before insert or update on public.crm_leads
+for each row execute function public.crm_prepare_quote_response_sla();
+
+-- Support the canonical repeat-enquiry event name as well as the earlier compatibility name.
+create or replace function public.crm_after_repeat_quote_enquiry()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+begin
+  if new.event_type in ('repeat_website_enquiry','website_enquiry') then
+    perform public.crm_queue_new_quote_lead_notifications(new.lead_id, 'repeat:' || new.id::text);
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_crm_after_repeat_quote_enquiry on public.crm_lead_events;
+create trigger trg_crm_after_repeat_quote_enquiry
+after insert on public.crm_lead_events
+for each row
+when (new.event_type in ('repeat_website_enquiry','website_enquiry'))
+execute function public.crm_after_repeat_quote_enquiry();
+
+-- The live CRM uses both simple channel types (Call/Email/Meeting/WhatsApp) and detailed sales
+-- activity types. Either kind counts only after the activity is genuinely completed.
+create or replace function public.crm_mark_quote_first_response_from_activity()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_contact_types constant text[] := array[
+    'Call', 'Email', 'Meeting', 'WhatsApp', 'Message', 'SMS', 'Video Call',
+    'Cold Call', 'Cold Email', 'LinkedIn / Social Outreach', 'Loom Outreach',
+    'Follow-Up', 'Discovery Meeting', 'Meeting Follow-Up',
+    'Quotation Follow-Up', 'Payment Follow-Up'
+  ];
+begin
+  if new.lead_id is null
+     or new.completed_at is null
+     or lower(coalesce(new.status,'')) <> 'completed'
+     or not (new.activity_type = any(v_contact_types)) then
+    return new;
+  end if;
+
+  if tg_op = 'UPDATE' and old.completed_at is not null then
+    return new;
+  end if;
+
+  update public.crm_leads l
+  set first_response_at = new.completed_at,
+      accepted_at = coalesce(l.accepted_at, new.completed_at),
+      updated_at = now()
+  where l.id = new.lead_id
+    and l.source = 'Website Contact Form'
+    and l.salesperson_id is not null
+    and l.first_response_at is null;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_crm_mark_quote_first_response_from_activity on public.crm_activities;
+create trigger trg_crm_mark_quote_first_response_from_activity
+after insert or update of completed_at, status on public.crm_activities
+for each row execute function public.crm_mark_quote_first_response_from_activity();
+
+-- Use the canonical CRM event writer so actor snapshots, descriptions and dedupe behavior stay consistent.
 create or replace function public.crm_accept_lead(p_lead_id uuid)
 returns jsonb
 language plpgsql
