@@ -158,6 +158,21 @@ export const crmService = {
     return data;
   },
 
+  async acceptLead(leadId: string) {
+    const { data, error } = await supabase.rpc('crm_accept_assigned_lead', { p_lead_id: leadId });
+    if (error) throw error;
+    return data;
+  },
+
+  async recordLeadFirstResponse(leadId: string, channel: string) {
+    const { data, error } = await supabase.rpc('crm_record_lead_first_response', {
+      p_lead_id: leadId,
+      p_channel: channel,
+    });
+    if (error) throw error;
+    return data;
+  },
+
   async scheduleLeadFollowUp(leadId: string, dueAt: string, subject: string, notes = '') {
     const { data, error } = await supabase.rpc('crm_schedule_lead_follow_up', {
       p_lead_id: leadId,
@@ -317,7 +332,10 @@ export const crmService = {
       initialOutreachChannel: db.initial_outreach_channel, lastContactAt: db.last_contact_at,
       nextFollowUpAt: db.next_follow_up_at, notes: db.notes, selfGenerated: db.self_generated,
       convertedOpportunityId: db.converted_opportunity_id, createdBy: db.created_by, assignedBy: db.assigned_by,
-      assignedAt: db.assigned_at, createdAt: db.created_at, updatedAt: db.updated_at
+      assignedAt: db.assigned_at, acceptedAt: db.accepted_at, firstResponseDueAt: db.first_response_due_at,
+      firstResponseAt: db.first_response_at,
+      firstResponseSlaMinutes: db.first_response_sla_minutes == null ? undefined : Number(db.first_response_sla_minutes),
+      createdAt: db.created_at, updatedAt: db.updated_at
     };
   },
 

@@ -249,6 +249,10 @@ export interface CRMLead {
   salespersonId?: string;
   assignedBy?: string;
   assignedAt?: string;
+  acceptedAt?: string;
+  firstResponseDueAt?: string;
+  firstResponseAt?: string;
+  firstResponseSlaMinutes?: number;
   serviceInterest?: string;
   estimatedValue: number;
   currency: string;

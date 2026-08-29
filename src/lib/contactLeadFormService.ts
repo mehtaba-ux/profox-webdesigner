@@ -73,6 +73,10 @@ export interface LeadAssignmentConfiguration {
   mode: 'manual' | 'round_robin';
   managerUserIds: string[];
   eligibleSalespersonIds: string[];
+  firstResponseSlaMinutes: number;
+  notifyManagersOnNewLead: boolean;
+  notifyAssigneeOnAssignment: boolean;
+  escalateOverdueToManagers: boolean;
 }
 
 export interface ContactLeadConfigPerson {
@@ -210,6 +214,10 @@ function normalizeAssignment(value: any): LeadAssignmentConfiguration {
     mode: value?.mode === 'round_robin' ? 'round_robin' : 'manual',
     managerUserIds: Array.isArray(value?.managerUserIds) ? value.managerUserIds.map(String) : [],
     eligibleSalespersonIds: Array.isArray(value?.eligibleSalespersonIds) ? value.eligibleSalespersonIds.map(String) : [],
+    firstResponseSlaMinutes: Math.max(5, Math.min(1440, Number(value?.firstResponseSlaMinutes || 30))),
+    notifyManagersOnNewLead: value?.notifyManagersOnNewLead !== false,
+    notifyAssigneeOnAssignment: value?.notifyAssigneeOnAssignment !== false,
+    escalateOverdueToManagers: value?.escalateOverdueToManagers !== false,
   };
 }
 
