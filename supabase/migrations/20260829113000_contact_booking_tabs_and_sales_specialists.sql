@@ -108,7 +108,7 @@ stable security definer
 set search_path to 'public','pg_temp'
 as $function$
   with public_settings as (
-    select coalesce((select config_value from public.system_configuration where config_key='public_booking_settings'),'${"active":false}'::jsonb) as cfg
+    select coalesce((select config_value from public.system_configuration where config_key='public_booking_settings'),'{"active":false}'::jsonb) as cfg
   ), meeting_settings as (
     select coalesce((select config_value from public.system_configuration where config_key='meeting_settings'),'{}'::jsonb) as cfg
   )
