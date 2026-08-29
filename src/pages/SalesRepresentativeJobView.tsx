@@ -31,6 +31,14 @@ const workingWindowOptions = [
   'Flexible — I can adjust to the target market',
 ];
 
+const earningPotential = {
+  perSale: '$100-$600+',
+  monthly: '$3,000+',
+  perSaleText: 'The amount varies by the service sold and the applicable approved commission terms.',
+  monthlyText: "Potential monthly earnings depend on the seller's performance, consistency, sales volume and verified paid sales. This is not a guaranteed monthly amount.",
+  disclaimer: 'Estimated earning potential only. Actual earnings depend on performance, package mix, sales volume and verified customer payments and are not guaranteed.',
+};
+
 function emptyApplicationForm(initialTimezone: string) {
   return {
     fullName:'',email:'',phone:'',country:'',countryCode:'',timezone:initialTimezone,currentRole:'',linkedinUrl:'',
@@ -68,18 +76,45 @@ export default function SalesRepresentativeJobView({ context }: { context: Publi
           <ArrowLeft className="h-3.5 w-3.5" /> Back to Careers
         </Link>
 
-        <div className="mt-9 max-w-4xl">
-          <span className="inline-flex rounded-md border border-[#000080]/15 bg-[#000080]/5 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.15em] text-[#000080]">Remote · Commission-Based · International Sales</span>
-          <h1 className="pf-display mt-5 max-w-4xl text-[#071126]">{job.title}</h1>
-          {details.subtitle && <p className="mt-4 text-sm font-bold uppercase tracking-[0.08em] text-[#000080] sm:text-base">{details.subtitle}</p>}
-          <p className="mt-5 max-w-3xl text-base leading-7 text-slate-600 sm:text-lg sm:leading-8">{job.shortSummary}</p>
-          <div className="mt-7 flex flex-col items-start gap-3 sm:flex-row">
-            <a href="#apply" className="inline-flex items-center gap-2 rounded-lg bg-[#000080] px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-[#000066]">Apply for this role <ArrowRight className="h-4 w-4" /></a>
-            <a href="#role-details" className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-[#000080] transition hover:border-[#000080]/25 hover:bg-[#000080]/[0.025]">Read the complete role</a>
+        <div className="mt-9 grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(320px,380px)] lg:items-end lg:gap-12">
+          <div className="max-w-4xl">
+            <span className="inline-flex rounded-md border border-[#000080]/15 bg-[#000080]/5 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.15em] text-[#000080]">Remote · Commission-Based · International Sales</span>
+            <h1 className="pf-display mt-5 max-w-4xl text-[#071126]">{job.title}</h1>
+            {details.subtitle && <p className="mt-4 text-sm font-bold uppercase tracking-[0.08em] text-[#000080] sm:text-base">{details.subtitle}</p>}
+            <p className="mt-5 max-w-3xl text-base leading-7 text-slate-600 sm:text-lg sm:leading-8">{job.shortSummary}</p>
+            <div className="mt-7 flex flex-col items-start gap-3 sm:flex-row">
+              <a href="#apply" className="inline-flex items-center gap-2 rounded-lg bg-[#000080] px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-[#000066]">Apply for this role <ArrowRight className="h-4 w-4" /></a>
+              <a href="#role-details" className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-[#000080] transition hover:border-[#000080]/25 hover:bg-[#000080]/[0.025]">Read the complete role</a>
+            </div>
           </div>
+
+          <aside aria-label="Estimated earning potential" className="relative overflow-hidden rounded-3xl border border-[#000080]/10 bg-white p-5 shadow-[0_22px_60px_rgba(15,23,42,0.08)] sm:p-6">
+            <div className="absolute -right-12 -top-12 h-36 w-36 rounded-full bg-[#000080]/[0.055] blur-2xl" />
+            <div className="relative">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <div className="pf-eyebrow text-[#000080]">Earning potential</div>
+                  <p className="mt-1.5 text-xs font-semibold text-slate-500">Commission-based opportunity</p>
+                </div>
+                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#000080]/5 text-[#000080]"><TrendingUp className="h-5 w-5" /></span>
+              </div>
+              <div className="mt-5 grid grid-cols-2 gap-3">
+                <div className="rounded-2xl border border-slate-200 bg-[#fbfcff] p-4">
+                  <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">Per sale</div>
+                  <div className="mt-2 text-2xl font-semibold tracking-[-0.04em] text-[#071126] sm:text-[28px]">{earningPotential.perSale}</div>
+                </div>
+                <div className="rounded-2xl border border-[#000080]/10 bg-[#000080]/5 p-4">
+                  <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#000080]/65">Monthly potential</div>
+                  <div className="mt-2 text-2xl font-semibold tracking-[-0.04em] text-[#000080] sm:text-[28px]">{earningPotential.monthly}</div>
+                </div>
+              </div>
+              <p className="mt-4 text-[11px] leading-5 text-slate-500">{earningPotential.disclaimer}</p>
+              <a href="#earnings" className="mt-4 inline-flex items-center gap-2 text-xs font-bold text-[#000080] transition hover:gap-2.5">See earning details <ArrowRight className="h-3.5 w-3.5" /></a>
+            </div>
+          </aside>
         </div>
 
-        <div className="mt-10 grid overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_18px_50px_rgba(15,23,42,0.05)] sm:grid-cols-3">
+        <div className="mt-8 grid overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_18px_50px_rgba(15,23,42,0.05)] sm:grid-cols-3 lg:mt-10">
           <Meta icon={Globe2} label="Location" value={job.location} />
           <Meta icon={BriefcaseBusiness} label="Engagement" value={job.engagementType} />
           <Meta icon={Clock3} label="Experience" value={job.experience} />
@@ -180,7 +215,7 @@ export default function SalesRepresentativeJobView({ context }: { context: Publi
     <section id="earnings" className="scroll-mt-28 bg-white py-20 sm:py-24">
       <div className="pf-container">
         <SectionIntro eyebrow="Estimated earnings" title="Your earnings grow with the sales you close." text="These figures are estimates, not guaranteed income. Actual earnings depend on the seller, package mix, verified customer payments, sales volume and individual performance." />
-        <div className="mt-10 grid gap-5 md:grid-cols-2"><PolicyCard title="Estimated earning per sale" value="$100-$600+" text="The amount varies by the service sold and the applicable approved commission terms." /><PolicyCard title="Estimated monthly earning" value="$3,000+" text="Potential monthly earnings depend on the seller's performance, consistency, sales volume and verified paid sales. This is not a guaranteed monthly amount." /></div>
+        <div className="mt-10 grid gap-5 md:grid-cols-2"><PolicyCard title="Estimated earning per sale" value={earningPotential.perSale} text={earningPotential.perSaleText} /><PolicyCard title="Estimated monthly earning" value={earningPotential.monthly} text={earningPotential.monthlyText} /></div>
       </div>
     </section>
 
