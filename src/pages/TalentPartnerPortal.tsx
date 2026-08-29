@@ -7,6 +7,7 @@ import {
   UserPlus, Users, WalletCards, X
 } from 'lucide-react';
 import { useAuth } from '../lib/AuthContext';
+import { supabase } from '../lib/supabase';
 import { talentPartnerService, type TalentPartnerDashboard } from '../lib/talentPartnerService';
 
 type Tab = 'overview'|'jobs'|'referrals'|'earnings'|'analytics'|'resources'|'profile';
@@ -43,7 +44,79 @@ export default function TalentPartnerPortal(){
   </div>;
 }
 
-function AuthScreen({onReady}:{onReady:()=>Promise<any>}){const[mode,setMode]=useState<'login'|'register'>('login');const[name,setName]=useState('');const[email,setEmail]=useState('');const[password,setPassword]=useState('');const[terms,setTerms]=useState(false);const[busy,setBusy]=useState(false);const[error,setError]=useState('');const[message,setMessage]=useState('');const submit=async(e:FormEvent)=>{e.preventDefault();setError('');setMessage('');if(mode==='register'&&!terms){setError('Please accept the Talent Partner terms and referral disclosure rules.');return}setBusy(true);try{if(mode==='register'){const data=await talentPartnerService.signUp(name,email,password);if(data.session)await onReady();else setMessage('Account created. Verify your email, then sign in here to complete registration.')}else{await talentPartnerService.signIn(email,password);await onReady()}}catch(err:any){setError(err?.message||'Could not complete the request.')}finally{setBusy(false)}};return <div className="min-h-screen bg-[#f5f7fb] px-5 py-16"><div className="mx-auto grid max-w-5xl overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-xl lg:grid-cols-2"><section className="bg-[#050b1d] p-8 text-white sm:p-12"><div className="text-[10px] font-black uppercase tracking-[.16em] text-[#aaaaff]">ProFox Talent Partner</div><h1 className="mt-5 text-4xl font-black tracking-[-.04em]">Help us find great people. Share in the value they create.</h1><p className="mt-5 text-sm leading-7 text-slate-300">Promote approved ProFox career opportunities and track visits, applications, activated hires, performance rewards, retention and payouts.</p><div className="mt-8 space-y-3">{['Unique links for every published role','First-valid-touch attribution','First three qualifying sales or projects','Final configured six-month retention reward','Transparent reward and payout ledger'].map(v=><div key={v} className="flex gap-3 text-sm text-slate-200"><CheckCircle2 className="h-5 w-5 shrink-0 text-[#aaaaff]"/>{v}</div>)}</div><p className="mt-8 border-t border-white/10 pt-6 text-[11px] leading-5 text-slate-400">Talent Partners do not make hiring decisions and must not promise employment, salary or guaranteed earnings.</p></section><section className="p-8 sm:p-12"><div className="flex rounded-xl bg-slate-100 p-1"><button onClick={()=>setMode('login')} className={`flex-1 rounded-lg py-2.5 text-xs font-black ${mode==='login'?'bg-white text-[#000080] shadow-sm':'text-slate-500'}`}>Sign in</button><button onClick={()=>setMode('register')} className={`flex-1 rounded-lg py-2.5 text-xs font-black ${mode==='register'?'bg-white text-[#000080] shadow-sm':'text-slate-500'}`}>Create account</button></div><h2 className="mt-8 text-3xl font-black text-[#071126]">{mode==='login'?'Welcome back':'Become a Talent Partner'}</h2><p className="mt-2 text-sm text-slate-500">{mode==='login'?'Use your dedicated partner account.':'New accounts require ProFox approval before links become active.'}</p><form onSubmit={submit} className="mt-6 space-y-4">{error&&<Notice tone="error">{error}</Notice>}{message&&<Notice tone="success">{message}</Notice>}{mode==='register'&&<Field label="Full name"><input required value={name} onChange={e=>setName(e.target.value)}/></Field>}<Field label="Email"><input required type="email" value={email} onChange={e=>setEmail(e.target.value)}/></Field><Field label="Password"><input required type="password" minLength={8} value={password} onChange={e=>setPassword(e.target.value)}/></Field>{mode==='register'&&<label className="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 text-xs leading-5 text-slate-600"><input type="checkbox" checked={terms} onChange={e=>setTerms(e.target.checked)} className="mt-0.5 h-4 w-4 accent-[#000080]"/><span>I accept the Talent Partner terms, anti-fraud/privacy requirements and referral relationship disclosure obligations.</span></label>}<button disabled={busy} className="primary w-full">{busy?<Loader2 className="h-4 w-4 animate-spin"/>:mode==='login'?<LogIn className="h-4 w-4"/>:<UserPlus className="h-4 w-4"/>}{busy?'Please wait...':mode==='login'?'Sign in':'Create account'}</button></form><Link to="/careers" className="mt-6 block text-center text-xs font-bold text-slate-500">Browse ProFox careers</Link></section></div></div>}
+function AuthScreen({onReady}:{onReady:()=>Promise<any>}){
+  const[mode,setMode]=useState<'login'|'register'>('login');
+  const[name,setName]=useState('');
+  const[email,setEmail]=useState('');
+  const[password,setPassword]=useState('');
+  const[terms,setTerms]=useState(false);
+  const[busy,setBusy]=useState(false);
+  const[error,setError]=useState('');
+  const[message,setMessage]=useState('');
+  const[verificationState,setVerificationState]=useState<'pending'|'existing'|null>(null);
+  const[verificationEmail,setVerificationEmail]=useState('');
+  const[resendBusy,setResendBusy]=useState(false);
+  const[resendCooldown,setResendCooldown]=useState(0);
+
+  useEffect(()=>{
+    if(resendCooldown<=0)return;
+    const timer=window.setTimeout(()=>setResendCooldown(value=>Math.max(0,value-1)),1000);
+    return()=>window.clearTimeout(timer);
+  },[resendCooldown]);
+
+  const clearFeedback=()=>{setError('');setMessage('')};
+  const selectMode=(next:'login'|'register')=>{setMode(next);clearFeedback()};
+  const useDifferentEmail=()=>{setMode('register');setVerificationState(null);setVerificationEmail('');setEmail('');setPassword('');setTerms(false);setResendCooldown(0);clearFeedback()};
+  const goToSignIn=()=>{setMode('login');setVerificationState(null);setPassword('');setResendCooldown(0);clearFeedback()};
+
+  const resendConfirmation=async()=>{
+    const target=(verificationEmail||email).trim().toLowerCase();
+    if(!target||resendBusy||resendCooldown>0)return;
+    setResendBusy(true);clearFeedback();
+    try{
+      if(typeof supabase.auth.resend!=='function')throw new Error('Email verification is temporarily unavailable.');
+      const{error:resendError}=await supabase.auth.resend({type:'signup',email:target});
+      if(resendError)throw resendError;
+      setMessage('If this Talent Partner signup is still awaiting verification, a new confirmation email has been requested. Check your inbox and spam or junk folder.');
+      setResendCooldown(60);
+    }catch(err:any){
+      const detail=String(err?.message||'').toLowerCase();
+      if(detail.includes('rate')||detail.includes('security purposes'))setError('Please wait a moment before requesting another confirmation email.');
+      else if(detail.includes('confirm'))setError('This address may already be confirmed. Try signing in, or use a different email for your dedicated Talent Partner account.');
+      else setError(err?.message||'Could not resend the confirmation email. Please try again shortly.');
+    }finally{setResendBusy(false)}
+  };
+
+  const submit=async(e:FormEvent)=>{
+    e.preventDefault();clearFeedback();
+    if(mode==='register'&&!terms){setError('Please accept the Talent Partner terms and referral disclosure rules.');return}
+    setBusy(true);
+    try{
+      if(mode==='register'){
+        const normalizedEmail=email.trim().toLowerCase();
+        const data=await talentPartnerService.signUp(name,normalizedEmail,password);
+        if(data.session){await onReady();return}
+        setVerificationEmail(normalizedEmail);
+        const identities=data.user?.identities;
+        if(Array.isArray(identities)&&identities.length===0){
+          setVerificationState('existing');
+          setResendCooldown(0);
+        }else{
+          setVerificationState('pending');
+          setResendCooldown(60);
+          setMessage('Confirmation requested. Check your inbox and spam or junk folder.');
+        }
+      }else{
+        await talentPartnerService.signIn(email,password);
+        await onReady();
+      }
+    }catch(err:any){setError(err?.message||'Could not complete the request.')}
+    finally{setBusy(false)}
+  };
+
+  return <div className="min-h-screen bg-[#f5f7fb] px-5 py-16"><div className="mx-auto grid max-w-5xl overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-xl lg:grid-cols-2"><section className="bg-[#050b1d] p-8 text-white sm:p-12"><div className="text-[10px] font-black uppercase tracking-[.16em] text-[#aaaaff]">ProFox Talent Partner</div><h1 className="mt-5 text-4xl font-black tracking-[-.04em]">Help us find great people. Share in the value they create.</h1><p className="mt-5 text-sm leading-7 text-slate-300">Promote approved ProFox career opportunities and track visits, applications, activated hires, performance rewards, retention and payouts.</p><div className="mt-8 space-y-3">{['Unique links for every published role','First-valid-touch attribution','First three qualifying sales or projects','Final configured six-month retention reward','Transparent reward and payout ledger'].map(v=><div key={v} className="flex gap-3 text-sm text-slate-200"><CheckCircle2 className="h-5 w-5 shrink-0 text-[#aaaaff]"/>{v}</div>)}</div><p className="mt-8 border-t border-white/10 pt-6 text-[11px] leading-5 text-slate-400">Talent Partners do not make hiring decisions and must not promise employment, salary or guaranteed earnings.</p></section><section className="p-8 sm:p-12"><div className="flex rounded-xl bg-slate-100 p-1"><button type="button" onClick={()=>selectMode('login')} className={`flex-1 rounded-lg py-2.5 text-xs font-black ${mode==='login'?'bg-white text-[#000080] shadow-sm':'text-slate-500'}`}>Sign in</button><button type="button" onClick={()=>selectMode('register')} className={`flex-1 rounded-lg py-2.5 text-xs font-black ${mode==='register'?'bg-white text-[#000080] shadow-sm':'text-slate-500'}`}>Create account</button></div><h2 className="mt-8 text-3xl font-black text-[#071126]">{mode==='login'?'Welcome back':verificationState==='pending'?'Check your email':verificationState==='existing'?'Check this email address':'Become a Talent Partner'}</h2><p className="mt-2 text-sm text-slate-500">{mode==='login'?'Use your dedicated partner account.':verificationState==='pending'?`We requested a confirmation link for ${verificationEmail}.`:verificationState==='existing'?'Talent Partner access uses a dedicated account. This address may already belong to an existing ProFox workspace or account.':'New accounts require ProFox approval before links become active.'}</p>
+      {mode==='register'&&verificationState?<div className="mt-6 space-y-4">{error&&<Notice tone="error">{error}</Notice>}{message&&<Notice tone="success">{message}</Notice>}<div className={`rounded-2xl border p-5 ${verificationState==='pending'?'border-emerald-200 bg-emerald-50':'border-amber-200 bg-amber-50'}`}><div className="flex items-start gap-3">{verificationState==='pending'?<CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-700"/>:<ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-amber-700"/>}<div><div className={`text-sm font-black ${verificationState==='pending'?'text-emerald-900':'text-amber-900'}`}>{verificationState==='pending'?'Confirm your email to continue':'This was not confirmed as a new signup'}</div><p className={`mt-2 text-xs leading-6 ${verificationState==='pending'?'text-emerald-800':'text-amber-800'}`}>{verificationState==='pending'?'Open the confirmation email, click the verification link, then return here and sign in. If it does not appear, check spam/junk or request another email below.':'For privacy and security, ProFox does not expose whether an address is already registered. If this is a pending Talent Partner account, you can request another verification email. If it belongs to your Admin, employee, seller or client workspace, use a different email for the dedicated Talent Partner account.'}</p><div className="mt-3 rounded-xl bg-white/70 px-3 py-2 text-xs font-bold text-slate-700">{verificationEmail}</div></div></div></div><button type="button" onClick={()=>void resendConfirmation()} disabled={resendBusy||resendCooldown>0} className="primary w-full disabled:cursor-not-allowed disabled:opacity-60">{resendBusy?<Loader2 className="h-4 w-4 animate-spin"/>:<RefreshCw className="h-4 w-4"/>}{resendBusy?'Requesting...':resendCooldown>0?`Resend in ${resendCooldown}s`:'Resend confirmation email'}</button><div className="grid gap-2 sm:grid-cols-2"><button type="button" onClick={goToSignIn} className="light-button justify-center"><LogIn className="h-4 w-4"/>Go to sign in</button><button type="button" onClick={useDifferentEmail} className="light-button justify-center"><UserPlus className="h-4 w-4"/>Use different email</button></div></div>:<form onSubmit={submit} className="mt-6 space-y-4">{error&&<Notice tone="error">{error}</Notice>}{message&&<Notice tone="success">{message}</Notice>}{mode==='register'&&<Field label="Full name"><input required value={name} onChange={e=>setName(e.target.value)}/></Field>}<Field label="Email"><input required type="email" autoComplete="email" value={email} onChange={e=>setEmail(e.target.value)}/></Field><Field label="Password"><input required type="password" autoComplete={mode==='login'?'current-password':'new-password'} minLength={8} value={password} onChange={e=>setPassword(e.target.value)}/></Field>{mode==='register'&&<label className="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 text-xs leading-5 text-slate-600"><input type="checkbox" checked={terms} onChange={e=>setTerms(e.target.checked)} className="mt-0.5 h-4 w-4 accent-[#000080]"/><span>I accept the Talent Partner terms, anti-fraud/privacy requirements and referral relationship disclosure obligations.</span></label>}<button disabled={busy} className="primary w-full">{busy?<Loader2 className="h-4 w-4 animate-spin"/>:mode==='login'?<LogIn className="h-4 w-4"/>:<UserPlus className="h-4 w-4"/>}{busy?'Please wait...':mode==='login'?'Sign in':'Create account'}</button></form>}<Link to="/careers" className="mt-6 block text-center text-xs font-bold text-slate-500">Browse ProFox careers</Link></section></div></div>;
+}
 
 function FinishSetup({fullName,email,onDone,onLogout}:{fullName:string;email:string;onDone:()=>Promise<any>;onLogout:()=>Promise<void>}){const[terms,setTerms]=useState(false);const[busy,setBusy]=useState(false);const[error,setError]=useState('');const finish=async()=>{if(!terms){setError('Please accept the Talent Partner terms.');return}setBusy(true);setError('');try{await talentPartnerService.requestAccount(fullName);await onDone()}catch(err:any){setError(err?.message||'Could not complete registration.')}finally{setBusy(false)}};return <StatePage icon={UserPlus} eyebrow="Complete registration" title="Finish your Talent Partner profile" text={`You're signed in as ${email}. This account has no internal ProFox permissions.`}><div className="mx-auto mt-6 max-w-xl text-left"><label className="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 text-xs leading-5 text-slate-600"><input type="checkbox" checked={terms} onChange={e=>setTerms(e.target.checked)} className="mt-0.5 h-4 w-4 accent-[#000080]"/><span>I accept the program terms, disclosure rules, privacy rules and performance-based reward conditions.</span></label>{error&&<div className="mt-3"><Notice tone="error">{error}</Notice></div>}<button onClick={finish} disabled={busy} className="primary mt-4 w-full">{busy?<Loader2 className="h-4 w-4 animate-spin"/>:<ArrowRight className="h-4 w-4"/>}Submit for approval</button><button onClick={onLogout} className="mt-3 w-full text-xs font-bold text-slate-500">Sign out</button></div></StatePage>}
 function PartnerStatus({dashboard,onRefresh,onLogout}:{dashboard:TalentPartnerDashboard;onRefresh:()=>Promise<void>;onLogout:()=>Promise<void>}){const status=dashboard.profile.status;const text=status==='Pending'?'Your registration is complete. ProFox must approve your account before referral links become active.':status==='Suspended'?'New referral attribution is disabled while your account is suspended. Existing records remain preserved.':'This Talent Partner account is closed. Existing financial and attribution records remain preserved.';return <StatePage icon={status==='Pending'?UserCheck:ShieldCheck} eyebrow={`Account · ${status}`} title={status==='Pending'?'Your account is under review':status==='Suspended'?'Your account is suspended':'Your account is closed'} text={text}><div className="mt-6 flex justify-center gap-3"><button onClick={onRefresh} className="primary"><RefreshCw className="h-4 w-4"/>Refresh</button><button onClick={onLogout} className="light-button"><LogOut className="h-4 w-4"/>Sign out</button></div></StatePage>}
