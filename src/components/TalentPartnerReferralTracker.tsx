@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { talentPartnerService } from '../lib/talentPartnerService';
+import '../styles/talentPartner.css';
 
 export default function TalentPartnerReferralTracker() {
   const location = useLocation();
