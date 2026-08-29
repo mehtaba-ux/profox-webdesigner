@@ -76,7 +76,7 @@ export default function SalesRepresentativeJobView({ context }: { context: Publi
           <ArrowLeft className="h-3.5 w-3.5" /> Back to Careers
         </Link>
 
-        <div className="mt-9 grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(320px,380px)] lg:items-end lg:gap-12">
+        <div className="mt-9 grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(360px,430px)] lg:items-end lg:gap-10 xl:grid-cols-[minmax(0,1fr)_minmax(400px,460px)] xl:gap-12">
           <div className="max-w-4xl">
             <span className="inline-flex rounded-md border border-[#000080]/15 bg-[#000080]/5 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.15em] text-[#000080]">Remote · Commission-Based · International Sales</span>
             <h1 className="pf-display mt-5 max-w-4xl text-[#071126]">{job.title}</h1>
@@ -88,28 +88,29 @@ export default function SalesRepresentativeJobView({ context }: { context: Publi
             </div>
           </div>
 
-          <aside aria-label="Estimated earning potential" className="relative overflow-hidden rounded-3xl border border-[#000080]/10 bg-white p-5 shadow-[0_22px_60px_rgba(15,23,42,0.08)] sm:p-6">
-            <div className="absolute -right-12 -top-12 h-36 w-36 rounded-full bg-[#000080]/[0.055] blur-2xl" />
-            <div className="relative">
-              <div className="flex items-center justify-between gap-4">
-                <div>
+          <aside aria-label="Estimated earning potential" className="group relative w-full min-w-0 overflow-hidden rounded-3xl border border-[#000080]/10 bg-white p-5 shadow-[0_22px_60px_rgba(15,23,42,0.08)] transition-[transform,box-shadow,border-color] duration-500 hover:-translate-y-1 hover:border-[#000080]/20 hover:shadow-[0_30px_75px_rgba(15,23,42,0.12)] motion-reduce:transform-none motion-reduce:transition-none sm:p-6">
+            <div className="pointer-events-none absolute -right-12 -top-12 h-36 w-36 rounded-full bg-[#000080]/[0.055] blur-2xl transition-transform duration-700 group-hover:scale-125 motion-reduce:transform-none motion-reduce:transition-none" />
+            <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-[#000080]/30 to-transparent opacity-70" />
+            <div className="relative min-w-0">
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0">
                   <div className="pf-eyebrow text-[#000080]">Earning potential</div>
-                  <p className="mt-1.5 text-xs font-semibold text-slate-500">Commission-based opportunity</p>
+                  <p className="mt-1.5 text-xs font-semibold leading-5 text-slate-500">Commission-based opportunity</p>
                 </div>
-                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#000080]/5 text-[#000080]"><TrendingUp className="h-5 w-5" /></span>
+                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-[#000080]/5 bg-[#000080]/5 text-[#000080] transition-[transform,background-color] duration-500 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:scale-105 group-hover:bg-[#000080]/10 motion-reduce:transform-none motion-reduce:transition-none"><TrendingUp className="h-5 w-5" /></span>
               </div>
-              <div className="mt-5 grid grid-cols-2 gap-3">
-                <div className="rounded-2xl border border-slate-200 bg-[#fbfcff] p-4">
-                  <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">Per sale</div>
-                  <div className="mt-2 text-2xl font-semibold tracking-[-0.04em] text-[#071126] sm:text-[28px]">{earningPotential.perSale}</div>
+              <div className="mt-5 grid gap-3" style={{gridTemplateColumns:'repeat(auto-fit, minmax(min(100%, 180px), 1fr))'}}>
+                <div className="min-w-0 rounded-2xl border border-slate-200 bg-[#fbfcff] p-4 transition-[transform,border-color,box-shadow] duration-300 hover:-translate-y-0.5 hover:border-[#000080]/15 hover:shadow-[0_12px_30px_rgba(15,23,42,0.06)] motion-reduce:transform-none motion-reduce:transition-none">
+                  <div className="text-[10px] font-bold uppercase leading-4 tracking-[0.11em] text-slate-400">Per sale</div>
+                  <div className="mt-2 whitespace-nowrap text-[clamp(1.4rem,5vw,1.75rem)] font-semibold leading-none tracking-[-0.045em] text-[#071126] sm:text-[1.65rem] xl:text-[1.8rem]">{earningPotential.perSale}</div>
                 </div>
-                <div className="rounded-2xl border border-[#000080]/10 bg-[#000080]/5 p-4">
-                  <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#000080]/65">Monthly potential</div>
-                  <div className="mt-2 text-2xl font-semibold tracking-[-0.04em] text-[#000080] sm:text-[28px]">{earningPotential.monthly}</div>
+                <div className="min-w-0 rounded-2xl border border-[#000080]/10 bg-[#000080]/5 p-4 transition-[transform,border-color,box-shadow,background-color] duration-300 hover:-translate-y-0.5 hover:border-[#000080]/20 hover:bg-[#000080]/[0.065] hover:shadow-[0_12px_30px_rgba(0,0,128,0.07)] motion-reduce:transform-none motion-reduce:transition-none">
+                  <div className="text-[10px] font-bold uppercase leading-4 tracking-[0.11em] text-[#000080]/65">Monthly potential</div>
+                  <div className="mt-2 whitespace-nowrap text-[clamp(1.4rem,5vw,1.75rem)] font-semibold leading-none tracking-[-0.045em] text-[#000080] sm:text-[1.65rem] xl:text-[1.8rem]">{earningPotential.monthly}</div>
                 </div>
               </div>
-              <p className="mt-4 text-[11px] leading-5 text-slate-500">{earningPotential.disclaimer}</p>
-              <a href="#earnings" className="mt-4 inline-flex items-center gap-2 text-xs font-bold text-[#000080] transition hover:gap-2.5">See earning details <ArrowRight className="h-3.5 w-3.5" /></a>
+              <p className="mt-4 max-w-[42rem] text-[11px] leading-[1.65] text-slate-500 sm:text-xs">{earningPotential.disclaimer}</p>
+              <a href="#earnings" className="mt-4 inline-flex items-center gap-2 text-xs font-bold text-[#000080] transition-colors hover:text-[#000066]">See earning details <ArrowRight className="h-3.5 w-3.5 transition-transform duration-300 group-hover:translate-x-1 motion-reduce:transform-none motion-reduce:transition-none" /></a>
             </div>
           </aside>
         </div>
