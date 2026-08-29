@@ -17,7 +17,7 @@ function activeWorkspaceForPath(pathname: string): WorkspaceAppId | 'workspace' 
   if (pathname.startsWith('/admin/intelligence')) return 'intelligence';
   if (pathname.startsWith('/admin/internal-chat')) return 'internal_chat';
   if (pathname.startsWith('/admin/calendar') || pathname.startsWith('/admin/meeting') || pathname.startsWith('/admin/booking')) return 'calendar';
-  if (pathname.startsWith('/admin/content-recruitment') || pathname.startsWith('/admin/uiux-recruitment') || pathname.startsWith('/admin/hiring') || pathname.startsWith('/admin/job-posts') || pathname.startsWith('/admin/agreements')) return 'recruitment';
+  if (pathname.startsWith('/admin/content-recruitment') || pathname.startsWith('/admin/uiux-recruitment') || pathname.startsWith('/admin/talent-partners') || pathname.startsWith('/admin/hiring') || pathname.startsWith('/admin/job-posts') || pathname.startsWith('/admin/agreements')) return 'recruitment';
   if (pathname.startsWith('/admin/academy-certification')) return 'academy_governance';
   if (pathname.startsWith('/admin/academy-') || pathname.startsWith('/admin/final-certification') || pathname.startsWith('/admin/mock-call') || pathname.startsWith('/admin/niche-') || pathname.startsWith('/admin/lead-research') || pathname.startsWith('/admin/loom-outreach') || pathname.startsWith('/admin/outreach-messaging') || pathname.startsWith('/admin/crm-training') || pathname.startsWith('/admin/confidentiality-training')) return 'sales_academy';
   if (pathname.startsWith('/admin/project-handover') || pathname.startsWith('/admin/design-delivery')) return 'projects';
