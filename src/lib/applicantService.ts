@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import { agreementService } from './agreementService';
+import { talentPartnerService } from './talentPartnerService';
 import { Applicant, ApplicantStage, AgreementStatus, OnboardingStatus } from '../types';
 
 export interface ApplicantApplicationData {
@@ -174,9 +175,24 @@ export const applicantService = {
   /** @deprecated Use the secure invitation workflow for new trainees; this remains for controlled legacy Sales account linking. */
   async linkToUser(id:string,userId:string){return this.linkSalesCandidateAccount(id,userId)},
   async submitSalesApplicationV3(applicationData:SalesApplicationV3Payload):Promise<{success:boolean;duplicate?:boolean;message?:string;error?:string;field?:string;applicant_id?:string;reference?:string;stage?:string}>{
-    const {data,error}=await supabase.rpc('submit_public_sales_application_v3',{p_application:{...applicationData,fullName:applicationData.fullName.trim(),email:applicationData.email.trim().toLowerCase()}});
+    const params=typeof window!=='undefined'?new URLSearchParams(window.location.search):new URLSearchParams();
+    const payload={
+      ...applicationData,
+      fullName:applicationData.fullName.trim(),
+      email:applicationData.email.trim().toLowerCase(),
+      utmSource:params.get('utm_source')||'',
+      utmMedium:params.get('utm_medium')||'',
+      utmCampaign:params.get('utm_campaign')||'',
+      utmContent:params.get('utm_content')||'',
+      utmTerm:params.get('utm_term')||'',
+      landingPage:typeof window!=='undefined'?window.location.pathname:'',
+      referrerUrl:typeof document!=='undefined'?document.referrer||'':''
+    };
+    const {data,error}=await supabase.rpc('submit_public_sales_application_v3',{p_application:payload});
     if(error){console.error('Sales application V3 RPC failed:',error);return{success:false,error:'We could not submit your application right now. Please try again.'}}
-    return(data||{success:false,error:'No response received from application service.'})as any;
+    const result=(data||{success:false,error:'No response received from application service.'})as any;
+    if(result.success&&result.reference){void talentPartnerService.claimApplication(result.reference,applicationData.email);}
+    return result;
   },
   async submitPublicApplication(applicationData: {
     fullName:string;email:string;phone?:string;country?:string;timezone?:string;linkedinUrl?:string;currentRole?:string;
