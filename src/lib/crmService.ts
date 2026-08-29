@@ -100,15 +100,13 @@ export const crmService = {
   },
 
   async createLead(lead: Partial<CRMLead>) {
-    const { data: userData } = await supabase.auth.getUser();
-    const dbData = { ...this.mapLeadToDb(lead), created_by: userData.user?.id };
-    const { data, error } = await supabase.from('crm_leads').insert([dbData]).select().single();
+    const { data, error } = await supabase.rpc('crm_create_manual_lead', { p_payload: lead });
     if (error) throw error;
     return this.mapLeadFromDb(data);
   },
 
   async updateLead(id: string, updates: Partial<CRMLead>) {
-    const { data, error } = await supabase.from('crm_leads').update(this.mapLeadToDb(updates)).eq('id', id).select().single();
+    const { data, error } = await supabase.rpc('crm_update_lead', { p_lead_id: id, p_updates: updates });
     if (error) throw error;
     return this.mapLeadFromDb(data);
   },
@@ -284,7 +282,7 @@ export const crmService = {
   },
 
   async updateOpportunity(id: string, updates: Partial<CRMOpportunity>) {
-    const { data, error } = await supabase.from('crm_opportunities').update(this.mapOpportunityToDb(updates)).eq('id', id).select().single();
+    const { data, error } = await supabase.rpc('crm_update_opportunity_details', { p_opportunity_id: id, p_updates: updates });
     if (error) throw error;
     return this.mapOpportunityFromDb(data);
   },
@@ -334,6 +332,9 @@ export const crmService = {
       convertedOpportunityId: db.converted_opportunity_id, createdBy: db.created_by, assignedBy: db.assigned_by,
       assignedAt: db.assigned_at, acceptedAt: db.accepted_at, firstResponseDueAt: db.first_response_due_at,
       firstResponseAt: db.first_response_at,
+      firstResponseChannel: db.first_response_channel,
+      firstResponseEvidenceType: db.first_response_evidence_type,
+      firstResponseEvidenceId: db.first_response_evidence_id,
       firstResponseSlaMinutes: db.first_response_sla_minutes == null ? undefined : Number(db.first_response_sla_minutes),
       createdAt: db.created_at, updatedAt: db.updated_at
     };

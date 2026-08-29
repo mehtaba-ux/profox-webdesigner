@@ -253,6 +253,9 @@ export interface CRMLead {
   firstResponseDueAt?: string;
   firstResponseAt?: string;
   firstResponseSlaMinutes?: number;
+  firstResponseChannel?: string;
+  firstResponseEvidenceType?: 'manual_confirmation' | 'crm_chat_message' | 'provider_receipt';
+  firstResponseEvidenceId?: string;
   serviceInterest?: string;
   estimatedValue: number;
   currency: string;

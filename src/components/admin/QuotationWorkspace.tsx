@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Check, ChevronDown, ChevronUp, Clock3, Copy, FilePlus2, GripVertical, Info, Loader2, Mail, PackagePlus, Plus, Printer, Save, Search, Send, Settings2, Sparkles, Trash2, X } from 'lucide-react';
 import { format } from 'date-fns';
 import { useAuth } from '../../lib/AuthContext';
@@ -130,6 +130,8 @@ function catalogLine(product: any, order: number, optional = false): CpqLine {
 
 export default function QuotationWorkspace() {
   const { quotationId } = useParams<{ quotationId: string }>();
+  const [searchParams] = useSearchParams();
+  const initialOpportunityId = searchParams.get('opportunityId') || '';
   const navigate = useNavigate();
   const { user, isAdmin } = useAuth();
   const isNew = !quotationId || quotationId === 'new';
@@ -191,13 +193,27 @@ export default function QuotationWorkspace() {
         if (settingRes.error) throw settingRes.error;
         if (cancelled) return;
         setProducts(productRes.data || []);
-        setOpportunities((opportunityRows || []).filter((o: CRMOpportunity) => isAdmin || o.salespersonId === user?.id));
+        const eligibleOpportunities = (opportunityRows || []).filter((o: CRMOpportunity) => isAdmin || o.salespersonId === user?.id);
+        setOpportunities(eligibleOpportunities);
         const cfg = settingRes.data || {};
         setSettings(cfg);
         if (isNew) {
+          const requestedOpportunity = initialOpportunityId
+            ? eligibleOpportunities.find((o: CRMOpportunity) => o.id === initialOpportunityId)
+            : undefined;
+          if (initialOpportunityId && !requestedOpportunity) {
+            throw new Error('The selected CRM opportunity is unavailable or is not assigned to you.');
+          }
           setDraft(prev => ({
             ...prev,
-            salespersonId: user?.id,
+            opportunityId: requestedOpportunity?.id || null,
+            salespersonId: requestedOpportunity?.salespersonId || user?.id,
+            customerName: requestedOpportunity?.companyName || requestedOpportunity?.name || prev.customerName,
+            contactName: requestedOpportunity?.contactName || prev.contactName || '',
+            email: requestedOpportunity?.email || prev.email || '',
+            phone: requestedOpportunity?.phone || prev.phone || '',
+            country: requestedOpportunity?.country || prev.country || '',
+            currency: requestedOpportunity?.currency || prev.currency || 'USD',
             validUntil: daysFromNow(Number(cfg.defaultValidityDays || 30)),
             proposalTitle: cfg.defaultProposalTitle || 'Digital Project Proposal',
             coverMessage: cfg.defaultCoverMessage || '',
@@ -219,7 +235,7 @@ export default function QuotationWorkspace() {
       }
     })();
     return () => { cancelled = true; };
-  }, [quotationId, isNew, isAdmin, user?.id]);
+  }, [quotationId, isNew, isAdmin, user?.id, initialOpportunityId]);
 
   useEffect(() => {
     if (!initialized.current || !locked) return;
