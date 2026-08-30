@@ -32,5 +32,8 @@ jobs:
       - name: Talent Partner regression tests
         run: npm test
 
+      - name: Public content verifier syntax
+        run: node --check scripts/verify-public-content.mjs
+
       - name: Production build
         run: npm run build
