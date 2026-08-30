@@ -115,22 +115,55 @@ export default function TalentPartnerProgramView() {
 
   useEffect(() => {
     let active = true;
-    const load = async () => {
-      setProgramLoading(true);
-      setProgramError('');
-      const { data: publicProgram, error } = await supabase.rpc('public_get_talent_partner_program');
-      if (!active) return;
-      if (error) {
-        console.error('Could not load public Talent Partner program configuration', error);
-        setProgramError('Live reward information is temporarily unavailable. No unpublished reward values are being shown.');
-        setProgram(null);
-      } else {
+    let requestInFlight = false;
+    let loadedOnce = false;
+
+    const loadProgram = async (showInitialLoader = false) => {
+      if (requestInFlight) return;
+      requestInFlight = true;
+      if (showInitialLoader) setProgramLoading(true);
+
+      try {
+        const { data: publicProgram, error } = await supabase.rpc('public_get_talent_partner_program');
+        if (!active) return;
+
+        if (error) {
+          console.error('Could not load public Talent Partner program configuration', error);
+          if (!loadedOnce) {
+            setProgramError('Live reward information is temporarily unavailable. No unpublished reward values are being shown.');
+            setProgram(null);
+          }
+          return;
+        }
+
+        loadedOnce = true;
         setProgram(publicProgram as PublicTalentPartnerProgram);
+        setProgramError('');
+      } finally {
+        requestInFlight = false;
+        if (active) setProgramLoading(false);
       }
-      setProgramLoading(false);
     };
-    load();
-    return () => { active = false; };
+
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === 'visible') void loadProgram(false);
+    };
+
+    void loadProgram(true);
+    window.addEventListener('focus', refreshWhenVisible);
+    window.addEventListener('pageshow', refreshWhenVisible);
+    window.addEventListener('online', refreshWhenVisible);
+    document.addEventListener('visibilitychange', refreshWhenVisible);
+    const refreshTimer = window.setInterval(refreshWhenVisible, 30000);
+
+    return () => {
+      active = false;
+      window.clearInterval(refreshTimer);
+      window.removeEventListener('focus', refreshWhenVisible);
+      window.removeEventListener('pageshow', refreshWhenVisible);
+      window.removeEventListener('online', refreshWhenVisible);
+      document.removeEventListener('visibilitychange', refreshWhenVisible);
+    };
   }, []);
 
   if (cmsLoading) {
