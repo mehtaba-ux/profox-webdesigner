@@ -54,7 +54,7 @@ export default function ContentWriterJobView({job}:Props){
       }});
       if(result.error)throw result.error;
       if(!result.data?.success)throw new Error(result.data?.error||'Your application could not be submitted.');
-      if(result.data.reference)void talentPartnerService.claimApplication(result.data.reference,form.email);
+      if(result.data.reference)await talentPartnerService.claimApplication(result.data.reference,form.email);
       setReference(result.data.reference||'Submitted');window.scrollTo({top:0,behavior:'smooth'});
     }catch(err:any){setError(err?.message||'Your application could not be submitted. Please try again.');}
     finally{setBusy(false);setUploadLabel('');}

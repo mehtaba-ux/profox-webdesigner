@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Outlet, useLocation } from 'react-router-dom';
+import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../../../lib/AuthContext';
 import { salesAccountSetupService, type SalesAccountSetupStatus } from '../../../lib/salesAccountSetupService';
 import { WorkspaceAppId } from '../../../lib/workspaceApps';
@@ -64,7 +64,8 @@ export default function WorkspaceRouteFrame() {
     if (!loading) void refreshSalesSetup();
   }, [loading, user?.id, profile?.role, profile?.status, location.pathname, location.search]);
 
-  if (loading || !user || !profile || !isAdminOrEditor) return <Outlet />;
+  if (loading) return <div className="flex min-h-screen items-center justify-center bg-slate-50"><div className="h-8 w-8 animate-spin rounded-full border-4 border-[#000080] border-t-transparent" /></div>;
+  if (!user || !profile || !isAdminOrEditor) return <Navigate to="/admin" replace state={{ from: location.pathname }} />;
 
   const setupIncomplete = activeSeller && salesSetup?.setupCompleted !== true;
   const supportPath = SALES_SETUP_SUPPORT_PATHS.some(path => location.pathname === path || location.pathname.startsWith(`${path}/`));

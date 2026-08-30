@@ -75,7 +75,7 @@ export const developerHiringService = {
     });
     if (error) throw new Error(error.message || 'We could not submit your Web Developer application.');
     const result = (data || { success: false }) as DeveloperApplicationResult;
-    if (result.success && result.reference) void talentPartnerService.claimApplication(result.reference, application.email);
+    if (result.success && result.reference) await talentPartnerService.claimApplication(result.reference, application.email);
     return result;
   }
 };

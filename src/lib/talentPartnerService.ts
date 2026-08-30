@@ -60,6 +60,7 @@ export interface TalentPartnerDashboard {
     pendingEarnings: number;
     approvedEarnings: number;
     paidEarnings: number;
+    summaryCurrency?: string;
   };
   jobs: Array<{
     id: string;
@@ -107,6 +108,7 @@ export interface TalentPartnerDashboard {
     createdAt?: string;
   }>;
   notifications: Array<{ id: string; type: string; title: string; message: string; actionPath?: string; readAt?: string; createdAt: string }>;
+  adjustments: Array<{ id: string; rewardEntryId: string; currency: string; amount: number; status: string; reason: string; resolution?: string; resolutionReference?: string; createdAt: string; resolvedAt?: string }>;
   resources: Array<{ id: string; jobId?: string; title: string; type: string; content?: string; url?: string }>;
   sourceBreakdown: Array<{ source: string; visits: number; uniqueVisitors: number }>;
 }
@@ -114,6 +116,7 @@ export interface TalentPartnerDashboard {
 export interface TalentPartnerAdminData {
   settings: any;
   readiness: any;
+  trackingMetrics: any;
   partners: any[];
   plans: any[];
   jobs: any[];
@@ -125,6 +128,7 @@ export interface TalentPartnerAdminData {
   completedProjects: any[];
   projectTeam: any[];
   resources: any[];
+  adjustments: any[];
 }
 
 function randomId() {
@@ -342,6 +346,17 @@ export const talentPartnerService = {
     return data;
   },
 
+  async requestPasswordReset(email: string) {
+    const redirectTo = typeof window === 'undefined' ? undefined : new URL('/talent-partner', window.location.origin).toString();
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), { redirectTo });
+    if (error) throw new Error(safeError(error, 'Could not send the password recovery email.'));
+  },
+
+  async updatePassword(password: string) {
+    const { error } = await supabase.auth.updateUser({ password });
+    if (error) throw new Error(safeError(error, 'Could not update your password.'));
+  },
+
   async signOut() { await supabase.auth.signOut(); },
 
   async requestAccount(fullName: string) {
@@ -353,9 +368,20 @@ export const talentPartnerService = {
   },
 
   async getDashboard(): Promise<TalentPartnerDashboard> {
-    const { data, error } = await supabase.rpc('talent_partner_get_dashboard');
+    const [{ data, error }, adjustments, preserved] = await Promise.all([
+      supabase.rpc('talent_partner_get_dashboard'),
+      supabase.rpc('talent_partner_get_my_adjustments'),
+      supabase.rpc('talent_partner_get_my_preserved_financials')
+    ]);
     if (error) throw new Error(safeError(error, 'Could not load the Talent Partner dashboard.'));
-    return data as TalentPartnerDashboard;
+    if (adjustments.error) throw new Error(safeError(adjustments.error, 'Could not load the financial adjustment ledger.'));
+    if (preserved.error) throw new Error(safeError(preserved.error, 'Could not load preserved financial history.'));
+    const dashboard = data as TalentPartnerDashboard & { accessLimited?: boolean };
+    return {
+      ...dashboard,
+      ...(dashboard.accessLimited ? preserved.data : {}),
+      adjustments: (adjustments.data || []) as TalentPartnerDashboard['adjustments']
+    };
   },
 
   async updateMyProfile(values: {
@@ -380,9 +406,10 @@ export const talentPartnerService = {
   },
 
   async getAdminData(): Promise<TalentPartnerAdminData> {
-    const [settings, readiness, partners, plans, jobs, referrals, applicants, rewards, payoutBatches, payouts, completedProjects, projectTeam, resources] = await Promise.all([
+    const [settings, readiness, trackingMetrics, partners, plans, jobs, referrals, applicants, rewards, payoutBatches, payouts, completedProjects, projectTeam, resources, adjustments] = await Promise.all([
       supabase.from('talent_partner_program_settings').select('*').eq('id', 'default').maybeSingle(),
       supabase.rpc('admin_get_talent_partner_readiness'),
+      supabase.rpc('admin_get_talent_partner_tracking_metrics'),
       supabase.from('talent_partner_profiles').select('*').order('created_at', { ascending: false }),
       supabase.from('talent_partner_reward_plans').select('*'),
       supabase.from('career_jobs').select('id,slug,title,department,application_type,status,role_details').order('display_order'),
@@ -393,15 +420,16 @@ export const talentPartnerService = {
       supabase.from('talent_partner_payouts').select('*').order('created_at', { ascending: false }),
       supabase.from('projects').select('id,project_number,project_name,status,stage,completed_at,currency').eq('status', 'Completed').eq('stage', 'Completed').order('completed_at', { ascending: false }),
       supabase.from('project_team').select('project_id,user_id,role,assigned_at'),
-      supabase.from('talent_partner_resources').select('*').order('sort_order').order('created_at')
+      supabase.from('talent_partner_resources').select('*').order('sort_order').order('created_at'),
+      supabase.from('talent_partner_financial_adjustments').select('*').order('created_at', { ascending: false })
     ]);
-    const failures = [settings, readiness, partners, plans, jobs, referrals, applicants, rewards, payoutBatches, payouts, completedProjects, projectTeam, resources].filter((result: any) => result.error);
+    const failures = [settings, readiness, trackingMetrics, partners, plans, jobs, referrals, applicants, rewards, payoutBatches, payouts, completedProjects, projectTeam, resources, adjustments].filter((result: any) => result.error);
     if (failures.length) throw new Error(failures[0].error.message || 'Talent Partner administration data could not be loaded.');
     return {
-      settings: settings.data || {}, readiness: readiness.data || {}, partners: partners.data || [], plans: plans.data || [], jobs: jobs.data || [],
+      settings: settings.data || {}, readiness: readiness.data || {}, trackingMetrics: trackingMetrics.data || {}, partners: partners.data || [], plans: plans.data || [], jobs: jobs.data || [],
       referrals: referrals.data || [], applicants: applicants.data || [], rewards: rewards.data || [],
       payoutBatches: payoutBatches.data || [], payouts: payouts.data || [], completedProjects: completedProjects.data || [],
-      projectTeam: projectTeam.data || [], resources: resources.data || []
+      projectTeam: projectTeam.data || [], resources: resources.data || [], adjustments: adjustments.data || []
     };
   },
 
@@ -459,6 +487,18 @@ export const talentPartnerService = {
 
   async adminMarkPayoutPaid(payoutId: string, transactionId: string) {
     const { data, error } = await supabase.rpc('admin_mark_talent_partner_payout_paid', { p_payout_id: payoutId, p_transaction_id: transactionId });
+    if (error) throw error; return data;
+  },
+
+  async adminCreateFinalSettlement(partnerUserId: string) {
+    const { data, error } = await supabase.rpc('admin_create_talent_partner_final_settlement', { p_partner_user_id: partnerUserId });
+    if (error) throw error; return data;
+  },
+
+  async adminResolveAdjustment(adjustmentId: string, resolution: string, reference: string) {
+    const { data, error } = await supabase.rpc('admin_resolve_talent_partner_adjustment', {
+      p_adjustment_id: adjustmentId, p_resolution: resolution, p_reference: reference
+    });
     if (error) throw error; return data;
   },
 

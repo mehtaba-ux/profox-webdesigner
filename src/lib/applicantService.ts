@@ -191,7 +191,7 @@ export const applicantService = {
     const {data,error}=await supabase.rpc('submit_public_sales_application_v3',{p_application:payload});
     if(error){console.error('Sales application V3 RPC failed:',error);return{success:false,error:'We could not submit your application right now. Please try again.'}}
     const result=(data||{success:false,error:'No response received from application service.'})as any;
-    if(result.success&&result.reference){void talentPartnerService.claimApplication(result.reference,applicationData.email);}
+    if(result.success&&result.reference){await talentPartnerService.claimApplication(result.reference,applicationData.email);}
     return result;
   },
   async submitPublicApplication(applicationData: {

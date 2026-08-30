@@ -61,7 +61,7 @@ export default function UIUXDesignerApplicationForm({ job }: { job: CareerJob })
       const { data, error: rpcError } = await supabase.rpc('submit_public_uiux_application',{p_job_slug:job.slug,p_application:payload});
       if (rpcError) throw rpcError;
       if (!data?.success) throw new Error(data?.error || 'Application could not be submitted.');
-      if (data.reference) void talentPartnerService.claimApplication(data.reference, form.email);
+      if (data.reference) await talentPartnerService.claimApplication(data.reference, form.email);
       setSubmitted({reference:data.reference,duplicate:Boolean(data.duplicate)});
     } catch (err:any) {
       setError(err?.message || 'We could not submit your application. Please review the fields and try again.');
