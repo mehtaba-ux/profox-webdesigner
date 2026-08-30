@@ -121,5 +121,13 @@ test('frontend uses server RPCs rather than duplicating distribution math', () =
   assert.match(serviceSource, /revenue_distribution_preview_product/i);
   assert.match(serviceSource, /revenue_distribution_preview_quotation/i);
   assert.doesNotMatch(serviceSource, /0\.13|0\.22|0\.45/);
-  assert.match(adminSource, /Seller commission rules, Talent Partner reward plans and worker earning approvals remain in their existing canonical systems/i);
+  assert.match(adminSource, /Seller commissions, Talent Partner qualification and worker payouts continue through their existing canonical systems/i);
+});
+
+test('Admin exposes the live policy switches and retention provision clearly', () => {
+  assert.match(adminSource, /checked=\{config\.reservePerformanceBonus\}/i);
+  assert.match(adminSource, /checked=\{config\.selfGeneratedBonusUsesMarginBuffer\}/i);
+  assert.match(adminSource, /retentionReservePerQualifyingSale/i);
+  assert.match(adminSource, /retentionTotalReserve/i);
+  assert.match(adminSource, /Worker budgets are enforced, not just displayed/i);
 });
