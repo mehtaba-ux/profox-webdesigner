@@ -47,6 +47,57 @@ async function fetchChecked(url, label) {
   return response;
 }
 
+function javascriptModuleReferences(source) {
+  const references = new Set();
+  const patterns = [
+    /\bfrom\s*["']([^"']+\.js)["']/g,
+    /\bimport\s*\(\s*["']([^"']+\.js)["']\s*\)/g,
+    /\bimport\s*["']([^"']+\.js)["']/g,
+  ];
+
+  for (const pattern of patterns) {
+    for (const match of source.matchAll(pattern)) references.add(match[1]);
+  }
+  return [...references];
+}
+
+async function verifyDeployedSupabaseConfiguration(entryUrl, cacheBuster) {
+  const queue = [entryUrl];
+  const visited = new Set();
+  const maxModules = 120;
+  let foundUrl = false;
+  let foundKey = false;
+
+  while (queue.length > 0 && visited.size < maxModules && !(foundUrl && foundKey)) {
+    const current = queue.shift();
+    const canonical = new URL(current);
+    canonical.search = '';
+    const canonicalHref = canonical.href;
+    if (visited.has(canonicalHref)) continue;
+    visited.add(canonicalHref);
+
+    const requestUrl = new URL(canonicalHref);
+    requestUrl.searchParams.set('deployment', cacheBuster);
+    const source = await (await fetchChecked(requestUrl, `Deployed JavaScript module ${visited.size}`)).text();
+    if (source.includes(supabaseUrl)) foundUrl = true;
+    if (source.includes(publishableKey)) foundKey = true;
+
+    for (const reference of javascriptModuleReferences(source)) {
+      const next = new URL(reference, canonicalHref);
+      if (next.origin !== canonical.origin || !next.pathname.endsWith('.js')) continue;
+      next.search = '';
+      if (!visited.has(next.href)) queue.push(next.href);
+    }
+  }
+
+  if (!foundUrl || !foundKey) {
+    const missing = [!foundUrl ? 'Supabase URL' : null, !foundKey ? 'publishable key' : null].filter(Boolean).join(' and ');
+    throw new Error(`The deployed frontend module graph does not contain the validated ${missing}. Scanned ${visited.size} JavaScript modules.`);
+  }
+
+  console.log(`Verified deployed Supabase configuration across ${visited.size} JavaScript module${visited.size === 1 ? '' : 's'}.`);
+}
+
 async function verifyDeployedApplication() {
   const publicAppUrl = String(process.env.PUBLIC_APP_URL || '').trim().replace(/\/$/, '');
   if (!/^https:\/\//.test(publicAppUrl)) {
@@ -64,12 +115,7 @@ async function verifyDeployedApplication() {
     throw new Error('The deployed application entry bundle could not be identified uniquely.');
   }
 
-  const entryUrl = new URL(scriptPaths[0], publicAppUrl);
-  entryUrl.searchParams.set('deployment', cacheBuster);
-  const entryBundle = await (await fetchChecked(entryUrl, 'Deployed entry bundle')).text();
-  if (!entryBundle.includes(publishableKey)) {
-    throw new Error('The deployed frontend does not contain the validated Supabase publishable key.');
-  }
+  await verifyDeployedSupabaseConfiguration(new URL(scriptPaths[0], publicAppUrl), cacheBuster);
 
   await Promise.all([
     fetchChecked(`${publicAppUrl}/pricing?deployment=${cacheBuster}`, 'Pricing route'),
