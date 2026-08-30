@@ -73,7 +73,8 @@ async function verifyDeployedApplication() {
 
   await Promise.all([
     fetchChecked(`${publicAppUrl}/pricing?deployment=${cacheBuster}`, 'Pricing route'),
-    fetchChecked(`${publicAppUrl}/careers?deployment=${cacheBuster}`, 'Careers route')
+    fetchChecked(`${publicAppUrl}/careers?deployment=${cacheBuster}`, 'Careers route'),
+    fetchChecked(`${publicAppUrl}/talent-partner-program?deployment=${cacheBuster}`, 'Talent Partner route')
   ]);
 
   console.log('Deployed frontend configuration and public routes verified.');
@@ -83,22 +84,24 @@ const supabase = createClient(supabaseUrl, publishableKey, {
   auth: { persistSession: false, autoRefreshToken: false }
 });
 
-const [contentResult, jobsResult, catalogResult] = await Promise.all([
+const [contentResult, jobsResult, catalogResult, talentPartnerResult] = await Promise.all([
   supabase.from('content').select('data').eq('id', 'customPages').maybeSingle(),
   supabase.from('career_jobs').select('slug').order('display_order', { ascending: true }),
-  supabase.rpc('get_public_sales_catalog')
+  supabase.rpc('get_public_sales_catalog'),
+  supabase.rpc('public_get_talent_partner_program')
 ]);
 
 for (const [label, result] of [
   ['public CMS content', contentResult],
   ['public career jobs', jobsResult],
-  ['public pricing catalog', catalogResult]
+  ['public pricing catalog', catalogResult],
+  ['public Talent Partner program', talentPartnerResult]
 ]) {
   if (result.error) throw new Error(`${label} check failed: ${result.error.message}`);
 }
 
 const customPages = Array.isArray(contentResult.data?.data) ? contentResult.data.data : [];
-const requiredPages = ['pricing', 'careers'];
+const requiredPages = ['pricing', 'careers', 'talent-partner-program'];
 for (const slug of requiredPages) {
   if (!customPages.some((page) => page?.slug === slug && page?.status === 'published')) {
     throw new Error(`Published CMS page is missing: ${slug}`);
@@ -112,7 +115,77 @@ const packages = catalog.filter((item) => item?.productType === 'package' || ite
 if (jobs.length === 0) throw new Error('The public Careers page has no published jobs.');
 if (packages.length === 0) throw new Error('The public Pricing page has no public packages.');
 
+const talentPartnerProgram = talentPartnerResult.data;
+if (!talentPartnerProgram || typeof talentPartnerProgram !== 'object' || Array.isArray(talentPartnerProgram)) {
+  throw new Error('The public Talent Partner program did not return an object.');
+}
+if (!Array.isArray(talentPartnerProgram.roles)) {
+  throw new Error('The public Talent Partner program did not return its role configuration.');
+}
+
+const publishedRewardRoles = talentPartnerProgram.roles.filter((role) => role?.rewardPublished === true);
+for (const role of publishedRewardRoles) {
+  if (!role?.careerJobId || !role?.jobTitle || !role?.jobSlug) {
+    throw new Error('A published Talent Partner reward role is missing its career identity.');
+  }
+  if (!['sales', 'project'].includes(role.rewardModel)) {
+    throw new Error(`Published Talent Partner role ${role.jobSlug} has an invalid reward model.`);
+  }
+  if (!/^[A-Z]{3}$/.test(String(role.currency || ''))) {
+    throw new Error(`Published Talent Partner role ${role.jobSlug} has an invalid currency.`);
+  }
+
+  const requiredCount = Number(role.qualifyingEventCount || 0);
+  const rewards = Array.isArray(role.eventRewards) ? role.eventRewards : [];
+  if (requiredCount < 1 || rewards.length < requiredCount) {
+    throw new Error(`Published Talent Partner role ${role.jobSlug} is missing qualifying reward rules.`);
+  }
+
+  for (let rank = 1; rank <= requiredCount; rank += 1) {
+    const rule = rewards.find((item) => Number(item?.rank) === rank);
+    if (!rule) throw new Error(`Published Talent Partner role ${role.jobSlug} is missing reward #${rank}.`);
+    if (rule.kind === 'percent') {
+      const value = Number(rule.ratePercent || 0);
+      if (!(value > 0 && value <= 100)) throw new Error(`Published Talent Partner role ${role.jobSlug} has an invalid percentage for reward #${rank}.`);
+    } else if (rule.kind === 'fixed') {
+      if (!(Number(rule.fixedAmount || 0) > 0)) throw new Error(`Published Talent Partner role ${role.jobSlug} has an invalid fixed amount for reward #${rank}.`);
+    } else {
+      throw new Error(`Published Talent Partner role ${role.jobSlug} has an unknown reward type for reward #${rank}.`);
+    }
+  }
+
+  if (role.retentionEnabled) {
+    if (!(Number(role.retentionMonths || 0) > 0)) throw new Error(`Published Talent Partner role ${role.jobSlug} has an invalid retention period.`);
+    if (role.retentionRewardKind === 'percent') {
+      const value = Number(role.retentionRatePercent || 0);
+      if (!(value > 0 && value <= 100)) throw new Error(`Published Talent Partner role ${role.jobSlug} has an invalid retention percentage.`);
+    } else if (role.retentionRewardKind === 'fixed') {
+      if (!(Number(role.retentionFixedAmount || 0) > 0)) throw new Error(`Published Talent Partner role ${role.jobSlug} has an invalid retention fixed amount.`);
+    } else {
+      throw new Error(`Published Talent Partner role ${role.jobSlug} has an invalid retention reward type.`);
+    }
+  }
+}
+
+const salesRole = talentPartnerProgram.roles.find((role) => role?.jobSlug === 'independent-sales-representative');
+if (salesRole?.rewardPublished && salesRole.rewardModel !== 'sales') {
+  throw new Error('The public Independent Sales Representative reward plan is not using the sales reward model.');
+}
+
+const rewardSummary = publishedRewardRoles.map((role) => ({
+  slug: role.jobSlug,
+  rewards: role.eventRewards.map((rule) => rule.kind === 'percent'
+    ? `${rule.rank}:${Number(rule.ratePercent)}%`
+    : `${rule.rank}:${role.currency} ${Number(rule.fixedAmount)}`),
+  retention: role.retentionEnabled
+    ? (role.retentionRewardKind === 'percent'
+        ? `${Number(role.retentionRatePercent)}% after ${Number(role.retentionMonths)} months`
+        : `${role.currency} ${Number(role.retentionFixedAmount)} after ${Number(role.retentionMonths)} months`)
+    : 'disabled'
+}));
+
 console.log(`Public content verified: ${packages.length} pricing packages and ${jobs.length} career jobs.`);
+console.log(`Talent Partner public rewards verified: ${JSON.stringify(rewardSummary)}`);
 
 if (process.env.VERIFY_DEPLOYED_APP === 'true') {
   await verifyDeployedApplication();
