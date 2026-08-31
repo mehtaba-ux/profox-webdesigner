@@ -53,7 +53,12 @@ test('contact page exposes connected quote and meeting entry points', async ({ p
   await expect(bookingHeading.or(unavailableHeading)).toBeVisible();
   const firstAvailable = page.getByRole('button', { name: 'First available' });
   const quoteFallback = page.getByRole('button', { name: /get a quote/i });
-  await expect(firstAvailable.or(quoteFallback)).toBeVisible();
+  if (await quoteFallback.isVisible()) {
+    await expect(quoteFallback).toBeEnabled();
+  } else {
+    await expect(firstAvailable).toBeVisible();
+    await expect(firstAvailable).toBeEnabled();
+  }
 });
 
 test('standalone meeting page always provides a usable next action', async ({ page }) => {
@@ -64,5 +69,10 @@ test('standalone meeting page always provides a usable next action', async ({ pa
   await expect(page.locator('body')).not.toContainText(CONFIG_ERROR);
   const firstAvailable = page.getByRole('button', { name: 'First available' });
   const quoteFallback = page.getByRole('link', { name: /get a quote/i });
-  await expect(firstAvailable.or(quoteFallback)).toBeVisible();
+  if (await quoteFallback.isVisible()) {
+    await expect(quoteFallback).toHaveAttribute('href', /intent=quote/);
+  } else {
+    await expect(firstAvailable).toBeVisible();
+    await expect(firstAvailable).toBeEnabled();
+  }
 });
