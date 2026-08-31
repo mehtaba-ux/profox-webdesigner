@@ -8,6 +8,7 @@ import { salesService } from '../../lib/salesService';
 import { CpqDraft, CpqLine, quotationCpqService } from '../../lib/quotationCpqService';
 import QuotationProposal from '../quotation/QuotationProposal';
 import QuotationLineTimeline, { lineTimelineText, timelineSource, timelineStatus } from './QuotationLineTimeline';
+import QuotationProfitabilityPanel from './QuotationProfitabilityPanel';
 import type { CRMOpportunity, SalesProduct } from '../../types';
 
 function catalogTimelineSnapshot(product: any) {
@@ -163,7 +164,7 @@ export default function QuotationWorkspace() {
   const [sendCc, setSendCc] = useState('');
   const [sendSubject, setSendSubject] = useState('');
   const [sendMessage, setSendMessage] = useState('');
-  const [activePanel, setActivePanel] = useState<'scope' | 'proposal' | 'payment'>('scope');
+  const [activePanel, setActivePanel] = useState<'scope' | 'proposal' | 'payment' | 'profitability'>('scope');
   const draggedIndex = useRef<number | null>(null);
   const autosaveTimer = useRef<number | null>(null);
   const initialized = useRef(false);
@@ -532,6 +533,7 @@ export default function QuotationWorkspace() {
   const presentation = summary?.presentation;
   const paymentSchedule = presentation?.paymentPlan?.schedule || [];
   const approvalReasons: string[] = summary?.approval?.reasons || [];
+  const revenueDistribution = summary?.revenueDistribution;
 
   return <div className="min-h-screen bg-slate-50 pb-16">
     <div className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur-xl">
@@ -583,7 +585,7 @@ export default function QuotationWorkspace() {
           </div>
         </section>
 
-        <div className="flex gap-2 overflow-x-auto">{([['scope', 'Scope & Pricing'], ['proposal', 'Proposal Content'], ['payment', 'Payment & Delivery']] as const).map(([key, label]) => <button key={key} onClick={() => setActivePanel(key)} className={`rounded-xl px-4 py-2 text-xs font-extrabold ${activePanel === key ? 'bg-[#000080] text-white' : 'border border-slate-200 bg-white text-slate-600'}`}>{label}</button>)}</div>
+        <div className="flex gap-2 overflow-x-auto">{([['scope', 'Scope & Pricing'], ['proposal', 'Proposal Content'], ['payment', 'Payment & Delivery'], ['profitability', 'Profitability']] as const).map(([key, label]) => <button key={key} onClick={() => setActivePanel(key)} className={`rounded-xl px-4 py-2 text-xs font-extrabold ${activePanel === key ? 'bg-[#000080] text-white' : 'border border-slate-200 bg-white text-slate-600'}`}>{label}</button>)}</div>
 
         {activePanel === 'scope' && <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 p-4">
@@ -629,6 +631,8 @@ export default function QuotationWorkspace() {
           </div>
           <label><span className="mb-1.5 block text-xs font-bold text-slate-600">Payment Terms</span><textarea disabled={locked} rows={3} value={draft.paymentTerms || ''} onChange={e => updateDraft({ paymentTerms: e.target.value })} className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm" /></label>
         </section>}
+
+        {activePanel === 'profitability' && <QuotationProfitabilityPanel quotationId={currentId} distribution={revenueDistribution} locked={locked} onRefresh={() => currentId ? loadSummary(currentId) : undefined} />}
       </main>
 
       <aside className="lg:sticky lg:top-[86px] lg:self-start">
@@ -637,6 +641,7 @@ export default function QuotationWorkspace() {
           <div className="border-t border-slate-200 pt-4"><p className="text-[11px] font-extrabold uppercase text-slate-400">Estimated Delivery</p><p className="mt-1 text-sm font-bold">{presentation?.durationSnapshotText || 'Save to calculate'}</p></div>
           <div className="border-t border-slate-200 pt-4"><p className="text-[11px] font-extrabold uppercase text-slate-400">Payment Plan</p>{paymentSchedule.length ? <p className="mt-1 text-sm font-bold">{paymentSchedule.length} milestone{paymentSchedule.length === 1 ? '' : 's'} · First {money(Number(paymentSchedule[0]?.amount || 0), draft.currency)}</p> : <p className="mt-1 text-xs text-slate-500">Not ready yet</p>}</div>
           <div className="border-t border-slate-200 pt-4"><p className="text-[11px] font-extrabold uppercase text-slate-400">Approval</p>{draft.status === 'Approved' ? <p className="mt-1 flex items-center gap-1 text-sm font-bold text-emerald-700"><Check className="h-4 w-4" />Ready</p> : approvalReasons.length ? <div className="mt-2 space-y-1">{approvalReasons.slice(0, 4).map((reason, i) => <p key={i} className="text-[11px] leading-4 text-amber-700">• {reason}</p>)}</div> : <p className="mt-1 text-xs text-slate-500">Save to evaluate approval.</p>}</div>
+          {revenueDistribution?.success && <button type="button" onClick={() => setActivePanel('profitability')} className="w-full border-t border-slate-200 pt-4 text-left"><p className="text-[11px] font-extrabold uppercase text-slate-400">Expected ProFox Margin</p><p className={`mt-1 text-lg font-black ${revenueDistribution.requiresApproval?'text-red-700':Number(revenueDistribution.company?.marginPercent||0)>=Number(revenueDistribution.targetMarginPercent||0)?'text-emerald-700':'text-amber-700'}`}>{Number(revenueDistribution.company?.marginPercent||0).toFixed(2)}%</p><p className="mt-1 text-[10px] text-slate-500">Open the protected profitability breakdown</p></button>}
           <div className="border-t border-slate-200 pt-4"><p className="text-[11px] font-extrabold uppercase text-slate-400">Customer Readiness</p>{readiness?.readyToSend ? <p className="mt-1 flex items-center gap-1 text-sm font-bold text-emerald-700"><Check className="h-4 w-4" />Ready to Send</p> : <div className="mt-2 space-y-1">{(readiness?.missing || ['Save the quotation to run readiness checks.']).slice(0, 7).map((item: string, i: number) => item.startsWith('Timeline missing for') ? <button key={i} type="button" onClick={() => setActivePanel('scope')} className="block text-left text-[11px] font-semibold text-amber-700 hover:underline">• {item}</button> : <p key={i} className="text-[11px] text-slate-500">• {item}</p>)}</div>}</div>
           {summary?.views && <div className="border-t border-slate-200 pt-4"><p className="text-[11px] font-extrabold uppercase text-slate-400">Customer Views</p><p className="mt-1 text-sm font-bold">{summary.views.viewCount || 0} views</p>{summary.views.firstViewedAt && <p className="mt-1 text-[10px] text-slate-500">First viewed {new Date(summary.views.firstViewedAt).toLocaleString()}</p>}{summary.views.lastViewedAt && <p className="text-[10px] text-slate-500">Last viewed {new Date(summary.views.lastViewedAt).toLocaleString()}</p>}</div>}
         </div>

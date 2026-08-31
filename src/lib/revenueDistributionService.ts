@@ -19,7 +19,22 @@ export interface RevenueDistributionConfig {
 
 export const revenueDistributionService = {
   async getDashboard() {
-    return await supabase.rpc('admin_revenue_distribution_dashboard');
+    const [dashboard, management] = await Promise.all([
+      supabase.rpc('admin_revenue_distribution_dashboard'),
+      supabase.rpc('admin_revenue_distribution_management_snapshot'),
+    ]);
+    if (dashboard.error) return dashboard;
+    // Keep the existing dashboard available during a rolling frontend/database deploy.
+    // Any real authorization or query error still fails closed.
+    if (management.error && !['PGRST202', '42883'].includes(String(management.error.code || ''))) return management;
+    return {
+      data: {
+        ...(dashboard.data || {}),
+        productProfiles: management.data?.productProfiles || [],
+        projectActuals: management.data?.projectActuals || [],
+      },
+      error: null,
+    };
   },
   async getConfig() {
     return await supabase.rpc('revenue_distribution_config');
@@ -35,5 +50,21 @@ export const revenueDistributionService = {
   },
   async previewQuotation(quotationId: string) {
     return await supabase.rpc('revenue_distribution_preview_quotation', { p_quotation_id: quotationId });
+  },
+  async saveProductProfile(productId: string, roles: RevenueDistributionRoleConfig[]) {
+    return await supabase.rpc('admin_save_revenue_distribution_product_profile', {
+      p_product_id: productId,
+      p_roles: roles,
+    });
+  },
+  async clearProductProfile(productId: string) {
+    return await supabase.rpc('admin_clear_revenue_distribution_product_profile', { p_product_id: productId });
+  },
+  async setQuotationOverride(quotationId: string, roles: RevenueDistributionRoleConfig[] | null, reason = '') {
+    return await supabase.rpc('set_quotation_revenue_distribution_override', {
+      p_quotation_id: quotationId,
+      p_roles: roles,
+      p_reason: reason || null,
+    });
   },
 };

@@ -41,6 +41,8 @@ export default function RevenueDistributionAdmin() {
   const [dashboard, setDashboard] = useState<any>(null);
   const [config, setConfig] = useState<RevenueDistributionConfig | null>(null);
   const [selectedCode, setSelectedCode] = useState('');
+  const [profileRoles, setProfileRoles] = useState<any[]>([]);
+  const [profileSaving, setProfileSaving] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -61,12 +63,23 @@ export default function RevenueDistributionAdmin() {
 
   const products = Array.isArray(dashboard?.products) ? dashboard.products : [];
   const snapshots = Array.isArray(dashboard?.recentSnapshots) ? dashboard.recentSnapshots : [];
+  const productProfiles = Array.isArray(dashboard?.productProfiles) ? dashboard.productProfiles : [];
+  const projectActuals = Array.isArray(dashboard?.projectActuals) ? dashboard.projectActuals : [];
   const selected = useMemo(
     () => products.find((item: any) => item.code === selectedCode) || products.find((item: any) => Number(item.price || 0) > 0),
     [products, selectedCode]
   );
   const company = scenarioDistribution(selected, 'companyLead');
   const selfGenerated = scenarioDistribution(selected, 'selfGeneratedLead');
+  const selectedProfile = productProfiles.find((item: any) => item.productId === selected?.productId);
+
+  useEffect(() => {
+    if (!config || !selected) return;
+    const roles = Array.isArray(selectedProfile?.roles) && selectedProfile.roles.length
+      ? selectedProfile.roles
+      : config.deliveryRoles;
+    setProfileRoles(roles.map((role: any) => ({ ...role })));
+  }, [config, selected?.productId, selectedProfile?.profileId]);
 
   const patchRole = (index: number, weightPercent: number) => {
     setConfig(current => current ? {
@@ -90,6 +103,24 @@ export default function RevenueDistributionAdmin() {
       await load();
     }
     setSaving(false);
+  };
+
+  const profileWeightTotal = profileRoles.reduce((sum, role) => sum + Number(role.weightPercent || 0), 0);
+  const saveProfile = async () => {
+    if (!selected?.productId || Math.abs(profileWeightTotal - 100) > 0.0001) return;
+    setProfileSaving(true); setError(''); setMessage('');
+    const { error: profileError } = await revenueDistributionService.saveProductProfile(selected.productId, profileRoles);
+    if (profileError) setError(profileError.message || 'Package delivery profile could not be saved.');
+    else { setMessage(`${selected.name} now uses its own delivery effort profile for future quotations.`); await load(); }
+    setProfileSaving(false);
+  };
+  const clearProfile = async () => {
+    if (!selected?.productId) return;
+    setProfileSaving(true); setError(''); setMessage('');
+    const { error: profileError } = await revenueDistributionService.clearProductProfile(selected.productId);
+    if (profileError) setError(profileError.message || 'Package delivery profile could not be cleared.');
+    else { setMessage(`${selected.name} now inherits the global delivery effort allocation.`); await load(); }
+    setProfileSaving(false);
   };
 
   if (loading) {
@@ -213,6 +244,12 @@ export default function RevenueDistributionAdmin() {
         )}
 
         {selected && Number(selected.price || 0) <= 0 && <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs font-semibold text-amber-800">This is a custom-price catalog product. Its distribution is calculated from the actual quotation price when Sales builds the quotation.</div>}
+
+        {selected && <div className="mt-5 rounded-2xl border border-blue-100 bg-blue-50/40 p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div><h4 className="text-xs font-black text-slate-900">Package-specific delivery profile</h4><p className="mt-1 text-[10px] leading-4 text-slate-500">{selectedProfile?.profileId ? 'This package overrides the global effort weights.' : 'This package currently inherits the global effort weights.'} Prices and reward rules remain in their existing systems.</p></div><span className="rounded-full bg-white px-3 py-1 text-[10px] font-black text-[#000080]">{profileWeightTotal.toFixed(2)}% / 100%</span></div>
+          <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-5">{profileRoles.map((role: any, index: number) => <label key={role.key} className="rounded-xl border border-slate-200 bg-white p-3"><span className="block min-h-8 text-[10px] font-black text-slate-700">{role.label}</span><div className="mt-2 flex items-center gap-2"><input type="number" min={0} max={100} step="0.25" value={role.weightPercent} onChange={event => setProfileRoles(current => current.map((item, roleIndex) => roleIndex === index ? { ...item, weightPercent: Number(event.target.value || 0) } : item))} className="w-full rounded-lg border border-slate-200 px-2 py-2 text-sm font-black"/><span className="text-xs font-black">%</span></div></label>)}</div>
+          <div className="mt-4 flex flex-wrap justify-end gap-2">{selectedProfile?.profileId && <button type="button" disabled={profileSaving} onClick={() => void clearProfile()} className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-black text-slate-600 disabled:opacity-50">Use Global Profile</button>}<button type="button" disabled={profileSaving || Math.abs(profileWeightTotal - 100) > 0.0001} onClick={() => void saveProfile()} className="rounded-xl bg-[#000080] px-4 py-2 text-xs font-black text-white disabled:opacity-50">{profileSaving ? 'Saving…' : 'Save Package Profile'}</button></div>
+        </div>}
       </div>
 
       <div className="rounded-2xl border border-slate-200 p-4">
@@ -220,6 +257,11 @@ export default function RevenueDistributionAdmin() {
         {snapshots.length ? (
           <div className="mt-4 overflow-x-auto"><table className="w-full min-w-[850px] text-left text-xs"><thead className="bg-slate-50 text-[10px] uppercase text-slate-400"><tr><th className="p-3">Project</th><th className="p-3">Quotation</th><th className="p-3 text-right">Revenue</th><th className="p-3 text-right">Delivery pool</th><th className="p-3 text-right">ProFox contribution</th><th className="p-3 text-right">Margin</th><th className="p-3">Policy</th></tr></thead><tbody>{snapshots.map((row: any) => <tr key={row.id} className="border-t border-slate-100"><td className="p-3 font-bold">{row.project_name || row.project_id}</td><td className="p-3 text-slate-500">{row.quotation_number || '—'}</td><td className="p-3 text-right">{money(row.commissionable_revenue, row.currency)}</td><td className="p-3 text-right">{money(row.delivery_pool_amount, row.currency)}</td><td className="p-3 text-right font-bold">{money(row.company_contribution_amount, row.currency)}</td><td className="p-3 text-right font-black">{Number(row.projected_margin_percent || 0).toFixed(2)}%</td><td className="p-3 text-slate-500">v{row.config_version}</td></tr>)}</tbody></table></div>
         ) : <div className="mt-4 rounded-xl border border-dashed border-slate-200 p-5 text-center text-xs text-slate-500">No qualifying project snapshots yet. New paid sales will be snapshotted automatically.</div>}
+      </div>
+
+      <div className="rounded-2xl border border-slate-200 p-4">
+        <div className="flex items-center justify-between"><div><h3 className="text-sm font-black">Projected versus actual margin</h3><p className="mt-1 text-[11px] text-slate-500">Actuals come only from verified customer payments and the existing seller, Talent Partner and worker ledgers. Unpaid allocations are never presented as cash cost.</p></div><TrendingUp className="h-5 w-5 text-slate-400" /></div>
+        {projectActuals.length ? <div className="mt-4 overflow-x-auto"><table className="w-full min-w-[1180px] text-left text-xs"><thead className="bg-slate-50 text-[10px] uppercase text-slate-400"><tr><th className="p-3">Project</th><th className="p-3 text-right">Projected revenue</th><th className="p-3 text-right">Collected</th><th className="p-3 text-right">Projected people cost</th><th className="p-3 text-right">Actual recognized cost</th><th className="p-3 text-right">Paid cost</th><th className="p-3 text-right">Projected margin</th><th className="p-3 text-right">Actual margin</th></tr></thead><tbody>{projectActuals.map((row: any) => <tr key={row.id} className="border-t border-slate-100"><td className="p-3"><div className="font-bold">{row.project_name||row.project_id}</div><div className="text-[9px] text-slate-400">{row.quotation_number||'—'}</div></td><td className="p-3 text-right">{money(row.projected_revenue,row.currency)}</td><td className="p-3 text-right font-bold">{money(row.collected_revenue,row.currency)}</td><td className="p-3 text-right">{money(row.projected_people_cost,row.currency)}</td><td className="p-3 text-right font-bold">{money(row.actual_recognized_cost,row.currency)}</td><td className="p-3 text-right">{money(row.paid_cost,row.currency)}</td><td className="p-3 text-right font-black">{Number(row.projected_margin_percent||0).toFixed(2)}%</td><td className="p-3 text-right font-black">{row.actual_margin_percent==null?'Awaiting verified revenue':`${Number(row.actual_margin_percent).toFixed(2)}%`}</td></tr>)}</tbody></table></div> : <div className="mt-4 rounded-xl border border-dashed border-slate-200 p-5 text-center text-xs text-slate-500">No immutable project snapshots exist yet. The report will populate from real verified sales—no sample financial data is generated.</div>}
       </div>
 
       <div className="grid gap-3 md:grid-cols-2">

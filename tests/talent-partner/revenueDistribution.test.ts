@@ -11,9 +11,11 @@ const hardeningSql = readFileSync(resolve(root, 'supabase/migrations/20260830181
 const mappingSql = readFileSync(resolve(root, 'supabase/migrations/20260830182500_revenue_distribution_role_mapping_fix.sql'), 'utf8');
 const deliverySql = readFileSync(resolve(root, 'supabase/migrations/20260830184000_delivery_worker_revenue_distribution_integration.sql'), 'utf8');
 const metadataSql = readFileSync(resolve(root, 'supabase/migrations/20260830185000_content_assignment_revenue_budget_metadata_alignment.sql'), 'utf8');
+const completionSql = readFileSync(resolve(root, 'supabase/migrations/20260831103000_revenue_distribution_profiles_profitability_reporting.sql'), 'utf8');
 const adminSource = readFileSync(resolve(root, 'src/components/admin/RevenueDistributionAdmin.tsx'), 'utf8');
 const serviceSource = readFileSync(resolve(root, 'src/lib/revenueDistributionService.ts'), 'utf8');
 const configurationSource = readFileSync(resolve(root, 'src/components/admin/ConfigurationCenter.tsx'), 'utf8');
+const quotationSource = readFileSync(resolve(root, 'src/components/admin/QuotationProfitabilityPanel.tsx'), 'utf8');
 
 test('revenue distribution keeps Sales Catalog and existing engines canonical', () => {
   assert.match(baseSql, /Package prices remain canonical in Sales Catalog/i);
@@ -130,4 +132,49 @@ test('Admin exposes the live policy switches and retention provision clearly', (
   assert.match(adminSource, /retentionReservePerQualifyingSale/i);
   assert.match(adminSource, /retentionTotalReserve/i);
   assert.match(adminSource, /Worker budgets are enforced, not just displayed/i);
+});
+
+test('package profiles change weights without duplicating catalog prices or reward rules', () => {
+  assert.match(completionSql, /revenue_distribution_product_profiles/i);
+  assert.match(completionSql, /sales_product_id uuid not null unique references public\.sales_products/i);
+  assert.match(completionSql, /Only weights may change/i);
+  assert.match(completionSql, /admin_save_revenue_distribution_product_profile/i);
+  assert.doesNotMatch(completionSql, /package_price|seller_commission_percent|talent_partner_percent/i);
+  assert.match(adminSource, /Package-specific delivery profile/i);
+});
+
+test('quotation overrides are validated, audited and always routed for approval', () => {
+  assert.match(completionSql, /revenue_distribution_override_reason/i);
+  assert.match(completionSql, /set_quotation_revenue_distribution_override/i);
+  assert.match(completionSql, /Only an unlocked draft quotation can change delivery weights/i);
+  assert.match(completionSql, /Project-specific delivery effort weights require Management approval/i);
+  assert.match(completionSql, /weights must total exactly 100 percent/i);
+  assert.match(quotationSource, /Custom quotation effort weights/i);
+});
+
+test('quotation profitability includes protected minimum-price guidance from the server engine', () => {
+  assert.match(completionSql, /revenue_distribution_required_price_internal/i);
+  assert.match(completionSql, /minimumSellingPrice/i);
+  assert.match(completionSql, /additionalRevenueRequired/i);
+  assert.match(completionSql, /Required minimum one-time selling price/i);
+  assert.match(quotationSource, /Expected ProFox margin/i);
+  assert.match(quotationSource, /Required minimum one-time selling price/i);
+  assert.doesNotMatch(quotationSource, /0\.13|0\.22|0\.45/);
+});
+
+test('actual margin reporting reuses verified payment and canonical payout ledgers', () => {
+  assert.match(completionSql, /from public\.payments pay/i);
+  assert.match(completionSql, /from public\.commission_entries c/i);
+  assert.match(completionSql, /from public\.talent_partner_reward_entries t/i);
+  assert.match(completionSql, /from public\.worker_earnings w/i);
+  assert.match(completionSql, /admin_revenue_distribution_management_snapshot/i);
+  assert.match(adminSource, /Projected versus actual margin/i);
+  assert.match(adminSource, /no sample financial data is generated/i);
+});
+
+test('profile-aware calculations still use the single established financial formula', () => {
+  assert.match(completionSql, /revenue_distribution_calculate_scoped_internal/i);
+  assert.match(completionSql, /revenue_distribution_calculate_internal\(p_revenue,p_currency,p_product_code,p_self_generated,p_approved_commission_rate\)/i);
+  assert.match(completionSql, /always restores the prior value/i);
+  assert.match(completionSql, /revoke all on function public\.revenue_distribution_calculate_scoped_internal/i);
 });
