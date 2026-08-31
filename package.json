@@ -13,6 +13,7 @@
     "migrations:check": "node scripts/migrate-production.mjs",
     "migrations:apply": "node scripts/migrate-production.mjs --apply",
     "production:verify": "node scripts/verify-production-readiness.mjs",
+    "production:activate-privacy": "node scripts/activate-production-privacy-consent.mjs",
     "test": "npm run test:talent-partner",
     "test:talent-partner": "tsx --test tests/talent-partner/*.test.ts",
     "test:e2e": "playwright test",

@@ -28,7 +28,7 @@ try {
     select count(*)::int as count, max(version) as latest
     from profox_migrations.applied_migrations
   `)).rows[0];
-  if (migration.latest >= '20260831124232') pass('Database migrations', `${migration.count} checksummed migrations; latest ${migration.latest}`);
+  if (migration.latest >= '20260831143949') pass('Database migrations', `${migration.count} checksummed migrations; latest ${migration.latest}`);
   else fail('Database migrations', `latest installed migration is ${migration.latest || 'missing'}`);
 
   const synthetic = (await client.query(`
@@ -110,6 +110,40 @@ try {
   if (zoho.unhealthy === 0) pass('Zoho connection state', `${zoho.connected} connected account(s), no unhealthy connection`);
   else fail('Zoho connection state', `${zoho.unhealthy} connection(s) require attention`);
   if (zoho.connected === 0) warn('Zoho adoption', 'Zoho is optional and no account is connected');
+
+  const publicAcquisition = (await client.query(`
+    select
+      coalesce((select (config_value->>'enabled')::boolean from public.system_configuration where config_key='public_contact_form'),false) as contact_enabled,
+      coalesce((select (config_value->>'requirePrivacyConsent')::boolean from public.system_configuration where config_key='public_contact_form'),false) as contact_consent_required,
+      coalesce((select (config_value->>'notifyManagersOnNewLead')::boolean from public.system_configuration where config_key='crm_lead_assignment'),false) as manager_notifications,
+      coalesce((select (config_value->>'active')::boolean from public.system_configuration where config_key='public_booking_settings'),false) as booking_enabled,
+      coalesce((select (config_value->>'requirePrivacyConsent')::boolean from public.system_configuration where config_key='public_booking_settings'),false) as booking_consent_required,
+      (select count(*)::int from public.list_public_booking_experts()) as public_experts,
+      exists(select 1 from cron.job where jobname='crm-lead-first-response-sla' and active) as lead_sla_active,
+      exists(select 1 from cron.job where jobname='profox-notification-automation' and active) as notification_worker_active,
+      exists(select 1 from cron.job where jobname='profox-google-calendar-sync' and active) as google_worker_active,
+      exists(select 1 from cron.job where jobname='profox-zoho-calendar-sync' and active) as zoho_worker_active
+  `)).rows[0];
+  if (publicAcquisition.contact_enabled && publicAcquisition.manager_notifications && publicAcquisition.lead_sla_active) {
+    pass('Website enquiry flow', 'form, manager alerts and first-response SLA scheduler are active');
+  } else {
+    fail('Website enquiry flow', 'form, manager alerts or first-response SLA scheduler is inactive');
+  }
+  if (publicAcquisition.booking_enabled && publicAcquisition.public_experts > 0) {
+    pass('Public meeting booking', `${publicAcquisition.public_experts} eligible public specialist(s)`);
+  } else {
+    fail('Public meeting booking', `enabled=${publicAcquisition.booking_enabled}; eligible specialists=${publicAcquisition.public_experts}`);
+  }
+  if (publicAcquisition.contact_consent_required && publicAcquisition.booking_consent_required) {
+    pass('Public form privacy consent', 'mandatory for both quote and meeting submissions');
+  } else {
+    warn('Public form privacy consent', 'staged off until the matching frontend passes its production smoke test');
+  }
+  if (publicAcquisition.notification_worker_active && publicAcquisition.google_worker_active && publicAcquisition.zoho_worker_active) {
+    pass('Provider-neutral schedulers', 'notifications, Google Calendar and Zoho Calendar workers are active');
+  } else {
+    fail('Provider-neutral schedulers', 'one or more notification/calendar workers are inactive');
+  }
 
   await client.query('rollback');
 } catch (error) {

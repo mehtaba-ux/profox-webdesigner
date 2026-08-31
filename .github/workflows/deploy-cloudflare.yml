@@ -126,6 +126,15 @@ jobs:
       - name: Deploy hardened staff diagnostic function
         run: npx supabase functions deploy test-staff-login --project-ref "$SUPABASE_PROJECT_REF"
 
+      - name: Deploy communication and calendar integration functions
+        run: |
+          npx supabase functions deploy process-notification-outbox --no-verify-jwt --project-ref "$SUPABASE_PROJECT_REF"
+          npx supabase functions deploy google-calendar-oauth --no-verify-jwt --project-ref "$SUPABASE_PROJECT_REF"
+          npx supabase functions deploy process-google-calendar-sync --no-verify-jwt --project-ref "$SUPABASE_PROJECT_REF"
+          npx supabase functions deploy zoho-mail-admin --no-verify-jwt --project-ref "$SUPABASE_PROJECT_REF"
+          npx supabase functions deploy zoho-calendar-oauth --no-verify-jwt --project-ref "$SUPABASE_PROJECT_REF"
+          npx supabase functions deploy process-zoho-calendar-sync --no-verify-jwt --project-ref "$SUPABASE_PROJECT_REF"
+
       - name: Production build
         run: npm run build
 
@@ -177,6 +186,14 @@ jobs:
         env:
           E2E_BASE_URL: ${{ env.PUBLIC_APP_URL }}
         run: npm run test:e2e
+
+      - name: Activate mandatory public-form privacy consent
+        env:
+          ALLOW_PRODUCTION_ACTIVATION: 'true'
+        run: npm run production:activate-privacy
+
+      - name: Verify final production readiness
+        run: npm run production:verify
 
       - name: Record verification status
         if: ${{ always() }}

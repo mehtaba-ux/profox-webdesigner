@@ -14,6 +14,8 @@ const fallback: PublicBookingSettings = {
   maxAdvanceDays: 60,
   slotIntervalMinutes: 15,
   maxBookingsPerEmailPerDay: 3,
+  requirePrivacyConsent: true,
+  privacyConsentText: 'I agree that ProFox may process this meeting request under the',
   qualificationQuestions: []
 };
 

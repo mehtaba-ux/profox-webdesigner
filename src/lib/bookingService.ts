@@ -27,6 +27,8 @@ export interface PublicBookingSettings {
   maxAdvanceDays: number;
   slotIntervalMinutes: number;
   maxBookingsPerEmailPerDay: number;
+  requirePrivacyConsent: boolean;
+  privacyConsentText: string;
   qualificationQuestions: BookingQualificationQuestion[];
 }
 
@@ -151,6 +153,8 @@ const DEFAULT_PUBLIC_BOOKING_SETTINGS: PublicBookingSettings = {
   maxAdvanceDays: 60,
   slotIntervalMinutes: 15,
   maxBookingsPerEmailPerDay: 3,
+  requirePrivacyConsent: true,
+  privacyConsentText: 'I agree that ProFox may process this meeting request under the',
   qualificationQuestions: []
 };
 
@@ -291,7 +295,7 @@ export const bookingService = {
       p_country: input.country,
       p_industry: input.industry || 'Other',
       p_service_interest: input.serviceInterest || '',
-      p_qualification_answers: input.qualificationAnswers,
+      p_qualification_answers: { ...input.qualificationAnswers, _privacyConsent: 'accepted' },
       p_honeypot: input.honeypot || ''
     });
     if (error) throw error;

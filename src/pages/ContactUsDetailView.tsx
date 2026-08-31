@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
+import { useLocation } from 'react-router-dom';
 import { CalendarDays, FileText, Mail, Phone, MapPin, Send, MessageSquare, Sparkles } from 'lucide-react';
 import { useCMS } from '../lib/CMSProvider';
 import HeroReviewProof from '../components/HeroReviewProof';
@@ -10,11 +11,15 @@ import { resolveSiteSettings } from '../lib/siteSettings';
 type ContactMode = 'quote' | 'meeting';
 
 export default function ContactUsDetailView({ page }: { page?: any }) {
+  const location = useLocation();
   const { content } = useCMS();
   const theme = content.theme || {};
   const buttonRadius = theme.buttonRadius || 'rounded-lg';
   const siteSettings = resolveSiteSettings(content.siteSettings);
-  const [contactMode, setContactMode] = useState<ContactMode>('quote');
+  const requestedMode = new URLSearchParams(location.search).get('intent') === 'meeting' ? 'meeting' : 'quote';
+  const [contactMode, setContactMode] = useState<ContactMode>(requestedMode);
+
+  useEffect(() => { setContactMode(requestedMode); }, [requestedMode]);
 
   const blueprints = content.template_blueprints || [];
   const blueprint = blueprints.find((b: any) => b.id === page?.template);

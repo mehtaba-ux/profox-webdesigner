@@ -60,6 +60,7 @@ export default function QualifiedContactForm() {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [submitError, setSubmitError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [privacyAccepted, setPrivacyAccepted] = useState(false);
   const [success, setSuccess] = useState(false);
   const [reference, setReference] = useState('');
 
@@ -212,6 +213,10 @@ export default function QualifiedContactForm() {
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
+    if (!privacyAccepted) {
+      setSubmitError('Please accept the Privacy Policy and Terms before submitting your enquiry.');
+      return;
+    }
     if (!validateFields(currentFields)) return;
     const allVisibleFields = config.fields.filter(field => field.enabled && fieldVisible(field, answers));
     if (!validateFields(allVisibleFields)) {
@@ -225,13 +230,14 @@ export default function QualifiedContactForm() {
     }
     setSubmitting(true);
     setSubmitError('');
-    const result = await leadService.submitLead({ answers, attribution: collectAttribution(), honeypot });
+    const result = await leadService.submitLead({ answers, attribution: collectAttribution(), honeypot, privacyAccepted });
     if (result.success) {
       setReference(result.reference || '');
       setSuccess(true);
       setAnswers({});
       setFieldErrors({});
       setStepIndex(0);
+      setPrivacyAccepted(false);
     } else {
       setSubmitError(result.error || 'We could not send your project enquiry. Please try again.');
     }
@@ -334,12 +340,14 @@ export default function QualifiedContactForm() {
 
             {submitError && <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-xs font-semibold leading-5 text-rose-700">{submitError}</div>}
 
+            {finalStep && <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 bg-slate-50/80 p-3 text-[11px] font-medium leading-5 text-slate-600"><input type="checkbox" checked={privacyAccepted} onChange={event => { setPrivacyAccepted(event.target.checked); setSubmitError(''); }} className="mt-1 h-4 w-4 shrink-0 accent-[#000080]" /><span>I agree to the <a href="/privacy-policy" target="_blank" rel="noreferrer" className="font-bold text-[#000080] underline">Privacy Policy</a> and <a href="/terms-and-conditions" target="_blank" rel="noreferrer" className="font-bold text-[#000080] underline">Terms</a> so ProFox can process and respond to this enquiry.</span></label>}
+
             <div className="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div>{safeStepIndex > 0 && <button type="button" onClick={previousStep} disabled={submitting} className={`inline-flex min-h-10 items-center gap-2 border border-slate-200 bg-white px-4 text-xs font-bold text-slate-700 transition-all hover:border-slate-300 hover:bg-slate-50 disabled:opacity-50 ${buttonRadius}`}><ArrowLeft className="h-4 w-4" />{config.experience.previousLabel}</button>}</div>
               {!finalStep ? (
                 <button type="button" onClick={nextStep} disabled={loadingConfig} className={`inline-flex min-h-10 items-center justify-center gap-2 bg-[var(--brand-primary)] px-5 text-xs font-bold text-white shadow-[0_12px_30px_rgba(0,0,128,0.16)] transition-all hover:-translate-y-0.5 hover:bg-[var(--brand-primary-hover)] hover:shadow-[0_16px_36px_rgba(0,0,128,0.2)] disabled:opacity-60 ${buttonRadius}`}>{config.experience.nextLabel}<ArrowRight className="h-4 w-4" /></button>
               ) : (
-                <button type="submit" disabled={submitting} className={`inline-flex min-h-10 items-center justify-center gap-2 bg-[var(--brand-primary)] px-5 text-xs font-bold text-white shadow-[0_12px_30px_rgba(0,0,128,0.16)] transition-all hover:-translate-y-0.5 hover:bg-[var(--brand-primary-hover)] hover:shadow-[0_16px_36px_rgba(0,0,128,0.2)] disabled:opacity-60 ${buttonRadius}`}>{submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}{submitting ? 'Sending securely…' : config.experience.submitLabel}</button>
+                <button type="submit" disabled={submitting || !privacyAccepted} className={`inline-flex min-h-10 items-center justify-center gap-2 bg-[var(--brand-primary)] px-5 text-xs font-bold text-white shadow-[0_12px_30px_rgba(0,0,128,0.16)] transition-all hover:-translate-y-0.5 hover:bg-[var(--brand-primary-hover)] hover:shadow-[0_16px_36px_rgba(0,0,128,0.2)] disabled:cursor-not-allowed disabled:opacity-60 ${buttonRadius}`}>{submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}{submitting ? 'Sending securely…' : config.experience.submitLabel}</button>
               )}
             </div>
 

@@ -5,6 +5,7 @@ export interface PublicLeadSubmissionPayload {
   answers?: Record<string, string>;
   attribution?: Record<string, string>;
   honeypot?: string;
+  privacyAccepted?: boolean;
   // Legacy keys remain supported while older contact surfaces are phased out.
   fullName?: string;
   email?: string;

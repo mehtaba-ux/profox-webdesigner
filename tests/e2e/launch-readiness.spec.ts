@@ -40,3 +40,29 @@ test('legacy careers routes resolve to the canonical careers page', async ({ pag
   await expect(page).toHaveURL(/\/careers$/);
   await expect(page.locator('h1').first()).toBeVisible();
 });
+
+test('contact page exposes connected quote and meeting entry points', async ({ page }) => {
+  await page.goto('/contact-us?intent=quote');
+  await expect(page.getByRole('tab', { name: 'Get a Quote' })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByRole('heading', { name: /tell us what you're building/i })).toBeVisible();
+  await expect(page.locator('body')).not.toContainText(CONFIG_ERROR);
+
+  await page.getByRole('tab', { name: 'Book a Meeting' }).click();
+  const bookingHeading = page.getByRole('heading', { name: /speak with the right profox specialist/i });
+  const unavailableHeading = page.getByRole('heading', { name: /booking is currently unavailable/i });
+  await expect(bookingHeading.or(unavailableHeading)).toBeVisible();
+  const firstAvailable = page.getByRole('button', { name: 'First available' });
+  const quoteFallback = page.getByRole('button', { name: /get a quote/i });
+  await expect(firstAvailable.or(quoteFallback)).toBeVisible();
+});
+
+test('standalone meeting page always provides a usable next action', async ({ page }) => {
+  await page.goto('/book-a-meeting');
+  const bookingHeading = page.getByRole('heading', { name: /book a strategy call/i });
+  const unavailableHeading = page.getByRole('heading', { name: /booking is currently unavailable/i });
+  await expect(bookingHeading.or(unavailableHeading)).toBeVisible();
+  await expect(page.locator('body')).not.toContainText(CONFIG_ERROR);
+  const firstAvailable = page.getByRole('button', { name: 'First available' });
+  const quoteFallback = page.getByRole('link', { name: /get a quote/i });
+  await expect(firstAvailable.or(quoteFallback)).toBeVisible();
+});
