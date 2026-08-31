@@ -369,7 +369,6 @@ export const bookingService = {
         headline: profile.headline,
         bio: profile.bio,
         country: profile.country,
-        avatar_url: profile.avatarUrl,
         niches: profile.niches,
         service_expertise: profile.serviceExpertise,
         languages: profile.languages,
