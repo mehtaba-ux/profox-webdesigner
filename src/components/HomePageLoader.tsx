@@ -9,9 +9,9 @@ export default function HomePageLoader() {
   const { content } = useCMS();
   const reduceMotion = useReducedMotion();
   const settings = content.loadingScreen || {};
-  const enabled = settings.enabled !== false;
+  const enabled = settings.enabled === true;
   const replayEveryVisit = settings.replayEveryVisit === true;
-  const duration = Math.min(4000, Math.max(900, Number(settings.duration) || 1800));
+  const duration = Math.min(700, Math.max(250, Number(settings.duration) || 500));
   const logo = settings.logo;
   const taglineLine1 = settings.taglineLine1 || 'Where Design & Technology';
   const taglineLine2 = settings.taglineLine2 || 'Meet Business Impact';

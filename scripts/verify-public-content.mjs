@@ -55,6 +55,16 @@ async function verifyDeployedApplication() {
 
   const cacheBuster = encodeURIComponent(process.env.GITHUB_SHA || String(Date.now()));
   const homeResponse = await fetchChecked(`${publicAppUrl}/?deployment=${cacheBuster}`, 'Public application');
+  for (const header of [
+    'content-security-policy',
+    'permissions-policy',
+    'referrer-policy',
+    'strict-transport-security',
+    'x-content-type-options',
+    'x-frame-options'
+  ]) {
+    if (!homeResponse.headers.get(header)) throw new Error(`Public application is missing security header: ${header}.`);
+  }
   const homeHtml = await homeResponse.text();
   const scriptPaths = [...homeHtml.matchAll(/<script[^>]+src=["']([^"']+)["']/gi)]
     .map((match) => match[1])
@@ -74,10 +84,33 @@ async function verifyDeployedApplication() {
   await Promise.all([
     fetchChecked(`${publicAppUrl}/pricing?deployment=${cacheBuster}`, 'Pricing route'),
     fetchChecked(`${publicAppUrl}/careers?deployment=${cacheBuster}`, 'Careers route'),
-    fetchChecked(`${publicAppUrl}/talent-partner-program?deployment=${cacheBuster}`, 'Talent Partner route')
+    fetchChecked(`${publicAppUrl}/talent-partner-program?deployment=${cacheBuster}`, 'Talent Partner route'),
+    fetchChecked(`${publicAppUrl}/llms.txt?deployment=${cacheBuster}`, 'LLM discovery file')
   ]);
 
-  console.log('Deployed frontend configuration and public routes verified.');
+  const privateDocumentResponse = await fetch(`${publicAppUrl}/api/r2-media/documents/__launch-verification__.pdf`, {
+    cache: 'no-store',
+    redirect: 'manual'
+  });
+  if (privateDocumentResponse.status !== 401) {
+    throw new Error(`Private document boundary returned HTTP ${privateDocumentResponse.status}; expected 401 without staff authentication.`);
+  }
+
+  const testLoginResponse = await fetch(`${supabaseUrl.replace(/\/$/, '')}/functions/v1/test-staff-login`, {
+    method: 'POST',
+    headers: {
+      apikey: publishableKey,
+      authorization: `Bearer ${publishableKey}`,
+      'content-type': 'application/json',
+      origin: publicAppUrl
+    },
+    body: '{}'
+  });
+  if (testLoginResponse.status !== 404) {
+    throw new Error(`Production test-login boundary returned HTTP ${testLoginResponse.status}; expected fail-closed HTTP 404.`);
+  }
+
+  console.log('Deployed frontend configuration, security headers, private media boundary, disabled test-login boundary and public routes verified.');
 }
 
 const supabase = createClient(supabaseUrl, publishableKey, {

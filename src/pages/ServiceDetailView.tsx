@@ -2196,7 +2196,7 @@ export default function ServiceDetailView({ page }: { page?: any }) {
                     >
                       <Link to="/portfolio">
                         <div className="relative aspect-[16/10] rounded-3xl overflow-hidden mb-6 bg-slate-100 shadow-sm">
-                          <img src={item.coverImage} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                          <img src={item.coverImage} alt={item.title || 'ProFox project'} loading="lazy" decoding="async" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
                           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                         </div>
                         <div className="text-[10px] font-bold theme-text uppercase tracking-widest mb-2">{item.category}</div>
@@ -2229,7 +2229,7 @@ export default function ServiceDetailView({ page }: { page?: any }) {
                       className="flex flex-col h-full group"
                     >
                       <div className="aspect-video rounded-3xl overflow-hidden mb-6 bg-slate-50">
-                        <img src={post.coverImage} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                        <img src={post.coverImage} alt={post.title || 'ProFox insight'} loading="lazy" decoding="async" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
                       </div>
                       <div className="flex items-center gap-4 mb-4">
                         <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{post.category}</span>

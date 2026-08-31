@@ -425,7 +425,7 @@ export default function LiveChatWidget() {
 
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between">
-                          <h4 className="text-[13px] font-semibold text-slate-900 group-hover:text-[#000080] transition-colors">{rep.name}</h4>
+                          <div className="text-[13px] font-semibold text-slate-900 group-hover:text-[#000080] transition-colors">{rep.name}</div>
                           {rep.reviewCount > 0 ? <div className="flex items-center gap-1 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-100 text-amber-800 text-[10px] font-semibold"><Star className="w-3 h-3 fill-amber-400 text-amber-400" /><span>{rep.rating}</span><span className="text-slate-400 font-normal">({rep.reviewCount})</span></div> : <div className="flex items-center gap-1 rounded-full border border-blue-100 bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-[#000080]"><ShieldCheck className="h-3 w-3" />Verified</div>}
                         </div>
 

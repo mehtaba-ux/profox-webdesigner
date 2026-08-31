@@ -13,7 +13,6 @@ import { CONTACT_PAGE_PATH } from '../lib/contactCta';
 import type { NavItem } from '../types';
 import { isInternalNavigationHref, normalizeNavigationMenu } from '../lib/siteNavigation';
 import { defaultPortfolioItems } from '../data';
-import { getAllBlogPosts } from '../lib/blogService';
 import { formatR2ImageUrl } from '../lib/r2Media';
 
 export default function Header() {
@@ -58,19 +57,22 @@ export default function Header() {
       setRecentProject(defaultPortfolioItems[0]);
     }
 
-    // 2. Get recent blog post
-    getAllBlogPosts().then((posts) => {
-      if (posts && posts.length > 0) {
-        const publishedPosts = posts.filter((p: any) => p.status === 'published' || !p.status);
-        if (publishedPosts.length > 0) {
-          setRecentPost(publishedPosts[0]);
-        } else {
-          setRecentPost(posts[0]);
+    // 2. Load the non-critical mega-menu highlight after first paint.
+    const timer = window.setTimeout(() => {
+      void import('../lib/blogService').then(({ getAllBlogPosts }) => getAllBlogPosts()).then((posts) => {
+        if (posts && posts.length > 0) {
+          const publishedPosts = posts.filter((p: any) => p.status === 'published' || !p.status);
+          if (publishedPosts.length > 0) {
+            setRecentPost(publishedPosts[0]);
+          } else {
+            setRecentPost(posts[0]);
+          }
         }
-      }
-    }).catch(err => {
-      console.warn('Failed to load blog posts for header highlight:', err);
-    });
+      }).catch(err => {
+        console.warn('Failed to load blog posts for header highlight:', err);
+      });
+    }, 1200);
+    return () => window.clearTimeout(timer);
   }, [content.portfolio_items?.length]);
 
   const headerData = content.header || {};
@@ -783,4 +785,3 @@ export default function Header() {
     </header>
   );
 }
-

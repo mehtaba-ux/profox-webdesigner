@@ -907,7 +907,7 @@ export default function BlogManager() {
                   <td className="px-6 py-5">
                     <div className="flex items-center gap-4">
                       {post.featuredImage ? (
-                        <img src={post.featuredImage} className="w-12 h-12 rounded-lg object-cover" />
+                        <img src={post.featuredImage} alt={post.title || 'Blog post'} loading="lazy" className="w-12 h-12 rounded-lg object-cover" />
                       ) : (
                         <div className="w-12 h-12 rounded-lg bg-white flex items-center justify-center">
                           <ImageIcon className="w-5 h-5 text-slate-700" />

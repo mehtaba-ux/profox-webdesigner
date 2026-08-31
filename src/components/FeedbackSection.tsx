@@ -84,9 +84,9 @@ function FeedbackCard({ fb }: { fb: FeedbackEntry }) {
         )}
 
         <div className="overflow-hidden flex-1">
-          <h4 className="font-bold text-slate-900 text-sm md:text-base truncate">
+          <div className="font-bold text-slate-900 text-sm md:text-base truncate">
             {fb.customerName || 'Valued Client'}
-          </h4>
+          </div>
           {fb.position ? (
             <p className="text-xs text-slate-500 truncate">{fb.position}</p>
           ) : (

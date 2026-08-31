@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { lazy, Suspense, useState } from 'react';
 import { useCMS } from '../../lib/CMSProvider';
 import { Edit3, Check, X, Image as ImageIcon, Sparkles } from 'lucide-react';
 import { ConfirmButton } from "./ConfirmButton";
 import { useConfirmContext } from "./ConfirmContext";
-import ImageUploader from './ImageUploader';
+
+const ImageUploader = lazy(() => import('./ImageUploader'));
 
 interface VisualEditableProps {
   section: string;
@@ -106,12 +107,12 @@ export default function VisualEditable({
                 />
               ) : type === 'image' ? (
                 <div className="space-y-3">
-                  <ImageUploader
+                  <Suspense fallback={<div className="rounded-xl border border-slate-200 p-4 text-xs text-slate-500">Loading image tools…</div>}><ImageUploader
                     value={currentVal}
                     onChange={(url) => setCurrentVal(url)}
                     label={label || field}
                     placeholder="Upload or enter image URL..."
-                  />
+                  /></Suspense>
                 </div>
               ) : (
                 <input

@@ -1,9 +1,7 @@
-import { useEffect, useState, type CSSProperties } from 'react';
+import { lazy, Suspense, useEffect, useState, type CSSProperties } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import Header from './Header';
 import Footer from './Footer';
-import LiveChatWidget from './chat/LiveChatWidget';
-import ThemeCustomizerDrawer from './admin/ThemeCustomizerDrawer';
 import DevModeAdminBanner from './DevModeAdminBanner';
 import DevelopmentModeScreen from './DevelopmentModeScreen';
 import { useCMS } from '../lib/CMSProvider';
@@ -11,13 +9,52 @@ import { useAuth } from '../lib/AuthContext';
 import { Settings, Edit3, Sliders, LogOut, UserCheck } from 'lucide-react';
 import { SEO_SITE_ORIGIN } from '../lib/seoUrls';
 
+const LiveChatWidget = lazy(() => import('./chat/LiveChatWidget'));
+const ThemeCustomizerDrawer = lazy(() => import('./admin/ThemeCustomizerDrawer'));
+
 export default function MainLayout() {
   const { content, isLiveEditing, setIsLiveEditing } = useCMS();
   const { isAdminOrEditor, role, logout } = useAuth();
   const [isCustomizerOpen, setIsCustomizerOpen] = useState(false);
+  const [interactiveToolsReady, setInteractiveToolsReady] = useState(false);
   const location = useLocation();
+  const selectedFont = content.theme?.fontFamily || 'Inter';
 
   const isDevModeActive = Boolean(content.siteSettings?.maintenanceMode?.enabled);
+
+  useEffect(() => {
+    const fontFamilies: Record<string, string> = {
+      Cinzel: 'Cinzel:wght@400;700;900',
+      Inter: 'Inter:wght@300;400;500;600;700;800;900',
+      Montserrat: 'Montserrat:wght@300;400;500;600;700;800;900',
+      Outfit: 'Outfit:wght@300;400;500;600;700;800;900',
+      'Playfair Display': 'Playfair+Display:ital,wght@0,400;0,600;0,700;0,900;1,400;1,700',
+      'Plus Jakarta Sans': 'Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400',
+      Poppins: 'Poppins:wght@300;400;500;600;700;800;900',
+      'Space Grotesk': 'Space+Grotesk:wght@400;500;600;700'
+    };
+    const family = fontFamilies[selectedFont] || fontFamilies.Inter;
+    const id = 'profox-selected-google-font';
+    let stylesheet = document.getElementById(id) as HTMLLinkElement | null;
+    if (!stylesheet) {
+      stylesheet = document.createElement('link');
+      stylesheet.id = id;
+      stylesheet.rel = 'stylesheet';
+      document.head.appendChild(stylesheet);
+    }
+    stylesheet.href = `https://fonts.googleapis.com/css2?family=${family}&display=swap`;
+  }, [selectedFont]);
+
+  useEffect(() => {
+    const ready = () => setInteractiveToolsReady(true);
+    const idleWindow = window as typeof window & { requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number; cancelIdleCallback?: (id: number) => void };
+    if (idleWindow.requestIdleCallback) {
+      const id = idleWindow.requestIdleCallback(ready, { timeout: 1800 });
+      return () => idleWindow.cancelIdleCallback?.(id);
+    }
+    const timer = window.setTimeout(ready, 1200);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     const cleanPath = location.pathname === '/' ? '/' : location.pathname.replace(/\/+$/, '');
@@ -68,7 +105,7 @@ export default function MainLayout() {
   }
 
   return (
-    <div className="site-typography min-h-screen bg-white selection:bg-blue-100 selection:text-blue-900 relative flex flex-col" style={{ '--site-font-family': content.theme?.fontFamily || 'Inter' } as CSSProperties}>
+    <div className="site-typography min-h-screen bg-white selection:bg-blue-100 selection:text-blue-900 relative flex flex-col" style={{ '--site-font-family': selectedFont } as CSSProperties}>
       {/* If Admin is viewing while Dev Mode is Active, show sticky top warning & fast-toggle */}
       {isDevModeActive && isAdminOrEditor && (
         <DevModeAdminBanner />
@@ -79,7 +116,7 @@ export default function MainLayout() {
         <Outlet />
       </main>
       <Footer />
-      <LiveChatWidget />
+      {interactiveToolsReady && <Suspense fallback={null}><LiveChatWidget /></Suspense>}
       
       {isAdminOrEditor && (
         <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2 bg-white/95 backdrop-blur-xl text-slate-900 p-2 rounded-2xl shadow-2xl border border-slate-300/60 animate-in fade-in slide-in-from-bottom-4 duration-200">
@@ -126,12 +163,12 @@ export default function MainLayout() {
       )}
       
       {isAdminOrEditor && (
-        <ThemeCustomizerDrawer 
+        <Suspense fallback={null}><ThemeCustomizerDrawer
           isOpen={isCustomizerOpen} 
           onClose={() => setIsCustomizerOpen(false)} 
           isLiveEditing={isLiveEditing}
           onToggleLiveEditing={(val) => setIsLiveEditing?.(val)}
-        />
+        /></Suspense>
       )}
     </div>
   );

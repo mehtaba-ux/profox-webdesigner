@@ -3,9 +3,11 @@ import { supabase } from './supabase';
 
 const TEST_EMAIL_SUFFIX = '@profoxwebdesigner.test';
 const TEST_STAFF_ROLES = new Set(['sales', 'content_writer', 'uiux_designer', 'developer']);
+export const TEST_STAFF_LOGIN_ENABLED = import.meta.env.VITE_ENABLE_TEST_STAFF_LOGIN === 'true';
 
 export function isSyntheticTestEmployee(profile: UserProfile) {
-  return profile.email.toLowerCase().endsWith(TEST_EMAIL_SUFFIX)
+  return TEST_STAFF_LOGIN_ENABLED
+    && profile.email.toLowerCase().endsWith(TEST_EMAIL_SUFFIX)
     && TEST_STAFF_ROLES.has(profile.role)
     && profile.status === 'active'
     && profile.onboardingStatus === 'completed'

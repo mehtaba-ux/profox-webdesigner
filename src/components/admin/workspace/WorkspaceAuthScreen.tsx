@@ -83,24 +83,24 @@ export default function WorkspaceAuthScreen({
             <form onSubmit={onSubmit} className="mt-7 space-y-5">
               {authMode === 'register' && (
                 <div>
-                  <label className="mb-2 block text-[11px] font-extrabold text-[#344054]">Full name</label>
-                  <input type="text" required value={fullName} onChange={event => onFullNameChange(event.target.value)} placeholder="e.g. Alex Morgan" className="h-12 w-full rounded-xl border border-[#dde4ee] bg-white px-4 text-sm text-slate-800 outline-none transition focus:border-[#000080]/40 focus:ring-4 focus:ring-[#000080]/5" />
+                  <label htmlFor="workspace-full-name" className="mb-2 block text-[11px] font-extrabold text-[#344054]">Full name</label>
+                  <input id="workspace-full-name" type="text" required autoComplete="name" value={fullName} onChange={event => onFullNameChange(event.target.value)} placeholder="e.g. Alex Morgan" className="h-12 w-full rounded-xl border border-[#dde4ee] bg-white px-4 text-sm text-slate-800 outline-none transition focus:border-[#000080]/40 focus:ring-4 focus:ring-[#000080]/5" />
                 </div>
               )}
 
               <div>
-                <label className="mb-2 block text-[11px] font-extrabold text-[#344054]">Email address</label>
+                <label htmlFor="workspace-email" className="mb-2 block text-[11px] font-extrabold text-[#344054]">Email address</label>
                 <div className="relative">
                   <Mail className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                  <input type="email" required value={email} onChange={event => onEmailChange(event.target.value)} placeholder="name@profoxwebdesigner.com" className="h-12 w-full rounded-xl border border-[#dde4ee] bg-white pl-11 pr-4 text-sm text-slate-800 outline-none transition focus:border-[#000080]/40 focus:ring-4 focus:ring-[#000080]/5" />
+                  <input id="workspace-email" type="email" required autoComplete="email" value={email} onChange={event => onEmailChange(event.target.value)} placeholder="name@profoxwebdesigner.com" className="h-12 w-full rounded-xl border border-[#dde4ee] bg-white pl-11 pr-4 text-sm text-slate-800 outline-none transition focus:border-[#000080]/40 focus:ring-4 focus:ring-[#000080]/5" />
                 </div>
               </div>
 
               <div>
-                <label className="mb-2 block text-[11px] font-extrabold text-[#344054]">Password</label>
+                <label htmlFor="workspace-password" className="mb-2 block text-[11px] font-extrabold text-[#344054]">Password</label>
                 <div className="relative">
                   <Key className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                  <input type="password" required value={password} onChange={event => onPasswordChange(event.target.value)} placeholder="••••••••" className="h-12 w-full rounded-xl border border-[#dde4ee] bg-white pl-11 pr-4 text-sm text-slate-800 outline-none transition focus:border-[#000080]/40 focus:ring-4 focus:ring-[#000080]/5" />
+                  <input id="workspace-password" type="password" required autoComplete={authMode === 'login' ? 'current-password' : 'new-password'} value={password} onChange={event => onPasswordChange(event.target.value)} placeholder="••••••••" className="h-12 w-full rounded-xl border border-[#dde4ee] bg-white pl-11 pr-4 text-sm text-slate-800 outline-none transition focus:border-[#000080]/40 focus:ring-4 focus:ring-[#000080]/5" />
                 </div>
               </div>
 

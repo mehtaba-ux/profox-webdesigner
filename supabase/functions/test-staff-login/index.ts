@@ -36,6 +36,10 @@ Deno.serve(async (req: Request) => {
   const origin = req.headers.get("origin");
   const headers = cors(origin);
 
+  if (Deno.env.get("ENABLE_TEST_STAFF_LOGIN") !== "true") {
+    return json(headers, 404, { error: "Not found" });
+  }
+
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers });
   if (req.method !== "POST") return json(headers, 405, { error: "Method not allowed" });
   if (origin && !allowedOrigins.has(origin)) return json(headers, 403, { error: "Origin not allowed" });

@@ -46,7 +46,6 @@ export default function CaseStudies({ isLiveEditing = false }: CaseStudiesProps)
   const recentTitleHighlight = caseData.recentTitleHighlight || 'Stories';
   const theme = content.theme || {};
 
-  const primaryColor = theme.primaryColor || '#000080';
   const headingFont = theme.fontFamily || 'Inter';
 
   return (
@@ -67,7 +66,7 @@ export default function CaseStudies({ isLiveEditing = false }: CaseStudiesProps)
                 </VisualEditable>
               </motion.h2>
             </div>
-            <Link to="/portfolio" className="flex items-center gap-2 text-sm font-medium hover:opacity-80 transition-opacity mb-2" style={{ color: primaryColor }}>
+            <Link to="/portfolio" className="mb-2 flex items-center gap-2 text-sm font-semibold text-[#aaaaff] transition-opacity hover:opacity-80">
               View All Case Studies <ArrowUpRight className="w-4 h-4" />
             </Link>
           </div>
@@ -86,6 +85,8 @@ export default function CaseStudies({ isLiveEditing = false }: CaseStudiesProps)
                 <img
                   src={formatR2ImageUrl(study.image)}
                   alt={study.title}
+                  loading="lazy"
+                  decoding="async"
                   className="w-full h-full object-cover opacity-80 transition-transform duration-700 group-hover:scale-105 group-hover:opacity-100"
                   onError={(e) => {
                     (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&q=80&w=1200';
@@ -145,13 +146,13 @@ export default function CaseStudies({ isLiveEditing = false }: CaseStudiesProps)
               <VisualEditable section="caseStudies" field="recentTitle" value={recentTitle} label="Recent Title" isLiveEditing={isLiveEditing}>
                 {recentTitle}
               </VisualEditable>{' '}
-              <span style={{ color: primaryColor }} className="font-bold">
+              <span className="font-bold text-[#aaaaff]">
                 <VisualEditable section="caseStudies" field="recentTitleHighlight" value={recentTitleHighlight} label="Title Highlight" isLiveEditing={isLiveEditing}>
                   {recentTitleHighlight}
                 </VisualEditable>
               </span>
             </h2>
-            <Link to="/portfolio" className="flex items-center gap-2 text-sm font-medium hover:opacity-80 transition-opacity mb-2" style={{ color: primaryColor }}>
+            <Link to="/portfolio" className="mb-2 flex items-center gap-2 text-sm font-semibold text-[#aaaaff] transition-opacity hover:opacity-80">
               View All Case Studies <ArrowUpRight className="w-4 h-4" />
             </Link>
           </div>
@@ -173,6 +174,8 @@ export default function CaseStudies({ isLiveEditing = false }: CaseStudiesProps)
                   <img
                     src={formatR2ImageUrl(study.image)}
                     alt={study.title}
+                    loading="lazy"
+                    decoding="async"
                     className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                     onError={(e) => {
                       (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&q=80&w=1200';
@@ -196,11 +199,20 @@ export default function CaseStudies({ isLiveEditing = false }: CaseStudiesProps)
                         </h3>
                       )}
                       {study.slug ? (
-                        <Link to={`/portfolio/${study.slug}`} className="shrink-0 w-8 h-8 bg-white/10 text-white rounded-lg flex items-center justify-center group-hover:bg-white group-hover:text-[#000080] transition-all duration-300">
+                        <Link
+                          to={`/portfolio/${study.slug}`}
+                          aria-label={`Read case study: ${study.title}`}
+                          className="shrink-0 w-8 h-8 bg-white/10 text-white rounded-lg flex items-center justify-center group-hover:bg-white group-hover:text-[#000080] transition-all duration-300"
+                        >
                           <ArrowUpRight className="w-4 h-4" />
                         </Link>
                       ) : (
-                        <button className="shrink-0 w-8 h-8 bg-white/10 text-white rounded-lg flex items-center justify-center group-hover:bg-white group-hover:text-[#000080] transition-all duration-300">
+                        <button
+                          type="button"
+                          aria-label={`Case study unavailable: ${study.title}`}
+                          disabled
+                          className="shrink-0 w-8 h-8 bg-white/10 text-white rounded-lg flex items-center justify-center group-hover:bg-white group-hover:text-[#000080] transition-all duration-300"
+                        >
                           <ArrowUpRight className="w-4 h-4" />
                         </button>
                       )}

@@ -1,0 +1,23 @@
+# ProFox Web Designer
+
+> ProFox designs and builds premium websites, custom web applications, business automation, and connected digital growth systems.
+
+## Public pages
+
+- Home: https://www.profoxwebdesigner.com/
+- Services: https://www.profoxwebdesigner.com/#services
+- Pricing: https://www.profoxwebdesigner.com/pricing
+- Portfolio: https://www.profoxwebdesigner.com/portfolio
+- Insights: https://www.profoxwebdesigner.com/blog
+- Careers: https://www.profoxwebdesigner.com/careers
+- Talent Partner program: https://www.profoxwebdesigner.com/talent-partner-program
+- Contact: https://www.profoxwebdesigner.com/contact-us
+- Book a meeting: https://www.profoxwebdesigner.com/book-a-meeting
+
+## Policies
+
+- Privacy: https://www.profoxwebdesigner.com/privacy-policy
+- Terms: https://www.profoxwebdesigner.com/terms-and-conditions
+- Cookies: https://www.profoxwebdesigner.com/cookie-policy
+
+Only public pages may be indexed. Administrative, employee, client, payment-token, quotation-token, recruitment-token, and partner-account routes are private or transactional and must not be crawled.

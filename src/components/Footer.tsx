@@ -110,7 +110,7 @@ export default function Footer() {
           <Link to="/contact-us" className="inline-flex w-fit items-center gap-3 rounded-xl bg-white px-6 py-3.5 text-sm font-extrabold text-[#000080] shadow-xl transition-all hover:-translate-y-1 hover:bg-[#f0f1ff]">{footerData.ctaText || 'Start a Conversation'}<ArrowUpRight className="h-4 w-4" /></Link>
         </div>
 
-        <div className="flex flex-col gap-4 pt-8 text-xs text-white/40 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-4 pt-8 text-xs text-white/60 sm:flex-row sm:items-center sm:justify-between">
           <p>{copyright}</p>
           <p>{footerData.registrationText || 'ProFox Digital Solution · Udyam: UDYAM-HP-09-0022689'}</p>
           {isAdminOrEditor && <Link to="/admin" className="font-semibold text-white/60 hover:text-white">CMS Admin</Link>}

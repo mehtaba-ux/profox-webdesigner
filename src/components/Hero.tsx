@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useRef } from 'react';
 import { motion, useReducedMotion, useScroll, useTransform } from 'motion/react';
 import { useCMS } from '../lib/CMSProvider';
 import VisualEditable from './admin/VisualEditable';
@@ -13,7 +13,6 @@ interface HeroProps {
 export default function Hero({ isLiveEditing = false }: HeroProps) {
   const { content } = useCMS();
   const reduceMotion = useReducedMotion();
-  const [introReady, setIntroReady] = useState(() => typeof window === 'undefined' || sessionStorage.getItem('profox-home-intro-seen') === 'true');
   const sectionRef = useRef<HTMLElement>(null);
   const { scrollYProgress } = useScroll({ target: sectionRef, offset: ['start start', 'end start'] });
   const imageScale = useTransform(scrollYProgress, [0, 1], [1, 1.12]);
@@ -21,14 +20,7 @@ export default function Hero({ isLiveEditing = false }: HeroProps) {
   const contentY = useTransform(scrollYProgress, [0, 1], ['0%', '26%']);
   const contentOpacity = useTransform(scrollYProgress, [0, 0.78], [1, 0]);
 
-  useEffect(() => {
-    if (introReady) return;
-    const revealHero = () => setIntroReady(true);
-    window.addEventListener('profox:loader-complete', revealHero);
-    return () => window.removeEventListener('profox:loader-complete', revealHero);
-  }, [introReady]);
-
-  const revealed = reduceMotion || introReady;
+  const revealed = true;
 
   const heroData = content.hero || {};
   const isEnabled = heroData.enabled !== false;
@@ -39,7 +31,7 @@ export default function Hero({ isLiveEditing = false }: HeroProps) {
   const buttonLink = heroData.buttonLink || '/contact-us';
   const trustedByTitle = heroData.trustedByTitle || 'Trusted by:';
   const trustedByEnabled = heroData.trustedByEnabled !== false;
-  const bgImage = heroData.bgImage || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop';
+  const bgImage = heroData.bgImage || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=70&w=1600&auto=format&fit=crop';
   
   const trustedLogos = heroData.trustedLogos || [];
 
@@ -53,7 +45,15 @@ export default function Hero({ isLiveEditing = false }: HeroProps) {
     if (item.type === 'image' && item.image) {
       return (
         <div className="flex items-center justify-center grayscale hover:grayscale-0 opacity-60 hover:opacity-100 transition-all duration-300 shrink-0">
-          <img src={item.image} alt={item.name} className="h-7 sm:h-8 md:h-10 w-auto object-contain max-w-[100px] md:max-w-[120px]" />
+          <img
+            src={item.image}
+            alt={item.name || item.value || 'Trusted client'}
+            width={160}
+            height={40}
+            loading="lazy"
+            decoding="async"
+            className="h-7 w-28 object-contain sm:h-8 sm:w-32 md:h-10 md:w-40"
+          />
         </div>
       );
     }
@@ -92,6 +92,8 @@ export default function Hero({ isLiveEditing = false }: HeroProps) {
           <img 
             src={bgImage} 
             alt="Abstract background"
+            fetchPriority="high"
+            decoding="async"
             className="w-full h-full object-cover"
           />
         </VisualEditable>

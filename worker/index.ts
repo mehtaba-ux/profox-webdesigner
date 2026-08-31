@@ -58,6 +58,36 @@ const ALLOWED_UPLOAD_TYPES = new Set([
 const MAX_UPLOAD_BYTES = 50 * 1024 * 1024;
 const SAFE_UPLOAD_KEY = /^(media|documents|profiles)\/\d{4}\/(0[1-9]|1[0-2])\/[A-Za-z0-9][A-Za-z0-9._-]{0,180}$/;
 
+const CONTENT_SECURITY_POLICY = [
+  "default-src 'self'",
+  "base-uri 'self'",
+  "object-src 'none'",
+  "frame-ancestors 'self'",
+  "form-action 'self' https://www.paypal.com https://www.sandbox.paypal.com",
+  "script-src 'self' https://checkout.razorpay.com https://www.paypal.com https://www.paypalobjects.com",
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+  "font-src 'self' data: https://fonts.gstatic.com",
+  "img-src 'self' data: blob: https:",
+  "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.razorpay.com https://*.paypal.com",
+  "frame-src https://api.razorpay.com https://*.razorpay.com https://www.paypal.com https://www.sandbox.paypal.com",
+  "worker-src 'self' blob:",
+  "manifest-src 'self'",
+  'upgrade-insecure-requests',
+].join('; ');
+
+function withSecurityHeaders(response: Response) {
+  const headers = new Headers(response.headers);
+  headers.set('Content-Security-Policy', CONTENT_SECURITY_POLICY);
+  headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
+  headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), browsing-topics=()');
+  headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+  headers.set('X-Content-Type-Options', 'nosniff');
+  headers.set('X-Frame-Options', 'SAMEORIGIN');
+  headers.set('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
+  headers.set('Cross-Origin-Resource-Policy', 'same-site');
+  return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
+}
+
 function jsonResponse(body: unknown, status = 200, headers: HeadersInit = {}) {
   return new Response(JSON.stringify(body), {
     status,
@@ -168,8 +198,7 @@ function uploadKeyMatchesType(key: string, contentType: string) {
   return key.startsWith('documents/') && !contentType.startsWith('image/');
 }
 
-export default {
-  async fetch(request: Request, env: Env, _ctx?: WorkerExecutionContext): Promise<Response> {
+async function handleRequest(request: Request, env: Env, _ctx?: WorkerExecutionContext): Promise<Response> {
     const url = new URL(request.url);
 
     // 1. Dynamic API Endpoints handled directly on Cloudflare Edge Worker
@@ -292,14 +321,20 @@ Sitemap: ${url.origin}/sitemap.xml`;
       if (!key) return new Response('Media key required', { status: 400 });
       if (!env.MEDIA_BUCKET) return new Response('R2 storage is not available', { status: 503 });
 
+      const isPrivateDocument = key.startsWith('documents/');
+      if (isPrivateDocument) {
+        const identity = await requireActiveStaff(request, env);
+        if (identity instanceof Response) return identity;
+      }
+
       const object = request.method === 'HEAD' ? await env.MEDIA_BUCKET.head(key) : await env.MEDIA_BUCKET.get(key);
       if (!object) return new Response('Media not found', { status: 404 });
 
       const headers = new Headers();
       object.writeHttpMetadata(headers);
       headers.set('ETag', object.httpEtag);
-      headers.set('Cache-Control', 'public, max-age=31536000, immutable');
-      headers.set('Access-Control-Allow-Origin', '*');
+      headers.set('Cache-Control', isPrivateDocument ? 'private, no-store' : 'public, max-age=31536000, immutable');
+      if (!isPrivateDocument) headers.set('Access-Control-Allow-Origin', '*');
       headers.set('X-Content-Type-Options', 'nosniff');
       if (request.headers.get('If-None-Match') === object.httpEtag) return new Response(null, { status: 304, headers });
       return new Response(request.method === 'HEAD' ? null : (object as R2ObjectBody).body, { headers });
@@ -353,5 +388,10 @@ Sitemap: ${url.origin}/sitemap.xml`;
     }
 
     return fetch(request);
+}
+
+export default {
+  async fetch(request: Request, env: Env, ctx?: WorkerExecutionContext): Promise<Response> {
+    return withSecurityHeaders(await handleRequest(request, env, ctx));
   },
 };

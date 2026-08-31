@@ -27,7 +27,7 @@ function RevealingWord({ word, index, total, progress }: { key?: string; word: s
 function ScrollWordReveal({ text, progress }: { text: string; progress: MotionValue<number> }) {
   const words = text.trim().split(/\s+/);
   return (
-    <span className="relative block" aria-label={text}>
+    <span className="relative block">
       {words.map((word, index) => (
         <RevealingWord key={`${word}-${index}`} word={word} index={index} total={words.length} progress={progress} />
       ))}

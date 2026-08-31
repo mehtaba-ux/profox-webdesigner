@@ -7,6 +7,7 @@ export type GatewayProviderStatus = {
   mode: string;
   configured: boolean;
   webhookConfigured: boolean;
+  productionReady?: boolean;
   keyId?: string;
   clientId?: string;
   webhookId?: string;
