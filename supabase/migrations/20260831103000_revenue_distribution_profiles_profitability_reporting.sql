@@ -362,7 +362,9 @@ language plpgsql
 security definer
 set search_path='public','pg_temp'
 as $function$
-declare v_source public.quotations%rowtype;
+declare
+  v_source public.quotations%rowtype;
+  v_override_changed boolean;
 begin
   -- A formal revision inherits the previously approved effort assumption. A separate
   -- Duplicate remains a clean commercial draft and resolves the current package profile.
@@ -375,10 +377,21 @@ begin
       new.revenue_distribution_override_at:=v_source.revenue_distribution_override_at;
     end if;
   end if;
-  if new.revenue_distribution_override is distinct from case when tg_op='UPDATE' then old.revenue_distribution_override else null end
-     or new.revenue_distribution_override_reason is distinct from case when tg_op='UPDATE' then old.revenue_distribution_override_reason else null end
-     or new.revenue_distribution_override_by is distinct from case when tg_op='UPDATE' then old.revenue_distribution_override_by else null end
-     or new.revenue_distribution_override_at is distinct from case when tg_op='UPDATE' then old.revenue_distribution_override_at else null end then
+  if tg_op='UPDATE' then
+    v_override_changed :=
+      new.revenue_distribution_override is distinct from old.revenue_distribution_override
+      or new.revenue_distribution_override_reason is distinct from old.revenue_distribution_override_reason
+      or new.revenue_distribution_override_by is distinct from old.revenue_distribution_override_by
+      or new.revenue_distribution_override_at is distinct from old.revenue_distribution_override_at;
+  else
+    v_override_changed :=
+      new.revenue_distribution_override is not null
+      or new.revenue_distribution_override_reason is not null
+      or new.revenue_distribution_override_by is not null
+      or new.revenue_distribution_override_at is not null;
+  end if;
+
+  if v_override_changed then
     if coalesce(current_setting('profox.revenue_distribution_override_rpc',true),'')<>'1'
        and coalesce(current_setting('profox.revision_clone',true),'')<>'1' then
       raise exception 'Use the protected quotation revenue-distribution workflow.';
