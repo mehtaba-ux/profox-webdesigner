@@ -86,10 +86,10 @@ Deno.serve(async (req: Request) => {
     const email = String(targetProfile.email || "").trim().toLowerCase();
     const isEligibleProfile = email.endsWith(testEmailSuffix)
       && testStaffRoles.has(String(targetProfile.role || ""))
-      && targetProfile.status === "inactive"
+      && targetProfile.status === "active"
       && targetProfile.onboarding_status === "completed"
       && Number(targetProfile.onboarding_progress || 0) === 100;
-    if (!isEligibleProfile) return json(headers, 403, { error: "Only approved isolated test employees can be accessed" });
+    if (!isEligibleProfile) return json(headers, 403, { error: "Only active approved departmental test employees can be accessed" });
 
     const { data: targetAuth, error: targetAuthError } = await service.auth.admin.getUserById(targetUserId);
     const targetAuthUser = targetAuth?.user;

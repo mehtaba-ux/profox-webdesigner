@@ -10,7 +10,7 @@ export function isSyntheticTestProfile(profile: UserProfile | null | undefined) 
     profile
     && profile.email.toLowerCase().endsWith(TEST_EMAIL_SUFFIX)
     && TEST_STAFF_ROLES.has(profile.role)
-    && profile.status === 'inactive'
+    && profile.status === 'active'
     && profile.onboardingStatus === 'completed'
     && profile.onboardingProgress === 100
   );
@@ -35,7 +35,7 @@ async function invocationErrorMessage(error: any) {
 export const testStaffAccessService = {
   async loginAs(profile: UserProfile) {
     if (!isSyntheticTestEmployee(profile)) {
-      throw new Error('Only approved isolated test employees can be accessed.');
+      throw new Error('Only active approved departmental test employees can be accessed.');
     }
 
     const { data, error } = await supabase.functions.invoke('test-staff-login', {

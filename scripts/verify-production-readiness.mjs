@@ -28,20 +28,20 @@ try {
     select count(*)::int as count, max(version) as latest
     from profox_migrations.applied_migrations
   `)).rows[0];
-  if (migration.latest >= '20260831180000') pass('Database migrations', `${migration.count} checksummed migrations; latest ${migration.latest}`);
+  if (migration.latest >= '20260831191000') pass('Database migrations', `${migration.count} checksummed migrations; latest ${migration.latest}`);
   else fail('Database migrations', `latest installed migration is ${migration.latest || 'missing'}`);
 
   const synthetic = (await client.query(`
     select
-      count(*) filter (where p.status not in ('inactive','deactivated'))::int as active_count,
+      count(*) filter (where p.status='active')::int as active_count,
       count(*) filter (
-        where p.status='inactive'
+        where p.status='active'
           and p.onboarding_status='completed'
           and p.onboarding_progress=100
           and p.role in ('sales','content_writer','uiux_designer','developer')
           and u.email_confirmed_at is not null
           and coalesce((u.raw_app_meta_data->>'test_account')::boolean,false)=true
-      )::int as isolated_count
+      )::int as full_access_count
     from public.user_profiles p
     join auth.users u on u.id=p.id
     where lower(coalesce(p.email,'')) in (
@@ -51,8 +51,8 @@ try {
       'developer.demo@profoxwebdesigner.test'
     )
   `)).rows[0];
-  if (synthetic.active_count === 0 && synthetic.isolated_count === 4) pass('Synthetic production access', 'four confirmed departmental test identities remain inactive and isolated');
-  else fail('Synthetic production access', `${synthetic.active_count} active and ${synthetic.isolated_count}/4 correctly isolated test profiles`);
+  if (synthetic.active_count === 4 && synthetic.full_access_count === 4) pass('Departmental test access', 'four confirmed test identities have normal active employee role access');
+  else fail('Departmental test access', `${synthetic.active_count} active and ${synthetic.full_access_count}/4 correctly configured full-access test profiles`);
 
   const testAccess = (await client.query(`select public.sales_academy_test_activation_allowed(null::uuid) as enabled`)).rows[0].enabled;
   if (testAccess === false) pass('Test-login bypass', 'disabled at the database boundary');

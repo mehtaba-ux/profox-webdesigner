@@ -124,7 +124,7 @@ jobs:
           npx supabase functions deploy payment-webhook-razorpay --no-verify-jwt --project-ref "$SUPABASE_PROJECT_REF"
           npx supabase functions deploy payout-webhook-razorpay --no-verify-jwt --project-ref "$SUPABASE_PROJECT_REF"
 
-      - name: Deploy isolated test staff login function
+      - name: Deploy test staff login function
         run: |
           npx supabase secrets set ENABLE_TEST_STAFF_LOGIN=true --project-ref "$SUPABASE_PROJECT_REF"
           npx supabase functions deploy test-staff-login --project-ref "$SUPABASE_PROJECT_REF"

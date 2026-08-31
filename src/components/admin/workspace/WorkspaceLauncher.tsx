@@ -19,7 +19,6 @@ import WorkspaceAppIcon from './WorkspaceAppIcon';
 import WorkspaceFocusStrip from './WorkspaceFocusStrip';
 import WorkspaceShell from './WorkspaceShell';
 import './AdminAppWorkspace.css';
-import { isSyntheticTestProfile } from '../../../lib/testStaffAccessService';
 
 const FOUNDER_ROLE_DASHBOARDS = [
   { label: 'Seller Dashboard', description: 'Sales team command center', path: '/admin/seller-command-center', icon: TrendingUp, tone: 'border-amber-200 bg-amber-50 text-amber-700' },
@@ -44,7 +43,6 @@ export default function WorkspaceLauncher() {
     .filter(group => group.apps.length > 0), [filteredApps]);
 
   if (loading) return <div className="flex min-h-screen items-center justify-center bg-[#f4f7fb]"><div className="h-8 w-8 animate-spin rounded-full border-2 border-[#000080] border-t-transparent" /></div>;
-  if (isSyntheticTestProfile(profile)) return <Navigate to="/admin/test-workspace" replace />;
   if (!user || !profile || !isAdminOrEditor) return <Navigate to="/admin" replace />;
 
   const primaryDepartment = departmentDefinitionForRole(role);

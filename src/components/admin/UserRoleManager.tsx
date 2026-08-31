@@ -320,7 +320,7 @@ export default function UserRoleManager({ showHeader = true }: { showHeader?: bo
             <h2 className="flex items-center gap-2 text-xl font-bold text-slate-900"><ShieldCheck className="h-6 w-6 text-[#000080]" /> Team & Departments</h2>
             <span className="rounded-full border border-blue-200 bg-blue-50 px-2.5 py-0.5 text-[11px] font-bold text-[#000080]">Database RLS Active</span>
           </div>
-          <p className="mt-1 max-w-3xl text-xs leading-5 text-slate-500">Every role has one clear primary department. Retained test identities open only the isolated dashboard inspection workspace.</p>
+          <p className="mt-1 max-w-3xl text-xs leading-5 text-slate-500">Every role has one clear primary department. Retained departmental test identities use the same active role workspace as a normal logged-in employee.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <button onClick={() => navigate('/admin/team-dashboard-preview')} className="flex items-center gap-1.5 rounded-xl bg-[#000080] px-3.5 py-2 text-xs font-bold text-white transition-all hover:bg-[#000066]">

@@ -29,7 +29,6 @@ const SellerExperienceClosure = lazy(() => import('./components/admin/SellerExpe
 const SellerProfile = lazy(() => import('./components/admin/SellerProfile'));
 const TeamProfile = lazy(() => import('./components/admin/TeamProfile'));
 const AdminTeamDashboardPreview = lazy(() => import('./components/admin/AdminTeamDashboardPreview'));
-const TestStaffDashboard = lazy(() => import('./components/admin/TestStaffDashboard'));
 const SalesPerformanceManagement = lazy(() => import('./components/admin/SalesPerformanceManagement'));
 const PublicPricingAdmin = lazy(() => import('./components/admin/PublicPricingAdmin'));
 const ProductivityRecordFocus = lazy(() => import('./components/admin/ProductivityRecordFocus'));
@@ -242,7 +241,6 @@ export default function App() {
       <Route path="/admin/recruitment-task-settings" element={<RecruitmentTaskSettingsAdmin/>}/>
     </Route>
     <Route path="/admin/workspace" element={<WorkspaceLauncher/>}/>
-    <Route path="/admin/test-workspace" element={<TestStaffDashboard/>}/>
     <Route path="/admin/app/:appId" element={<AdminAppWorkspace/>}/>
     <Route path="/admin" element={<AdminEntry/>}/>
     <Route path="/admin/*" element={<AdminEntry/>}/>

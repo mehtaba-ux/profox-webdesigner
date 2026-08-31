@@ -6,17 +6,15 @@ import {
   getWorkspaceAppForTab,
   getWorkspaceAppLaunchPath
 } from '../../../lib/workspaceApps';
-import { isSyntheticTestProfile } from '../../../lib/testStaffAccessService';
 
 const SELLER_ROLES = ['sales', 'sales_rep', 'sales_team'];
 
 export default function AdminEntry() {
-  const { user, profile, role, status, isAdminOrEditor, loading } = useAuth();
+  const { user, role, status, isAdminOrEditor, loading } = useAuth();
   const [searchParams] = useSearchParams();
 
   if (loading) return <AdminDashboard />;
   if (!user) return <AdminDashboard />;
-  if (isSyntheticTestProfile(profile)) return <Navigate to="/admin/test-workspace" replace />;
 
   // UI/UX trainees use the shared authenticated account with a role-specific Academy.
   // Production My Work remains unavailable until protected activation completes.
