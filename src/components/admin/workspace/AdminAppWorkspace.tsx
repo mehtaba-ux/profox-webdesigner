@@ -15,6 +15,7 @@ import {
 import WorkspaceAppIcon from './WorkspaceAppIcon';
 import WorkspaceShell from './WorkspaceShell';
 import './AdminAppWorkspace.css';
+import { isSyntheticTestProfile } from '../../../lib/testStaffAccessService';
 
 const TALENT_PARTNER_ITEM: WorkspaceNavItem = {
   id: 'talent-partners',
@@ -50,6 +51,7 @@ export default function AdminAppWorkspace() {
   if (loading) {
     return <div className="flex min-h-screen items-center justify-center bg-[#f4f7fb]"><div className="h-8 w-8 animate-spin rounded-full border-2 border-[#000080] border-t-transparent" /></div>;
   }
+  if (isSyntheticTestProfile(profile)) return <Navigate to="/admin/test-workspace" replace />;
   if (!user || !profile || !isAdminOrEditor) return <Navigate to="/admin" replace />;
   if (!app || !canAccessWorkspaceApp(app, role, status)) return <Navigate to="/admin/workspace" replace />;
   if (app.launchPath) return <Navigate to={app.launchPath} replace />;

@@ -86,10 +86,10 @@ Deno.serve(async (req: Request) => {
     const email = String(targetProfile.email || "").trim().toLowerCase();
     const isEligibleProfile = email.endsWith(testEmailSuffix)
       && testStaffRoles.has(String(targetProfile.role || ""))
-      && targetProfile.status === "active"
+      && targetProfile.status === "inactive"
       && targetProfile.onboarding_status === "completed"
       && Number(targetProfile.onboarding_progress || 0) === 100;
-    if (!isEligibleProfile) return json(headers, 403, { error: "Only activated synthetic test employees can be accessed" });
+    if (!isEligibleProfile) return json(headers, 403, { error: "Only approved isolated test employees can be accessed" });
 
     const { data: targetAuth, error: targetAuthError } = await service.auth.admin.getUserById(targetUserId);
     const targetAuthUser = targetAuth?.user;
@@ -106,6 +106,14 @@ Deno.serve(async (req: Request) => {
 
     const tokenHash = String(linkData?.properties?.hashed_token || "").trim();
     if (!tokenHash) throw new Error("One-time employee session token is unavailable");
+
+    const { error: auditError } = await service.from("test_staff_login_audit").insert({
+      admin_user_id: caller.id,
+      test_user_id: targetUserId,
+      test_role: targetProfile.role,
+      origin: origin || null,
+    });
+    if (auditError) throw new Error("Test login audit could not be recorded");
 
     console.info(JSON.stringify({
       event: "test_staff_login_issued",

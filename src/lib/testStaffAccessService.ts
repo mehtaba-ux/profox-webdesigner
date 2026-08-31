@@ -5,13 +5,19 @@ const TEST_EMAIL_SUFFIX = '@profoxwebdesigner.test';
 const TEST_STAFF_ROLES = new Set(['sales', 'content_writer', 'uiux_designer', 'developer']);
 export const TEST_STAFF_LOGIN_ENABLED = import.meta.env.VITE_ENABLE_TEST_STAFF_LOGIN === 'true';
 
-export function isSyntheticTestEmployee(profile: UserProfile) {
-  return TEST_STAFF_LOGIN_ENABLED
+export function isSyntheticTestProfile(profile: UserProfile | null | undefined) {
+  return Boolean(
+    profile
     && profile.email.toLowerCase().endsWith(TEST_EMAIL_SUFFIX)
     && TEST_STAFF_ROLES.has(profile.role)
-    && profile.status === 'active'
+    && profile.status === 'inactive'
     && profile.onboardingStatus === 'completed'
-    && profile.onboardingProgress === 100;
+    && profile.onboardingProgress === 100
+  );
+}
+
+export function isSyntheticTestEmployee(profile: UserProfile) {
+  return TEST_STAFF_LOGIN_ENABLED && isSyntheticTestProfile(profile);
 }
 
 async function invocationErrorMessage(error: any) {
@@ -29,7 +35,7 @@ async function invocationErrorMessage(error: any) {
 export const testStaffAccessService = {
   async loginAs(profile: UserProfile) {
     if (!isSyntheticTestEmployee(profile)) {
-      throw new Error('Only activated synthetic test employees can be accessed.');
+      throw new Error('Only approved isolated test employees can be accessed.');
     }
 
     const { data, error } = await supabase.functions.invoke('test-staff-login', {

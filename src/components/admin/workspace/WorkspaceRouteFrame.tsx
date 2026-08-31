@@ -8,6 +8,7 @@ import QuotationApprovalDecisionBanner from '../QuotationApprovalDecisionBanner'
 import SalesAccountSetup from '../SalesAccountSetup';
 import WorkspaceShell from './WorkspaceShell';
 import './AdminAppWorkspace.css';
+import { isSyntheticTestProfile } from '../../../lib/testStaffAccessService';
 
 const SELLER_ROLES = new Set(['sales', 'sales_rep', 'sales_team']);
 const SALES_SETUP_SUPPORT_PATHS = ['/admin/seller-profile', '/admin/booking-setup'];
@@ -65,6 +66,7 @@ export default function WorkspaceRouteFrame() {
   }, [loading, user?.id, profile?.role, profile?.status, location.pathname, location.search]);
 
   if (loading) return <div className="flex min-h-screen items-center justify-center bg-slate-50"><div className="h-8 w-8 animate-spin rounded-full border-4 border-[#000080] border-t-transparent" /></div>;
+  if (isSyntheticTestProfile(profile)) return <Navigate to="/admin/test-workspace" replace />;
   if (!user || !profile || !isAdminOrEditor) return <Navigate to="/admin" replace state={{ from: location.pathname }} />;
 
   const setupIncomplete = activeSeller && salesSetup?.setupCompleted !== true;

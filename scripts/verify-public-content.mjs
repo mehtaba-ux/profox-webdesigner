@@ -129,11 +129,11 @@ async function verifyDeployedApplication() {
     },
     body: '{}'
   });
-  if (testLoginResponse.status !== 404) {
-    throw new Error(`Production test-login boundary returned HTTP ${testLoginResponse.status}; expected fail-closed HTTP 404.`);
+  if (testLoginResponse.status !== 401) {
+    throw new Error(`Production test-login boundary returned HTTP ${testLoginResponse.status}; expected HTTP 401 without an authenticated Admin.`);
   }
 
-  console.log('Deployed frontend configuration, security headers, private media boundary, disabled test-login boundary and public routes verified.');
+  console.log('Deployed frontend configuration, security headers, private media boundary, Admin-only test-login boundary and public routes verified.');
 }
 
 const supabase = createClient(supabaseUrl, publishableKey, {
