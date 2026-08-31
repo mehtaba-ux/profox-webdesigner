@@ -28,7 +28,7 @@ try {
     select count(*)::int as count, max(version) as latest
     from profox_migrations.applied_migrations
   `)).rows[0];
-  if (migration.latest >= '20260831143949') pass('Database migrations', `${migration.count} checksummed migrations; latest ${migration.latest}`);
+  if (migration.latest >= '20260831154914') pass('Database migrations', `${migration.count} checksummed migrations; latest ${migration.latest}`);
   else fail('Database migrations', `latest installed migration is ${migration.latest || 'missing'}`);
 
   const synthetic = (await client.query(`
@@ -119,6 +119,11 @@ try {
       coalesce((select (config_value->>'active')::boolean from public.system_configuration where config_key='public_booking_settings'),false) as booking_enabled,
       coalesce((select (config_value->>'requirePrivacyConsent')::boolean from public.system_configuration where config_key='public_booking_settings'),false) as booking_consent_required,
       (select count(*)::int from public.list_public_booking_experts()) as public_experts,
+      (select count(*)::int
+       from public.public_booking_profiles b
+       join public.user_profiles p on p.id=b.salesperson_id
+       where (b.is_public or b.accepting_bookings)
+         and p.role not in ('sales','sales_rep','sales_team')) as non_sales_public_profiles,
       exists(select 1 from cron.job where jobname='crm-lead-first-response-sla' and active) as lead_sla_active,
       exists(select 1 from cron.job where jobname='profox-notification-automation' and active) as notification_worker_active,
       exists(select 1 from cron.job where jobname='profox-google-calendar-sync' and active) as google_worker_active,
@@ -129,10 +134,17 @@ try {
   } else {
     fail('Website enquiry flow', 'form, manager alerts or first-response SLA scheduler is inactive');
   }
+  if (publicAcquisition.non_sales_public_profiles > 0) {
+    fail('Public meeting role boundary', `${publicAcquisition.non_sales_public_profiles} non-Sales profile(s) remain published`);
+  } else {
+    pass('Public meeting role boundary', 'only active, onboarding-complete Sales roles may be published');
+  }
   if (publicAcquisition.booking_enabled && publicAcquisition.public_experts > 0) {
     pass('Public meeting booking', `${publicAcquisition.public_experts} eligible public specialist(s)`);
+  } else if (publicAcquisition.booking_enabled) {
+    warn('Public meeting booking', 'no eligible Sales specialist is currently active; visitors receive the connected quote fallback');
   } else {
-    fail('Public meeting booking', `enabled=${publicAcquisition.booking_enabled}; eligible specialists=${publicAcquisition.public_experts}`);
+    fail('Public meeting booking', 'public booking is disabled');
   }
   if (publicAcquisition.contact_consent_required && publicAcquisition.booking_consent_required) {
     pass('Public form privacy consent', 'mandatory for both quote and meeting submissions');
