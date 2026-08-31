@@ -121,6 +121,7 @@ export default function ContentDeliveryTaskWorkspace({ taskId, onTaskChanged }: 
   const [claimSource, setClaimSource] = useState('');
   const [claimNote, setClaimNote] = useState('');
   const [blockReason, setBlockReason] = useState('');
+  const [blockDependency, setBlockDependency] = useState('Client Information');
 
   const load = async () => {
     setLoading(true);
@@ -205,7 +206,7 @@ export default function ContentDeliveryTaskWorkspace({ taskId, onTaskChanged }: 
   const block = () => {
     if (!workspace || !blockReason.trim()) return;
     return run('block', async () => {
-      await contentDeliveryService.block(workspace.deliverable.id, blockReason.trim());
+      await contentDeliveryService.block(workspace.deliverable.id, blockReason.trim(), blockDependency);
       setBlockReason('');
     }, 'Content item blocked until the missing information is resolved.');
   };
@@ -323,7 +324,7 @@ export default function ContentDeliveryTaskWorkspace({ taskId, onTaskChanged }: 
             {blocked ? <button type="button" onClick={() => void resume()} disabled={busy === 'resume'} className="flex items-center gap-2 rounded-xl bg-[#000080] px-5 py-2.5 text-xs font-bold text-white disabled:opacity-50">{busy === 'resume' ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}Resume Work</button> : !waiting ? <button type="button" onClick={() => void advance()} disabled={busy === 'advance'} className="flex items-center gap-2 rounded-xl bg-[#000080] px-5 py-2.5 text-xs font-bold text-white disabled:opacity-50">{busy === 'advance' ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}{nextActionLabel(deliverable.lifecycle_stage)}</button> : null}
           </div>
         </div>
-        {!blocked && !waiting && <div className="mt-4 grid gap-2 border-t border-slate-100 pt-4 sm:grid-cols-[1fr_auto]"><input value={blockReason} onChange={event => setBlockReason(event.target.value)} placeholder="Blocked? Describe the missing information or dependency..." className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs outline-none focus:border-red-400" /><button type="button" onClick={() => void block()} disabled={busy === 'block' || blockReason.trim().length < 3} className="flex items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-xs font-bold text-red-700 disabled:opacity-40"><Ban className="h-4 w-4" />Block — Information Required</button></div>}
+        {!blocked && !waiting && <div className="mt-4 grid gap-2 border-t border-slate-100 pt-4 sm:grid-cols-[180px_1fr_auto]"><select value={blockDependency} onChange={event => setBlockDependency(event.target.value)} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs font-bold"><option>Client Information</option><option>Project Manager Information</option><option>Approved Facts</option><option>Source Materials</option><option>External Dependency</option><option>Approval Delay</option><option>Writer Dependency</option></select><input value={blockReason} onChange={event => setBlockReason(event.target.value)} placeholder="Describe the missing information or dependency..." className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs outline-none focus:border-red-400" /><button type="button" onClick={() => void block()} disabled={busy === 'block' || blockReason.trim().length < 3} className="flex items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-xs font-bold text-red-700 disabled:opacity-40"><Ban className="h-4 w-4" />Block — Information Required</button></div>}
       </section>
 
       <section className="rounded-2xl border border-emerald-100 bg-emerald-50/70 p-4">

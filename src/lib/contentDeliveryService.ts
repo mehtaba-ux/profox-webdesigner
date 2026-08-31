@@ -137,6 +137,71 @@ export interface ContentDeliveryConfig {
   defaultPackageProfile: Record<string, unknown>;
 }
 
+export type WorkerCompensationModel =
+  | 'Fixed Project Fee'
+  | 'Fixed Deliverable Fee'
+  | 'Per Unit'
+  | 'Custom Project Amount'
+  | 'Package-Based Rate';
+
+export interface WorkerCompensationConfig {
+  version?: number;
+  active: boolean;
+  enabledModels: WorkerCompensationModel[];
+  defaultModel: WorkerCompensationModel;
+  defaultCurrency: string;
+  includedRevisions: number;
+  qualityThreshold: number;
+  earningTrigger: string;
+  acceptanceRequired: boolean;
+  payoutFrequency: string;
+  payoutHoldDays: number;
+  minimumPayout: number;
+  managerOverridePercent: number;
+  customApprovalThreshold: number;
+  pmOverrideAllowed: boolean;
+  adminOverrideAllowed: boolean;
+  scopeChangeAcceptanceRequired: boolean;
+  blockedTimeExcluded: boolean;
+  priorityPolicy: Record<string, number>;
+  deadlineRules: { dueSoonDays: number; lateEscalationHours: number };
+  notificationPolicy: Record<string, boolean>;
+}
+
+export interface WorkerRateCard {
+  id?: string;
+  content_type?: string;
+  contentType?: string;
+  sales_product_id?: string | null;
+  salesProductId?: string | null;
+  compensation_model?: WorkerCompensationModel;
+  compensationModel?: WorkerCompensationModel;
+  default_fee?: number;
+  defaultFee?: number;
+  per_unit_rate?: number | null;
+  perUnitRate?: number | null;
+  currency: string;
+  included_revisions?: number;
+  includedRevisions?: number;
+  quality_threshold?: number;
+  qualityThreshold?: number;
+  default_timeline_days?: number | null;
+  defaultTimelineDays?: number | null;
+  approval_gate?: string;
+  approvalGate?: string;
+  active: boolean;
+}
+
+export interface WorkerCommandCenter {
+  config: WorkerCompensationConfig;
+  workload: { active: number; limit: number };
+  summary: { activeValue: number; waitingApproval: number; payable: number; paidThisMonth: number; needsAttention: number };
+  assignments: any[];
+  earnings: any[];
+  performance: { projectsCompleted: number; averageQuality: number; qualityTrend: number[]; onTimeRate: number; firstPassRate: number; averageRevisionRounds: number; averageCycleTimeDays: number };
+  week: { projectsDue: number; reviewsReturned: number; waitingClient: number; potentialEarnings: number };
+}
+
 export interface ContentWorkspace {
   deliverable: ContentDeliverable;
   config: ContentDeliveryConfig;
@@ -279,8 +344,8 @@ export const contentDeliveryService = {
     return data as { from: ContentLifecycleStage; to: ContentLifecycleStage };
   },
 
-  async block(deliverableId: string, reason: string) {
-    const { error } = await supabase.rpc('block_content_deliverable', { p_deliverable_id: deliverableId, p_reason: reason });
+  async block(deliverableId: string, reason: string, dependency = 'External Dependency') {
+    const { error } = await supabase.rpc('block_content_deliverable_with_dependency', { p_deliverable_id: deliverableId, p_reason: reason, p_dependency: dependency });
     throwIfError(error);
   },
 
@@ -315,13 +380,135 @@ export const contentDeliveryService = {
   },
 
   async saveSystemConfig(config: ContentDeliveryConfig) {
-    const { data, error } = await supabase
-      .from('system_configuration')
-      .update({ config_value: config, updated_at: new Date().toISOString() })
-      .eq('config_key', 'content_delivery_sop_v1')
-      .select('config_value')
-      .single();
+    const { data, error } = await supabase.rpc('save_content_delivery_config', { p_config: config });
     throwIfError(error);
-    return data.config_value as ContentDeliveryConfig;
+    return data as ContentDeliveryConfig;
+  },
+
+  async getCompensationAdminSnapshot() {
+    const { data, error } = await supabase.rpc('get_content_compensation_admin_snapshot');
+    throwIfError(error);
+    return data as { config: WorkerCompensationConfig; rateCards: WorkerRateCard[]; salesProducts: any[]; tiers: any[] };
+  },
+
+  async saveCompensationConfig(config: WorkerCompensationConfig) {
+    const { data, error } = await supabase.rpc('admin_save_worker_compensation_config', { p_config: config });
+    throwIfError(error);
+    return data as WorkerCompensationConfig;
+  },
+
+  async saveRateCard(card: WorkerRateCard) {
+    const normalized = {
+      id: card.id || null,
+      contentType: card.contentType || card.content_type,
+      salesProductId: card.salesProductId ?? card.sales_product_id ?? null,
+      compensationModel: card.compensationModel || card.compensation_model,
+      defaultFee: Number(card.defaultFee ?? card.default_fee ?? 0),
+      perUnitRate: card.perUnitRate ?? card.per_unit_rate ?? null,
+      currency: card.currency,
+      includedRevisions: Number(card.includedRevisions ?? card.included_revisions ?? 0),
+      qualityThreshold: Number(card.qualityThreshold ?? card.quality_threshold ?? 0),
+      defaultTimelineDays: card.defaultTimelineDays ?? card.default_timeline_days ?? null,
+      approvalGate: card.approvalGate || card.approval_gate,
+      active: card.active
+    };
+    const { data, error } = await supabase.rpc('admin_upsert_worker_rate_card', { p_card: normalized });
+    throwIfError(error);
+    return data as string;
+  },
+
+  async savePerformanceTier(tier: Record<string, unknown>) {
+    const { data, error } = await supabase.rpc('admin_upsert_worker_performance_tier', { p_tier: tier });
+    throwIfError(error);
+    return data as string;
+  },
+
+  async getAssignmentContext(projectId: string) {
+    const { data, error } = await supabase.rpc('get_content_assignment_context', { p_project_id: projectId });
+    throwIfError(error);
+    return data as any;
+  },
+
+  async createWorkAssignment(input: Record<string, unknown>) {
+    const { data, error } = await supabase.rpc('create_content_work_assignment', { p_input: input });
+    throwIfError(error);
+    return data as string;
+  },
+
+  async approveAssignment(assignmentId: string, approved: boolean, reason = '') {
+    const { error } = await supabase.rpc('admin_approve_worker_assignment', { p_assignment_id: assignmentId, p_approved: approved, p_reason: reason || null });
+    throwIfError(error);
+  },
+
+  async respondToAssignment(assignmentId: string, action: 'Accept' | 'Request Clarification', message = '') {
+    const { error } = await supabase.rpc('writer_respond_work_assignment', { p_assignment_id: assignmentId, p_action: action, p_message: message || null });
+    throwIfError(error);
+  },
+
+  async answerAssignmentClarification(assignmentId: string, message: string) {
+    const { error } = await supabase.rpc('manager_answer_work_assignment', { p_assignment_id: assignmentId, p_message: message });
+    throwIfError(error);
+  },
+
+  async cancelWorkAssignment(assignmentId: string, reason: string) {
+    const { error } = await supabase.rpc('manager_cancel_worker_assignment', { p_assignment_id: assignmentId, p_reason: reason });
+    throwIfError(error);
+  },
+
+  async proposeScopeChange(assignmentId: string, newScope: Record<string, unknown>, addedItems: Record<string, unknown>[], additionalFee: number, reason: string) {
+    const { data, error } = await supabase.rpc('manager_propose_worker_scope_change', { p_assignment_id: assignmentId, p_new_scope: newScope, p_added_items: addedItems, p_additional_fee: additionalFee, p_reason: reason });
+    throwIfError(error);
+    return data as string;
+  },
+
+  async reviewScopeChange(changeId: string, approved: boolean, reason = '') {
+    const { error } = await supabase.rpc('admin_review_worker_scope_change', { p_change_id: changeId, p_approved: approved, p_reason: reason || null });
+    throwIfError(error);
+  },
+
+  async respondToScopeChange(changeId: string, accepted: boolean, message = '') {
+    const { error } = await supabase.rpc('writer_respond_worker_scope_change', { p_change_id: changeId, p_accepted: accepted, p_message: message || null });
+    throwIfError(error);
+  },
+
+  async getScopeChanges(assignmentIds: string[]) {
+    if (assignmentIds.length === 0) return [];
+    const { data, error } = await supabase.from('worker_assignment_scope_changes').select('*').in('assignment_id', assignmentIds).order('created_at', { ascending: false });
+    throwIfError(error);
+    return data || [];
+  },
+
+  async getWorkAssignmentSnapshot(assignmentId: string) {
+    const { data, error } = await supabase.from('worker_work_assignments').select('id,scope_snapshot,deliverable_snapshot,scope_version,agreed_fee,currency').eq('id', assignmentId).single();
+    throwIfError(error);
+    return data as any;
+  },
+
+  async getMyCommandCenter(): Promise<WorkerCommandCenter> {
+    const { data, error } = await supabase.rpc('get_my_worker_command_center');
+    throwIfError(error);
+    return data as WorkerCommandCenter;
+  },
+
+  async getCompensationManagementSnapshot() {
+    const { data, error } = await supabase.rpc('get_worker_compensation_management_snapshot');
+    throwIfError(error);
+    return data as any;
+  },
+
+  async createPayoutBatch(earningIds: string[], scheduledFor: string, notes = '') {
+    const { data, error } = await supabase.rpc('admin_create_worker_payout_batch', { p_earning_ids: earningIds, p_scheduled_for: scheduledFor, p_notes: notes || null });
+    throwIfError(error);
+    return data as string;
+  },
+
+  async markPayoutPaid(payoutId: string, transactionReference: string, paymentMethod = '') {
+    const { error } = await supabase.rpc('admin_mark_worker_payout_paid', { p_payout_id: payoutId, p_transaction_reference: transactionReference, p_payment_method: paymentMethod || null });
+    throwIfError(error);
+  },
+
+  async setEarningHold(earningId: string, hold: boolean, reason = '') {
+    const { error } = await supabase.rpc('admin_set_worker_earning_hold', { p_earning_id: earningId, p_hold: hold, p_reason: reason || null });
+    throwIfError(error);
   }
 };

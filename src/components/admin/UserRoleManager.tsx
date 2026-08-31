@@ -45,6 +45,8 @@ const ROLE_OPTIONS: { value: UserRole; label: string }[] = [
   { value: 'qa', label: '🔍 Quality Assurance' },
   { value: 'site_manager', label: '🧭 Site / Delivery Manager' },
   { value: 'editor', label: '📝 Editor' },
+  { value: 'finance', label: 'Finance' },
+  { value: 'accountant', label: 'Accountant' },
   { value: 'customer', label: '👤 Customer' },
   { value: 'pending', label: '⏳ Pending Approval' },
   { value: 'sales_rep', label: 'Sales Representative (legacy)' },

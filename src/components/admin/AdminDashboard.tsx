@@ -151,7 +151,7 @@ function AdminDashboardInner() {
   const [activeTab, setActiveTab] = useState<'pages' | 'blog' | 'portfolio' | 'media' | 'homepageSections' | 'header' | 'servicePackages' | 'footer' | 'templates' | 'siteSettings' | 'feedback' | 'leads' | 'crm_leads' | 'pipeline' | 'activities' | 'recruitment' | 'team' | 'projects' | 'myWork' | 'myProfile' | 'inbox' | 'awards' | 'quotations' | 'payments' | 'clients' | 'sales_catalog' | 'my_commissions' | 'admin_commissions' | 'onboarding' | 'training' | 'training_library' | 'configuration'>(
     isOnboarding ? 'training' :
     ((searchParams.get('tab') as any) || 
-     (role === 'developer' || role === 'developer_designer' || role === 'uiux_designer' || role === 'content_writer' || role === 'qa' ? 'myWork' : 
+     (role === 'developer' || role === 'developer_designer' || role === 'uiux_designer' || role === 'content_writer' || role === 'qa' || role === 'finance' || role === 'accountant' ? 'myWork' :
       role === 'sales' || role === 'sales_rep' || role === 'sales_team' ? (isOnboarding ? 'training' : 'pipeline') : 'pages'))
   );
 
@@ -1013,7 +1013,7 @@ function AdminDashboardInner() {
           )}
 
           {/* DELIVERY SECTION */}
-          {(isAdmin || role === 'project_manager' || role === 'site_manager' || role === 'content_writer' || role === 'uiux_designer' || role === 'developer' || role === 'developer_designer' || role === 'qa' || isSalesUser) && (
+          {(isAdmin || role === 'project_manager' || role === 'site_manager' || role === 'content_writer' || role === 'uiux_designer' || role === 'developer' || role === 'developer_designer' || role === 'qa' || role === 'finance' || role === 'accountant' || isSalesUser) && (
             <>
               <div className="mt-4 px-3 py-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
                 <Briefcase className="w-3.5 h-3.5 text-[#000080]" /> Delivery
@@ -1030,7 +1030,7 @@ function AdminDashboardInner() {
                 </div>
               </button>
 
-              {(isAdmin || role === 'project_manager' || role === 'site_manager' || role === 'content_writer' || role === 'uiux_designer' || role === 'developer' || role === 'developer_designer' || role === 'qa') && (
+              {(isAdmin || role === 'project_manager' || role === 'site_manager' || role === 'content_writer' || role === 'uiux_designer' || role === 'developer' || role === 'developer_designer' || role === 'qa' || role === 'finance' || role === 'accountant') && (
                 <button onClick={() => handleTabChange('myWork')}
                   className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                     activeTab === 'myWork' 

@@ -4,12 +4,16 @@ import { useAuth } from '../../lib/AuthContext';
 import { contentDeliveryService } from '../../lib/contentDeliveryService';
 import ContentReviewQueue from './ContentReviewQueue';
 import ContentDeliverySettings from './ContentDeliverySettings';
+import ContentCompensationSettings from './ContentCompensationSettings';
+import ContentAssignmentManagement from './ContentAssignmentManagement';
 
 const REVIEW_ROLES = new Set(['admin', 'project_manager', 'editor', 'qa', 'site_manager']);
+const COMPENSATION_ROLES = new Set(['admin', 'project_manager', 'site_manager', 'finance', 'accountant']);
 
 export default function ContentDeliveryManagement() {
   const { role } = useAuth();
   const canReview = REVIEW_ROLES.has(String(role || ''));
+  const canManageCompensation = COMPENSATION_ROLES.has(String(role || ''));
   const [metrics, setMetrics] = useState<any>(null);
   const [loading, setLoading] = useState(canReview);
   const [error, setError] = useState('');
@@ -26,11 +30,11 @@ export default function ContentDeliveryManagement() {
     void load();
   }, [canReview]);
 
-  if (!canReview) return null;
+  if (!canReview && !canManageCompensation) return null;
 
   return (
     <div className="space-y-5">
-      <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+      {canReview && <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div><div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.16em] text-[#000080]"><Gauge className="h-4 w-4" />Delivery control</div><h2 className="mt-1 text-lg font-black text-slate-900">Content Delivery Health</h2><p className="mt-1 max-w-2xl text-xs leading-5 text-slate-500">See bottlenecks, workload and quality risks without opening every project.</p></div>
           {loading && <Loader2 className="h-5 w-5 animate-spin text-[#000080]" />}
@@ -53,10 +57,12 @@ export default function ContentDeliveryManagement() {
             <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{(metrics.writerCapacity || []).length === 0 ? <div className="text-xs text-slate-400">No active Content Writers yet.</div> : (metrics.writerCapacity || []).map((writer: any) => <div key={writer.userId} className="rounded-2xl border border-slate-100 bg-slate-50 p-4"><div className="flex items-center justify-between gap-3"><div className="text-xs font-black text-slate-900">{writer.name}</div><span className={`rounded-full px-2 py-0.5 text-[9px] font-black ${writer.capacityStatus === 'Available' ? 'bg-emerald-100 text-emerald-800' : writer.capacityStatus === 'At Limit' ? 'bg-amber-100 text-amber-800' : 'bg-red-100 text-red-700'}`}>{writer.capacityStatus}</span></div><div className="mt-3 grid grid-cols-3 gap-2 text-center"><Small label="Active" value={writer.activeWip} /><Small label="Limit" value={writer.wipLimit} /><Small label="Review" value={writer.waitingReview} /></div></div>)}</div>
           </div>
         </>}
-      </section>
+      </section>}
 
-      <ContentReviewQueue />
+      {canReview && <ContentReviewQueue />}
+      {canManageCompensation && <ContentAssignmentManagement />}
       {role === 'admin' && <ContentDeliverySettings />}
+      {role === 'admin' && <ContentCompensationSettings />}
     </div>
   );
 }

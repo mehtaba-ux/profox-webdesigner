@@ -16,12 +16,14 @@ import DevelopmentReviewQueue from './DevelopmentReviewQueue';
 import DevelopmentHandoverManagerQueue from './DevelopmentHandoverManagerQueue';
 import QualityAssuranceTaskWorkspace from './QualityAssuranceTaskWorkspace';
 import QualityAssuranceReviewQueue from './QualityAssuranceReviewQueue';
+import ContentWriterCommandCenter from './ContentWriterCommandCenter';
 
 type WorkFilter = 'All' | 'Overdue' | 'Due Today' | 'Upcoming' | 'In Progress' | 'Waiting for Review' | 'Changes Required';
 type FounderPreviewRole = 'content_writer' | 'uiux_designer' | 'developer';
 
 const taskDueDate = (task: any) => task?.due_date || task?.dueDate || '';
 const CONTENT_REVIEW_ROLES = new Set(['admin', 'project_manager', 'editor', 'qa', 'site_manager']);
+const CONTENT_COMPENSATION_ROLES = new Set(['admin', 'project_manager', 'site_manager', 'finance', 'accountant']);
 const DESIGN_REVIEW_ROLES = new Set(['admin', 'project_manager', 'site_manager', 'uiux_designer', 'qa']);
 const DESIGN_HANDOFF_ROLES = new Set(['developer', 'web_developer', 'developer_designer', 'qa']);
 const DEVELOPMENT_ROLES = new Set(['developer', 'web_developer', 'developer_designer']);
@@ -59,6 +61,7 @@ export default function MyWorkDashboard() {
   const isDeveloper = DEVELOPMENT_ROLES.has(String(effectiveRole || ''));
   const isQaSpecialist = effectiveRole === 'qa';
   const canManageContent = CONTENT_REVIEW_ROLES.has(String(effectiveRole || ''));
+  const canManageContentCompensation = CONTENT_COMPENSATION_ROLES.has(String(effectiveRole || ''));
   const canReviewDesign = DESIGN_REVIEW_ROLES.has(String(effectiveRole || ''));
   const canUseDesignHandoff = DESIGN_HANDOFF_ROLES.has(String(effectiveRole || ''));
   const isManagerHandoverReviewer = DEVELOPMENT_MANAGER_ROLES.has(String(effectiveRole || ''));
@@ -194,7 +197,7 @@ export default function MyWorkDashboard() {
         ? 'Build from the approved UI/UX handoff through PF-SOP-09 engineering evidence, independent review, QA, release readiness and controlled handover.'
         : isQaSpecialist
           ? 'Test functional, responsive, accessibility, security and release readiness with reproducible evidence and a controlled manager review gate.'
-        : canManageContent
+        : canManageContent || canManageContentCompensation
           ? 'Manage assigned work and keep delivery quality, reviews and bottlenecks visible in one place.'
           : 'Manage assigned tasks, work notes and review handoffs.';
   const previewLabel = previewRole === 'content_writer'
@@ -238,13 +241,14 @@ export default function MyWorkDashboard() {
         </div>
       )}
 
-      {!isFounderPreview && !isContentWriter && canManageContent && <ContentDeliveryManagement />}
+      {!isFounderPreview && !isContentWriter && (canManageContent || canManageContentCompensation) && <ContentDeliveryManagement />}
+      {!isFounderPreview && isContentWriter && <ContentWriterCommandCenter onOpenTask={(taskId) => { const task = tasks.find(item => item.id === taskId); if (task) openTask(task); }} />}
       {!isFounderPreview && canReviewDesign && <DesignReviewQueue onChanged={fetchTasks} />}
       {!isFounderPreview && <DevelopmentReviewQueue onChanged={fetchTasks} />}
       {!isFounderPreview && <DevelopmentHandoverManagerQueue enabled={isManagerHandoverReviewer} onChanged={fetchTasks} />}
       {!isFounderPreview && <QualityAssuranceReviewQueue enabled={isManagerHandoverReviewer} onChanged={fetchTasks} />}
 
-      {isContentWriter && focusTask && (
+      {isContentWriter && focusTask && isFounderPreview && (
         <section className="rounded-[28px] bg-gradient-to-br from-[#000080] to-[#00005c] p-5 text-white shadow-xl shadow-blue-950/10 sm:p-6">
           <div className="grid gap-5 lg:grid-cols-[1fr_auto] lg:items-center">
             <div>

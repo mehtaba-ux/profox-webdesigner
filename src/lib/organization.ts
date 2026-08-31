@@ -57,6 +57,12 @@ export const AGENCY_DEPARTMENTS: AgencyDepartmentDefinition[] = [
     description: 'Independent quality review, regression checks, release gates and delivery assurance.'
   },
   {
+    value: 'Finance',
+    label: 'Finance & Payouts',
+    shortLabel: 'Finance',
+    description: 'Payable earnings, payout batches, holds and protected payment confirmation.'
+  },
+  {
     value: 'General',
     label: 'General / External',
     shortLabel: 'General',
@@ -73,6 +79,8 @@ export const ROLE_PRIMARY_DEPARTMENT: Record<UserRole, Department> = {
   site_manager: 'Project Management',
   content_writer: 'Content',
   editor: 'Content',
+  finance: 'Finance',
+  accountant: 'Finance',
   uiux_designer: 'UI/UX Design',
   developer: 'Development',
   web_developer: 'Development',

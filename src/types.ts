@@ -8,6 +8,8 @@ export type UserRole =
   | 'qa'
   | 'site_manager'
   | 'editor'
+  | 'finance'
+  | 'accountant'
   | 'customer'
   | 'pending'
   // Legacy role aliases retained for compatibility only
@@ -28,6 +30,7 @@ export type Department =
   | 'Content'
   | 'Development'
   | 'Quality Assurance'
+  | 'Finance'
   | 'General'
   // Legacy department labels retained for existing records
   | 'Marketing'
@@ -418,6 +421,8 @@ export const ROLE_LABELS: Record<UserRole, string> = {
   qa: 'Quality Assurance',
   site_manager: 'Site Manager',
   editor: 'Editor',
+  finance: 'Finance',
+  accountant: 'Accountant',
   customer: 'Customer',
   pending: 'Pending Approval'
 };
