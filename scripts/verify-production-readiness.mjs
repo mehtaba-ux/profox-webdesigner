@@ -28,7 +28,7 @@ try {
     select count(*)::int as count, max(version) as latest
     from profox_migrations.applied_migrations
   `)).rows[0];
-  if (migration.latest >= '20260831154914') pass('Database migrations', `${migration.count} checksummed migrations; latest ${migration.latest}`);
+  if (migration.latest >= '20260831173000') pass('Database migrations', `${migration.count} checksummed migrations; latest ${migration.latest}`);
   else fail('Database migrations', `latest installed migration is ${migration.latest || 'missing'}`);
 
   const synthetic = (await client.query(`
@@ -56,12 +56,35 @@ try {
         'sales_academy_test_activation_allowed',
         'sales_academy_test_bypass_active',
         'admin_test_skip_sales_academy',
-        'admin_get_sales_academy_test_bypass_status'
+        'admin_get_sales_academy_test_bypass_status',
+        'admin_record_team_dashboard_preview'
       )
   `)).rows;
   const exposed = acl.filter((row) => row.anon_execute).map((row) => row.proname);
   if (exposed.length === 0) pass('Sensitive RPC permissions', 'anonymous execution revoked');
   else fail('Sensitive RPC permissions', `anonymous execution remains on ${exposed.join(', ')}`);
+
+  const teamPreview = (await client.query(`
+    with current_team as (
+      select distinct case
+        when role in ('sales','sales_rep','sales_team') then 'Sales'
+        when role in ('project_manager','site_manager') then 'Project Management'
+        when role in ('content_writer','editor') then 'Content'
+        when role='uiux_designer' then 'UI/UX Design'
+        when role in ('developer','web_developer','developer_designer') then 'Development'
+        when role='qa' then 'Quality Assurance'
+        when role in ('finance','accountant') then 'Finance'
+      end as department
+      from public.user_profiles
+      where status <> 'pending'
+        and role not in ('admin','customer','pending')
+        and lower(coalesce(email,'')) not like '%@profoxwebdesigner.test'
+    )
+    select coalesce(array_agg(department order by department) filter (where department is not null),'{}'::text[]) as departments
+    from current_team
+  `)).rows[0];
+  if (teamPreview.departments.length > 0) pass('Admin team dashboard preview', `${teamPreview.departments.length} current department representative(s): ${teamPreview.departments.join(', ')}`);
+  else fail('Admin team dashboard preview', 'no real current departmental team member is available to preview');
 
   const gateway = (await client.query(`select public.payment_gateway_settings_safe() as settings`)).rows[0].settings || {};
   const readyProviders = ['paypal', 'razorpay'].filter((provider) => gateway?.[provider]?.productionReady === true);

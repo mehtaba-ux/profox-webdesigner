@@ -24,7 +24,7 @@ function activeWorkspaceForPath(pathname: string): WorkspaceAppId | 'workspace' 
   if (pathname.startsWith('/admin/payment-gateway') || pathname.startsWith('/admin/automation') || pathname.startsWith('/admin/customer-communication') || pathname.startsWith('/admin/productivity-settings') || pathname.startsWith('/admin/meeting-settings')) return 'settings';
   if (pathname.startsWith('/admin/public-pricing')) return 'website';
   if (pathname.startsWith('/admin/quotations') || pathname.startsWith('/admin/today') || pathname.startsWith('/admin/seller') || pathname.startsWith('/admin/sales-performance') || pathname.startsWith('/admin/payment-process')) return 'sales';
-  if (pathname.startsWith('/admin/profile')) return 'team';
+  if (pathname.startsWith('/admin/profile') || pathname.startsWith('/admin/team-dashboard-preview')) return 'team';
   return 'workspace';
 }
 

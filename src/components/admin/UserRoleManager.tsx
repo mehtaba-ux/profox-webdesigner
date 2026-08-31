@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   UserProfile,
   UserRole,
@@ -21,6 +22,7 @@ import {
   CheckCircle2,
   Clock,
   Edit,
+  Eye,
   LogIn,
   Loader2,
   RefreshCw,
@@ -56,6 +58,7 @@ const ROLE_OPTIONS: { value: UserRole; label: string }[] = [
 ];
 
 export default function UserRoleManager({ showHeader = true }: { showHeader?: boolean }) {
+  const navigate = useNavigate();
   const [profiles, setProfiles] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -319,9 +322,14 @@ export default function UserRoleManager({ showHeader = true }: { showHeader?: bo
           </div>
           <p className="mt-1 max-w-3xl text-xs leading-5 text-slate-500">Every role has one clear primary department. Access remains role-controlled and production test impersonation is disabled.</p>
         </div>
-        <button onClick={() => void handleRefresh()} disabled={refreshing || loading} className="flex items-center gap-1.5 rounded-xl bg-slate-100 px-3.5 py-2 text-xs font-bold text-slate-700 transition-all hover:bg-slate-200 disabled:opacity-50">
-          <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? 'animate-spin' : ''}`} /> Refresh
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button onClick={() => navigate('/admin/team-dashboard-preview')} className="flex items-center gap-1.5 rounded-xl bg-[#000080] px-3.5 py-2 text-xs font-bold text-white transition-all hover:bg-[#000066]">
+            <Eye className="h-3.5 w-3.5" /> Preview Team Dashboards
+          </button>
+          <button onClick={() => void handleRefresh()} disabled={refreshing || loading} className="flex items-center gap-1.5 rounded-xl bg-slate-100 px-3.5 py-2 text-xs font-bold text-slate-700 transition-all hover:bg-slate-200 disabled:opacity-50">
+            <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? 'animate-spin' : ''}`} /> Refresh
+          </button>
+        </div>
       </div>}
 
       {savedMsg && <div className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 p-3.5 text-xs font-bold text-emerald-800"><CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" /> {savedMsg}</div>}

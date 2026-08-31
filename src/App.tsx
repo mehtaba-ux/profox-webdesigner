@@ -28,6 +28,7 @@ const TodayCommandCenter = lazy(() => import('./components/admin/TodayCommandCen
 const SellerExperienceClosure = lazy(() => import('./components/admin/SellerExperienceClosure'));
 const SellerProfile = lazy(() => import('./components/admin/SellerProfile'));
 const TeamProfile = lazy(() => import('./components/admin/TeamProfile'));
+const AdminTeamDashboardPreview = lazy(() => import('./components/admin/AdminTeamDashboardPreview'));
 const SalesPerformanceManagement = lazy(() => import('./components/admin/SalesPerformanceManagement'));
 const PublicPricingAdmin = lazy(() => import('./components/admin/PublicPricingAdmin'));
 const ProductivityRecordFocus = lazy(() => import('./components/admin/ProductivityRecordFocus'));
@@ -196,6 +197,7 @@ export default function App() {
       <Route path="/admin/payment-gateway-settings" element={<PaymentGatewaySettingsAdmin/>}/>
       <Route path="/admin/internal-chat" element={<InternalChat/>}/>
       <Route path="/admin/profile" element={<TeamProfile/>}/>
+      <Route path="/admin/team-dashboard-preview" element={<AdminTeamDashboardPreview/>}/>
       <Route path="/admin/today" element={<TodayCommandCenter/>}/>
       <Route path="/admin/seller-command-center" element={<SellerExperienceClosure/>}/>
       <Route path="/admin/seller-profile" element={<SellerProfile/>}/>
