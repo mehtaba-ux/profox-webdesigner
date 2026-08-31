@@ -1,17 +1,32 @@
 import { readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { createClient } from '@supabase/supabase-js';
+import dotenv from 'dotenv';
+
+dotenv.config({ path: '.env.local', quiet: true });
 
 const supabaseUrl = String(process.env.VITE_SUPABASE_URL || '').trim();
-const publishableKey = String(process.env.VITE_SUPABASE_ANON_KEY || '').trim();
-const validPublishableKey = /^sb_publishable_[A-Za-z0-9_-]{20,}$/.test(publishableKey)
-  || /^eyJ[A-Za-z0-9._-]{100,}$/.test(publishableKey);
+const publishableKey = String(process.env.VITE_SUPABASE_PUBLISHABLE_KEY || '').trim();
+const validPublishableKey = /^sb_publishable_[A-Za-z0-9_-]{20,}$/.test(publishableKey);
 
 if (!/^https:\/\/[a-z]{20}\.supabase\.co\/?$/.test(supabaseUrl)) {
   throw new Error('VITE_SUPABASE_URL is missing or malformed.');
 }
 if (!validPublishableKey) {
-  throw new Error('VITE_SUPABASE_ANON_KEY is missing or malformed.');
+  throw new Error('VITE_SUPABASE_PUBLISHABLE_KEY is missing or malformed.');
+}
+
+function assertNoPrivilegedSupabaseJwt(source, label) {
+  for (const candidate of source.match(/eyJ[A-Za-z0-9._-]{100,}/g) || []) {
+    try {
+      const payload = JSON.parse(Buffer.from(candidate.split('.')[1], 'base64url').toString('utf8'));
+      if (payload?.role === 'service_role' || payload?.role === 'supabase_admin') {
+        throw new Error(`${label} contains a privileged Supabase JWT.`);
+      }
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('privileged Supabase JWT')) throw error;
+    }
+  }
 }
 
 async function javascriptFiles(directory) {
@@ -28,7 +43,9 @@ async function javascriptFiles(directory) {
 const bundles = await javascriptFiles(path.resolve('dist'));
 let embedded = false;
 for (const bundle of bundles) {
-  if ((await readFile(bundle, 'utf8')).includes(publishableKey)) {
+  const source = await readFile(bundle, 'utf8');
+  assertNoPrivilegedSupabaseJwt(source, `Production bundle ${path.basename(bundle)}`);
+  if (source.includes(publishableKey)) {
     embedded = true;
     break;
   }
@@ -74,10 +91,16 @@ async function verifyDeployedApplication() {
     throw new Error('The deployed application entry bundle could not be identified uniquely.');
   }
 
-  const entryUrl = new URL(scriptPaths[0], publicAppUrl);
-  entryUrl.searchParams.set('deployment', cacheBuster);
-  const entryBundle = await (await fetchChecked(entryUrl, 'Deployed entry bundle')).text();
-  if (!entryBundle.includes(publishableKey)) {
+  const preloadPaths = [...homeHtml.matchAll(/<link[^>]+rel=["']modulepreload["'][^>]+href=["']([^"']+\.js)["']/gi)]
+    .map((match) => match[1]);
+  const deployedBundles = await Promise.all([...new Set([...scriptPaths, ...preloadPaths])].map(async (assetPath) => {
+    const assetUrl = new URL(assetPath, publicAppUrl);
+    assetUrl.searchParams.set('deployment', cacheBuster);
+    const source = await (await fetchChecked(assetUrl, `Deployed bundle ${assetPath}`)).text();
+    assertNoPrivilegedSupabaseJwt(source, `Deployed bundle ${assetPath}`);
+    return source;
+  }));
+  if (!deployedBundles.some(source => source.includes(publishableKey))) {
     throw new Error('The deployed frontend does not contain the validated Supabase publishable key.');
   }
 

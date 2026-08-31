@@ -10,7 +10,6 @@ export interface Env {
   ENVIRONMENT?: string;
   SUPABASE_URL?: string;
   SUPABASE_PUBLISHABLE_KEY?: string;
-  VITE_SUPABASE_ANON_KEY?: string;
   ALLOWED_ORIGINS?: string;
 }
 
@@ -100,7 +99,7 @@ function jsonResponse(body: unknown, status = 200, headers: HeadersInit = {}) {
 }
 
 function configuredPublishableKey(env: Env) {
-  return env.SUPABASE_PUBLISHABLE_KEY || env.VITE_SUPABASE_ANON_KEY || '';
+  return env.SUPABASE_PUBLISHABLE_KEY || '';
 }
 
 function privateCors(request: Request, env: Env, url: URL) {

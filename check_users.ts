@@ -5,7 +5,7 @@ import { isSupabaseConfigured } from './src/lib/supabase';
 async function listUsers() {
   console.log('Checking Supabase configuration...');
   if (!isSupabaseConfigured) {
-    console.error('Supabase is not configured. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.');
+    console.error('Supabase is not configured. Please set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY.');
     return;
   }
 

@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 
 const rawUrl = (import.meta.env.VITE_SUPABASE_URL || '').trim();
-const rawKey = (import.meta.env.VITE_SUPABASE_ANON_KEY || '').trim();
+const rawKey = (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || '').trim();
 
 const isPlaceholder = (val: string) =>
   !val ||
@@ -12,9 +12,21 @@ const isPlaceholder = (val: string) =>
   val === 'undefined' ||
   val === 'null';
 
+const legacyJwtRole = (val: string) => {
+  try {
+    const payload = val.split('.')[1];
+    if (!payload) return '';
+    const normalized = payload.replace(/-/g, '+').replace(/_/g, '/');
+    const decoded = JSON.parse(atob(normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=')));
+    return String(decoded?.role || '');
+  } catch {
+    return '';
+  }
+};
+
 const isValidPublicKey = (val: string) =>
   /^sb_publishable_[A-Za-z0-9_-]{20,}$/.test(val) ||
-  /^eyJ[A-Za-z0-9._-]{100,}$/.test(val);
+  (/^eyJ[A-Za-z0-9._-]{100,}$/.test(val) && legacyJwtRole(val) === 'anon');
 
 const isValidUrl = (urlStr: string) => {
   try {

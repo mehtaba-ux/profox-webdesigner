@@ -41,7 +41,7 @@ jobs:
       - name: Browser launch-readiness tests
         env:
           VITE_SUPABASE_URL: https://calabtayklhltyiriiwo.supabase.co
-          VITE_SUPABASE_ANON_KEY: sb_publishable_pLllPWGRcNcofWhD-GrHcg_t34HYo9a
+          VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_pLllPWGRcNcofWhD-GrHcg_t34HYo9a
         run: npm run test:e2e
 
       - name: Public content verifier syntax

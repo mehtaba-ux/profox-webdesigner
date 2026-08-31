@@ -103,7 +103,7 @@ Deployment-readiness inspection on 2026-08-22 established the canonical reposito
 - repository history did not provide a verifiable current Worker URL or custom-domain mapping;
 - external checks did not provide evidence that `profoxwebdesigner.com` is currently serving this exact Worker/application build.
 
-A single manual production deployment workflow now reuses that same `wrangler.toml`; it does not create another deployment platform. It requires the GitHub `production` environment to provide `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `VITE_SUPABASE_URL`, and `VITE_SUPABASE_ANON_KEY`. `PROFOX_PUBLIC_APP_URL` (or the manual workflow URL input) enables post-deploy `/api/health` verification. Until a real deployment succeeds and that public health endpoint is verified, this gate remains open.
+A single manual production deployment workflow now reuses that same `wrangler.toml`; it does not create another deployment platform. It requires the GitHub `production` environment to provide `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `VITE_SUPABASE_URL`, and the browser-safe `SUPABASE_PUBLISHABLE_KEY`. `PROFOX_PUBLIC_APP_URL` (or the manual workflow URL input) enables post-deploy `/api/health` verification. Until a real deployment succeeds and that public health endpoint is verified, this gate remains open.
 
 ### 4.2 Real Google OAuth + Calendar/Meet end-to-end validation — OPEN
 

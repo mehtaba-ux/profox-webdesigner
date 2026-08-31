@@ -85,21 +85,21 @@ jobs:
           fi
 
           candidate="${SUPABASE_PUBLISHABLE_KEY_CANDIDATE:-}"
-          if [[ "$candidate" =~ ^sb_publishable_[A-Za-z0-9_-]{20,}$ ]] || [[ "$candidate" =~ ^eyJ[A-Za-z0-9._-]{100,}$ ]]; then
+          if [[ "$candidate" =~ ^sb_publishable_[A-Za-z0-9_-]{20,}$ ]]; then
             publishable_key="$candidate"
           else
             publishable_key="$CANONICAL_SUPABASE_PUBLISHABLE_KEY"
             echo "::warning::SUPABASE_PUBLISHABLE_KEY was missing or malformed; using the canonical public key."
           fi
 
-          if [[ ! "$publishable_key" =~ ^sb_publishable_[A-Za-z0-9_-]{20,}$ ]] && [[ ! "$publishable_key" =~ ^eyJ[A-Za-z0-9._-]{100,}$ ]]; then
+          if [[ ! "$publishable_key" =~ ^sb_publishable_[A-Za-z0-9_-]{20,}$ ]]; then
             echo "::error::No valid Supabase publishable key is available."
             exit 1
           fi
 
           {
             echo "SUPABASE_PUBLISHABLE_KEY=$publishable_key"
-            echo "VITE_SUPABASE_ANON_KEY=$publishable_key"
+            echo "VITE_SUPABASE_PUBLISHABLE_KEY=$publishable_key"
           } >> "$GITHUB_ENV"
 
       - name: TypeScript check
