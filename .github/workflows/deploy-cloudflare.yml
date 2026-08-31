@@ -111,7 +111,19 @@ jobs:
       - name: Verify production database and integration readiness
         run: npm run production:verify
 
-      - name: Deploy hardened Supabase Edge Function
+      - name: Deploy authenticated payment administration functions
+        run: |
+          npx supabase functions deploy payment-gateway-admin --project-ref "$SUPABASE_PROJECT_REF"
+          npx supabase functions deploy razorpayx-payouts --project-ref "$SUPABASE_PROJECT_REF"
+
+      - name: Deploy public checkout and signed payment webhooks
+        run: |
+          npx supabase functions deploy payment-checkout --no-verify-jwt --project-ref "$SUPABASE_PROJECT_REF"
+          npx supabase functions deploy payment-webhook-paypal --no-verify-jwt --project-ref "$SUPABASE_PROJECT_REF"
+          npx supabase functions deploy payment-webhook-razorpay --no-verify-jwt --project-ref "$SUPABASE_PROJECT_REF"
+          npx supabase functions deploy payout-webhook-razorpay --no-verify-jwt --project-ref "$SUPABASE_PROJECT_REF"
+
+      - name: Deploy hardened staff diagnostic function
         run: npx supabase functions deploy test-staff-login --project-ref "$SUPABASE_PROJECT_REF"
 
       - name: Production build

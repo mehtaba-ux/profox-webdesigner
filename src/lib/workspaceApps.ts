@@ -229,7 +229,8 @@ export const WORKSPACE_APPS: WorkspaceAppDefinition[] = [
     items: [
       { id: 'projects', label: 'Client Projects', tab: 'projects', section: 'Delivery Management' },
       { id: 'my-work', label: 'My Department Work', tab: 'myWork', section: 'Department Workspace', roles: ['admin','project_manager','site_manager','content_writer','uiux_designer','developer','web_developer','developer_designer','qa'] },
-      { id: 'my-profile', label: 'My Delivery Profile', tab: 'myProfile', section: 'Department Workspace', roles: ['developer_designer'] }
+      { id: 'my-profile', label: 'My Delivery Profile', tab: 'myProfile', section: 'Department Workspace', roles: ['developer_designer'] },
+      { id: 'my-payout-method', label: 'My Payout Method', path: '/employee/payout-setup', section: 'Earnings & Payouts', roles: ['admin','project_manager','site_manager','content_writer','uiux_designer','developer','web_developer','developer_designer','qa'] }
     ]
   },
   {

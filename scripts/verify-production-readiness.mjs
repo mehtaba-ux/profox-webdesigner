@@ -28,7 +28,7 @@ try {
     select count(*)::int as count, max(version) as latest
     from profox_migrations.applied_migrations
   `)).rows[0];
-  if (migration.latest >= '20260831121000') pass('Database migrations', `${migration.count} checksummed migrations; latest ${migration.latest}`);
+  if (migration.latest >= '20260831124232') pass('Database migrations', `${migration.count} checksummed migrations; latest ${migration.latest}`);
   else fail('Database migrations', `latest installed migration is ${migration.latest || 'missing'}`);
 
   const synthetic = (await client.query(`
@@ -67,6 +67,11 @@ try {
   const readyProviders = ['paypal', 'razorpay'].filter((provider) => gateway?.[provider]?.productionReady === true);
   if (readyProviders.length > 0) pass('Customer payment gateway', `${readyProviders.join(', ')} production-ready`);
   else fail('Customer payment gateway', 'no live provider has current credentials, webhook verification and a recent successful test');
+
+  const razorpayx = (await client.query(`select coalesce(config_value,'{}'::jsonb) as settings from public.system_configuration where config_key='razorpayx_payout_settings'`)).rows[0]?.settings || {};
+  const razorpayxReady = razorpayx.enabled === true && razorpayx.configured === true && razorpayx.webhookConfigured === true && razorpayx.lastTestSuccess === true && razorpayx.lastTestAt && Date.parse(razorpayx.lastTestAt) >= Date.now() - 30 * 86400_000;
+  if (razorpayxReady) pass('Employee bulk payouts', `RazorpayX ${razorpayx.mode} mode is enabled, webhook-protected and connection-tested`);
+  else warn('Employee bulk payouts', 'RazorpayX is installed but requires valid credentials, source account, payout webhook secret, connection test and explicit enablement');
 
   const notifications = (await client.query(`
     select

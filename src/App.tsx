@@ -82,6 +82,7 @@ const CareerJobDetailPage = lazy(() => import('./pages/CareerJobDetailPage'));
 const DeveloperApplicationPage = lazy(() => import('./pages/DeveloperApplicationPage'));
 const TalentPartnerPortal = lazy(() => import('./pages/TalentPartnerPortal'));
 const TalentPartnerPayoutSetup = lazy(() => import('./pages/TalentPartnerPayoutSetup'));
+const EmployeePayoutSetup = lazy(() => import('./pages/EmployeePayoutSetup'));
 const TalentPartnerReferralRedirect = lazy(() => import('./pages/TalentPartnerReferralRedirect'));
 const TalentPartnerProgramView = lazy(() => import('./pages/TalentPartnerProgramView'));
 const RoleFinalCertificationPage = lazy(() => import('./pages/RoleFinalCertificationPage'));
@@ -176,6 +177,7 @@ export default function App() {
     <Route path="/careers/:slug/apply" element={<DeveloperApplicationPage/>}/>
     <Route path="/sales-onboarding/setup" element={<SalesOnboardingSetup/>}/>
     <Route path="/team-onboarding/setup" element={<SalesOnboardingSetup/>}/>
+    <Route path="/employee/payout-setup" element={<EmployeePayoutSetup/>}/>
     <Route path="/design-academy" element={<DesignAcademyPage/>}/>
     <Route path="/academy/final-certification" element={<RoleFinalCertificationPage/>}/>
     <Route path="/client-portal" element={<ClientPortalEntry/>}/>

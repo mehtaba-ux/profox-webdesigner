@@ -3,6 +3,7 @@ import { CheckCircle2, Copy, CreditCard, Loader2, LockKeyhole, RefreshCw, Save, 
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../lib/AuthContext';
 import { GatewayProviderStatus, PaymentGatewayStatus, PaymentProviderId, paymentGatewayService } from '../../lib/paymentGatewayService';
+import RazorpayXPayoutAdmin from './RazorpayXPayoutAdmin';
 
 const input = 'w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-[#000080] focus:ring-4 focus:ring-blue-100';
 const SUPABASE_URL = String(import.meta.env.VITE_SUPABASE_URL || '').replace(/\/$/, '');
@@ -99,6 +100,7 @@ export default function PaymentGatewaySettingsAdmin() {
       </ProviderCard>
 
       <section className="rounded-3xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900"><div className="flex gap-3"><LockKeyhole className="mt-0.5 h-5 w-5 shrink-0" /><div><div className="font-black">Provider activation rule</div><p className="mt-1 leading-6">A provider cannot be enabled until its public identifier, server secret and webhook verification configuration are complete. Test/Sandbox and Live credentials are stored separately. Switching modes automatically turns the UI draft off until you explicitly save and enable that mode.</p></div></div></section>
+      <RazorpayXPayoutAdmin />
     </main>
   </div>;
 }
