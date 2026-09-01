@@ -83,8 +83,19 @@ function isRecoveryChallenge(value: any): value is ChatRecoveryChallenge {
   return Boolean(value?.verificationRequired && value?.challengeId);
 }
 
-// Small audible notification used by the seller inbox. It only runs after a
-// user gesture, which keeps it compatible with browser autoplay restrictions.
+async function getPublicTokenConversations(): Promise<ChatConversationResult[]> {
+  const records = readChatTokens();
+  const conversations = await Promise.all(Object.entries(records).map(async ([conversationId, record]) => {
+    if (!UUID_PATTERN.test(conversationId) || !UUID_PATTERN.test(record.token)) return null;
+    const { data, error } = await supabase.rpc('public_sales_chat_get_conversation', {
+      p_conversation_id: conversationId,
+      p_access_token: record.token,
+    });
+    return error ? null : data as ChatConversationResult;
+  }));
+  return conversations.filter((conversation): conversation is ChatConversationResult => Boolean(conversation));
+}
+
 export const playChatChime = () => {
   try {
     const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
@@ -108,9 +119,7 @@ export const playChatChime = () => {
 };
 
 export const getSalesReps = async (): Promise<SalesRep[]> => {
-  const cached = readJson<SalesRep[]>(LOCAL_SALES_REPS_KEY, [])
-    .filter(rep => UUID_PATTERN.test(rep.id));
-
+  const cached = readJson<SalesRep[]>(LOCAL_SALES_REPS_KEY, []).filter(rep => UUID_PATTERN.test(rep.id));
   const { data, error } = await supabase.rpc('get_public_sales_reps');
   if (error) return cached;
 
@@ -136,17 +145,7 @@ export const getConversations = async (): Promise<ChatConversationResult[]> => {
       throw rpcError(error, 'The sales inbox could not be loaded.');
     }
   }
-
-  const records = readChatTokens();
-  const conversations = await Promise.all(Object.entries(records).map(async ([conversationId, record]) => {
-    if (!UUID_PATTERN.test(conversationId) || !UUID_PATTERN.test(record.token)) return null;
-    const { data, error } = await supabase.rpc('public_sales_chat_get_conversation', {
-      p_conversation_id: conversationId,
-      p_access_token: record.token,
-    });
-    return error ? null : data as ChatConversationResult;
-  }));
-  return conversations.filter((conversation): conversation is ChatConversationResult => Boolean(conversation));
+  return getPublicTokenConversations();
 };
 
 export const getConversationsByEmail = async (email: string): Promise<ChatConversationResult[]> => {
@@ -160,24 +159,23 @@ export const getOriginalSalesAssignment = async (email: string): Promise<{
   previousConversation: ChatConversationResult | null;
 }> => {
   if (!email) return { originalRep: null, previousConversation: null };
-  const conversations = await getConversationsByEmail(email);
+  const normalizedEmail = email.trim().toLowerCase();
+  const conversations = (await getPublicTokenConversations())
+    .filter(conversation => conversation.customerEmail.toLowerCase() === normalizedEmail);
   if (!conversations.length) return { originalRep: null, previousConversation: null };
 
   const sorted = [...conversations].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
   const oldest = sorted[0];
   const reps = await getSalesReps();
-  // Current owner takes priority after a legitimate CRM transfer.
   const rep = reps.find(item => item.id === oldest.currentSalesId)
     || reps.find(item => item.id === oldest.originalSalesId)
     || null;
-  return { originalRep: rep, previousConversation: conversations[0] };
+  return { originalRep: rep, previousConversation: oldest };
 };
 
 export const requestChatRecovery = async (email: string): Promise<ChatRecoveryChallenge> => {
   const normalizedEmail = email.trim().toLowerCase();
-  const { data, error } = await supabase.rpc('public_sales_chat_request_recovery', {
-    p_email: normalizedEmail,
-  });
+  const { data, error } = await supabase.rpc('public_sales_chat_request_recovery', { p_email: normalizedEmail });
   if (error || !data?.challengeId) throw rpcError(error, 'A verification code could not be sent.');
   return {
     verificationRequired: true,
@@ -212,10 +210,12 @@ export const createOrGetConversation = async (input: {
 }): Promise<ChatOpenResult> => {
   const email = input.customerEmail.trim().toLowerCase();
 
-  // If this browser is already authorized, resume the same permanent website
-  // relationship thread immediately — even if it was previously marked resolved.
-  const existing = (await getConversationsByEmail(email))
-    .filter(conversation => (conversation as any).conversationKind !== 'quotation')
+  // Resume only conversations for which this browser already holds a public token.
+  // This prevents a signed-in staff session on the public site from being mistaken
+  // for the visitor's own authorization.
+  const existing = (await getPublicTokenConversations())
+    .filter(conversation => conversation.customerEmail.toLowerCase() === email)
+    .filter(conversation => conversation.conversationKind !== 'quotation')
     .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())[0];
   if (existing) return { ...existing, verificationRequired: false, relationshipResumed: true };
 
@@ -226,9 +226,7 @@ export const createOrGetConversation = async (input: {
     customerPhone: input.customerPhone?.trim() || '',
     intent: input.intent,
   };
-  if (input.selectedSalesId && UUID_PATTERN.test(input.selectedSalesId)) {
-    payload.selectedSalesId = input.selectedSalesId;
-  }
+  if (input.selectedSalesId && UUID_PATTERN.test(input.selectedSalesId)) payload.selectedSalesId = input.selectedSalesId;
 
   const { data, error } = await supabase.rpc('public_sales_chat_open', {
     p_payload: payload,
@@ -239,6 +237,17 @@ export const createOrGetConversation = async (input: {
   if (!data?.id) throw new Error('The conversation could not be opened.');
 
   rememberChatToken(String(data.id), accessToken, email);
+  return data as ChatConversationResult;
+};
+
+export const getChatConversation = async (conversationId: string): Promise<ChatConversationResult> => {
+  const publicToken = chatTokenFor(conversationId);
+  if (!publicToken) throw new Error('This browser is not authorized for the conversation.');
+  const { data, error } = await supabase.rpc('public_sales_chat_get_conversation', {
+    p_conversation_id: conversationId,
+    p_access_token: publicToken,
+  });
+  if (error || !data?.id) throw rpcError(error, 'The conversation could not be refreshed.');
   return data as ChatConversationResult;
 };
 
@@ -253,11 +262,7 @@ export const getChatMessages = async (conversationId: string): Promise<ChatMessa
     return asArray<ChatMessage>(data);
   }
 
-  // Staff use the canonical client timeline. It reuses the same Sales Chat
-  // relationship and merges supported external customer communication into it.
-  const { data, error } = await supabase.rpc('sales_client_inbox_timeline', {
-    p_conversation_id: conversationId,
-  });
+  const { data, error } = await supabase.rpc('sales_client_inbox_timeline', { p_conversation_id: conversationId });
   if (!error) return asArray<any>(data).map(normalizeInboxMessage);
 
   if (!/sales_client_inbox_timeline|function .* does not exist/i.test(error.message || '')) {
@@ -288,7 +293,6 @@ export const sendChatMessage = async (input: {
       p_message: message,
     });
     if (error || !data?.id) throw rpcError(error, 'The message could not be sent.');
-    playChatChime();
     return data as ChatMessage;
   }
 
@@ -312,6 +316,16 @@ export const submitChatRating = async (conversationId: string, rating: number, f
     p_feedback: feedback,
   });
   if (error) throw rpcError(error, 'The rating could not be saved.');
+};
+
+export const resolvePublicChat = async (conversationId: string): Promise<void> => {
+  const accessToken = chatTokenFor(conversationId);
+  if (!accessToken) throw new Error('This browser is not authorized for the conversation.');
+  const { error } = await supabase.rpc('public_sales_chat_resolve', {
+    p_conversation_id: conversationId,
+    p_access_token: accessToken,
+  });
+  if (error) throw rpcError(error, 'The conversation could not be closed.');
 };
 
 export const updateConversationStatus = async (
