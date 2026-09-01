@@ -28,8 +28,9 @@ import {
 import { supabase } from '../../lib/supabase';
 import { CommissionEntry, CommissionPayoutBatch, CommissionStats, CommissionStatus } from '../../types';
 import { useAuth } from '../../lib/AuthContext';
+import RevenueDistributionAdmin from './RevenueDistributionAdmin';
 
-type ViewTab = 'entries' | 'batches' | 'partners';
+type ViewTab = 'entries' | 'batches' | 'partners' | 'setup';
 
 type PayoutProfileEditor = {
   source: SalesPartnerPayoutProfile;
@@ -354,7 +355,10 @@ export default function AdminCommissionManager() {
         <TabButton active={activeTab === 'entries'} onClick={() => setActiveTab('entries')} icon={<DollarSign className="h-4 w-4" />} label={`Commission Entries (${entries.length})`} />
         <TabButton active={activeTab === 'batches'} onClick={() => setActiveTab('batches')} icon={<Layers className="h-4 w-4" />} label={`PayPal Batches (${batches.length})`} />
         <TabButton active={activeTab === 'partners'} onClick={() => setActiveTab('partners')} icon={<WalletCards className="h-4 w-4" />} label={`Partner Payout Profiles (${payoutProfiles.length})`} />
+        <TabButton active={activeTab === 'setup'} onClick={() => setActiveTab('setup')} icon={<Settings2 className="h-4 w-4" />} label="Commission & Margin Setup" />
       </div>
+
+      {activeTab === 'setup' && <RevenueDistributionAdmin />}
 
       {activeTab === 'entries' && (
         <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, Calculator, CheckCircle2, RefreshCw, Save, ShieldCheck, TrendingUp } from 'lucide-react';
+import { AlertTriangle, Calculator, CheckCircle2, CircleHelp, RefreshCw, Save, ShieldCheck, TrendingUp } from 'lucide-react';
 import { revenueDistributionService, RevenueDistributionConfig } from '../../lib/revenueDistributionService';
 
 function money(value: unknown, currency = 'USD') {
@@ -21,12 +21,28 @@ function scenarioDistribution(row: any, scenario: 'companyLead' | 'selfGenerated
   return row?.[scenario] || null;
 }
 
+function HelpTooltip({ text }: { text: string }) {
+  const tooltipId = React.useId();
+  return (
+    <span className="group relative inline-flex cursor-help align-middle" tabIndex={0} aria-describedby={tooltipId} aria-label={text}>
+      <CircleHelp className="h-3.5 w-3.5 text-slate-400 transition-colors group-hover:text-[#000080] group-focus:text-[#000080]" aria-hidden="true" />
+      <span id={tooltipId} role="tooltip" className="pointer-events-none absolute bottom-full left-1/2 z-50 mb-2 hidden w-64 -translate-x-1/2 rounded-lg bg-slate-950 px-3 py-2 text-left text-[10px] font-medium normal-case leading-4 tracking-normal text-white shadow-xl group-hover:block group-focus:block">
+        {text}
+      </span>
+    </span>
+  );
+}
+
+function SettingTitle({ children, tooltip }: { children: React.ReactNode; tooltip: string }) {
+  return <span className="inline-flex items-center gap-1.5"><span>{children}</span><HelpTooltip text={tooltip} /></span>;
+}
+
 function PolicyToggle({ checked, onChange, title, help }: { checked: boolean; onChange: (checked: boolean) => void; title: string; help: string }) {
   return (
     <label className="flex cursor-pointer gap-3 rounded-2xl border border-slate-200 p-4">
-      <input type="checkbox" checked={checked} onChange={event => onChange(event.target.checked)} className="mt-0.5 h-4 w-4 accent-[#000080]" />
+      <input type="checkbox" title={help} aria-label={title} checked={checked} onChange={event => onChange(event.target.checked)} className="mt-0.5 h-4 w-4 accent-[#000080]" />
       <span>
-        <span className="block text-xs font-black text-slate-800">{title}</span>
+        <span className="flex items-center gap-1.5 text-xs font-black text-slate-800">{title}<HelpTooltip text={help} /></span>
         <span className="mt-1 block text-[11px] leading-5 text-slate-500">{help}</span>
       </span>
     </label>
@@ -141,11 +157,12 @@ export default function RevenueDistributionAdmin() {
           <p className="mt-1 max-w-4xl text-xs leading-5 text-slate-500">
             One central engine protects ProFox contribution margin and scales project role budgets automatically from the current Sales Catalog price. Seller commissions, Talent Partner qualification and worker payouts continue through their existing canonical systems.
           </p>
+          <p className="mt-2 flex items-center gap-1.5 text-[10px] font-semibold text-slate-400"><CircleHelp className="h-3.5 w-3.5" /> Hover over or focus a help icon to understand what each setting changes.</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <button type="button" onClick={() => window.location.assign('/admin/app/sales?tab=sales_catalog')} className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-black text-slate-700">Open Sales Catalog</button>
-          <button type="button" onClick={() => void load()} className="rounded-xl border border-slate-200 p-2.5 text-slate-600" title="Refresh"><RefreshCw className="h-4 w-4" /></button>
-          <button type="button" disabled={saving || Math.abs(weightTotal - 100) > 0.0001} onClick={save} className="inline-flex items-center gap-2 rounded-xl bg-[#000080] px-4 py-2.5 text-xs font-black text-white disabled:cursor-not-allowed disabled:opacity-50"><Save className="h-4 w-4" />{saving ? 'Saving…' : 'Save Policy'}</button>
+          <button type="button" title="Open the single Sales Catalog where package prices and commercial details are edited." onClick={() => window.location.assign('/admin/app/sales?tab=sales_catalog')} className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-black text-slate-700">Open Sales Catalog</button>
+          <button type="button" aria-label="Refresh revenue distribution data" onClick={() => void load()} className="rounded-xl border border-slate-200 p-2.5 text-slate-600" title="Reload the latest policy, package prices, profiles and project margin results."><RefreshCw className="h-4 w-4" /></button>
+          <button type="button" title="Save this policy as the next version for future quotations and projects. Existing project snapshots will not change." disabled={saving || Math.abs(weightTotal - 100) > 0.0001} onClick={save} className="inline-flex items-center gap-2 rounded-xl bg-[#000080] px-4 py-2.5 text-xs font-black text-white disabled:cursor-not-allowed disabled:opacity-50"><Save className="h-4 w-4" />{saving ? 'Saving…' : 'Save Policy'}</button>
         </div>
       </div>
 
@@ -154,17 +171,17 @@ export default function RevenueDistributionAdmin() {
 
       <div className="grid gap-4 lg:grid-cols-3">
         <label className="rounded-2xl border border-slate-200 p-4">
-          <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Target contribution margin</span>
-          <div className="mt-2 flex items-center gap-2"><input type="number" min={1} max={94} step="0.1" value={config.targetMarginPercent} onChange={event => setConfig({ ...config, targetMarginPercent: Number(event.target.value || 0) })} className="w-28 rounded-xl border border-slate-200 px-3 py-2 text-lg font-black" /><span className="font-black">%</span></div>
+          <span className="text-[10px] font-black uppercase tracking-wider text-slate-400"><SettingTitle tooltip="The normal contribution percentage ProFox aims to retain after seller, Talent Partner and delivery reserves.">Target contribution margin</SettingTitle></span>
+          <div className="mt-2 flex items-center gap-2"><input aria-label="Target contribution margin percent" title="Set the target contribution margin used for future package and quotation planning." type="number" min={1} max={94} step="0.1" value={config.targetMarginPercent} onChange={event => setConfig({ ...config, targetMarginPercent: Number(event.target.value || 0) })} className="w-28 rounded-xl border border-slate-200 px-3 py-2 text-lg font-black" /><span className="font-black">%</span></div>
           <p className="mt-2 text-[11px] leading-4 text-slate-500">Normal company-generated sales are budgeted to preserve this project-level contribution.</p>
         </label>
         <label className="rounded-2xl border border-slate-200 p-4">
-          <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Absolute minimum margin</span>
-          <div className="mt-2 flex items-center gap-2"><input type="number" min={1} max={94} step="0.1" value={config.minimumMarginPercent} onChange={event => setConfig({ ...config, minimumMarginPercent: Number(event.target.value || 0) })} className="w-28 rounded-xl border border-slate-200 px-3 py-2 text-lg font-black" /><span className="font-black">%</span></div>
+          <span className="text-[10px] font-black uppercase tracking-wider text-slate-400"><SettingTitle tooltip="The hard safety floor. Quotations projected below it require review and must not be treated as normally profitable.">Absolute minimum margin</SettingTitle></span>
+          <div className="mt-2 flex items-center gap-2"><input aria-label="Absolute minimum margin percent" title="Set the lowest protected margin permitted before management review is required." type="number" min={1} max={94} step="0.1" value={config.minimumMarginPercent} onChange={event => setConfig({ ...config, minimumMarginPercent: Number(event.target.value || 0) })} className="w-28 rounded-xl border border-slate-200 px-3 py-2 text-lg font-black" /><span className="font-black">%</span></div>
           <p className="mt-2 text-[11px] leading-4 text-slate-500">A quotation below this protected floor becomes a review condition in the existing approval workflow.</p>
         </label>
         <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4">
-          <div className="flex items-center gap-2 text-[#000080]"><ShieldCheck className="h-5 w-5" /><span className="text-xs font-black">Policy version {config.version}</span></div>
+          <div className="flex items-center gap-2 text-[#000080]"><ShieldCheck className="h-5 w-5" /><span className="text-xs font-black"><SettingTitle tooltip="Each save creates a new auditable policy version. Projects keep the version snapshotted when their paid quotation became a project.">Policy version {config.version}</SettingTitle></span></div>
           <p className="mt-2 text-[11px] leading-5 text-slate-600">New sales use the latest policy. When a paid quotation becomes a project, the economics are snapshotted so later price or rate changes never rewrite that project's financial plan.</p>
         </div>
       </div>
@@ -188,14 +205,14 @@ export default function RevenueDistributionAdmin() {
 
       <div className="rounded-2xl border border-slate-200 p-4">
         <div className="flex flex-wrap items-end justify-between gap-3">
-          <div><h3 className="text-sm font-black text-slate-900">Delivery effort allocation</h3><p className="mt-1 text-[11px] text-slate-500">These weights divide the snapshotted delivery pool. Talent Partner project rewards are reserved on top and never deducted from a worker's protected role budget.</p></div>
+          <div><h3 className="flex items-center gap-1.5 text-sm font-black text-slate-900">Delivery effort allocation <HelpTooltip text="Global role weights must total 100%. They divide the delivery pool for packages that do not have their own profile." /></h3><p className="mt-1 text-[11px] text-slate-500">These weights divide the snapshotted delivery pool. Talent Partner project rewards are reserved on top and never deducted from a worker's protected role budget.</p></div>
           <span className={`rounded-full px-3 py-1 text-xs font-black ${Math.abs(weightTotal - 100) < 0.0001 ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>{weightTotal.toFixed(2)}% / 100%</span>
         </div>
         <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
           {config.deliveryRoles.map((role, index) => (
             <label key={role.key} className="rounded-xl border border-slate-200 bg-slate-50/60 p-3">
-              <span className="block min-h-8 text-[11px] font-black leading-4 text-slate-700">{role.label}</span>
-              <div className="mt-2 flex items-center gap-2"><input type="number" min={0.01} max={100} step="0.25" value={role.weightPercent} onChange={event => patchRole(index, Number(event.target.value || 0))} className="w-full rounded-lg border border-slate-200 bg-white px-2 py-2 text-sm font-black" /><span className="text-xs font-black">%</span></div>
+              <span className="flex min-h-8 items-start gap-1 text-[11px] font-black leading-4 text-slate-700">{role.label}<HelpTooltip text={`Percentage of the global delivery pool reserved for ${role.label}. All global role weights must total 100%.`} /></span>
+              <div className="mt-2 flex items-center gap-2"><input aria-label={`${role.label} global delivery weight percent`} title={`Set ${role.label}'s share of the global delivery pool.`} type="number" min={0.01} max={100} step="0.25" value={role.weightPercent} onChange={event => patchRole(index, Number(event.target.value || 0))} className="w-full rounded-lg border border-slate-200 bg-white px-2 py-2 text-sm font-black" /><span className="text-xs font-black">%</span></div>
               {role.talentPartnerJobSlug && <p className="mt-2 text-[9px] leading-3 text-slate-400">Talent Partner plan: {role.talentPartnerJobSlug}</p>}
             </label>
           ))}
@@ -204,8 +221,8 @@ export default function RevenueDistributionAdmin() {
 
       <div className="rounded-2xl border border-slate-200 p-4">
         <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-          <div><h3 className="text-sm font-black text-slate-900">Automatic package distribution preview</h3><p className="mt-1 text-[11px] text-slate-500">Change a package price in Sales Catalog and this preview recalculates automatically. No person-level payout amount is stored here.</p></div>
-          <select value={selected?.code || ''} onChange={event => setSelectedCode(event.target.value)} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold">
+          <div><h3 className="flex items-center gap-1.5 text-sm font-black text-slate-900">Automatic package distribution preview <HelpTooltip text="Choose a real Sales Catalog package to preview its projected reserves, delivery budget and ProFox margin. This does not create a payment or project." /></h3><p className="mt-1 text-[11px] text-slate-500">Change a package price in Sales Catalog and this preview recalculates automatically. No person-level payout amount is stored here.</p></div>
+          <select aria-label="Package distribution preview" title="Select a Sales Catalog package to preview its current revenue distribution." value={selected?.code || ''} onChange={event => setSelectedCode(event.target.value)} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold">
             {products.map((product: any) => <option key={product.code} value={product.code}>{product.name} · {Number(product.price || 0) > 0 ? money(product.price, product.currency) : 'Custom price'}</option>)}
           </select>
         </div>
@@ -246,9 +263,9 @@ export default function RevenueDistributionAdmin() {
         {selected && Number(selected.price || 0) <= 0 && <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs font-semibold text-amber-800">This is a custom-price catalog product. Its distribution is calculated from the actual quotation price when Sales builds the quotation.</div>}
 
         {selected && <div className="mt-5 rounded-2xl border border-blue-100 bg-blue-50/40 p-4">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div><h4 className="text-xs font-black text-slate-900">Package-specific delivery profile</h4><p className="mt-1 text-[10px] leading-4 text-slate-500">{selectedProfile?.profileId ? 'This package overrides the global effort weights.' : 'This package currently inherits the global effort weights.'} Prices and reward rules remain in their existing systems.</p></div><span className="rounded-full bg-white px-3 py-1 text-[10px] font-black text-[#000080]">{profileWeightTotal.toFixed(2)}% / 100%</span></div>
-          <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-5">{profileRoles.map((role: any, index: number) => <label key={role.key} className="rounded-xl border border-slate-200 bg-white p-3"><span className="block min-h-8 text-[10px] font-black text-slate-700">{role.label}</span><div className="mt-2 flex items-center gap-2"><input type="number" min={0} max={100} step="0.25" value={role.weightPercent} onChange={event => setProfileRoles(current => current.map((item, roleIndex) => roleIndex === index ? { ...item, weightPercent: Number(event.target.value || 0) } : item))} className="w-full rounded-lg border border-slate-200 px-2 py-2 text-sm font-black"/><span className="text-xs font-black">%</span></div></label>)}</div>
-          <div className="mt-4 flex flex-wrap justify-end gap-2">{selectedProfile?.profileId && <button type="button" disabled={profileSaving} onClick={() => void clearProfile()} className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-black text-slate-600 disabled:opacity-50">Use Global Profile</button>}<button type="button" disabled={profileSaving || Math.abs(profileWeightTotal - 100) > 0.0001} onClick={() => void saveProfile()} className="rounded-xl bg-[#000080] px-4 py-2 text-xs font-black text-white disabled:opacity-50">{profileSaving ? 'Saving…' : 'Save Package Profile'}</button></div>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div><h4 className="flex items-center gap-1.5 text-xs font-black text-slate-900">Package-specific delivery profile <HelpTooltip text="An optional override for this package only. If no override exists, the package automatically uses the global delivery weights above." /></h4><p className="mt-1 text-[10px] leading-4 text-slate-500">{selectedProfile?.profileId ? 'This package overrides the global effort weights.' : 'This package currently inherits the global effort weights.'} Prices and reward rules remain in their existing systems.</p></div><span className="rounded-full bg-white px-3 py-1 text-[10px] font-black text-[#000080]">{profileWeightTotal.toFixed(2)}% / 100%</span></div>
+          <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-5">{profileRoles.map((role: any, index: number) => <label key={role.key} className="rounded-xl border border-slate-200 bg-white p-3"><span className="flex min-h-8 items-start gap-1 text-[10px] font-black text-slate-700">{role.label}<HelpTooltip text={`Set ${role.label}'s delivery share for this package only. Package weights must total 100%.`} /></span><div className="mt-2 flex items-center gap-2"><input aria-label={`${role.label} package delivery weight percent`} title={`Set ${role.label}'s delivery share for this package.`} type="number" min={0} max={100} step="0.25" value={role.weightPercent} onChange={event => setProfileRoles(current => current.map((item, roleIndex) => roleIndex === index ? { ...item, weightPercent: Number(event.target.value || 0) } : item))} className="w-full rounded-lg border border-slate-200 px-2 py-2 text-sm font-black"/><span className="text-xs font-black">%</span></div></label>)}</div>
+          <div className="mt-4 flex flex-wrap justify-end gap-2">{selectedProfile?.profileId && <button type="button" title="Remove this package override so future quotations use the global delivery profile." disabled={profileSaving} onClick={() => void clearProfile()} className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-black text-slate-600 disabled:opacity-50">Use Global Profile</button>}<button type="button" title="Save these 100% delivery weights as an override for this package's future quotations." disabled={profileSaving || Math.abs(profileWeightTotal - 100) > 0.0001} onClick={() => void saveProfile()} className="rounded-xl bg-[#000080] px-4 py-2 text-xs font-black text-white disabled:opacity-50">{profileSaving ? 'Saving…' : 'Save Package Profile'}</button></div>
         </div>}
       </div>
 

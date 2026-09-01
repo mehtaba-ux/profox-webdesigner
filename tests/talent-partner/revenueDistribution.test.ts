@@ -15,6 +15,7 @@ const completionSql = readFileSync(resolve(root, 'supabase/migrations/2026083110
 const adminSource = readFileSync(resolve(root, 'src/components/admin/RevenueDistributionAdmin.tsx'), 'utf8');
 const serviceSource = readFileSync(resolve(root, 'src/lib/revenueDistributionService.ts'), 'utf8');
 const configurationSource = readFileSync(resolve(root, 'src/components/admin/ConfigurationCenter.tsx'), 'utf8');
+const commissionAdminSource = readFileSync(resolve(root, 'src/components/admin/AdminCommissionManager.tsx'), 'utf8');
 const quotationSource = readFileSync(resolve(root, 'src/components/admin/QuotationProfitabilityPanel.tsx'), 'utf8');
 
 test('revenue distribution keeps Sales Catalog and existing engines canonical', () => {
@@ -132,6 +133,18 @@ test('Admin exposes the live policy switches and retention provision clearly', (
   assert.match(adminSource, /retentionReservePerQualifyingSale/i);
   assert.match(adminSource, /retentionTotalReserve/i);
   assert.match(adminSource, /Worker budgets are enforced, not just displayed/i);
+});
+
+test('Commission Management reuses the editable live policy and explains every setup control', () => {
+  assert.match(commissionAdminSource, /Commission & Margin Setup/i);
+  assert.match(commissionAdminSource, /<RevenueDistributionAdmin\s*\/>/i);
+  assert.match(adminSource, /function HelpTooltip/i);
+  assert.match(adminSource, /role="tooltip"/i);
+  assert.match(adminSource, /Target contribution margin percent/i);
+  assert.match(adminSource, /Absolute minimum margin percent/i);
+  assert.match(adminSource, /global delivery weight percent/i);
+  assert.match(adminSource, /package delivery weight percent/i);
+  assert.match(adminSource, /Save this policy as the next version/i);
 });
 
 test('package profiles change weights without duplicating catalog prices or reward rules', () => {
