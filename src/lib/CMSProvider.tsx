@@ -6,6 +6,7 @@ import { defaultPortfolioItems, defaultPortfolioCategories } from '../data';
 const CMS_CACHE_KEY = 'cms_content_cache';
 const CMS_CACHE_TIME_KEY = 'cms_content_cache_saved_at';
 const PUBLIC_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
+const PUBLIC_RUNTIME_SETTINGS_POLL_MS = 30 * 1000;
 const PUBLIC_SHARED_SECTIONS = [
   'theme', 'header', 'footer', 'siteSettings', 'hero', 'services', 'servicePackages',
   'caseStudies', 'growth', 'insights', 'cta', 'faq_section',
@@ -225,6 +226,51 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     return () => {
       supabase.removeChannel(channel);
+    };
+  }, [pathname]);
+
+  // The full public CMS remains cached for performance, but operational site settings
+  // (including the live-chat kill switch and maintenance mode) must not stay stale for hours.
+  // Refresh this single lightweight row immediately, every 30 seconds while visible,
+  // and whenever a visitor returns to the tab. Do not renew the six-hour CMS cache timer.
+  useEffect(() => {
+    if (pathname.startsWith('/admin')) return;
+
+    let disposed = false;
+    const syncRuntimeSiteSettings = async () => {
+      if (document.visibilityState !== 'visible') return;
+      try {
+        const { data, error } = await dbProcedure.getContentSections(['siteSettings']);
+        if (error || disposed || !Array.isArray(data)) return;
+        const siteSettingsRow = data.find((item: any) => item?.id === 'siteSettings');
+        if (!siteSettingsRow) return;
+        const nextSettings = siteSettingsRow.data && typeof siteSettingsRow.data === 'object'
+          ? siteSettingsRow.data
+          : {};
+
+        setContent((prev) => {
+          const currentSettings = prev.siteSettings && typeof prev.siteSettings === 'object'
+            ? prev.siteSettings
+            : {};
+          if (JSON.stringify(currentSettings) === JSON.stringify(nextSettings)) return prev;
+          return { ...prev, siteSettings: nextSettings };
+        });
+      } catch (err) {
+        console.error('Error refreshing runtime site settings', err);
+      }
+    };
+
+    void syncRuntimeSiteSettings();
+    const interval = window.setInterval(syncRuntimeSiteSettings, PUBLIC_RUNTIME_SETTINGS_POLL_MS);
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') void syncRuntimeSiteSettings();
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+
+    return () => {
+      disposed = true;
+      window.clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisibility);
     };
   }, [pathname]);
 
