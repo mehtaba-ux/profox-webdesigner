@@ -1,6 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, Calculator, CheckCircle2, CircleHelp, RefreshCw, Save, ShieldCheck, TrendingUp } from 'lucide-react';
 import { revenueDistributionService, RevenueDistributionConfig } from '../../lib/revenueDistributionService';
+import { commissionService } from '../../lib/commissionService';
+import { useAuth } from '../../lib/AuthContext';
+import { CommissionRule } from '../../types';
 
 function money(value: unknown, currency = 'USD') {
   const amount = Number(value || 0);
@@ -50,6 +53,8 @@ function PolicyToggle({ checked, onChange, title, help }: { checked: boolean; on
 }
 
 export default function RevenueDistributionAdmin() {
+  const { user, profile } = useAuth();
+  const adminEmail = profile?.email || user?.email || 'Administrator';
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -59,18 +64,31 @@ export default function RevenueDistributionAdmin() {
   const [selectedCode, setSelectedCode] = useState('');
   const [profileRoles, setProfileRoles] = useState<any[]>([]);
   const [profileSaving, setProfileSaving] = useState(false);
+  const [commissionRules, setCommissionRules] = useState<CommissionRule[]>([]);
+  const [sellerRate, setSellerRate] = useState('0');
+  const [sellerMinRate, setSellerMinRate] = useState('0');
+  const [sellerMaxRate, setSellerMaxRate] = useState('0');
+  const [sellerSaving, setSellerSaving] = useState(false);
 
   const load = async () => {
     setLoading(true);
     setError('');
-    const { data, error: loadError } = await revenueDistributionService.getDashboard();
-    if (loadError) {
-      setError(loadError.message || 'Revenue distribution could not be loaded.');
-    } else {
-      setDashboard(data || null);
-      setConfig((data?.config || null) as RevenueDistributionConfig | null);
-      const firstPriced = (data?.products || []).find((item: any) => Number(item.price || 0) > 0);
-      setSelectedCode(current => current || firstPriced?.code || '');
+    try {
+      const [{ data, error: loadError }, commissionSettings] = await Promise.all([
+        revenueDistributionService.getDashboard(),
+        commissionService.refreshSettings(),
+      ]);
+      if (loadError) {
+        setError(loadError.message || 'Revenue distribution could not be loaded.');
+      } else {
+        setDashboard(data || null);
+        setConfig((data?.config || null) as RevenueDistributionConfig | null);
+        setCommissionRules(commissionSettings.packageRules || []);
+        const firstPriced = (data?.products || []).find((item: any) => Number(item.price || 0) > 0);
+        setSelectedCode(current => current || firstPriced?.code || '');
+      }
+    } catch (loadError: any) {
+      setError(loadError?.message || 'Revenue distribution and seller commission settings could not be loaded.');
     }
     setLoading(false);
   };
@@ -88,6 +106,7 @@ export default function RevenueDistributionAdmin() {
   const company = scenarioDistribution(selected, 'companyLead');
   const selfGenerated = scenarioDistribution(selected, 'selfGeneratedLead');
   const selectedProfile = productProfiles.find((item: any) => item.productId === selected?.productId);
+  const selectedCommissionRule = commissionRules.find(rule => rule.packageCode.toUpperCase() === String(selected?.code || '').toUpperCase());
 
   useEffect(() => {
     if (!config || !selected) return;
@@ -96,6 +115,13 @@ export default function RevenueDistributionAdmin() {
       : config.deliveryRoles;
     setProfileRoles(roles.map((role: any) => ({ ...role })));
   }, [config, selected?.productId, selectedProfile?.profileId]);
+
+  useEffect(() => {
+    const baseRate = Number(selectedCommissionRule?.baseRatePercent ?? company?.seller?.baseRatePercent ?? 0);
+    setSellerRate(String(baseRate));
+    setSellerMinRate(String(Number(selectedCommissionRule?.minRatePercent ?? baseRate)));
+    setSellerMaxRate(String(Number(selectedCommissionRule?.maxRatePercent ?? baseRate)));
+  }, [selected?.code, selectedCommissionRule?.updatedAt, selectedCommissionRule?.baseRatePercent, selectedCommissionRule?.minRatePercent, selectedCommissionRule?.maxRatePercent]);
 
   const patchRole = (index: number, weightPercent: number) => {
     setConfig(current => current ? {
@@ -137,6 +163,46 @@ export default function RevenueDistributionAdmin() {
     if (profileError) setError(profileError.message || 'Package delivery profile could not be cleared.');
     else { setMessage(`${selected.name} now inherits the global delivery effort allocation.`); await load(); }
     setProfileSaving(false);
+  };
+
+  const saveSellerContribution = async () => {
+    if (!selected) return;
+    const baseRate = Number(sellerRate);
+    const requiresApproval = selectedCommissionRule?.requiresAdminApproval ?? selected.priceMode === 'custom';
+    const minRate = requiresApproval ? Number(sellerMinRate) : baseRate;
+    const maxRate = requiresApproval ? Number(sellerMaxRate) : baseRate;
+    if (![baseRate, minRate, maxRate].every(value => Number.isFinite(value) && value >= 0 && value <= 50)) {
+      setError('Seller commission percentages must be between 0% and 50%.');
+      return;
+    }
+    if (minRate > maxRate || baseRate < minRate || baseRate > maxRate) {
+      setError('The seller base rate must be inside the approved minimum and maximum range.');
+      return;
+    }
+    setSellerSaving(true);
+    setError('');
+    setMessage('');
+    try {
+      await commissionService.saveRuleConfirmed({
+        ...selectedCommissionRule,
+        id: selectedCommissionRule?.id || selected.code,
+        packageCode: selected.code,
+        packageName: selected.name,
+        baseRatePercent: baseRate,
+        minRatePercent: minRate,
+        maxRatePercent: maxRate,
+        requiresAdminApproval: requiresApproval,
+        active: true,
+        sortOrder: selectedCommissionRule?.sortOrder || commissionRules.length + 1,
+        effectiveFrom: selectedCommissionRule?.effectiveFrom || new Date().toISOString().slice(0, 10),
+      }, adminEmail);
+      setMessage(`${selected.name} seller commission saved at ${baseRate}%${requiresApproval ? ` within the ${minRate}%–${maxRate}% approval range` : ''}. Future verified payments and financial previews now use this package rule.`);
+      await load();
+    } catch (saveError: any) {
+      setError(saveError?.message || 'The package seller commission could not be saved.');
+    } finally {
+      setSellerSaving(false);
+    }
   };
 
   if (loading) {
@@ -263,6 +329,37 @@ export default function RevenueDistributionAdmin() {
         {selected && Number(selected.price || 0) <= 0 && <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs font-semibold text-amber-800">This is a custom-price catalog product. Its distribution is calculated from the actual quotation price when Sales builds the quotation.</div>}
 
         {selected && <div className="mt-5 rounded-2xl border border-blue-100 bg-blue-50/40 p-4">
+          <div className="mb-5 rounded-2xl border border-indigo-200 bg-white p-4 shadow-sm">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+              <div>
+                <h4 className="flex items-center gap-1.5 text-xs font-black text-slate-900">Package seller contribution / commission <HelpTooltip text="The base percentage reserved for the salesperson from each verified customer payment for this package. This is the existing canonical commission rule used by payouts and profitability previews." /></h4>
+                <p className="mt-1 text-[10px] leading-4 text-slate-500">Edit the seller's base contribution for <b>{selected.name}</b>. It applies only to future verified payments; historical commission entries remain unchanged.</p>
+              </div>
+              <span className={`w-fit rounded-full px-3 py-1 text-[10px] font-black ${selectedCommissionRule ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>{selectedCommissionRule ? 'Active package rule' : 'No rule yet · currently 0%'}</span>
+            </div>
+            <div className="mt-4 flex flex-col gap-3 lg:flex-row lg:items-end">
+              <label className="w-full lg:max-w-[220px]">
+                <span className="flex items-center gap-1 text-[10px] font-black uppercase text-slate-500">Base seller commission <HelpTooltip text="The percentage of every verified payment that becomes the seller's base commission before any eligible self-generated or performance bonus." /></span>
+                <div className="mt-1.5 flex items-center gap-2"><input aria-label={`${selected.name} seller base commission percent`} title="Set this package's base seller commission percentage." type="number" min={0} max={50} step="0.25" value={sellerRate} onChange={event => setSellerRate(event.target.value)} className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-black" /><span className="text-xs font-black">%</span></div>
+              </label>
+              {(selectedCommissionRule?.requiresAdminApproval ?? selected.priceMode === 'custom') && <>
+                <label className="w-full lg:max-w-[180px]">
+                  <span className="flex items-center gap-1 text-[10px] font-black uppercase text-slate-500">Approved minimum <HelpTooltip text="The lowest seller rate Admin may approve for a custom quotation using this package." /></span>
+                  <div className="mt-1.5 flex items-center gap-2"><input aria-label={`${selected.name} minimum approved seller commission percent`} title="Set the minimum approved seller rate for this custom package." type="number" min={0} max={50} step="0.25" value={sellerMinRate} onChange={event => setSellerMinRate(event.target.value)} className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-black" /><span className="text-xs font-black">%</span></div>
+                </label>
+                <label className="w-full lg:max-w-[180px]">
+                  <span className="flex items-center gap-1 text-[10px] font-black uppercase text-slate-500">Approved maximum <HelpTooltip text="The highest seller rate Admin may approve for a custom quotation using this package." /></span>
+                  <div className="mt-1.5 flex items-center gap-2"><input aria-label={`${selected.name} maximum approved seller commission percent`} title="Set the maximum approved seller rate for this custom package." type="number" min={0} max={50} step="0.25" value={sellerMaxRate} onChange={event => setSellerMaxRate(event.target.value)} className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-black" /><span className="text-xs font-black">%</span></div>
+                </label>
+              </>}
+              <button type="button" title="Save this package-specific seller commission to the existing verified-payment commission engine." disabled={sellerSaving} onClick={() => void saveSellerContribution()} className="rounded-xl bg-[#000080] px-4 py-2.5 text-xs font-black text-white disabled:cursor-not-allowed disabled:opacity-50">{sellerSaving ? 'Saving…' : 'Save Seller Contribution'}</button>
+            </div>
+            <div className="mt-3 grid gap-2 text-[10px] sm:grid-cols-3">
+              <div className="rounded-lg bg-slate-50 p-2.5 text-slate-600"><b>Base reserve:</b> {money(company?.seller?.baseAmount || 0, company?.currency || selected.currency)}</div>
+              <div className="rounded-lg bg-slate-50 p-2.5 text-slate-600"><b>Possible performance reserve:</b> {money(company?.seller?.performanceReserveAmount || 0, company?.currency || selected.currency)}</div>
+              <div className="rounded-lg bg-slate-50 p-2.5 text-slate-600"><b>Self-generated total:</b> {money(selfGenerated?.seller?.totalReservedAmount || 0, selfGenerated?.currency || selected.currency)}</div>
+            </div>
+          </div>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div><h4 className="flex items-center gap-1.5 text-xs font-black text-slate-900">Package-specific delivery profile <HelpTooltip text="An optional override for this package only. If no override exists, the package automatically uses the global delivery weights above." /></h4><p className="mt-1 text-[10px] leading-4 text-slate-500">{selectedProfile?.profileId ? 'This package overrides the global effort weights.' : 'This package currently inherits the global effort weights.'} Prices and reward rules remain in their existing systems.</p></div><span className="rounded-full bg-white px-3 py-1 text-[10px] font-black text-[#000080]">{profileWeightTotal.toFixed(2)}% / 100%</span></div>
           <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-5">{profileRoles.map((role: any, index: number) => <label key={role.key} className="rounded-xl border border-slate-200 bg-white p-3"><span className="flex min-h-8 items-start gap-1 text-[10px] font-black text-slate-700">{role.label}<HelpTooltip text={`Set ${role.label}'s delivery share for this package only. Package weights must total 100%.`} /></span><div className="mt-2 flex items-center gap-2"><input aria-label={`${role.label} package delivery weight percent`} title={`Set ${role.label}'s delivery share for this package.`} type="number" min={0} max={100} step="0.25" value={role.weightPercent} onChange={event => setProfileRoles(current => current.map((item, roleIndex) => roleIndex === index ? { ...item, weightPercent: Number(event.target.value || 0) } : item))} className="w-full rounded-lg border border-slate-200 px-2 py-2 text-sm font-black"/><span className="text-xs font-black">%</span></div></label>)}</div>
           <div className="mt-4 flex flex-wrap justify-end gap-2">{selectedProfile?.profileId && <button type="button" title="Remove this package override so future quotations use the global delivery profile." disabled={profileSaving} onClick={() => void clearProfile()} className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-black text-slate-600 disabled:opacity-50">Use Global Profile</button>}<button type="button" title="Save these 100% delivery weights as an override for this package's future quotations." disabled={profileSaving || Math.abs(profileWeightTotal - 100) > 0.0001} onClick={() => void saveProfile()} className="rounded-xl bg-[#000080] px-4 py-2 text-xs font-black text-white disabled:opacity-50">{profileSaving ? 'Saving…' : 'Save Package Profile'}</button></div>

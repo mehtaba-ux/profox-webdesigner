@@ -236,7 +236,7 @@ async function persistRule(rule: CommissionRule): Promise<void> {
     requires_admin_rate: rule.requiresAdminApproval,
     updated_at: new Date().toISOString()
   }, { onConflict: 'product_code' });
-  if (error) console.warn('Commission rule persistence failed:', error.message);
+  if (error) throw error;
 }
 
 export const commissionService = {
@@ -295,7 +295,7 @@ export const commissionService = {
     return (this.getSettings().packageRules || DEFAULT_COMMISSION_RULES).filter(rule => rule.active);
   },
 
-  saveRule(rule: Partial<CommissionRule>, userEmail: string): CommissionRule {
+  saveRule(rule: Partial<CommissionRule>, userEmail: string, persist = true): CommissionRule {
     const settings = this.getSettings();
     const rules = [...(settings.packageRules || DEFAULT_COMMISSION_RULES)];
     const index = rules.findIndex(item => item.id === rule.id || item.packageCode === rule.packageCode);
@@ -317,7 +317,13 @@ export const commissionService = {
     };
     if (index >= 0) rules[index] = saved; else rules.push(saved);
     this.updateSettings({ packageRules: rules }, userEmail);
-    void persistRule(saved);
+    if (persist) void persistRule(saved).catch(error => console.warn('Commission rule persistence failed:', error?.message || error));
+    return saved;
+  },
+
+  async saveRuleConfirmed(rule: Partial<CommissionRule>, userEmail: string): Promise<CommissionRule> {
+    const saved = this.saveRule(rule, userEmail, false);
+    await persistRule(saved);
     return saved;
   },
 

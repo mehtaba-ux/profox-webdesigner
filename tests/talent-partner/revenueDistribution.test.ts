@@ -14,6 +14,7 @@ const metadataSql = readFileSync(resolve(root, 'supabase/migrations/202608301850
 const completionSql = readFileSync(resolve(root, 'supabase/migrations/20260831103000_revenue_distribution_profiles_profitability_reporting.sql'), 'utf8');
 const adminSource = readFileSync(resolve(root, 'src/components/admin/RevenueDistributionAdmin.tsx'), 'utf8');
 const serviceSource = readFileSync(resolve(root, 'src/lib/revenueDistributionService.ts'), 'utf8');
+const commissionServiceSource = readFileSync(resolve(root, 'src/lib/commissionService.ts'), 'utf8');
 const configurationSource = readFileSync(resolve(root, 'src/components/admin/ConfigurationCenter.tsx'), 'utf8');
 const commissionAdminSource = readFileSync(resolve(root, 'src/components/admin/AdminCommissionManager.tsx'), 'utf8');
 const quotationSource = readFileSync(resolve(root, 'src/components/admin/QuotationProfitabilityPanel.tsx'), 'utf8');
@@ -146,6 +147,17 @@ test('Commission Management reuses the editable live policy and explains every s
   assert.match(adminSource, /global delivery weight percent/i);
   assert.match(adminSource, /package delivery weight percent/i);
   assert.match(adminSource, /Save this policy as the next version/i);
+});
+
+test('Admin can edit each package seller commission through the canonical commission rule', () => {
+  assert.match(adminSource, /Package seller contribution \/ commission/i);
+  assert.match(adminSource, /Save Seller Contribution/i);
+  assert.match(adminSource, /saveRuleConfirmed/i);
+  assert.match(adminSource, /future verified payments/i);
+  assert.match(adminSource, /Approved minimum/i);
+  assert.match(adminSource, /Approved maximum/i);
+  assert.match(commissionServiceSource, /from\('commission_rules'\)\.upsert/i);
+  assert.match(commissionServiceSource, /async saveRuleConfirmed/i);
 });
 
 test('production verification tolerates bounded Cloudflare asset propagation', () => {
