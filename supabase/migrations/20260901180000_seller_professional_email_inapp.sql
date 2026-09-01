@@ -159,8 +159,8 @@ begin
         p_employee_user_id,
         v_lead.id,
         'open',
-        'Professional email conversation',
-        now(),
+        '',
+        null,
         v_lead.customer_identity_id,
         'email'
       ) returning id into v_conversation;
