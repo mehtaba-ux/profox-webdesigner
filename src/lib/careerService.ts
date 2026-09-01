@@ -85,7 +85,7 @@ export interface CareerJob {
 
 export interface CareerCatalogOption { code:string;name:string;category:string;productType:string;priceMode:string;basePrice:number;currency:string }
 export interface PublicSalesProduct extends CareerCatalogOption { shortDescription?:string;fullDescription?:string;scope?:string[];paymentTerms?:string }
-export interface PublicCommissionRule { productCode:string;productName:string;baseRatePercent:number;minRatePercent:number;maxRatePercent:number;requiresAdminRate:boolean }
+export interface PublicCommissionRule { productCode:string;productName:string;baseRatePercent:number;selfGeneratedRatePercent:number;minRatePercent:number;maxRatePercent:number;requiresAdminRate:boolean }
 export interface PublicCareerProgression {
   enabled:boolean;title?:string;description?:string;qualificationMode?:'ANY'|'ALL';periodType?:'calendar_month'|'rolling_30_days'|'quarter';minimumTotalSales?:number;minimumActiveDays?:number;salaryAmount?:number|null;salaryCurrency?:string|null;incentiveDescription?:string;managementReviewRequired?:boolean;
   thresholds?:Array<{productCode:string;productName:string;requiredSales:number;basePrice:number;currency:string;priceMode:string}>;

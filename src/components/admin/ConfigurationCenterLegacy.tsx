@@ -1604,7 +1604,7 @@ function SalesConfigSection({
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-xs">
                   {commissionRules.map((rule) => {
-                    const selfGenTotal = ((rule.baseRatePercent || 0) + (commissionSettings.selfGeneratedBonusPercent || 0)).toFixed(1);
+                    const selfGenTotal = Number(rule.selfGeneratedRatePercent ?? ((rule.baseRatePercent || 0) + (commissionSettings.selfGeneratedBonusPercent || 0))).toFixed(1);
                     const perfTotal = ((rule.baseRatePercent || 0) + (commissionSettings.performanceBonusPercent || 0)).toFixed(1);
                     return (
                       <tr key={rule.id} className="hover:bg-slate-50/70 transition-colors">

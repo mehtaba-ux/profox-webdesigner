@@ -66,6 +66,7 @@ export default function RevenueDistributionAdmin() {
   const [profileSaving, setProfileSaving] = useState(false);
   const [commissionRules, setCommissionRules] = useState<CommissionRule[]>([]);
   const [sellerRate, setSellerRate] = useState('0');
+  const [sellerSelfGeneratedRate, setSellerSelfGeneratedRate] = useState('0');
   const [sellerMinRate, setSellerMinRate] = useState('0');
   const [sellerMaxRate, setSellerMaxRate] = useState('0');
   const [sellerSaving, setSellerSaving] = useState(false);
@@ -119,9 +120,10 @@ export default function RevenueDistributionAdmin() {
   useEffect(() => {
     const baseRate = Number(selectedCommissionRule?.baseRatePercent ?? company?.seller?.baseRatePercent ?? 0);
     setSellerRate(String(baseRate));
+    setSellerSelfGeneratedRate(String(Number(selectedCommissionRule?.selfGeneratedRatePercent ?? selfGenerated?.seller?.totalRatePercent ?? baseRate)));
     setSellerMinRate(String(Number(selectedCommissionRule?.minRatePercent ?? baseRate)));
     setSellerMaxRate(String(Number(selectedCommissionRule?.maxRatePercent ?? baseRate)));
-  }, [selected?.code, selectedCommissionRule?.updatedAt, selectedCommissionRule?.baseRatePercent, selectedCommissionRule?.minRatePercent, selectedCommissionRule?.maxRatePercent]);
+  }, [selected?.code, selectedCommissionRule?.updatedAt, selectedCommissionRule?.baseRatePercent, selectedCommissionRule?.selfGeneratedRatePercent, selectedCommissionRule?.minRatePercent, selectedCommissionRule?.maxRatePercent]);
 
   const patchRole = (index: number, weightPercent: number) => {
     setConfig(current => current ? {
@@ -168,15 +170,20 @@ export default function RevenueDistributionAdmin() {
   const saveSellerContribution = async () => {
     if (!selected) return;
     const baseRate = Number(sellerRate);
+    const selfGeneratedRate = Number(sellerSelfGeneratedRate);
     const requiresApproval = selectedCommissionRule?.requiresAdminApproval ?? selected.priceMode === 'custom';
     const minRate = requiresApproval ? Number(sellerMinRate) : baseRate;
     const maxRate = requiresApproval ? Number(sellerMaxRate) : baseRate;
-    if (![baseRate, minRate, maxRate].every(value => Number.isFinite(value) && value >= 0 && value <= 50)) {
+    if (![baseRate, selfGeneratedRate, minRate, maxRate].every(value => Number.isFinite(value) && value >= 0 && value <= 50)) {
       setError('Seller commission percentages must be between 0% and 50%.');
       return;
     }
     if (minRate > maxRate || baseRate < minRate || baseRate > maxRate) {
       setError('The seller base rate must be inside the approved minimum and maximum range.');
+      return;
+    }
+    if (selfGeneratedRate < maxRate) {
+      setError('The fixed self-generated seller rate must be at least the package maximum seller rate.');
       return;
     }
     setSellerSaving(true);
@@ -189,6 +196,7 @@ export default function RevenueDistributionAdmin() {
         packageCode: selected.code,
         packageName: selected.name,
         baseRatePercent: baseRate,
+        selfGeneratedRatePercent: selfGeneratedRate,
         minRatePercent: minRate,
         maxRatePercent: maxRate,
         requiresAdminApproval: requiresApproval,
@@ -196,7 +204,7 @@ export default function RevenueDistributionAdmin() {
         sortOrder: selectedCommissionRule?.sortOrder || commissionRules.length + 1,
         effectiveFrom: selectedCommissionRule?.effectiveFrom || new Date().toISOString().slice(0, 10),
       }, adminEmail);
-      setMessage(`${selected.name} seller commission saved at ${baseRate}%${requiresApproval ? ` within the ${minRate}%–${maxRate}% approval range` : ''}. Future verified payments and financial previews now use this package rule.`);
+      setMessage(`${selected.name} seller commission saved: ${baseRate}% for company leads and ${selfGeneratedRate}% total for self-generated leads${requiresApproval ? `, with a ${minRate}%–${maxRate}% custom approval range` : ''}. Future verified payments and financial previews now use this package rule.`);
       await load();
     } catch (saveError: any) {
       setError(saveError?.message || 'The package seller commission could not be saved.');
@@ -332,15 +340,19 @@ export default function RevenueDistributionAdmin() {
           <div className="mb-5 rounded-2xl border border-indigo-200 bg-white p-4 shadow-sm">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
               <div>
-                <h4 className="flex items-center gap-1.5 text-xs font-black text-slate-900">Package seller contribution / commission <HelpTooltip text="The base percentage reserved for the salesperson from each verified customer payment for this package. This is the existing canonical commission rule used by payouts and profitability previews." /></h4>
-                <p className="mt-1 text-[10px] leading-4 text-slate-500">Edit the seller's base contribution for <b>{selected.name}</b>. It applies only to future verified payments; historical commission entries remain unchanged.</p>
+                <h4 className="flex items-center gap-1.5 text-xs font-black text-slate-900">Package seller contribution / commission <HelpTooltip text="The fixed company-lead and self-generated-lead seller percentages for this package. This is the existing canonical commission rule used by payouts and profitability previews." /></h4>
+                <p className="mt-1 text-[10px] leading-4 text-slate-500">Edit the fixed seller contribution for company leads and self-generated leads for <b>{selected.name}</b>. It applies only to future verified payments; historical commission entries remain unchanged.</p>
               </div>
               <span className={`w-fit rounded-full px-3 py-1 text-[10px] font-black ${selectedCommissionRule ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>{selectedCommissionRule ? 'Active package rule' : 'No rule yet · currently 0%'}</span>
             </div>
             <div className="mt-4 flex flex-col gap-3 lg:flex-row lg:items-end">
               <label className="w-full lg:max-w-[220px]">
-                <span className="flex items-center gap-1 text-[10px] font-black uppercase text-slate-500">Base seller commission <HelpTooltip text="The percentage of every verified payment that becomes the seller's base commission before any eligible self-generated or performance bonus." /></span>
+                <span className="flex items-center gap-1 text-[10px] font-black uppercase text-slate-500">Company lead · fixed seller rate <HelpTooltip text="The seller's fixed percentage of every verified payment when the lead was assigned or generated by ProFox." /></span>
                 <div className="mt-1.5 flex items-center gap-2"><input aria-label={`${selected.name} seller base commission percent`} title="Set this package's base seller commission percentage." type="number" min={0} max={50} step="0.25" value={sellerRate} onChange={event => setSellerRate(event.target.value)} className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-black" /><span className="text-xs font-black">%</span></div>
+              </label>
+              <label className="w-full lg:max-w-[240px]">
+                <span className="flex items-center gap-1 text-[10px] font-black uppercase text-slate-500">Self-generated lead · fixed total <HelpTooltip text="The seller's total commission percentage when the same seller truthfully generated and closed the lead. This is the final self-generated base total before any performance bonus, not an additional percentage." /></span>
+                <div className="mt-1.5 flex items-center gap-2"><input aria-label={`${selected.name} self-generated seller total commission percent`} title="Set this package's fixed total seller commission for a self-generated lead." type="number" min={0} max={50} step="0.25" value={sellerSelfGeneratedRate} onChange={event => setSellerSelfGeneratedRate(event.target.value)} className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-black" /><span className="text-xs font-black">%</span></div>
               </label>
               {(selectedCommissionRule?.requiresAdminApproval ?? selected.priceMode === 'custom') && <>
                 <label className="w-full lg:max-w-[180px]">

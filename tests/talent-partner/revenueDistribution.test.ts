@@ -12,6 +12,7 @@ const mappingSql = readFileSync(resolve(root, 'supabase/migrations/2026083018250
 const deliverySql = readFileSync(resolve(root, 'supabase/migrations/20260830184000_delivery_worker_revenue_distribution_integration.sql'), 'utf8');
 const metadataSql = readFileSync(resolve(root, 'supabase/migrations/20260830185000_content_assignment_revenue_budget_metadata_alignment.sql'), 'utf8');
 const completionSql = readFileSync(resolve(root, 'supabase/migrations/20260831103000_revenue_distribution_profiles_profitability_reporting.sql'), 'utf8');
+const sellerRateSql = readFileSync(resolve(root, 'supabase/migrations/20260901053838_package_self_generated_seller_rate.sql'), 'utf8');
 const adminSource = readFileSync(resolve(root, 'src/components/admin/RevenueDistributionAdmin.tsx'), 'utf8');
 const serviceSource = readFileSync(resolve(root, 'src/lib/revenueDistributionService.ts'), 'utf8');
 const commissionServiceSource = readFileSync(resolve(root, 'src/lib/commissionService.ts'), 'utf8');
@@ -158,6 +159,14 @@ test('Admin can edit each package seller commission through the canonical commis
   assert.match(adminSource, /Approved maximum/i);
   assert.match(commissionServiceSource, /from\('commission_rules'\)\.upsert/i);
   assert.match(commissionServiceSource, /async saveRuleConfirmed/i);
+  assert.match(adminSource, /Company lead · fixed seller rate/i);
+  assert.match(adminSource, /Self-generated lead · fixed total/i);
+  assert.match(adminSource, /selfGeneratedRatePercent: selfGeneratedRate/i);
+  assert.match(commissionServiceSource, /self_generated_rate_percent: rule\.selfGeneratedRatePercent/i);
+  assert.match(sellerRateSql, /add column if not exists self_generated_rate_percent/i);
+  assert.match(sellerRateSql, /v_self_total:=greatest\(v_base,coalesce\(v_rule\.self_generated_rate_percent/i);
+  assert.match(sellerRateSql, /'selfGeneratedRate',v_self_total/i);
+  assert.match(sellerRateSql, /existing commission entries remain immutable snapshots/i);
 });
 
 test('production verification tolerates bounded Cloudflare asset propagation', () => {

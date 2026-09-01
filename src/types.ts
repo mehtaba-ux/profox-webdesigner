@@ -1182,6 +1182,7 @@ export interface CommissionRule {
   packageCode: string;
   packageName: string;
   baseRatePercent: number;
+  selfGeneratedRatePercent: number;
   minRatePercent?: number;
   maxRatePercent?: number;
   requiresAdminApproval: boolean;
