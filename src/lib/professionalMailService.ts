@@ -29,6 +29,14 @@ export interface ProfessionalMailSendResult {
   recipient: string;
 }
 
+export interface ProfessionalMailInboxSyncResult {
+  scanned: number;
+  matched: number;
+  synced: number;
+  skippedExisting: number;
+  skippedUnmatched: number;
+}
+
 const CONNECTION_STATES = new Set<ProfessionalMailSendConnectionStatus>([
   'disconnected',
   'connected',
@@ -78,6 +86,22 @@ export const professionalMailService = {
       throw new Error('Professional Zoho Mail authorization returned an invalid response.');
     }
     return { authorizeUrl, callbackUrl, workEmail };
+  },
+
+  async syncInbox(): Promise<ProfessionalMailInboxSyncResult> {
+    const { data, error } = await supabase.functions.invoke('zoho-mail-admin', {
+      body: { action: 'sync_inbox' },
+    });
+    if (error) throw new Error(messageFromError(error, 'Professional inbox could not be synchronized.'));
+    if (data?.error) throw new Error(String(data.error));
+
+    return {
+      scanned: Number(data?.scanned || 0),
+      matched: Number(data?.matched || 0),
+      synced: Number(data?.synced || 0),
+      skippedExisting: Number(data?.skippedExisting || 0),
+      skippedUnmatched: Number(data?.skippedUnmatched || 0),
+    };
   },
 
   async sendLeadEmail(input: { leadId: string; subject: string; body: string; idempotencyKey: string }): Promise<ProfessionalMailSendResult> {
