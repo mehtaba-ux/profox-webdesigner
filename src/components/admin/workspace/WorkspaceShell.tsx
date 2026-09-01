@@ -1,4 +1,4 @@
-import React, { ReactNode, useMemo, useState } from 'react';
+import React, { ReactNode, useEffect, useMemo, useState } from 'react';
 import {
   ChevronDown,
   Grid3X3,
@@ -16,6 +16,7 @@ import {
   WorkspaceAppId
 } from '../../../lib/workspaceApps';
 import { departmentDefinitionForRole } from '../../../lib/organization';
+import { professionalMailService } from '../../../lib/professionalMailService';
 import { ROLE_LABELS } from '../../../types';
 import Logo from '../../Logo';
 import AppAvatar from './AppAvatar';
@@ -66,6 +67,23 @@ export default function WorkspaceShell({
   const { user, profile, role, status, logout } = useAuth();
   const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const [professionalEmail, setProfessionalEmail] = useState('');
+
+  useEffect(() => {
+    let active = true;
+    if (!user?.id) {
+      setProfessionalEmail('');
+      return () => { active = false; };
+    }
+    professionalMailService.getMyStatus()
+      .then(mail => {
+        if (active) setProfessionalEmail(mail.mailboxStatus === 'active' ? mail.workEmail : '');
+      })
+      .catch(() => {
+        if (active) setProfessionalEmail('');
+      });
+    return () => { active = false; };
+  }, [user?.id]);
 
   const visibleApps = useMemo(
     () => getVisibleWorkspaceApps(role, status),
@@ -73,6 +91,7 @@ export default function WorkspaceShell({
   );
   const primaryDepartment = departmentDefinitionForRole(role);
   const profilePath = SELLER_ROLES.has(String(role || '')) ? '/admin/seller-profile' : '/admin/profile';
+  const displayEmail = professionalEmail || user?.email || '';
 
   const handleLogout = async () => {
     await logout();
@@ -199,9 +218,9 @@ export default function WorkspaceShell({
 
             <div className="relative">
               <button type="button" onClick={() => setProfileMenuOpen(open => !open)} className="flex items-center gap-2 rounded-xl p-1.5 transition hover:bg-white" aria-expanded={profileMenuOpen}>
-                <AppAvatar name={profile?.fullName || user?.email || 'ProFox user'} src={profile?.avatarUrl} size="sm" />
+                <AppAvatar name={profile?.fullName || displayEmail || 'ProFox user'} src={profile?.avatarUrl} size="sm" />
                 <div className="hidden max-w-[160px] text-left md:block">
-                  <div className="truncate text-[11px] font-extrabold text-slate-800">{profile?.fullName || user?.email}</div>
+                  <div className="truncate text-[11px] font-extrabold text-slate-800">{profile?.fullName || displayEmail}</div>
                   <div className="truncate text-[9px] font-semibold text-slate-400">{ROLE_LABELS[role || 'pending'] || role} · {primaryDepartment.shortLabel}</div>
                 </div>
                 <ChevronDown className="hidden h-3.5 w-3.5 text-slate-400 md:block" />
@@ -212,8 +231,9 @@ export default function WorkspaceShell({
                   <button type="button" className="fixed inset-0 z-40 cursor-default" onClick={() => setProfileMenuOpen(false)} aria-label="Close profile menu" />
                   <div className="absolute right-0 top-[calc(100%+8px)] z-50 w-60 overflow-hidden rounded-2xl border border-slate-200 bg-white p-2 shadow-xl">
                     <div className="border-b border-slate-100 px-3 py-2.5">
-                      <div className="truncate text-xs font-extrabold">{profile?.fullName || user?.email}</div>
-                      <div className="mt-0.5 truncate text-[10px] text-slate-400">{user?.email}</div>
+                      <div className="truncate text-xs font-extrabold">{profile?.fullName || displayEmail}</div>
+                      <div className="mt-0.5 truncate text-[10px] text-slate-400">{displayEmail}</div>
+                      {professionalEmail && <div className="mt-1 text-[8px] font-bold uppercase tracking-wide text-emerald-600">Professional email</div>}
                     </div>
                     <button type="button" onClick={() => navigate(profilePath)} className="mt-1 flex min-h-10 w-full items-center gap-2 rounded-xl px-3 text-xs font-bold text-slate-600 hover:bg-slate-50 hover:text-[#000080]"><UserRound className="h-4 w-4" />My profile</button>
                     <button type="button" onClick={() => void handleLogout()} className="flex min-h-10 w-full items-center gap-2 rounded-xl px-3 text-xs font-bold text-slate-600 hover:bg-red-50 hover:text-red-600"><LogOut className="h-4 w-4" />Sign out</button>
