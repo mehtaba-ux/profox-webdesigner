@@ -93,16 +93,32 @@ async function verifyDeployedApplication() {
 
   const preloadPaths = [...homeHtml.matchAll(/<link[^>]+rel=["']modulepreload["'][^>]+href=["']([^"']+\.js)["']/gi)]
     .map((match) => match[1]);
-  const deployedBundles = await Promise.all([...new Set([...scriptPaths, ...preloadPaths])].map(async (assetPath) => {
-    const assetUrl = new URL(assetPath, publicAppUrl);
-    assetUrl.searchParams.set('deployment', cacheBuster);
-    const source = await (await fetchChecked(assetUrl, `Deployed bundle ${assetPath}`)).text();
-    assertNoPrivilegedSupabaseJwt(source, `Deployed bundle ${assetPath}`);
-    return source;
-  }));
-  if (!deployedBundles.some(source => source.includes(publishableKey))) {
-    throw new Error('The deployed frontend does not contain the validated Supabase publishable key.');
+  const assetPaths = [...new Set([...scriptPaths, ...preloadPaths])];
+  let deployedBundles = [];
+  let bundleVerificationError;
+  for (let attempt = 1; attempt <= 5; attempt += 1) {
+    try {
+      deployedBundles = await Promise.all(assetPaths.map(async (assetPath) => {
+        const assetUrl = new URL(assetPath, publicAppUrl);
+        assetUrl.searchParams.set('deployment', `${cacheBuster}-${attempt}`);
+        const source = await (await fetchChecked(assetUrl, `Deployed bundle ${assetPath}`)).text();
+        assertNoPrivilegedSupabaseJwt(source, `Deployed bundle ${assetPath}`);
+        return source;
+      }));
+      if (deployedBundles.some(source => source.includes(publishableKey))) {
+        bundleVerificationError = undefined;
+        break;
+      }
+      bundleVerificationError = new Error('The deployed frontend does not contain the validated Supabase publishable key.');
+    } catch (error) {
+      bundleVerificationError = error;
+    }
+    if (attempt < 5) {
+      console.warn(`Deployed assets are still propagating (attempt ${attempt}/5); retrying in 3 seconds.`);
+      await new Promise(resolve => setTimeout(resolve, 3000));
+    }
   }
+  if (bundleVerificationError) throw bundleVerificationError;
 
   await Promise.all([
     fetchChecked(`${publicAppUrl}/pricing?deployment=${cacheBuster}`, 'Pricing route'),

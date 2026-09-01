@@ -17,6 +17,7 @@ const serviceSource = readFileSync(resolve(root, 'src/lib/revenueDistributionSer
 const configurationSource = readFileSync(resolve(root, 'src/components/admin/ConfigurationCenter.tsx'), 'utf8');
 const commissionAdminSource = readFileSync(resolve(root, 'src/components/admin/AdminCommissionManager.tsx'), 'utf8');
 const quotationSource = readFileSync(resolve(root, 'src/components/admin/QuotationProfitabilityPanel.tsx'), 'utf8');
+const publicContentVerifierSource = readFileSync(resolve(root, 'scripts/verify-public-content.mjs'), 'utf8');
 
 test('revenue distribution keeps Sales Catalog and existing engines canonical', () => {
   assert.match(baseSql, /Package prices remain canonical in Sales Catalog/i);
@@ -145,6 +146,12 @@ test('Commission Management reuses the editable live policy and explains every s
   assert.match(adminSource, /global delivery weight percent/i);
   assert.match(adminSource, /package delivery weight percent/i);
   assert.match(adminSource, /Save this policy as the next version/i);
+});
+
+test('production verification tolerates bounded Cloudflare asset propagation', () => {
+  assert.match(publicContentVerifierSource, /attempt <= 5/i);
+  assert.match(publicContentVerifierSource, /assets are still propagating/i);
+  assert.match(publicContentVerifierSource, /setTimeout\(resolve, 3000\)/i);
 });
 
 test('package profiles change weights without duplicating catalog prices or reward rules', () => {
