@@ -49,6 +49,13 @@ export interface ClientChatAccessOption {
   expiresAt?: string | null;
 }
 
+export interface InternalChatRealtimeEvent {
+  table: 'internal_chat_messages' | 'internal_chat_threads';
+  eventType: 'INSERT' | 'UPDATE' | 'DELETE' | string;
+  record: Record<string, any>;
+  oldRecord: Record<string, any>;
+}
+
 function mapContact(row: any): InternalChatContact {
   return {
     projectId: row.project_id,
@@ -125,7 +132,7 @@ export const internalChatService = {
     return { data: error ? null : (data as string), error };
   },
 
-  async getMessages(threadId: string, before?: string | null, limit = 100): Promise<{ data: InternalChatMessage[]; error: any }> {
+  async getMessages(threadId: string, before?: string | null, limit = 50): Promise<{ data: InternalChatMessage[]; error: any }> {
     const { data, error } = await supabase.rpc('internal_chat_get_messages', {
       p_thread_id: threadId,
       p_before: before || null,
@@ -160,5 +167,36 @@ export const internalChatService = {
       p_expires_at: expiresAt || null
     });
     return { data: error ? null : (data as string), error };
+  },
+
+  subscribeToProjectChat(onEvent: (event: InternalChatRealtimeEvent) => void): () => void {
+    const channelName = `project-chat-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const channel = supabase
+      .channel(channelName)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'internal_chat_messages' },
+        payload => onEvent({
+          table: 'internal_chat_messages',
+          eventType: payload.eventType,
+          record: (payload.new || {}) as Record<string, any>,
+          oldRecord: (payload.old || {}) as Record<string, any>
+        })
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'internal_chat_threads' },
+        payload => onEvent({
+          table: 'internal_chat_threads',
+          eventType: payload.eventType,
+          record: (payload.new || {}) as Record<string, any>,
+          oldRecord: (payload.old || {}) as Record<string, any>
+        })
+      )
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
   }
 };
