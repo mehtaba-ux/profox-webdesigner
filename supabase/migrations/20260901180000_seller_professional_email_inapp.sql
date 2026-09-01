@@ -150,7 +150,7 @@ begin
         customer_identity_id,
         conversation_kind
       ) values (
-        encode(digest(gen_random_uuid()::text||clock_timestamp()::text||random()::text,'sha256'),'hex'),
+        encode(extensions.digest(gen_random_uuid()::text||clock_timestamp()::text||random()::text,'sha256'),'hex'),
         v_customer_name,
         v_email,
         left(coalesce(v_lead.phone,''),40),
