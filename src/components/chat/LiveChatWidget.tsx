@@ -123,7 +123,7 @@ export default function LiveChatWidget() {
         intent,
       });
 
-      if (result.verificationRequired) {
+      if ('challengeId' in result) {
         setChallenge(result);
         setVerificationCode('');
         setStep('verify');
