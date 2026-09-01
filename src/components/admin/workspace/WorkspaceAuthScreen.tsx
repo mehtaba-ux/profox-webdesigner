@@ -89,7 +89,7 @@ export default function WorkspaceAuthScreen({
               )}
 
               <div>
-                <label htmlFor="workspace-email" className="mb-2 block text-[11px] font-extrabold text-[#344054]">{authMode === 'login' ? 'Account email' : 'Email address'}</label>
+                <label htmlFor="workspace-email" className="mb-2 block text-[11px] font-extrabold text-[#344054]">{authMode === 'login' ? 'Account email address' : 'Email address'}</label>
                 <div className="relative">
                   <Mail className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                   <input id="workspace-email" type="email" required autoComplete="email" value={email} onChange={event => onEmailChange(event.target.value)} placeholder="your.account@email.com" className="h-12 w-full rounded-xl border border-[#dde4ee] bg-white pl-11 pr-4 text-sm text-slate-800 outline-none transition focus:border-[#000080]/40 focus:ring-4 focus:ring-[#000080]/5" />
