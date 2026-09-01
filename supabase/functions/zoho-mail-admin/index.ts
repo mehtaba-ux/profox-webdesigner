@@ -8,6 +8,7 @@ const base64url=(bytes:Uint8Array)=>btoa(String.fromCharCode(...bytes)).replaceA
 async function sha256(value:string){const digest=await crypto.subtle.digest("SHA-256",enc.encode(value));return [...new Uint8Array(digest)].map(x=>x.toString(16).padStart(2,"0")).join("");}
 const accountsHost=(dc:string)=>({com:"https://accounts.zoho.com",in:"https://accounts.zoho.in",eu:"https://accounts.zoho.eu","com.au":"https://accounts.zoho.com.au",jp:"https://accounts.zoho.jp",ca:"https://accounts.zohocloud.ca",sa:"https://accounts.zoho.sa"} as Record<string,string>)[dc]||"";
 const mailHost=(dc:string)=>({com:"https://mail.zoho.com",in:"https://mail.zoho.in",eu:"https://mail.zoho.eu","com.au":"https://mail.zoho.com.au",jp:"https://mail.zoho.jp",ca:"https://mail.zohocloud.ca",sa:"https://mail.zoho.sa"} as Record<string,string>)[dc]||"";
+const USER_MAIL_SCOPES=["ZohoMail.accounts.READ","ZohoMail.messages.CREATE","ZohoMail.messages.READ","ZohoMail.folders.READ"];
 function escapeHtml(value:string){return value.replace(/[&<>'"]/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;","\"":"&quot;"}[ch]||ch));}
 function scriptSafeJson(value:unknown){return JSON.stringify(value).replace(/</g,"\\u003c").replace(/>/g,"\\u003e").replace(/&/g,"\\u0026").replace(/\u2028/g,"\\u2028").replace(/\u2029/g,"\\u2029");}
 function html(title:string,message:string,success=false,purpose:"organization"|"user_send"="organization"){
@@ -27,6 +28,10 @@ async function tokenFromRefresh(base:string,input:{clientId:string;clientSecret:
  return {response,payload};
 }
 function providerMessageId(payload:any){return String(payload?.data?.messageId||payload?.data?.messageID||payload?.data?.id||payload?.messageId||"");}
+function payloadRows(payload:any):any[]{return Array.isArray(payload?.data)?payload.data:Array.isArray(payload)?payload:[];}
+function extractEmails(value:unknown):string[]{const matches=String(value||"").match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi)||[];return [...new Set(matches.map(item=>item.toLowerCase()))];}
+function stripHtml(value:string){return value.replace(/<style[\s\S]*?<\/style>/gi," ").replace(/<script[\s\S]*?<\/script>/gi," ").replace(/<br\s*\/?>/gi,"\n").replace(/<\/p>/gi,"\n").replace(/<[^>]+>/g," ").replace(/&nbsp;/gi," ").replace(/&amp;/gi,"&").replace(/&lt;/gi,"<").replace(/&gt;/gi,">").replace(/&quot;/gi,'"').replace(/&#39;/gi,"'").replace(/\r/g,"").replace(/[ \t]+\n/g,"\n").replace(/\n{3,}/g,"\n\n").replace(/[ \t]{2,}/g," ").trim().slice(0,50000);}
+function zohoDate(value:unknown){const text=String(value||"").trim();const numberValue=Number(text);if(text&&Number.isFinite(numberValue)){const ms=numberValue>100000000000?numberValue:numberValue*1000;const date=new Date(ms);if(!Number.isNaN(date.getTime()))return date.toISOString();}const parsed=new Date(text);return Number.isNaN(parsed.getTime())?new Date().toISOString():parsed.toISOString();}
 
 Deno.serve(async(req:Request)=>{
  if(req.method==="OPTIONS")return new Response("ok",{headers:corsHeaders});
@@ -60,10 +65,10 @@ Deno.serve(async(req:Request)=>{
 
    if(action==="start_user_send"){
      const {data:eligible,error:eligibleError}=await service.rpc("service_professional_mailbox_eligible",{p_user_id:userId});
-     if(eligibleError||eligible!==true)return json({error:"Professional email sending is available only to eligible active Sales and Management accounts."},403);
+     if(eligibleError||eligible!==true)return json({error:"Professional email is available only to eligible active Sales and Management accounts."},403);
      const {data:account}=await service.from("staff_professional_accounts").select("work_email,mail_provider,mailbox_status,provider_account_id").eq("user_id",userId).maybeSingle();
      const workEmail=String(account?.work_email||"").trim().toLowerCase();const providerAccountId=String(account?.provider_account_id||"").trim();
-     if(!account||String(account.mailbox_status)!=="active"||String(account.mail_provider)!=="zoho"||!workEmail||!providerAccountId)return json({error:"Your active Zoho professional mailbox is required before connecting send permission."},409);
+     if(!account||String(account.mailbox_status)!=="active"||String(account.mail_provider)!=="zoho"||!workEmail||!providerAccountId)return json({error:"Your active Zoho professional mailbox is required before connecting professional email."},409);
      const {data:provider,error:providerError}=await service.rpc("service_get_zoho_provider_credentials");if(providerError)return json({error:"Zoho provider credentials could not be loaded."},500);
      const {data:orgConnection}=await service.from("zoho_organization_mail_connection").select("status,data_center").eq("singleton_key","primary").maybeSingle();
      const clientId=String(provider?.clientId||"");const clientSecret=String(provider?.clientSecret||"");const dc=String(orgConnection?.data_center||"").trim().toLowerCase();
@@ -72,8 +77,77 @@ Deno.serve(async(req:Request)=>{
      const {error:stateError}=await service.from("zoho_user_mail_send_oauth_states").insert({state_hash:hash,user_id:userId,work_email:workEmail,provider_account_id:providerAccountId,data_center:dc,redirect_uri:callbackUrl,expires_at:new Date(Date.now()+10*60*1000).toISOString()});
      if(stateError)return json({error:"Professional email authorization could not be initialized."},500);
      await service.from("zoho_user_mail_send_oauth_states").delete().lt("expires_at",new Date(Date.now()-24*60*60*1000).toISOString());
-     const authorize=new URL(`${accountsHost(dc)}/oauth/v2/auth`);authorize.searchParams.set("scope","ZohoMail.accounts.READ,ZohoMail.messages.CREATE");authorize.searchParams.set("client_id",clientId);authorize.searchParams.set("response_type","code");authorize.searchParams.set("access_type","offline");authorize.searchParams.set("prompt","consent");authorize.searchParams.set("redirect_uri",callbackUrl);authorize.searchParams.set("state",state);
+     const authorize=new URL(`${accountsHost(dc)}/oauth/v2/auth`);authorize.searchParams.set("scope",USER_MAIL_SCOPES.join(","));authorize.searchParams.set("client_id",clientId);authorize.searchParams.set("response_type","code");authorize.searchParams.set("access_type","offline");authorize.searchParams.set("prompt","consent");authorize.searchParams.set("redirect_uri",callbackUrl);authorize.searchParams.set("state",state);
      return json({authorizeUrl:authorize.toString(),callbackUrl,workEmail});
+   }
+
+   if(action==="sync_inbox"){
+     const {data:eligible,error:eligibleError}=await service.rpc("service_professional_mailbox_eligible",{p_user_id:userId});
+     if(eligibleError||eligible!==true)return json({error:"Professional email is available only to eligible active Sales and Management accounts."},403);
+     const {data:connection,error:connectionError}=await service.from("zoho_user_mail_send_connections").select("user_id,work_email,provider_account_id,data_center,scopes,status").eq("user_id",userId).maybeSingle();
+     if(connectionError||!connection||String(connection.status)!=="connected")return json({error:"Connect your professional Zoho Mail permission before synchronizing customer replies.",reconnectRequired:true},409);
+     const scopes=new Set((Array.isArray(connection.scopes)?connection.scopes:[]).map((scope:unknown)=>String(scope)));
+     const missingScopes=USER_MAIL_SCOPES.filter(scope=>!scopes.has(scope));
+     if(missingScopes.length){return json({error:"Reconnect professional email once to enable secure customer reply synchronization.",reconnectRequired:true},409);}
+
+     const {data:runtime,error:runtimeError}=await service.rpc("service_get_zoho_user_mail_send_credentials",{p_user_id:userId});
+     if(runtimeError)return json({error:"Professional Zoho Mail authorization is unavailable.",reconnectRequired:true},409);
+     const dc=String(runtime?.dataCenter||"");const accountBase=accountsHost(dc);const mailBase=mailHost(dc);const clientId=String(runtime?.clientId||"");const clientSecret=String(runtime?.clientSecret||"");const refreshToken=String(runtime?.refreshToken||"");const accountId=String(runtime?.accountId||"");const workEmail=String(runtime?.workEmail||"").trim().toLowerCase();
+     if(!accountBase||!mailBase||!clientId||!clientSecret||!refreshToken||!accountId||!workEmail||workEmail!==String(connection.work_email||"").trim().toLowerCase()||accountId!==String(connection.provider_account_id||""))return json({error:"Professional Zoho Mail runtime identity is incomplete.",reconnectRequired:true},409);
+
+     const refreshed=await tokenFromRefresh(accountBase,{clientId,clientSecret,refreshToken});
+     if(!refreshed.response.ok||!refreshed.payload?.access_token){
+       const detail=safeDetail(refreshed.payload,"Zoho Mail authorization could not be refreshed.");const reconnect=refreshed.response.status===401||/invalid[_ ]?grant|invalid[_ ]?token|unauthor/i.test(detail);
+       await service.from("zoho_user_mail_send_connections").update({status:reconnect?"reconnect_required":"error",last_attempt_at:new Date().toISOString(),last_error:detail,updated_at:new Date().toISOString()}).eq("user_id",userId);
+       return json({error:reconnect?"Reconnect your professional Zoho Mail permission, then synchronize again.":detail,reconnectRequired:reconnect},reconnect?401:502);
+     }
+     const accessToken=String(refreshed.payload.access_token);const zohoHeaders={Authorization:`Zoho-oauthtoken ${accessToken}`,Accept:"application/json"};
+
+     const foldersResponse=await fetch(`${mailBase}/api/accounts/${encodeURIComponent(accountId)}/folders`,{headers:zohoHeaders});
+     const foldersPayload:any=await foldersResponse.json().catch(()=>({}));
+     if(!foldersResponse.ok){const detail=safeDetail(foldersPayload,`Zoho Mail folder lookup failed (${foldersResponse.status}).`);await service.from("zoho_user_mail_send_connections").update({last_attempt_at:new Date().toISOString(),last_error:detail,updated_at:new Date().toISOString()}).eq("user_id",userId);return json({error:detail},502);}
+     const inboxFolder=payloadRows(foldersPayload).find((folder:any)=>String(folder?.folderType||"").toLowerCase()==="inbox")||payloadRows(foldersPayload).find((folder:any)=>String(folder?.folderName||"").toLowerCase()==="inbox");
+     const inboxFolderId=String(inboxFolder?.folderId||"");
+     if(!inboxFolderId)return json({error:"Zoho Mail Inbox folder could not be identified safely."},502);
+
+     const [conversationCustomers,leadCustomers]=await Promise.all([
+       service.from("sales_chat_conversations").select("customer_email").eq("current_sales_id",userId).neq("status","resolved"),
+       service.from("crm_leads").select("email").eq("salesperson_id",userId).is("archived_at",null),
+     ]);
+     if(conversationCustomers.error||leadCustomers.error)return json({error:"Assigned customer identities could not be loaded safely."},500);
+     const allowedCustomers=new Set<string>();
+     for(const row of conversationCustomers.data||[])for(const email of extractEmails(row.customer_email))allowedCustomers.add(email);
+     for(const row of leadCustomers.data||[])for(const email of extractEmails(row.email))allowedCustomers.add(email);
+     if(!allowedCustomers.size){await service.from("zoho_user_mail_send_connections").update({last_attempt_at:new Date().toISOString(),last_verified_at:new Date().toISOString(),last_error:null,updated_at:new Date().toISOString()}).eq("user_id",userId);return json({scanned:0,matched:0,synced:0,skippedExisting:0,skippedUnmatched:0});}
+
+     const messageUrl=new URL(`${mailBase}/api/accounts/${encodeURIComponent(accountId)}/messages/view`);messageUrl.searchParams.set("folderId",inboxFolderId);messageUrl.searchParams.set("start","1");messageUrl.searchParams.set("limit","100");messageUrl.searchParams.set("sortBy","date");messageUrl.searchParams.set("sortorder","false");messageUrl.searchParams.set("includeto","true");messageUrl.searchParams.set("includesent","false");
+     const listResponse=await fetch(messageUrl,{headers:zohoHeaders});const listPayload:any=await listResponse.json().catch(()=>({}));
+     if(!listResponse.ok){const detail=safeDetail(listPayload,`Zoho Mail Inbox lookup failed (${listResponse.status}).`);await service.from("zoho_user_mail_send_connections").update({last_attempt_at:new Date().toISOString(),last_error:detail,updated_at:new Date().toISOString()}).eq("user_id",userId);return json({error:detail},502);}
+     const messages=payloadRows(listPayload);const candidates=messages.filter((item:any)=>{
+       const from=extractEmails(item?.fromAddress)[0]||"";const to=extractEmails(item?.toAddress);return Boolean(String(item?.messageId||""))&&allowedCustomers.has(from)&&from!==workEmail&&to.includes(workEmail);
+     });
+     const candidateIds=[...new Set(candidates.map((item:any)=>String(item.messageId)).filter(Boolean))];
+     const existingIds=new Set<string>();
+     if(candidateIds.length){const existing=await service.from("client_email_messages").select("provider_message_id").eq("provider","zoho").in("provider_message_id",candidateIds);if(existing.error)return json({error:"Existing email synchronization state could not be checked safely."},500);for(const row of existing.data||[])existingIds.add(String(row.provider_message_id));}
+
+     let matched=0,synced=0,skippedExisting=0,skippedUnmatched=messages.length-candidates.length;
+     for(const item of candidates){
+       const messageId=String(item?.messageId||"");if(existingIds.has(messageId)){skippedExisting++;continue;}
+       const fromEmail=extractEmails(item?.fromAddress)[0]||"";const threadId=String(item?.threadId||"");
+       const {data:resolution,error:resolutionError}=await service.rpc("service_resolve_client_email_conversation",{p_provider_thread_id:threadId||null,p_customer_email:fromEmail,p_employee_user_id:userId});
+       if(resolutionError||resolution?.assignmentRequired||!resolution?.conversationId){skippedUnmatched++;continue;}
+       const conversationId=String(resolution.conversationId);const {data:conversation}=await service.from("sales_chat_conversations").select("id,current_sales_id,customer_email").eq("id",conversationId).eq("current_sales_id",userId).maybeSingle();
+       if(!conversation||String(conversation.customer_email||"").trim().toLowerCase()!==fromEmail){skippedUnmatched++;continue;}
+       matched++;
+       const folderId=String(item?.folderId||inboxFolderId);const contentResponse=await fetch(`${mailBase}/api/accounts/${encodeURIComponent(accountId)}/folders/${encodeURIComponent(folderId)}/messages/${encodeURIComponent(messageId)}/content`,{headers:zohoHeaders});
+       const contentPayload:any=await contentResponse.json().catch(()=>({}));if(!contentResponse.ok){continue;}
+       const bodyHtml=String(contentPayload?.data?.content||contentPayload?.content||"").slice(0,100000);const bodyText=stripHtml(bodyHtml)||String(item?.summary||"").slice(0,50000);
+       const toEmails=extractEmails(item?.toAddress);const ccEmails=extractEmails(item?.ccAddress);const subject=String(item?.subject||"").slice(0,500);
+       const {error:upsertError}=await service.rpc("service_upsert_client_email_message",{p_conversation_id:conversationId,p_provider:"zoho",p_provider_message_id:messageId,p_provider_thread_id:threadId||null,p_direction:"inbound",p_employee_user_id:userId,p_from_email:fromEmail,p_to_emails:toEmails,p_cc_emails:ccEmails,p_bcc_emails:[],p_subject:subject,p_body_text:bodyText,p_body_html:bodyHtml,p_attachments:[],p_delivery_status:"received",p_sent_or_received_at:zohoDate(item?.receivedTime||item?.sentDateInGMT||item?.receivedDate)});
+       if(!upsertError){synced++;existingIds.add(messageId);}
+     }
+     const now=new Date().toISOString();await service.from("zoho_user_mail_send_connections").update({status:"connected",last_attempt_at:now,last_verified_at:now,last_error:null,updated_at:now}).eq("user_id",userId);
+     return json({scanned:messages.length,matched,synced,skippedExisting,skippedUnmatched});
    }
 
    if(action==="send"){
@@ -132,18 +206,18 @@ Deno.serve(async(req:Request)=>{
  if(!userState)return html("Authorization expired","This Zoho authorization attempt is invalid, expired, or has already been used. Start again from ProFox.",false,"user_send");
  const {data:consumedUserState,error:consumeUserError}=await service.from("zoho_user_mail_send_oauth_states").update({consumed_at:nowIso}).eq("id",userState.id).is("consumed_at",null).select("id").maybeSingle();
  if(consumeUserError||!consumedUserState)return html("Authorization expired","This professional email authorization has already been consumed. Start again from ProFox.",false,"user_send");
- if(oauthError||!code)return html("Zoho permission was not granted",oauthError?`Zoho returned: ${oauthError}. ProFox cannot send from this professional mailbox until permission is connected.`:"Zoho did not return an authorization code.",false,"user_send");
+ if(oauthError||!code)return html("Zoho permission was not granted",oauthError?`Zoho returned: ${oauthError}. ProFox cannot use this professional mailbox until permission is connected.`:"Zoho did not return an authorization code.",false,"user_send");
  const dc=String(userState.data_center||"");const accountBase=accountsHost(dc);const mailBase=mailHost(dc);if(!accountBase||!mailBase)return html("Authorization failed","The selected Zoho data center is not supported.",false,"user_send");
  const {data:provider}=await service.rpc("service_get_zoho_provider_credentials");const clientId=String(provider?.clientId||"");const clientSecret=String(provider?.clientSecret||"");if(!clientId||!clientSecret)return html("Authorization failed","Zoho OAuth credentials are no longer configured in ProFox.",false,"user_send");
  try{
    const token=await tokenFromCode(accountBase,{clientId,clientSecret,redirectUri:String(userState.redirect_uri||callbackUrl),code});
-   if(!token.response.ok||!token.payload?.access_token||!token.payload?.refresh_token){const detail=safeDetail(token.payload,"Zoho did not issue the required send authorization.");return html("Professional email could not be connected",detail,false,"user_send");}
+   if(!token.response.ok||!token.payload?.access_token||!token.payload?.refresh_token){const detail=safeDetail(token.payload,"Zoho did not issue the required professional email authorization.");return html("Professional email could not be connected",detail,false,"user_send");}
    const verifyResponse=await fetch(`${mailBase}/api/accounts`,{headers:{Authorization:`Zoho-oauthtoken ${String(token.payload.access_token)}`,Accept:"application/json"}});const verifyText=await verifyResponse.text();let verifyPayload:any={};try{verifyPayload=JSON.parse(verifyText);}catch{verifyPayload={};}
    if(!verifyResponse.ok){const detail=safeDetail(verifyPayload,`Zoho Mail account verification failed (${verifyResponse.status}).`);return html("Professional mailbox was not verified",detail,false,"user_send");}
    const expectedEmail=String(userState.work_email||"").trim().toLowerCase();const expectedAccountId=String(userState.provider_account_id||"").trim();
-   if(!expectedEmail||!expectedAccountId||!verifyText.toLowerCase().includes(expectedEmail)||!verifyText.includes(expectedAccountId))return html("Wrong Zoho mailbox","Sign in to the exact professional mailbox shown in ProFox. The authorized Zoho account did not match this employee mailbox, so no send permission was saved.",false,"user_send");
-   const {error:storeError}=await service.rpc("service_store_zoho_user_mail_send_connection",{p_user_id:String(userState.user_id),p_refresh_token:String(token.payload.refresh_token),p_work_email:expectedEmail,p_provider_account_id:expectedAccountId,p_data_center:dc,p_scopes:["ZohoMail.accounts.READ","ZohoMail.messages.CREATE"]});
-   if(storeError)return html("Zoho verified, but ProFox could not save send permission","The verified professional mailbox permission could not be stored safely. Reconnect from ProFox.",false,"user_send");
-   return html("Professional email connected",`${expectedEmail} is now authorized to send customer email securely from ProFox through Zoho Mail.`,true,"user_send");
- }catch{return html("Professional email verification failed","Zoho Mail could not be reached safely. No send permission was saved; reconnect from ProFox.",false,"user_send");}
+   if(!expectedEmail||!expectedAccountId||!verifyText.toLowerCase().includes(expectedEmail)||!verifyText.includes(expectedAccountId))return html("Wrong Zoho mailbox","Sign in to the exact professional mailbox shown in ProFox. The authorized Zoho account did not match this employee mailbox, so no permission was saved.",false,"user_send");
+   const {error:storeError}=await service.rpc("service_store_zoho_user_mail_send_connection",{p_user_id:String(userState.user_id),p_refresh_token:String(token.payload.refresh_token),p_work_email:expectedEmail,p_provider_account_id:expectedAccountId,p_data_center:dc,p_scopes:USER_MAIL_SCOPES});
+   if(storeError)return html("Zoho verified, but ProFox could not save professional email permission","The verified professional mailbox permission could not be stored safely. Reconnect from ProFox.",false,"user_send");
+   return html("Professional email connected",`${expectedEmail} is now authorized for secure customer email sending and matched reply synchronization inside ProFox.`,true,"user_send");
+ }catch{return html("Professional email verification failed","Zoho Mail could not be reached safely. No permission was saved; reconnect from ProFox.",false,"user_send");}
 });
