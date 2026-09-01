@@ -665,7 +665,7 @@ begin
     v_new_open := public.internal_chat_project_is_communicable(new.status, new.completed_at);
   end if;
 
-  if tg_op <> 'INSERT' and old.project_manager_id is distinct from case when tg_op = 'DELETE' then null else new.project_manager_id end then
+  if tg_op <> 'INSERT' and old.project_manager_id is distinct from (case when tg_op = 'DELETE' then null else new.project_manager_id end) then
     if old.project_manager_id is not null then
       perform public.internal_chat_record_access_audit(
         'access_source_revoked', old.id, old.project_manager_id, 'project_manager', old.id
