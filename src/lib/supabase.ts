@@ -1,7 +1,10 @@
 import { createClient } from '@supabase/supabase-js';
 
-const rawUrl = (import.meta.env.VITE_SUPABASE_URL || '').trim();
-const rawKey = (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || '').trim();
+const CANONICAL_SUPABASE_URL = 'https://calabtayklhltyiriiwo.supabase.co';
+const CANONICAL_SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_pLllPWGRcNcofWhD-GrHcg_t34HYo9a';
+
+const envUrl = (import.meta.env.VITE_SUPABASE_URL || '').trim();
+const envKey = (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || '').trim();
 
 const isPlaceholder = (val: string) =>
   !val ||
@@ -37,14 +40,23 @@ const isValidUrl = (urlStr: string) => {
   }
 };
 
-const isConfigured = Boolean(
-  rawUrl &&
-  rawKey &&
-  !isPlaceholder(rawUrl) &&
-  !isPlaceholder(rawKey) &&
-  isValidUrl(rawUrl) &&
-  isValidPublicKey(rawKey)
+const hasValidDevelopmentConfig = Boolean(
+  envUrl &&
+  envKey &&
+  !isPlaceholder(envUrl) &&
+  !isPlaceholder(envKey) &&
+  isValidUrl(envUrl) &&
+  isValidPublicKey(envKey)
 );
+
+// Production must never depend on optional Vite environment injection for
+// browser authentication. The publishable key is intentionally browser-safe,
+// and this repository is permanently bound to the canonical ProFox Supabase
+// project. Development keeps explicit environment configuration so local work
+// cannot accidentally write to production.
+const rawUrl = import.meta.env.PROD ? CANONICAL_SUPABASE_URL : envUrl;
+const rawKey = import.meta.env.PROD ? CANONICAL_SUPABASE_PUBLISHABLE_KEY : envKey;
+const isConfigured = import.meta.env.PROD || hasValidDevelopmentConfig;
 
 let clientInstance: any = null;
 
@@ -54,6 +66,13 @@ if (isConfigured) {
   } catch (err) {
     console.warn('Failed to initialize Supabase client:', err);
   }
+}
+
+// A production bundle is not allowed to degrade into the development mock.
+// If the canonical client ever cannot initialize, fail immediately instead of
+// presenting a misleading login form that can never authenticate.
+if (import.meta.env.PROD && !clientInstance) {
+  throw new Error('ProFox production Supabase initialization failed.');
 }
 
 const createMockQueryBuilder = (): any => {
