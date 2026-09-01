@@ -60,7 +60,7 @@ export default function WorkspaceAuthScreen({
             <div>
               <div className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-[#000080]">Secure employee access</div>
               <h2 className="mt-2 text-2xl font-extrabold tracking-[-0.03em] text-[#111b30] sm:text-[30px]">{authMode === 'login' ? 'Sign in to ProFox' : 'Request your ProFox account'}</h2>
-              <p className="mt-2 text-xs leading-6 text-[#7b8799]">{authMode === 'login' ? 'Use your approved team credentials to open your workspace.' : 'Your request continues through the existing qualification, certification and approval flow.'}</p>
+              <p className="mt-2 text-xs leading-6 text-[#7b8799]">{authMode === 'login' ? 'Use the email connected to your ProFox account. Your professional @profoxwebdesigner.com mailbox is for customer communication, not sign-in.' : 'Your request continues through the existing qualification, certification and approval flow.'}</p>
             </div>
 
             {registerSuccessMsg && (
@@ -89,10 +89,10 @@ export default function WorkspaceAuthScreen({
               )}
 
               <div>
-                <label htmlFor="workspace-email" className="mb-2 block text-[11px] font-extrabold text-[#344054]">Email address</label>
+                <label htmlFor="workspace-email" className="mb-2 block text-[11px] font-extrabold text-[#344054]">{authMode === 'login' ? 'Account email' : 'Email address'}</label>
                 <div className="relative">
                   <Mail className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                  <input id="workspace-email" type="email" required autoComplete="email" value={email} onChange={event => onEmailChange(event.target.value)} placeholder="name@profoxwebdesigner.com" className="h-12 w-full rounded-xl border border-[#dde4ee] bg-white pl-11 pr-4 text-sm text-slate-800 outline-none transition focus:border-[#000080]/40 focus:ring-4 focus:ring-[#000080]/5" />
+                  <input id="workspace-email" type="email" required autoComplete="email" value={email} onChange={event => onEmailChange(event.target.value)} placeholder="your.account@email.com" className="h-12 w-full rounded-xl border border-[#dde4ee] bg-white pl-11 pr-4 text-sm text-slate-800 outline-none transition focus:border-[#000080]/40 focus:ring-4 focus:ring-[#000080]/5" />
                 </div>
               </div>
 
