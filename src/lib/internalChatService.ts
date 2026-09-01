@@ -1,6 +1,8 @@
 import { supabase } from './supabase';
 
 export interface InternalChatContact {
+  projectId: string;
+  projectName: string;
   userId: string;
   fullName: string;
   role: string;
@@ -10,6 +12,8 @@ export interface InternalChatContact {
 }
 
 export interface InternalChatThread {
+  projectId: string;
+  projectName: string;
   threadId: string;
   otherUserId: string;
   otherFullName: string;
@@ -34,6 +38,8 @@ export interface InternalChatMessage {
 
 function mapContact(row: any): InternalChatContact {
   return {
+    projectId: row.project_id,
+    projectName: row.project_name || 'Project',
     userId: row.user_id,
     fullName: row.full_name || 'Team member',
     role: row.role || '',
@@ -45,6 +51,8 @@ function mapContact(row: any): InternalChatContact {
 
 function mapThread(row: any): InternalChatThread {
   return {
+    projectId: row.project_id,
+    projectName: row.project_name || 'Project',
     threadId: row.thread_id,
     otherUserId: row.other_user_id,
     otherFullName: row.other_full_name || 'Team member',
@@ -81,9 +89,13 @@ export const internalChatService = {
     return { data: error ? [] : (data || []).map(mapThread), error };
   },
 
-  async getOrCreateThread(otherUserId: string): Promise<{ data: string | null; error: any }> {
+  async getOrCreateThread(
+    otherUserId: string,
+    projectId: string
+  ): Promise<{ data: string | null; error: any }> {
     const { data, error } = await supabase.rpc('internal_chat_get_or_create_thread', {
-      p_other_user_id: otherUserId
+      p_other_user_id: otherUserId,
+      p_project_id: projectId
     });
     return { data: error ? null : (data as string), error };
   },
