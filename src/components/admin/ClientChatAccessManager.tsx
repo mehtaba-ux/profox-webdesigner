@@ -1,10 +1,26 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Loader2, ShieldCheck, UserCheck, UserX } from 'lucide-react';
+import { Clock3, Loader2, ShieldCheck, UserCheck, UserX } from 'lucide-react';
 import { internalChatService, type ClientChatAccessOption } from '../../lib/internalChatService';
 import { ROLE_LABELS } from '../../types';
 
+const ACCESS_REFRESH_MS = 30_000;
+
+type GrantDuration = '24h' | '7d' | '30d' | 'until_revoked';
+
 function messageOf(error: any, fallback: string) {
   return error?.message || error?.details || fallback;
+}
+
+function expiresAtFor(duration: GrantDuration): string | null {
+  if (duration === 'until_revoked') return null;
+  const hours = duration === '24h' ? 24 : duration === '7d' ? 24 * 7 : 24 * 30;
+  return new Date(Date.now() + hours * 60 * 60 * 1000).toISOString();
+}
+
+function formatExpiry(value?: string | null) {
+  if (!value) return 'Until revoked';
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? 'Time-bound' : `Until ${date.toLocaleString()}`;
 }
 
 export default function ClientChatAccessManager({ onChanged }: { onChanged?: () => void }) {
@@ -12,17 +28,33 @@ export default function ClientChatAccessManager({ onChanged }: { onChanged?: () 
   const [loading, setLoading] = useState(true);
   const [busyKey, setBusyKey] = useState('');
   const [error, setError] = useState('');
+  const [durations, setDurations] = useState<Record<string, GrantDuration>>({});
 
-  const load = async () => {
-    setLoading(true);
+  const load = async (quiet = false) => {
+    if (!quiet) setLoading(true);
     setError('');
     const result = await internalChatService.listClientAccessOptions();
     if (result.error) setError(messageOf(result.error, 'Client-chat permissions could not be loaded.'));
     else setOptions(result.data);
-    setLoading(false);
+    if (!quiet) setLoading(false);
   };
 
-  useEffect(() => { void load(); }, []);
+  useEffect(() => {
+    void load();
+    const interval = window.setInterval(() => {
+      if (document.visibilityState === 'visible') void load(true);
+    }, ACCESS_REFRESH_MS);
+    const resume = () => {
+      if (document.visibilityState === 'visible') void load(true);
+    };
+    document.addEventListener('visibilitychange', resume);
+    window.addEventListener('focus', resume);
+    return () => {
+      window.clearInterval(interval);
+      document.removeEventListener('visibilitychange', resume);
+      window.removeEventListener('focus', resume);
+    };
+  }, []);
 
   const grouped = useMemo(() => {
     const map = new Map<string, { projectName: string; customerName: string; rows: ClientChatAccessOption[] }>();
@@ -38,10 +70,17 @@ export default function ClientChatAccessManager({ onChanged }: { onChanged?: () 
     const key = `${row.projectId}:${row.deliveryUserId}`;
     setBusyKey(key);
     setError('');
-    const result = await internalChatService.setDeliveryClientAccess(row.projectId, row.deliveryUserId, !row.isActive);
+    const allow = !row.isActive;
+    const duration = durations[key] || '7d';
+    const result = await internalChatService.setDeliveryClientAccess(
+      row.projectId,
+      row.deliveryUserId,
+      allow,
+      allow ? expiresAtFor(duration) : null
+    );
     if (result.error) setError(messageOf(result.error, 'Client-chat permission could not be changed.'));
     else {
-      await load();
+      await load(true);
       onChanged?.();
     }
     setBusyKey('');
@@ -56,7 +95,7 @@ export default function ClientChatAccessManager({ onChanged }: { onChanged?: () 
         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-[#000080]"><ShieldCheck className="h-4 w-4" /></div>
         <div className="min-w-0 flex-1">
           <h2 className="text-xs font-black text-slate-900">Client ↔ Delivery Chat Access</h2>
-          <p className="mt-1 text-[11px] leading-5 text-slate-500">Only the responsible Seller or an authorized project Manager can grant access. Access is limited to this exact project and is removed immediately when revoked or when project access ends.</p>
+          <p className="mt-1 text-[11px] leading-5 text-slate-500">Only the responsible Seller or an authorized project Manager can grant access. New grants default to 7 days, remain limited to the exact project, and are automatically removed when they expire or project access ends.</p>
         </div>
       </div>
       {error && <div className="mt-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-[11px] font-semibold text-red-700">{error}</div>}
@@ -67,11 +106,15 @@ export default function ClientChatAccessManager({ onChanged }: { onChanged?: () 
             {group.rows.map(row => {
               const key = `${row.projectId}:${row.deliveryUserId}`;
               const busy = busyKey === key;
-              return <div key={key} className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2.5">
-                <div className="min-w-0"><div className="truncate text-[11px] font-black text-slate-800">{row.deliveryName}</div><div className="truncate text-[10px] font-semibold text-slate-400">{(ROLE_LABELS as any)[row.deliveryRole] || row.deliveryRole}</div></div>
-                <button type="button" disabled={busy} onClick={() => void toggle(row)} className={`flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-2 text-[10px] font-black disabled:opacity-50 ${row.isActive ? 'border border-red-200 bg-red-50 text-red-700' : 'bg-[#000080] text-white'}`}>
-                  {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : row.isActive ? <UserX className="h-3.5 w-3.5" /> : <UserCheck className="h-3.5 w-3.5" />}{row.isActive ? 'Revoke' : 'Allow'}
-                </button>
+              const duration = durations[key] || '7d';
+              return <div key={key} className="rounded-xl border border-slate-200 bg-white px-3 py-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0"><div className="truncate text-[11px] font-black text-slate-800">{row.deliveryName}</div><div className="truncate text-[10px] font-semibold text-slate-400">{(ROLE_LABELS as any)[row.deliveryRole] || row.deliveryRole}</div></div>
+                  <button type="button" disabled={busy} onClick={() => void toggle(row)} className={`flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-2 text-[10px] font-black disabled:opacity-50 ${row.isActive ? 'border border-red-200 bg-red-50 text-red-700' : 'bg-[#000080] text-white'}`}>
+                    {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : row.isActive ? <UserX className="h-3.5 w-3.5" /> : <UserCheck className="h-3.5 w-3.5" />}{row.isActive ? 'Revoke' : 'Allow'}
+                  </button>
+                </div>
+                {row.isActive ? <div className="mt-2 flex items-center gap-1.5 text-[9px] font-semibold text-emerald-700"><Clock3 className="h-3 w-3" />{formatExpiry(row.expiresAt)}</div> : <div className="mt-2"><label className="text-[9px] font-black uppercase tracking-wide text-slate-400">Access duration</label><select value={duration} onChange={event => setDurations(current => ({ ...current, [key]: event.target.value as GrantDuration }))} className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-2 py-1.5 text-[10px] font-semibold text-slate-700 outline-none focus:border-[#000080]"><option value="24h">24 hours</option><option value="7d">7 days — recommended</option><option value="30d">30 days</option><option value="until_revoked">Until manually revoked</option></select></div>}
               </div>;
             })}
           </div>
