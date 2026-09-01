@@ -122,11 +122,12 @@ try {
 
   const calendar = (await client.query(`
     select
-      (select count(*)::int from public.google_calendar_connections c join public.user_profiles p on p.id=c.user_id where c.status='connected' and p.status='active' and p.role in ('sales','sales_rep','sales_team')) as connected,
-      (select count(*)::int from public.google_calendar_connections c join public.user_profiles p on p.id=c.user_id where c.status in ('error','reconnect_required') and p.status='active' and p.role in ('sales','sales_rep','sales_team')) as unhealthy,
+      (select count(*)::int from public.google_calendar_connections c join public.user_profiles p on p.id=c.user_id where c.status='connected' and p.status='active' and p.role in ('sales','sales_rep','sales_team') and lower(coalesce(p.email,'')) not like '%.test') as connected,
+      (select count(*)::int from public.google_calendar_connections c join public.user_profiles p on p.id=c.user_id where c.status in ('error','reconnect_required') and p.status='active' and p.role in ('sales','sales_rep','sales_team') and lower(coalesce(p.email,'')) not like '%.test') as unhealthy,
+      (select count(*)::int from public.google_calendar_connections c join public.user_profiles p on p.id=c.user_id where c.status in ('error','reconnect_required') and p.status='active' and p.role in ('sales','sales_rep','sales_team') and lower(coalesce(p.email,'')) like '%.test') as unhealthy_test_sellers,
       (select count(*)::int from public.google_calendar_connections c join public.user_profiles p on p.id=c.user_id where c.status in ('error','reconnect_required') and p.status='active' and p.role not in ('sales','sales_rep','sales_team')) as unhealthy_non_sellers,
-      (select count(*)::int from public.google_calendar_sync_jobs j join public.google_calendar_connections c on c.user_id=j.user_id join public.user_profiles p on p.id=j.user_id where c.status='connected' and p.status='active' and p.role in ('sales','sales_rep','sales_team') and j.status in ('pending','retry','processing') and j.next_attempt_at < now()-interval '15 minutes') as overdue_jobs,
-      (select count(*)::int from public.google_calendar_sync_jobs j join public.google_calendar_connections c on c.user_id=j.user_id join public.user_profiles p on p.id=j.user_id where c.status='connected' and p.status='active' and p.role in ('sales','sales_rep','sales_team') and j.status='failed' and j.updated_at > now()-interval '7 days') as recent_failed_jobs,
+      (select count(*)::int from public.google_calendar_sync_jobs j join public.google_calendar_connections c on c.user_id=j.user_id join public.user_profiles p on p.id=j.user_id where c.status='connected' and p.status='active' and p.role in ('sales','sales_rep','sales_team') and lower(coalesce(p.email,'')) not like '%.test' and j.status in ('pending','retry','processing') and j.next_attempt_at < now()-interval '15 minutes') as overdue_jobs,
+      (select count(*)::int from public.google_calendar_sync_jobs j join public.google_calendar_connections c on c.user_id=j.user_id join public.user_profiles p on p.id=j.user_id where c.status='connected' and p.status='active' and p.role in ('sales','sales_rep','sales_team') and lower(coalesce(p.email,'')) not like '%.test' and j.status='failed' and j.updated_at > now()-interval '7 days') as recent_failed_jobs,
       (select count(*)::int from public.google_calendar_sync_jobs j join public.user_profiles p on p.id=j.user_id where p.status <> 'active' and j.status='failed') as historical_inactive_failures
   `)).rows[0];
   if (calendar.unhealthy === 0 && calendar.overdue_jobs === 0 && calendar.recent_failed_jobs === 0) {
@@ -134,6 +135,7 @@ try {
   } else {
     fail('Google Calendar queue', `${calendar.unhealthy} unhealthy connection(s), ${calendar.overdue_jobs} overdue and ${calendar.recent_failed_jobs} recently failed job(s)`);
   }
+  if (calendar.unhealthy_test_sellers > 0) warn('Test seller Calendar connection', `${calendar.unhealthy_test_sellers} test Sales account(s) need reconnecting only when external Google sync is being tested`);
   if (calendar.unhealthy_non_sellers > 0) warn('Admin Calendar connection', `${calendar.unhealthy_non_sellers} active non-sales account(s) must reconnect before using optional Google sync`);
   if (calendar.historical_inactive_failures > 0) warn('Historical Calendar audit', `${calendar.historical_inactive_failures} failed job record(s) belong to inactive users and are retained for audit only`);
   if (calendar.connected === 0) warn('Google Calendar adoption', 'no staff account is connected yet; each salesperson must connect during mandatory onboarding');

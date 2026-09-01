@@ -166,6 +166,13 @@ test('production verification tolerates bounded Cloudflare asset propagation', (
   assert.match(publicContentVerifierSource, /setTimeout\(resolve, 3000\)/i);
 });
 
+test('test seller OAuth health is reported without blocking real-sales production readiness', () => {
+  const readinessSource = readFileSync(resolve(root, 'scripts/verify-production-readiness.mjs'), 'utf8');
+  assert.match(readinessSource, /unhealthy_test_sellers/i);
+  assert.match(readinessSource, /not like '%\.test'/i);
+  assert.match(readinessSource, /Test seller Calendar connection/i);
+});
+
 test('package profiles change weights without duplicating catalog prices or reward rules', () => {
   assert.match(completionSql, /revenue_distribution_product_profiles/i);
   assert.match(completionSql, /sales_product_id uuid not null unique references public\.sales_products/i);
