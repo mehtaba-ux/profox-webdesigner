@@ -10,6 +10,27 @@ const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3
 type ChatTokenRecord = { token: string; email: string };
 type ChatTokenMap = Record<string, ChatTokenRecord>;
 
+export type ChatRecoveryChallenge = {
+  verificationRequired: true;
+  challengeId: string;
+  expiresAt?: string;
+  delivery: 'email';
+};
+
+export type ChatConversationResult = ChatConversation & {
+  verificationRequired?: false;
+  relationshipResumed?: boolean;
+  originalSalesName?: string;
+  currentSalesName?: string;
+  currentSalesAvatar?: string;
+  currentSalesTitle?: string;
+  currentSalesAvailability?: 'available' | 'away' | string;
+  customerIdentityId?: string;
+  conversationKind?: string;
+};
+
+export type ChatOpenResult = ChatConversationResult | ChatRecoveryChallenge;
+
 function readJson<T>(key: string, fallback: T): T {
   try {
     const value = localStorage.getItem(key);
@@ -58,6 +79,10 @@ function normalizeInboxMessage(value: any): ChatMessage {
   } as ChatMessage;
 }
 
+function isRecoveryChallenge(value: any): value is ChatRecoveryChallenge {
+  return Boolean(value?.verificationRequired && value?.challengeId);
+}
+
 // Small audible notification used by the seller inbox. It only runs after a
 // user gesture, which keeps it compatible with browser autoplay restrictions.
 export const playChatChime = () => {
@@ -103,13 +128,10 @@ export const getSalesReps = async (): Promise<SalesRep[]> => {
   return reps;
 };
 
-export const getConversations = async (): Promise<ChatConversation[]> => {
+export const getConversations = async (): Promise<ChatConversationResult[]> => {
   if (await hasSignedInSession()) {
     const { data, error } = await supabase.rpc('sales_chat_list_conversations');
-    if (!error) return asArray<ChatConversation>(data);
-    // Signed-in non-sales users may still use the public widget. Only an
-    // authorization rejection falls through to token-scoped customer chats;
-    // connectivity and server failures remain visible to the seller inbox.
+    if (!error) return asArray<ChatConversationResult>(data);
     if (!/sales chat access required/i.test(error.message || '')) {
       throw rpcError(error, 'The sales inbox could not be loaded.');
     }
@@ -122,12 +144,12 @@ export const getConversations = async (): Promise<ChatConversation[]> => {
       p_conversation_id: conversationId,
       p_access_token: record.token,
     });
-    return error ? null : data as ChatConversation;
+    return error ? null : data as ChatConversationResult;
   }));
-  return conversations.filter((conversation): conversation is ChatConversation => Boolean(conversation));
+  return conversations.filter((conversation): conversation is ChatConversationResult => Boolean(conversation));
 };
 
-export const getConversationsByEmail = async (email: string): Promise<ChatConversation[]> => {
+export const getConversationsByEmail = async (email: string): Promise<ChatConversationResult[]> => {
   if (!email) return [];
   const normalizedEmail = email.trim().toLowerCase();
   return (await getConversations()).filter(conversation => conversation.customerEmail.toLowerCase() === normalizedEmail);
@@ -135,7 +157,7 @@ export const getConversationsByEmail = async (email: string): Promise<ChatConver
 
 export const getOriginalSalesAssignment = async (email: string): Promise<{
   originalRep: SalesRep | null;
-  previousConversation: ChatConversation | null;
+  previousConversation: ChatConversationResult | null;
 }> => {
   if (!email) return { originalRep: null, previousConversation: null };
   const conversations = await getConversationsByEmail(email);
@@ -144,10 +166,41 @@ export const getOriginalSalesAssignment = async (email: string): Promise<{
   const sorted = [...conversations].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
   const oldest = sorted[0];
   const reps = await getSalesReps();
-  const rep = reps.find(item => item.id === oldest.originalSalesId)
-    || reps.find(item => item.id === oldest.currentSalesId)
+  // Current owner takes priority after a legitimate CRM transfer.
+  const rep = reps.find(item => item.id === oldest.currentSalesId)
+    || reps.find(item => item.id === oldest.originalSalesId)
     || null;
   return { originalRep: rep, previousConversation: conversations[0] };
+};
+
+export const requestChatRecovery = async (email: string): Promise<ChatRecoveryChallenge> => {
+  const normalizedEmail = email.trim().toLowerCase();
+  const { data, error } = await supabase.rpc('public_sales_chat_request_recovery', {
+    p_email: normalizedEmail,
+  });
+  if (error || !data?.challengeId) throw rpcError(error, 'A verification code could not be sent.');
+  return {
+    verificationRequired: true,
+    challengeId: String(data.challengeId),
+    expiresAt: data.expiresAt ? String(data.expiresAt) : undefined,
+    delivery: 'email',
+  };
+};
+
+export const verifyChatRecovery = async (input: {
+  challengeId: string;
+  code: string;
+  email: string;
+}): Promise<ChatConversationResult> => {
+  const accessToken = crypto.randomUUID();
+  const { data, error } = await supabase.rpc('public_sales_chat_verify_recovery', {
+    p_challenge_id: input.challengeId,
+    p_code: input.code.trim().toUpperCase(),
+    p_access_token: accessToken,
+  });
+  if (error || !data?.id) throw rpcError(error, 'The verification code is invalid or expired.');
+  rememberChatToken(String(data.id), accessToken, input.email);
+  return data as ChatConversationResult;
 };
 
 export const createOrGetConversation = async (input: {
@@ -156,30 +209,37 @@ export const createOrGetConversation = async (input: {
   customerPhone?: string;
   intent: 'new_package' | 'existing_issue';
   selectedSalesId?: string;
-}): Promise<ChatConversation> => {
+}): Promise<ChatOpenResult> => {
   const email = input.customerEmail.trim().toLowerCase();
-  const existing = (await getConversationsByEmail(email)).find(conversation => conversation.status !== 'resolved');
-  if (existing) return existing;
 
-  const reps = await getSalesReps();
-  if (!reps.length) throw new Error('No verified sales representative is currently available.');
-  const selectedSalesId = input.selectedSalesId || reps[0].id;
-  if (!UUID_PATTERN.test(selectedSalesId)) throw new Error('Select a verified sales representative.');
+  // If this browser is already authorized, resume the same permanent website
+  // relationship thread immediately — even if it was previously marked resolved.
+  const existing = (await getConversationsByEmail(email))
+    .filter(conversation => (conversation as any).conversationKind !== 'quotation')
+    .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())[0];
+  if (existing) return { ...existing, verificationRequired: false, relationshipResumed: true };
 
   const accessToken = crypto.randomUUID();
+  const payload: Record<string, string> = {
+    customerName: input.customerName.trim(),
+    customerEmail: email,
+    customerPhone: input.customerPhone?.trim() || '',
+    intent: input.intent,
+  };
+  if (input.selectedSalesId && UUID_PATTERN.test(input.selectedSalesId)) {
+    payload.selectedSalesId = input.selectedSalesId;
+  }
+
   const { data, error } = await supabase.rpc('public_sales_chat_open', {
-    p_payload: {
-      customerName: input.customerName.trim(),
-      customerEmail: email,
-      customerPhone: input.customerPhone?.trim() || '',
-      intent: input.intent,
-      selectedSalesId,
-    },
+    p_payload: payload,
     p_access_token: accessToken,
   });
-  if (error || !data?.id) throw rpcError(error, 'The conversation could not be opened.');
-  rememberChatToken(data.id, accessToken, email);
-  return data as ChatConversation;
+  if (error) throw rpcError(error, 'The conversation could not be opened.');
+  if (isRecoveryChallenge(data)) return data;
+  if (!data?.id) throw new Error('The conversation could not be opened.');
+
+  rememberChatToken(String(data.id), accessToken, email);
+  return data as ChatConversationResult;
 };
 
 export const getChatMessages = async (conversationId: string): Promise<ChatMessage[]> => {
@@ -193,16 +253,13 @@ export const getChatMessages = async (conversationId: string): Promise<ChatMessa
     return asArray<ChatMessage>(data);
   }
 
-  // Staff use the canonical client timeline. It reuses the existing Sales Chat
-  // conversation and merges external client email into that same thread; it does
-  // not create a second inbox or a second customer/conversation identity.
+  // Staff use the canonical client timeline. It reuses the same Sales Chat
+  // relationship and merges supported external customer communication into it.
   const { data, error } = await supabase.rpc('sales_client_inbox_timeline', {
     p_conversation_id: conversationId,
   });
   if (!error) return asArray<any>(data).map(normalizeInboxMessage);
 
-  // Compatibility fallback for development environments that have not applied
-  // the provider-neutral migration yet. Production uses the unified RPC above.
   if (!/sales_client_inbox_timeline|function .* does not exist/i.test(error.message || '')) {
     throw rpcError(error, 'Messages could not be loaded.');
   }
