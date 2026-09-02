@@ -22,8 +22,18 @@ jobs:
         with:
           node-version: '22'
           cache: npm
-      - name: Refresh vulnerable production transitive dependencies
-        run: npm audit fix --package-lock-only --omit=dev --ignore-scripts
+      - name: Pin patched qs and regenerate deterministic lock
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const path = 'package.json';
+          const pkg = JSON.parse(fs.readFileSync(path, 'utf8'));
+          pkg.overrides = { ...(pkg.overrides || {}), qs: '6.16.0' };
+          fs.writeFileSync(path, JSON.stringify(pkg, null, 2) + '\n');
+          NODE
+          npm install --package-lock-only --ignore-scripts --no-audit --no-fund
       - name: Verify production dependency audit
         run: npm audit --omit=dev
       - name: Commit deterministic lock refresh and remove one-time workflow
@@ -31,11 +41,7 @@ jobs:
         run: |
           set -euo pipefail
           git rm .github/workflows/refresh-production-lock.yml
-          git add package-lock.json
-          if git diff --cached --quiet; then
-            echo "No lockfile change was produced."
-            exit 1
-          fi
+          git add package.json package-lock.json
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git commit -m "Refresh production dependency security lock"
