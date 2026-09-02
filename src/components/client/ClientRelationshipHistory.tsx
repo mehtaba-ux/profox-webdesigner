@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ClipboardList, FileText, Loader2, MessageSquareText, RefreshCw, Send, ShieldCheck } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { touchClientPortalConversation } from '../../lib/chatService';
 import ClientProjectChat from './ClientProjectChat';
 
 function money(value: unknown, currency = 'USD') {
@@ -38,6 +39,33 @@ export default function ClientRelationshipHistory() {
   const onboardings = Array.isArray(data?.onboardings) ? data.onboardings : [];
   const selected = useMemo(() => conversations.find((item: any) => item.id === selectedConversationId) || null, [conversations, selectedConversationId]);
 
+  // While a paid client is actively reading this relationship conversation, keep presence fresh.
+  // This prevents the delayed offline-email workflow from emailing a client who is already here.
+  useEffect(() => {
+    if (!selectedConversationId) return undefined;
+    const touch = () => {
+      if (document.visibilityState !== 'visible') return;
+      void touchClientPortalConversation(selectedConversationId).catch(() => undefined);
+    };
+    touch();
+    const interval = window.setInterval(touch, 30000);
+    const onVisibility = () => { if (document.visibilityState === 'visible') touch(); };
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      window.clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  }, [selectedConversationId]);
+
+  // Relationship messages remain live after the prospect becomes a client. Keep the selected
+  // conversation refreshed without forcing the client to reload the portal manually.
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      if (document.visibilityState === 'visible') void load(true);
+    }, 6000);
+    return () => window.clearInterval(interval);
+  }, []);
+
   const sendReply = async () => {
     if (!selected || !reply.trim() || sending) return;
     setSending(true);
@@ -61,7 +89,7 @@ export default function ClientRelationshipHistory() {
     <ClientProjectChat />
 
     <div className="grid gap-5 lg:grid-cols-[360px_minmax(0,1fr)]">
-      <div className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm"><div className="border-b border-slate-200 p-5"><h3 className="flex items-center gap-2 text-sm font-black text-slate-900"><MessageSquareText className="h-4 w-4 text-[#000080]" />Conversations</h3></div><div className="max-h-[520px] overflow-y-auto">{conversations.length === 0 ? <div className="p-8 text-center text-xs text-slate-400">No saved conversations yet.</div> : conversations.map((conversation: any) => <button key={conversation.id} type="button" onClick={() => setSelectedConversationId(conversation.id)} className={`block w-full border-b border-slate-100 p-4 text-left transition-colors ${selectedConversationId === conversation.id ? 'bg-blue-50' : 'hover:bg-slate-50'}`}><div className="flex items-center justify-between gap-2"><span className="truncate text-xs font-black text-slate-900">{conversation.quotationNumber ? `Quotation ${conversation.quotationNumber}` : 'Sales conversation'}</span><span className="text-[9px] font-black uppercase text-slate-400">{conversation.status}</span></div><p className="mt-1 line-clamp-2 text-[11px] leading-4 text-slate-500">{conversation.lastMessage || 'Conversation started'}</p><p className="mt-2 text-[9px] text-slate-400">{conversation.lastMessageTime ? new Date(conversation.lastMessageTime).toLocaleString() : ''}</p></button>)}</div></div>
+      <div className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm"><div className="border-b border-slate-200 p-5"><h3 className="flex items-center gap-2 text-sm font-black text-slate-900"><MessageSquareText className="h-4 w-4 text-[#000080]" />Sales & relationship conversations</h3><p className="mt-1 text-[10px] leading-4 text-slate-500">The customer-facing conversation that began before purchase continues here after your project becomes active.</p></div><div className="max-h-[520px] overflow-y-auto">{conversations.length === 0 ? <div className="p-8 text-center text-xs text-slate-400">No saved conversations yet.</div> : conversations.map((conversation: any) => <button key={conversation.id} type="button" onClick={() => setSelectedConversationId(conversation.id)} className={`block w-full border-b border-slate-100 p-4 text-left transition-colors ${selectedConversationId === conversation.id ? 'bg-blue-50' : 'hover:bg-slate-50'}`}><div className="flex items-center justify-between gap-2"><span className="truncate text-xs font-black text-slate-900">{conversation.quotationNumber ? `Quotation ${conversation.quotationNumber}` : 'Sales conversation'}</span><span className="text-[9px] font-black uppercase text-slate-400">{conversation.status}</span></div><p className="mt-1 line-clamp-2 text-[11px] leading-4 text-slate-500">{conversation.lastMessage || 'Conversation started'}</p><p className="mt-2 text-[9px] text-slate-400">{conversation.lastMessageTime ? new Date(conversation.lastMessageTime).toLocaleString() : ''}</p></button>)}</div></div>
       <div className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm">{!selected ? <div className="flex min-h-[420px] items-center justify-center p-8 text-center text-xs text-slate-400">Select a conversation to view its permanent history.</div> : <><div className="border-b border-slate-200 bg-slate-50 p-5"><div className="text-sm font-black text-slate-900">{selected.quotationNumber ? `Quotation ${selected.quotationNumber}` : 'ProFox conversation'}</div><div className="mt-1 text-[11px] text-slate-500">Representative: {selected.sellerName || 'ProFox representative'}</div></div><div className="max-h-[420px] min-h-[280px] space-y-3 overflow-y-auto bg-slate-50/50 p-5">{(selected.messages || []).map((message: any) => { if (message.senderType === 'system') return <div key={message.id} className="text-center text-[10px] font-semibold text-slate-400">{message.messageText}</div>; const mine = message.senderType === 'customer'; return <div key={message.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}><div className={`max-w-[82%] rounded-2xl px-4 py-3 ${mine ? 'bg-[#000080] text-white' : 'border border-slate-200 bg-white text-slate-800'}`}><div className={`text-[9px] font-black ${mine ? 'text-blue-200' : 'text-[#000080]'}`}>{mine ? 'You' : message.senderName || 'ProFox'}</div><p className="mt-1 whitespace-pre-wrap break-words text-sm leading-6">{message.messageText}</p><div className={`mt-1 text-[9px] ${mine ? 'text-blue-200' : 'text-slate-400'}`}>{new Date(message.createdAt).toLocaleString()}</div></div></div>; })}</div><div className="border-t border-slate-200 p-5"><textarea rows={3} maxLength={4000} value={reply} onChange={event => setReply(event.target.value)} placeholder="Continue this conversation..." className="w-full resize-none rounded-2xl border border-slate-200 p-3 text-sm outline-none focus:border-[#000080]"/><div className="mt-3 flex justify-end"><button type="button" disabled={sending || !reply.trim()} onClick={() => void sendReply()} className="inline-flex items-center gap-2 rounded-xl bg-[#000080] px-5 py-2.5 text-xs font-black text-white disabled:opacity-40">{sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}Send Message</button></div></div></>}</div>
     </div>
 
