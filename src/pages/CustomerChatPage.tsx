@@ -2,6 +2,14 @@ import { FormEvent, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, LockKeyhole, MessageSquare, Send, ShieldCheck, UserRound } from 'lucide-react';
 import type { ChatMessage } from '../types';
+import CommunicationAttachmentList from '../components/communication/CommunicationAttachmentList';
+import CommunicationComposerTools from '../components/communication/CommunicationComposerTools';
+import RichMessageText from '../components/communication/RichMessageText';
+import {
+  deleteCommunicationAttachment,
+  uploadSalesAttachment,
+  type UploadedCommunicationAttachment,
+} from '../lib/communicationAttachmentService';
 import {
   getChatConversation,
   getChatMessages,
@@ -22,6 +30,7 @@ export default function CustomerChatPage() {
   const [conversation, setConversation] = useState<ChatConversationResult | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [reply, setReply] = useState('');
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
@@ -55,8 +64,6 @@ export default function CustomerChatPage() {
       .then((opened) => {
         if (!active) return;
         setConversation(opened);
-        // Remove the durable magic token from the address bar immediately. The browser now
-        // holds a separate scoped access token for this exact conversation.
         navigate(`/chat/session/${opened.id}`, { replace: true });
       })
       .catch((err: any) => {
@@ -109,21 +116,32 @@ export default function CustomerChatPage() {
     endRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  const cleanupUnused = async (uploaded: UploadedCommunicationAttachment[], conversationIdToUse: string) => {
+    await Promise.allSettled(uploaded.map(attachment => deleteCommunicationAttachment({ attachment, conversationId: conversationIdToUse })));
+  };
+
   const handleSend = async (event: FormEvent) => {
     event.preventDefault();
-    if (!conversation || !reply.trim() || sending) return;
+    if (!conversation || (!reply.trim() && pendingFiles.length === 0) || sending) return;
     setSending(true);
     setError('');
+    const uploaded: UploadedCommunicationAttachment[] = [];
     try {
+      for (const file of pendingFiles) {
+        uploaded.push(await uploadSalesAttachment({ conversationId: conversation.id, channel: 'chat', file }));
+      }
       await sendChatMessage({
         conversationId: conversation.id,
         senderType: 'customer',
         senderName: conversation.customerName || 'Customer',
         messageText: reply.trim(),
+        attachmentIds: uploaded.map(item => item.id),
       });
       setReply('');
+      setPendingFiles([]);
       setMessages((await getChatMessages(conversation.id)).filter(message => !message.isInternalNote));
     } catch (err: any) {
+      if (uploaded.length) await cleanupUnused(uploaded, conversation.id);
       setError(err?.message || 'Your message could not be sent.');
     } finally {
       setSending(false);
@@ -176,7 +194,7 @@ export default function CustomerChatPage() {
       <section className="flex min-h-[620px] flex-col bg-white sm:rounded-b-3xl sm:border sm:border-t-0 lg:rounded-r-3xl lg:rounded-bl-none lg:border-l lg:border-t">
         <div className="border-b border-slate-200 px-5 py-4 sm:px-6">
           <h1 className="text-base font-black">Conversation with {sellerName}</h1>
-          <p className="mt-1 text-xs text-slate-500">Messages here are visible to you and the authorized ProFox team supporting this relationship. Private internal notes are never shown here.</p>
+          <p className="mt-1 text-xs text-slate-500">Messages and customer-facing attachments here are visible to you and the authorized ProFox team supporting this relationship. Private internal notes are never shown here.</p>
         </div>
 
         {error && <div className="border-b border-rose-200 bg-rose-50 px-5 py-2.5 text-xs font-bold text-rose-700">{error}</div>}
@@ -189,19 +207,21 @@ export default function CustomerChatPage() {
             return <div key={message.id} className={`flex ${customer ? 'justify-end' : 'justify-start'}`}>
               <div className={`max-w-[82%] rounded-2xl px-4 py-3 text-sm shadow-sm ${customer ? 'rounded-tr-none bg-[#000080] text-white' : 'rounded-tl-none border border-slate-200 bg-white text-slate-900'}`}>
                 <div className={`mb-1 text-[10px] font-bold ${customer ? 'text-white/70' : 'text-slate-400'}`}>{customer ? 'You' : message.senderName || sellerName} · {formatMessageTime(message.createdAt)}</div>
-                <p className="whitespace-pre-wrap leading-6">{message.messageText}</p>
+                <RichMessageText text={message.messageText} inverse={customer} />
+                <CommunicationAttachmentList attachments={(message as any).attachments || []} conversationId={conversation.id} inverse={customer} />
               </div>
             </div>;
           })}
           <div ref={endRef} />
         </div>
 
-        <form onSubmit={handleSend} className="border-t border-slate-200 bg-white p-4 sm:p-5">
+        <form onSubmit={handleSend} className="space-y-2 border-t border-slate-200 bg-white p-4 sm:p-5">
+          <CommunicationComposerTools files={pendingFiles} onFilesChange={setPendingFiles} text={reply} onTextChange={setReply} disabled={sending} />
           <div className="flex items-end gap-2">
             <textarea rows={2} maxLength={4000} value={reply} onChange={event => setReply(event.target.value)} placeholder={`Reply to ${sellerName}...`} className="min-h-[54px] flex-1 resize-none rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-[#000080] focus:bg-white" />
-            <button type="submit" disabled={!reply.trim() || sending} className="flex min-h-[54px] items-center gap-2 rounded-2xl bg-[#000080] px-5 text-sm font-bold text-white shadow-md disabled:cursor-not-allowed disabled:opacity-50"><Send className="h-4 w-4" />{sending ? 'Sending...' : 'Send'}</button>
+            <button type="submit" disabled={(!reply.trim() && pendingFiles.length === 0) || sending} className="flex min-h-[54px] items-center gap-2 rounded-2xl bg-[#000080] px-5 text-sm font-bold text-white shadow-md disabled:cursor-not-allowed disabled:opacity-50"><Send className="h-4 w-4" />{sending ? 'Sending...' : 'Send'}</button>
           </div>
-          <div className="mt-2 text-[10px] text-slate-400">Do not share this secure conversation link publicly.</div>
+          <div className="text-[10px] text-slate-400">Files are stored privately in ProFox R2 storage. Do not share this secure conversation link publicly.</div>
         </form>
       </section>
     </div>
