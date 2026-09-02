@@ -74,14 +74,15 @@ Deno.serve(async (req: Request) => {
   const graphApiVersion = /^v[0-9]+\.[0-9]+$/.test(String(credentials?.graphApiVersion || "")) ? String(credentials.graphApiVersion) : "v23.0";
   const defaultTemplateName = String(credentials?.defaultTemplateName || "").trim();
   const defaultTemplateLanguage = String(credentials?.defaultTemplateLanguage || "en_US").trim() || "en_US";
-  const configured = enabled && Boolean(phoneNumberId && businessPhone && accessToken && verifyToken && appSecret);
+  const providerReady = Boolean(phoneNumberId && businessPhone && accessToken && verifyToken && appSecret);
+  const configured = enabled && providerReady;
 
   if (req.method === "GET") {
     const url = new URL(req.url);
     const mode = url.searchParams.get("hub.mode") || "";
     const suppliedVerifyToken = url.searchParams.get("hub.verify_token") || "";
     const challenge = url.searchParams.get("hub.challenge") || "";
-    if (!configured || mode !== "subscribe" || !challenge || !timingSafeEqual(suppliedVerifyToken, verifyToken)) return text("Webhook verification failed.", 403);
+    if (!providerReady || mode !== "subscribe" || !challenge || !timingSafeEqual(suppliedVerifyToken, verifyToken)) return text("Webhook verification failed.", 403);
     return text(challenge, 200);
   }
   if (req.method !== "POST") return json({ error: "Method not allowed." }, 405);
@@ -89,7 +90,6 @@ Deno.serve(async (req: Request) => {
   const authHeader = req.headers.get("Authorization") || "";
   const contentType = req.headers.get("Content-Type") || "";
 
-  // Authenticated ProFox send path. Provider credentials never leave the server.
   if (authHeader.startsWith("Bearer ") && contentType.toLowerCase().includes("application/json")) {
     const userClient = createClient(supabaseUrl, anonKey, {
       global: { headers: { Authorization: authHeader } },
@@ -101,7 +101,7 @@ Deno.serve(async (req: Request) => {
     let body: any = {};
     try { body = await req.json(); } catch { return json({ error: "Invalid request body." }, 400); }
     if (String(body?.action || "") !== "send") return json({ error: "Unsupported action." }, 400);
-    if (!configured) return json({ error: "WhatsApp Business is not connected by an administrator." }, 409);
+    if (!configured) return json({ error: "WhatsApp Business is not connected and enabled by an administrator." }, 409);
 
     const conversationId = String(body?.conversationId || "").trim();
     const message = String(body?.message || "");
@@ -118,9 +118,19 @@ Deno.serve(async (req: Request) => {
     const requestId = String(prepared?.requestId || "");
     if (!requestId) return json({ error: "WhatsApp send request was not created." }, 500);
     if (String(prepared?.status) === "provider_accepted") {
-      return json({ providerAccepted: true, requestId, providerMessageId: String(prepared?.providerMessageId || ""), recipientPhone: String(prepared?.recipientPhone || "") });
+      return json({ providerAccepted: true, requestId, providerMessageId: String(prepared?.providerMessageId || ""), recipientPhone: String(prepared?.recipientPhone || ""), usedTemplate: Boolean(prepared?.useTemplate) });
     }
     if (String(prepared?.status) === "failed") return json({ error: "This WhatsApp request has already failed. Create a new message request." }, 409);
+
+    const useTemplate = Boolean(prepared?.useTemplate);
+    if (useTemplate && !defaultTemplateName) {
+      await service.rpc("service_fail_whatsapp_send", {
+        p_request_id: requestId,
+        p_error: "No approved outbound WhatsApp template is configured.",
+        p_provider_response_code: null,
+      });
+      return json({ error: "This customer has no active WhatsApp service window and no approved outbound template is configured." }, 409);
+    }
 
     const { data: requestRow, error: requestError } = await service
       .from("whatsapp_send_requests")
@@ -130,34 +140,8 @@ Deno.serve(async (req: Request) => {
       .maybeSingle();
     if (requestError || !requestRow || String(requestRow.status) !== "pending") return json({ error: "WhatsApp send request could not be loaded safely." }, 500);
 
-    const serviceWindowStart = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-    const { data: recentInbound, error: recentInboundError } = await service
-      .from("client_whatsapp_messages")
-      .select("id")
-      .eq("conversation_id", conversationId)
-      .eq("direction", "inbound")
-      .gte("sent_or_received_at", serviceWindowStart)
-      .limit(1);
-    if (recentInboundError) return json({ error: "WhatsApp service-window state could not be verified safely." }, 500);
-    const sessionOpen = Boolean(recentInbound?.length);
-    if (!sessionOpen && !defaultTemplateName) {
-      await service.rpc("service_fail_whatsapp_send", {
-        p_request_id: requestId,
-        p_error: "No active WhatsApp customer-service window and no approved outbound template is configured.",
-        p_provider_response_code: null,
-      });
-      return json({ error: "This customer has not messaged the business on WhatsApp in the last 24 hours. Ask an administrator to configure an approved outbound WhatsApp template before starting a new conversation." }, 409);
-    }
-
-    const graphBody = sessionOpen
+    const graphBody = useTemplate
       ? {
-          messaging_product: "whatsapp",
-          recipient_type: "individual",
-          to: String(requestRow.recipient_phone),
-          type: "text",
-          text: { preview_url: false, body: String(requestRow.message_body) },
-        }
-      : {
           messaging_product: "whatsapp",
           recipient_type: "individual",
           to: String(requestRow.recipient_phone),
@@ -167,6 +151,13 @@ Deno.serve(async (req: Request) => {
             language: { code: defaultTemplateLanguage },
             components: [{ type: "body", parameters: [{ type: "text", text: String(requestRow.message_body) }] }],
           },
+        }
+      : {
+          messaging_product: "whatsapp",
+          recipient_type: "individual",
+          to: String(requestRow.recipient_phone),
+          type: "text",
+          text: { preview_url: false, body: String(requestRow.message_body) },
         };
 
     const graphResponse = await fetch(`https://graph.facebook.com/${encodeURIComponent(graphApiVersion)}/${encodeURIComponent(phoneNumberId)}/messages`, {
@@ -198,10 +189,9 @@ Deno.serve(async (req: Request) => {
       }, 500);
     }
 
-    return json({ providerAccepted: true, requestId, providerMessageId: messageId, recipientPhone: String(requestRow.recipient_phone), usedTemplate: !sessionOpen });
+    return json({ providerAccepted: true, requestId, providerMessageId: messageId, recipientPhone: String(requestRow.recipient_phone), usedTemplate: useTemplate });
   }
 
-  // Public Meta webhook path. HMAC is checked on the exact raw body before parsing.
   if (!configured) return json({ error: "WhatsApp Business is not enabled." }, 503);
   const rawBody = await req.text();
   const suppliedSignature = (req.headers.get("x-hub-signature-256") || "").trim().toLowerCase();
