@@ -80,11 +80,11 @@ export function groupCustomerConversations(rows: ChatConversation[]): UnifiedCus
     const base = sorted[0];
     const metadata = sorted.map(row => row as any);
     const conversationIds = sorted.map(row => row.id);
-    const chatTarget = sorted.find(row => String((row as any).conversationKind || '') !== 'email');
+    const chatTarget = sorted.find(row => String((row as any).conversationKind || '') === 'website');
     const crmLeadIds = [...new Set(metadata.map(row => String(row.crmLeadId || '')).filter(Boolean))];
     const preferredLeadId = String((base as any).crmLeadId || crmLeadIds[0] || '') || undefined;
     const capabilityTarget = sorted.find(row => preferredLeadId && String((row as any).crmLeadId || '') === preferredLeadId) || base;
-    const hasChat = metadata.some(row => String(row.conversationKind || '') !== 'email');
+    const hasChat = metadata.some(row => String(row.conversationKind || '') === 'website');
     const hasEmail = Boolean(preferredLeadId) || metadata.some(row => row.conversationKind === 'email' || String(row.lastMessage || '').startsWith('Email:'));
     const hasWhatsApp = metadata.some(row => Boolean(row.hasWhatsApp) || String(row.lastMessage || '').startsWith('WhatsApp:'));
 
@@ -92,8 +92,8 @@ export function groupCustomerConversations(rows: ChatConversation[]): UnifiedCus
       ...base,
       status: conversationStatus(sorted),
       conversationIds,
-      // A CRM/email conversation can act as the secure launch point for Website Chat.
-      // The server converts the first chat send into the canonical website conversation.
+      // A CRM/email conversation can act as the secure launch point for Website Chat,
+      // but quotation conversations remain a separate customer-facing thread.
       chatConversationId: chatTarget?.id || (preferredLeadId ? capabilityTarget.id : undefined),
       capabilityConversationId: capabilityTarget.id,
       crmLeadId: preferredLeadId,
