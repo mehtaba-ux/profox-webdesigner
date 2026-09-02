@@ -31,6 +31,14 @@ export type ChatConversationResult = ChatConversation & {
 
 export type ChatOpenResult = ChatConversationResult | ChatRecoveryChallenge;
 
+export type SalesStartedChatResult = {
+  conversation: ChatConversationResult;
+  message: ChatMessage;
+  conversationUrl: string;
+  invitationQueued: boolean;
+  recipientEmail: string;
+};
+
 function readJson<T>(key: string, fallback: T): T {
   try {
     const value = localStorage.getItem(key);
@@ -116,6 +124,37 @@ export const playChatChime = () => {
   } catch (error) {
     console.warn('Audio chime unsupported:', error);
   }
+};
+
+export const startSalesCustomerChat = async (input: { leadId: string; message: string }): Promise<SalesStartedChatResult> => {
+  const message = input.message.trim();
+  if (!message) throw new Error('Enter a message before starting website chat.');
+  if (!UUID_PATTERN.test(input.leadId)) throw new Error('A valid CRM lead is required before starting website chat.');
+  const { data, error } = await supabase.rpc('sales_start_customer_chat', {
+    p_lead_id: input.leadId,
+    p_message: message,
+  });
+  if (error || !data?.conversation?.id) throw rpcError(error, 'The customer website chat could not be started.');
+  return data as SalesStartedChatResult;
+};
+
+export const redeemSalesChatLink = async (linkToken: string): Promise<ChatConversationResult> => {
+  if (!UUID_PATTERN.test(linkToken)) throw new Error('This secure conversation link is invalid.');
+  const accessToken = crypto.randomUUID();
+  const { data, error } = await supabase.rpc('public_sales_chat_redeem_link', {
+    p_link_token: linkToken,
+    p_access_token: accessToken,
+  });
+  if (error || !data?.id) throw rpcError(error, 'This secure conversation link is invalid or has been revoked.');
+  rememberChatToken(String(data.id), accessToken, String(data.customerEmail || ''));
+  return data as ChatConversationResult;
+};
+
+export const touchClientPortalConversation = async (conversationId: string): Promise<boolean> => {
+  if (!UUID_PATTERN.test(conversationId)) return false;
+  const { data, error } = await supabase.rpc('client_portal_touch_conversation', { p_conversation_id: conversationId });
+  if (error) throw rpcError(error, 'Conversation presence could not be updated.');
+  return Boolean(data);
 };
 
 export const getSalesReps = async (): Promise<SalesRep[]> => {
