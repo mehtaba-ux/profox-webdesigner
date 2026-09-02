@@ -24,7 +24,9 @@ const ACTIVE_STAFF_ROLES = new Set([
 ]);
 const MEDIA_MANAGER_ROLES = new Set(['admin', 'site_manager', 'editor']);
 const ALLOWED_UPLOAD_TYPES = new Set([
-  'image/jpeg','image/png','image/webp','image/gif','application/pdf','application/msword',
+  'image/jpeg','image/png','image/webp','image/gif',
+  'video/mp4','video/webm','video/quicktime','video/mpeg',
+  'application/pdf','application/msword',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document','application/vnd.ms-excel',
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet','application/vnd.ms-powerpoint',
   'application/vnd.openxmlformats-officedocument.presentationml.presentation','text/plain','text/csv',
@@ -40,6 +42,7 @@ const CONTENT_SECURITY_POLICY = [
   "script-src 'self' https://checkout.razorpay.com https://www.paypal.com https://www.paypalobjects.com",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com","font-src 'self' data: https://fonts.gstatic.com",
   "img-src 'self' data: blob: https:",
+  "media-src 'self' blob: https:",
   "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.razorpay.com https://*.paypal.com",
   "frame-src https://api.razorpay.com https://*.razorpay.com https://www.paypal.com https://www.sandbox.paypal.com",
   "worker-src 'self' blob:","manifest-src 'self'",'upgrade-insecure-requests',
@@ -229,7 +232,39 @@ async function handleAttachmentUpload(request: Request, env: Env, url: URL) {
   }
 }
 
+async function attachmentAuthorization(request: Request, env: Env, attachmentId: string, rpcName: 'communication_attachment_get_download' | 'communication_attachment_delete_authorize') {
+  const client = supabaseClientForRequest(request, env);
+  if (!client) return { error: jsonResponse({ error: 'Attachment authorization is not configured.' }, 503), data: null as any };
+  const result = await client.rpc(rpcName, { p_attachment_id: attachmentId, p_public_access_token: publicChatToken(request) || null });
+  return { error: result.error ? jsonResponse({ error: result.error.message || 'Attachment access denied.' }, 403) : null, data: result.data };
+}
+
 async function handleAttachmentDownload(request: Request, env: Env, url: URL, attachmentId: string) {
+  const cors = privateCors(request, env, url);
+  if (!cors.allowed) return jsonResponse({ error: 'Origin is not allowed.' }, 403, cors.headers);
+  if (!UUID_RE.test(attachmentId)) return jsonResponse({ error: 'A valid attachment is required.' }, 400, cors.headers);
+  if (!env.MEDIA_BUCKET) return jsonResponse({ error: 'R2 storage is not configured.' }, 503, cors.headers);
+
+  const auth = await attachmentAuthorization(request, env, attachmentId, 'communication_attachment_get_download');
+  if (auth.error || !auth.data) return auth.error || jsonResponse({ error: 'Attachment access denied.' }, 403, cors.headers);
+  const key = safeObjectKey(String(auth.data.storageKey || ''));
+  if (!SAFE_ATTACHMENT_KEY.test(key)) return jsonResponse({ error: 'Attachment storage path is invalid.' }, 500, cors.headers);
+  const object = request.method === 'HEAD' ? await env.MEDIA_BUCKET.head(key) : await env.MEDIA_BUCKET.get(key);
+  if (!object) return jsonResponse({ error: 'Attachment file was not found.' }, 404, cors.headers);
+
+  const headers = new Headers(cors.headers);
+  object.writeHttpMetadata(headers);
+  const fileName = cleanDownloadName(auth.data.name);
+  headers.set('Content-Type', String(auth.data.contentType || object.httpMetadata?.contentType || 'application/octet-stream'));
+  headers.set('Content-Disposition', `attachment; filename="${fileName}"; filename*=UTF-8''${encodeURIComponent(fileName)}`);
+  headers.set('Cache-Control', 'private, no-store');
+  headers.set('Pragma', 'no-cache');
+  headers.set('X-Content-Type-Options', 'nosniff');
+  headers.set('ETag', object.httpEtag);
+  return new Response(request.method === 'HEAD' ? null : (object as R2ObjectBody).body, { status: 200, headers });
+}
+
+async function handleAttachmentDelete(request: Request, env: Env, url: URL, attachmentId: string) {
   const cors = privateCors(request, env, url);
   if (!cors.allowed) return jsonResponse({ error: 'Origin is not allowed.' }, 403, cors.headers);
   if (!UUID_RE.test(attachmentId)) return jsonResponse({ error: 'A valid attachment is required.' }, 400, cors.headers);
@@ -237,26 +272,15 @@ async function handleAttachmentDownload(request: Request, env: Env, url: URL, at
   const client = supabaseClientForRequest(request, env);
   if (!client) return jsonResponse({ error: 'Attachment authorization is not configured.' }, 503, cors.headers);
 
-  const result = await client.rpc('communication_attachment_get_download', {
-    p_attachment_id: attachmentId,
-    p_public_access_token: publicChatToken(request) || null,
-  });
-  if (result.error || !result.data) return jsonResponse({ error: result.error?.message || 'Attachment access denied.' }, 403, cors.headers);
-  const key = safeObjectKey(String(result.data.storageKey || ''));
+  const authorize = await client.rpc('communication_attachment_delete_authorize', { p_attachment_id: attachmentId, p_public_access_token: publicChatToken(request) || null });
+  if (authorize.error || !authorize.data) return jsonResponse({ error: authorize.error?.message || 'Attachment access denied.' }, 403, cors.headers);
+  const key = safeObjectKey(String(authorize.data.storageKey || ''));
   if (!SAFE_ATTACHMENT_KEY.test(key)) return jsonResponse({ error: 'Attachment storage path is invalid.' }, 500, cors.headers);
-  const object = request.method === 'HEAD' ? await env.MEDIA_BUCKET.head(key) : await env.MEDIA_BUCKET.get(key);
-  if (!object) return jsonResponse({ error: 'Attachment file was not found.' }, 404, cors.headers);
 
-  const headers = new Headers(cors.headers);
-  object.writeHttpMetadata(headers);
-  const fileName = cleanDownloadName(result.data.name);
-  headers.set('Content-Type', String(result.data.contentType || object.httpMetadata?.contentType || 'application/octet-stream'));
-  headers.set('Content-Disposition', `attachment; filename="${fileName}"; filename*=UTF-8''${encodeURIComponent(fileName)}`);
-  headers.set('Cache-Control', 'private, no-store');
-  headers.set('Pragma', 'no-cache');
-  headers.set('X-Content-Type-Options', 'nosniff');
-  headers.set('ETag', object.httpEtag);
-  return new Response(request.method === 'HEAD' ? null : (object as R2ObjectBody).body, { status: 200, headers });
+  await env.MEDIA_BUCKET.delete(key);
+  const marked = await client.rpc('communication_attachment_mark_deleted', { p_attachment_id: attachmentId, p_public_access_token: publicChatToken(request) || null });
+  if (marked.error || marked.data !== true) return jsonResponse({ error: marked.error?.message || 'Attachment cleanup could not be finalized.' }, 500, cors.headers);
+  return jsonResponse({ success: true, attachmentId }, 200, cors.headers);
 }
 
 async function handleRequest(request: Request, env: Env, _ctx?: WorkerExecutionContext): Promise<Response> {
@@ -280,6 +304,7 @@ async function handleRequest(request: Request, env: Env, _ctx?: WorkerExecutionC
   if (url.pathname === '/api/communication-attachments/upload' && request.method === 'POST') return handleAttachmentUpload(request, env, url);
   const attachmentMatch = /^\/api\/communication-attachments\/([0-9a-f-]{36})$/i.exec(url.pathname);
   if (attachmentMatch && (request.method === 'GET' || request.method === 'HEAD')) return handleAttachmentDownload(request, env, url, attachmentMatch[1]);
+  if (attachmentMatch && request.method === 'DELETE') return handleAttachmentDelete(request, env, url, attachmentMatch[1]);
 
   if (url.pathname === '/api/r2-upload' && request.method === 'POST') {
     const cors = privateCors(request, env, url);
