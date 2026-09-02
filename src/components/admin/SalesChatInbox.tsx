@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
   CheckCircle2, Mail, MessageCircle, MessageSquare, RefreshCw, Search, Send,
-  Shield, StickyNote, User, UserCheck, Users, X
+  Shield, StickyNote, User, UserCheck, Users, Volume2, VolumeX, X
 } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../lib/AuthContext';
@@ -26,6 +26,50 @@ const CUSTOMER_COMMUNICATION_ROLES = new Set([
   'content_writer','uiux_designer','developer','web_developer','developer_designer','qa',
 ]);
 const SALES_ROLES = new Set(['admin','sales','sales_rep','sales_team']);
+const SALES_CHAT_SOUND_KEY = 'profox_sales_chat_sound_v1';
+
+let staffAlertAudioContext: AudioContext | null = null;
+
+function getStaffAlertAudioContext() {
+  try {
+    const AudioContextCtor = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContextCtor) return null;
+    if (!staffAlertAudioContext) staffAlertAudioContext = new AudioContextCtor();
+    return staffAlertAudioContext;
+  } catch {
+    return null;
+  }
+}
+
+async function unlockStaffAlertAudio() {
+  try {
+    const context = getStaffAlertAudioContext();
+    if (context?.state === 'suspended') await context.resume();
+  } catch {
+    // The visual unread badge and in-app notification remain the fallback.
+  }
+}
+
+function playStaffAlertChime() {
+  try {
+    const context = getStaffAlertAudioContext();
+    if (!context || context.state !== 'running') return;
+    const now = context.currentTime;
+    const oscillator = context.createOscillator();
+    const gain = context.createGain();
+    oscillator.type = 'sine';
+    oscillator.frequency.setValueAtTime(523.25, now);
+    oscillator.frequency.exponentialRampToValueAtTime(659.25, now + 0.12);
+    gain.gain.setValueAtTime(0.14, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+    oscillator.connect(gain);
+    gain.connect(context.destination);
+    oscillator.start(now);
+    oscillator.stop(now + 0.35);
+  } catch {
+    // Keep the inbox usable when audio APIs are blocked or unavailable.
+  }
+}
 
 function replySubject(subject: unknown, customerName: string) {
   const clean = String(subject || '').trim();
@@ -67,6 +111,14 @@ function modeFromConversation(
   return 'note';
 }
 
+function clearUnread(conversation: UnifiedCustomerConversation): UnifiedCustomerConversation {
+  return { ...conversation, unreadCount: 0, latestUnreadCustomerMessageIds: [] };
+}
+
+function sameUnifiedConversation(a: UnifiedCustomerConversation, b: UnifiedCustomerConversation) {
+  return a.id === b.id || a.conversationIds.some(id => b.conversationIds.includes(id));
+}
+
 export default function SalesChatInbox() {
   const { user, role } = useAuth();
   const [searchParams] = useSearchParams();
@@ -90,7 +142,40 @@ export default function SalesChatInbox() {
   const [emailSyncing, setEmailSyncing] = useState(false);
   const [professionalEmailConnected, setProfessionalEmailConnected] = useState(false);
   const [inboxError, setInboxError] = useState('');
+  const [soundEnabled, setSoundEnabled] = useState(() => {
+    try { return localStorage.getItem(SALES_CHAT_SOUND_KEY) !== 'off'; }
+    catch { return true; }
+  });
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const alertedMessageIdsRef = useRef<Set<string>>(new Set());
+  const alertsSeededRef = useRef(false);
+  const soundEnabledRef = useRef(soundEnabled);
+
+  useEffect(() => { soundEnabledRef.current = soundEnabled; }, [soundEnabled]);
+
+  const trackUnreadAlerts = (rows: UnifiedCustomerConversation[], allowSound: boolean) => {
+    const ids = new Set(rows.flatMap(row => row.latestUnreadCustomerMessageIds || []));
+    if (!alertsSeededRef.current) {
+      ids.forEach(id => alertedMessageIdsRef.current.add(id));
+      alertsSeededRef.current = true;
+      return;
+    }
+
+    const newIds = [...ids].filter(id => !alertedMessageIdsRef.current.has(id));
+    newIds.forEach(id => alertedMessageIdsRef.current.add(id));
+    if (allowSound && newIds.length > 0 && soundEnabledRef.current) playStaffAlertChime();
+  };
+
+  const toggleSound = async () => {
+    const next = !soundEnabled;
+    setSoundEnabled(next);
+    soundEnabledRef.current = next;
+    try { localStorage.setItem(SALES_CHAT_SOUND_KEY, next ? 'on' : 'off'); } catch { /* no-op */ }
+    if (next) {
+      await unlockStaffAlertAudio();
+      playStaffAlertChime();
+    }
+  };
 
   const refreshProfessionalMailState = async () => {
     try {
@@ -131,9 +216,12 @@ export default function SalesChatInbox() {
       ]);
       const mailStatus = await refreshProfessionalMailState();
       const mailConnected = Boolean(mailStatus?.eligible && mailStatus.sendConnected);
+      const opened = clearUnread(conversation);
+      setSelectedConv(opened);
+      setConversations(previous => previous.map(row => sameUnifiedConversation(row, conversation) ? clearUnread(row) : row));
       setMessages(timeline);
       setCapabilities(nextCapabilities);
-      setReplyMode(modeFromConversation(conversation, timeline, nextCapabilities, mailConnected));
+      setReplyMode(modeFromConversation(opened, timeline, nextCapabilities, mailConnected));
     } catch (error: any) {
       setCapabilities(null);
       setInboxError(error?.message || 'This customer conversation could not be opened.');
@@ -148,6 +236,7 @@ export default function SalesChatInbox() {
         getUnifiedCustomerConversations(),
         showSalesTeam ? getSalesReps() : Promise.resolve([] as SalesRep[]),
       ]);
+      trackUnreadAlerts(unified, false);
       setConversations(unified);
       setSalesReps(reps);
 
@@ -179,12 +268,17 @@ export default function SalesChatInbox() {
   const refreshDataSilent = async () => {
     try {
       const unified = await getUnifiedCustomerConversations();
-      setConversations(unified);
+      trackUnreadAlerts(unified, true);
+      let nextRows = unified;
       if (selectedConv) {
         const current = unified.find(conv => conv.id === selectedConv.id || conv.conversationIds.some(id => selectedConv.conversationIds.includes(id))) || selectedConv;
-        setSelectedConv(current);
-        setMessages(await getUnifiedCustomerTimeline(current));
+        const timeline = await getUnifiedCustomerTimeline(current);
+        const opened = clearUnread(current);
+        nextRows = unified.map(row => sameUnifiedConversation(row, current) ? clearUnread(row) : row);
+        setSelectedConv(opened);
+        setMessages(timeline);
       }
+      setConversations(nextRows);
     } catch {
       // Keep the current view during transient refresh failures.
     }
@@ -197,6 +291,8 @@ export default function SalesChatInbox() {
   };
 
   useEffect(() => {
+    alertsSeededRef.current = false;
+    alertedMessageIdsRef.current.clear();
     if (isAuthorizedRole) void loadData(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [role, user?.id, requestedConversationId, requestedLeadId]);
@@ -315,6 +411,7 @@ export default function SalesChatInbox() {
 
   const canEmail = Boolean(capabilities?.canSendEmail && selectedConv?.crmLeadId && professionalEmailConnected);
   const canWhatsapp = Boolean(capabilities?.canSendWhatsApp);
+  const unreadTotal = conversations.reduce((total, conversation) => total + Math.max(0, Number(conversation.unreadCount || 0)), 0);
   const whatsappUnavailableReason = !capabilities?.whatsappConfigured
     ? 'Not connected'
     : !capabilities?.customerPhone
@@ -323,13 +420,17 @@ export default function SalesChatInbox() {
         ? 'Template required'
         : '';
 
-  return <div className="flex h-[82vh] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white font-sans shadow-sm">
+  return <div
+    className="flex h-[82vh] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white font-sans shadow-sm"
+    onPointerDown={() => { if (soundEnabledRef.current) void unlockStaffAlertAudio(); }}
+  >
     <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 bg-slate-50/80 px-6 py-4">
       <div className="flex items-center gap-3">
         <div className="rounded-xl bg-[#000080] p-2.5 text-white shadow-sm"><MessageSquare className="h-5 w-5" /></div>
-        <div><div className="flex items-center gap-2"><h2 className="text-base font-bold text-slate-900">Unified Customer Conversations</h2><span className="flex items-center gap-1 rounded-full border border-blue-200 bg-blue-100 px-2.5 py-0.5 text-[10px] font-bold text-[#000080]"><Shield className="h-3 w-3" />Controlled access</span></div><p className="text-xs text-slate-500">One customer timeline for Website Chat, Professional Email, WhatsApp and private team notes.</p></div>
+        <div><div className="flex items-center gap-2"><h2 className="text-base font-bold text-slate-900">Unified Customer Conversations</h2><span className="flex items-center gap-1 rounded-full border border-blue-200 bg-blue-100 px-2.5 py-0.5 text-[10px] font-bold text-[#000080]"><Shield className="h-3 w-3" />Controlled access</span>{unreadTotal > 0 && <span className="rounded-full bg-rose-600 px-2 py-0.5 text-[10px] font-black text-white">{unreadTotal > 99 ? '99+' : unreadTotal} unread</span>}</div><p className="text-xs text-slate-500">One customer timeline for Website Chat, Professional Email, WhatsApp and private team notes.</p></div>
       </div>
       <div className="flex items-center gap-2">
+        <button type="button" onClick={() => void toggleSound()} className={`flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-bold ${soundEnabled ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-white text-slate-500'}`} title="New website-chat message sound">{soundEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}{soundEnabled ? 'Alerts On' : 'Alerts Off'}</button>
         {showSalesTeam && <button type="button" onClick={() => setShowTeamModal(true)} className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700"><Users className="h-4 w-4" />Sales Team</button>}
         <button onClick={() => void refreshAll()} disabled={loading || emailSyncing} className="rounded-xl border border-slate-200 bg-white p-2 text-slate-600 hover:text-[#000080] disabled:opacity-50" title="Refresh all channels"><RefreshCw className={`h-4 w-4 ${loading || emailSyncing ? 'animate-spin' : ''}`} /></button>
       </div>
@@ -348,10 +449,11 @@ export default function SalesChatInbox() {
           {filteredConversations.length === 0 ? <div className="p-8 text-center text-xs leading-5 text-slate-400">No customer conversations are available to this account. Delivery specialists appear here only after an explicit project/client chat grant.</div> : filteredConversations.map(conversation => {
             const selected = selectedConv?.conversationIds.some(id => conversation.conversationIds.includes(id));
             const rep = salesReps.find(item => item.id === conversation.currentSalesId) || salesReps.find(item => item.id === conversation.originalSalesId);
+            const unread = Math.max(0, Number(conversation.unreadCount || 0));
             return <button key={`${conversation.currentSalesId}-${conversation.customerIdentityId || conversation.customerEmail}`} onClick={() => void selectConversation(conversation)} className={`block w-full p-4 text-left transition hover:bg-white ${selected ? 'border-l-4 border-l-[#000080] bg-white shadow-sm' : ''}`}>
-              <div className="flex items-start justify-between gap-2"><div className="min-w-0 flex-1"><h4 className="truncate text-xs font-bold text-slate-900">{conversation.customerName}</h4><p className="mt-0.5 truncate text-[11px] text-slate-500">{conversation.customerEmail || (conversation as any).customerPhone || 'Customer'}</p></div><span className="shrink-0 text-[9px] text-slate-400">{conversation.lastMessageTime ? new Date(conversation.lastMessageTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}</span></div>
+              <div className="flex items-start justify-between gap-2"><div className="min-w-0 flex-1"><h4 className={`truncate text-xs ${unread > 0 ? 'font-black text-slate-950' : 'font-bold text-slate-900'}`}>{conversation.customerName}</h4><p className="mt-0.5 truncate text-[11px] text-slate-500">{conversation.customerEmail || (conversation as any).customerPhone || 'Customer'}</p></div><div className="flex shrink-0 items-center gap-1.5"><span className="text-[9px] text-slate-400">{conversation.lastMessageTime ? new Date(conversation.lastMessageTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}</span>{unread > 0 && <span className="flex min-w-5 items-center justify-center rounded-full bg-rose-600 px-1.5 py-0.5 text-[9px] font-black text-white">{unread > 99 ? '99+' : unread}</span>}</div></div>
               <div className="mt-2 flex flex-wrap items-center gap-1.5">{conversation.hasChat && <span className="flex items-center gap-1 rounded border border-indigo-200 bg-indigo-50 px-1.5 py-0.5 text-[9px] font-bold text-indigo-700"><MessageSquare className="h-2.5 w-2.5" />Chat</span>}{conversation.hasEmail && <span className="flex items-center gap-1 rounded border border-sky-200 bg-sky-50 px-1.5 py-0.5 text-[9px] font-bold text-sky-700"><Mail className="h-2.5 w-2.5" />Email</span>}{conversation.hasWhatsApp && <span className="flex items-center gap-1 rounded border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 text-[9px] font-bold text-emerald-700"><MessageCircle className="h-2.5 w-2.5" />WhatsApp</span>}</div>
-              <p className="mt-2 line-clamp-1 text-xs text-slate-600">{conversation.lastMessage || 'Conversation ready'}</p>
+              <p className={`mt-2 line-clamp-1 text-xs ${unread > 0 ? 'font-semibold text-slate-800' : 'text-slate-600'}`}>{conversation.lastMessage || 'Conversation ready'}</p>
               {showSalesTeam && <div className="mt-2.5 flex items-center gap-1 border-t border-slate-100 pt-2 text-[10px] text-slate-500"><UserCheck className="h-3 w-3 text-[#000080]" />{rep?.name || 'Assigned seller'}</div>}
             </button>;
           })}
@@ -371,7 +473,11 @@ export default function SalesChatInbox() {
             if (message.isInternalNote) return <div key={`note-${message.id}`} className="space-y-1 rounded-2xl border border-amber-300 bg-amber-50 p-3.5 text-xs text-amber-900 shadow-sm"><div className="flex items-center justify-between text-[10px] font-bold text-amber-800"><span className="flex items-center gap-1.5"><StickyNote className="h-3.5 w-3.5" />Internal Note · Never shown to customer</span><span>{new Date(message.createdAt).toLocaleString()}</span></div><p className="whitespace-pre-wrap font-medium">{message.messageText}</p></div>;
             const customer = message.senderType === 'customer';
             const channel = String(meta.channel || 'chat');
-            const status = !customer ? deliveryLabel(meta.deliveryStatus) : '';
+            const status = !customer
+              ? channel === 'chat'
+                ? (meta.customerReadAt ? 'Read' : 'Sent')
+                : deliveryLabel(meta.deliveryStatus)
+              : '';
             return <div key={`${channel}-${message.id}`} className={`flex ${customer ? 'justify-start' : 'justify-end'}`}><div className={`max-w-[78%] rounded-2xl p-4 text-xs shadow-sm ${customer ? 'rounded-tl-none border border-slate-200 bg-white text-slate-900' : 'rounded-tr-none bg-[#000080] text-white'}`}><div className="mb-1 flex items-center justify-between gap-4 text-[10px] opacity-75"><span className="flex items-center gap-1 font-bold">{channel === 'email' ? <Mail className="h-3 w-3" /> : channel === 'whatsapp' ? <MessageCircle className="h-3 w-3" /> : <MessageSquare className="h-3 w-3" />}{message.senderName || (customer ? selectedConv.customerName : 'ProFox Team')} · {channelName(channel)}</span><span>{new Date(message.createdAt).toLocaleString()}</span></div>{channel === 'email' && meta.subject && <div className={`mb-2 text-[10px] font-black ${customer ? 'text-slate-500' : 'text-white/75'}`}>Subject: {meta.subject}</div>}<p className="whitespace-pre-wrap font-medium leading-relaxed">{message.messageText}</p>{status && <div className={`mt-2 flex items-center justify-end gap-1 text-[9px] font-bold ${meta.deliveryStatus === 'failed' ? 'text-rose-200' : 'opacity-65'}`}><CheckCircle2 className="h-3 w-3" />{status}</div>}</div></div>;
           })}
           <div ref={messagesEndRef} />
