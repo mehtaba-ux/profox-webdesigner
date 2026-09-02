@@ -13,6 +13,8 @@ export type UnifiedCustomerConversation = ChatConversation & {
   channelCount: number;
   customerIdentityId?: string;
   conversationKind?: string;
+  unreadCount: number;
+  latestUnreadCustomerMessageIds: string[];
 };
 
 function normalizedEmail(value: unknown) {
@@ -87,6 +89,10 @@ export function groupCustomerConversations(rows: ChatConversation[]): UnifiedCus
     const hasChat = metadata.some(row => String(row.conversationKind || '') === 'website');
     const hasEmail = Boolean(preferredLeadId) || metadata.some(row => row.conversationKind === 'email' || String(row.lastMessage || '').startsWith('Email:'));
     const hasWhatsApp = metadata.some(row => Boolean(row.hasWhatsApp) || String(row.lastMessage || '').startsWith('WhatsApp:'));
+    const unreadCount = metadata.reduce((total, row) => total + Math.max(0, Number(row.unreadCount || 0)), 0);
+    const latestUnreadCustomerMessageIds = [...new Set(metadata
+      .map(row => String(row.latestUnreadCustomerMessageId || '').trim())
+      .filter(Boolean))];
 
     return {
       ...base,
@@ -104,6 +110,8 @@ export function groupCustomerConversations(rows: ChatConversation[]): UnifiedCus
       channelCount: Number(hasChat) + Number(hasEmail) + Number(hasWhatsApp),
       conversationKind: 'unified',
       customerIdentityId: String((base as any).customerIdentityId || '') || undefined,
+      unreadCount,
+      latestUnreadCustomerMessageIds,
     } as UnifiedCustomerConversation;
   }).sort((a, b) => activityTime(b as any) - activityTime(a as any));
 }
