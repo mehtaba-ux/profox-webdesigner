@@ -1,5 +1,7 @@
 import { supabase } from './supabase';
 
+export type ProfessionalEmailSendConnectionStatus = 'disconnected' | 'connected' | 'reconnect_required' | 'error';
+
 export interface SalesAccountSetupStatus {
   userId: string;
   profilePhotoReady: boolean;
@@ -7,6 +9,9 @@ export interface SalesAccountSetupStatus {
   professionalEmailRequired: boolean;
   professionalEmailReady: boolean;
   professionalEmailCredentialPending: boolean;
+  professionalEmailAuthorizedOnce: boolean;
+  professionalEmailSendConnected: boolean;
+  professionalEmailSendConnectionStatus: ProfessionalEmailSendConnectionStatus;
   workEmail: string;
   mailProvider: 'none' | 'zoho';
   calendarProvider: 'google' | 'zoho';
@@ -34,6 +39,8 @@ export interface SalesAccountSetupStatus {
   progressPercent: number;
 }
 
+// Retained for backwards compatibility with the existing support RPC. Seller
+// onboarding no longer reveals or depends on a Zoho first-login password.
 export interface ProfessionalMailboxFirstLogin {
   available: boolean;
   workEmail: string;
@@ -42,21 +49,29 @@ export interface ProfessionalMailboxFirstLogin {
   reason: string;
 }
 
+const MAIL_CONNECTION_STATES = new Set<ProfessionalEmailSendConnectionStatus>([
+  'disconnected',
+  'connected',
+  'reconnect_required',
+  'error',
+]);
+
 function normalizeStatus(value: any): SalesAccountSetupStatus {
   const calendarProvider = value?.calendarProvider === 'zoho' ? 'zoho' : 'google';
   const meetingProvider = value?.meetingProvider === 'zoho_meeting' ? 'zoho_meeting' : 'google_meet';
   const professionalEmailRequired = Boolean(value?.professionalEmailRequired);
   const professionalEmailReady = value?.professionalEmailReady === undefined ? true : Boolean(value?.professionalEmailReady);
-  const professionalEmailCredentialPending = professionalEmailRequired
-    ? (!professionalEmailReady || Boolean(value?.professionalEmailCredentialPending))
-    : Boolean(value?.professionalEmailCredentialPending);
+  const rawMailConnectionStatus = String(value?.professionalEmailSendConnectionStatus || 'disconnected') as ProfessionalEmailSendConnectionStatus;
   return {
     userId: String(value?.userId || ''),
     profilePhotoReady: Boolean(value?.profilePhotoReady),
     timezoneReady: Boolean(value?.timezoneReady),
     professionalEmailRequired,
     professionalEmailReady,
-    professionalEmailCredentialPending,
+    professionalEmailCredentialPending: Boolean(value?.professionalEmailCredentialPending),
+    professionalEmailAuthorizedOnce: Boolean(value?.professionalEmailAuthorizedOnce),
+    professionalEmailSendConnected: Boolean(value?.professionalEmailSendConnected),
+    professionalEmailSendConnectionStatus: MAIL_CONNECTION_STATES.has(rawMailConnectionStatus) ? rawMailConnectionStatus : 'disconnected',
     workEmail: String(value?.workEmail || ''),
     mailProvider: value?.mailProvider === 'zoho' ? 'zoho' : 'none',
     calendarProvider,
@@ -106,6 +121,8 @@ export const salesAccountSetupService = {
     return normalizeStatus(data);
   },
 
+  // Legacy support path only. Seller onboarding uses professionalMailService
+  // OAuth and never asks sellers to handle mailbox passwords.
   async getMyProfessionalMailboxFirstLogin(): Promise<ProfessionalMailboxFirstLogin> {
     const { data, error } = await supabase.rpc('get_my_professional_mailbox_first_login');
     if (error) throw error;
