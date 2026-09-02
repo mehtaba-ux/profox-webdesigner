@@ -92,7 +92,9 @@ export function groupCustomerConversations(rows: ChatConversation[]): UnifiedCus
       ...base,
       status: conversationStatus(sorted),
       conversationIds,
-      chatConversationId: chatTarget?.id,
+      // A CRM/email conversation can act as the secure launch point for Website Chat.
+      // The server converts the first chat send into the canonical website conversation.
+      chatConversationId: chatTarget?.id || (preferredLeadId ? capabilityTarget.id : undefined),
       capabilityConversationId: capabilityTarget.id,
       crmLeadId: preferredLeadId,
       crmLeadIds,
