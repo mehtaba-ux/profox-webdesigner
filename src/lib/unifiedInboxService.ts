@@ -8,6 +8,7 @@ export type UnifiedCustomerConversation = ChatConversation & {
   crmLeadIds: string[];
   hasChat: boolean;
   hasEmail: boolean;
+  hasWhatsApp: boolean;
   channelCount: number;
   customerIdentityId?: string;
   conversationKind?: string;
@@ -67,8 +68,6 @@ export function groupCustomerConversations(rows: ChatConversation[]): UnifiedCus
     const targetIndex = matchingIndexes[0];
     groups[targetIndex].push(row);
 
-    // If one row bridges a legacy email-only record and an identity-linked website
-    // record, collapse those groups into one customer without altering stored rows.
     for (const index of matchingIndexes.slice(1).sort((a, b) => b - a)) {
       groups[targetIndex].push(...groups[index]);
       groups.splice(index, 1);
@@ -80,22 +79,24 @@ export function groupCustomerConversations(rows: ChatConversation[]): UnifiedCus
     const base = sorted[0];
     const metadata = sorted.map(row => row as any);
     const conversationIds = sorted.map(row => row.id);
-    const activeChatTarget = sorted.find(row => String((row as any).conversationKind || '') !== 'email' && row.status !== 'resolved');
+    const chatTarget = sorted.find(row => String((row as any).conversationKind || '') !== 'email');
     const crmLeadIds = [...new Set(metadata.map(row => String(row.crmLeadId || '')).filter(Boolean))];
     const preferredLeadId = String((base as any).crmLeadId || crmLeadIds[0] || '') || undefined;
     const hasChat = metadata.some(row => String(row.conversationKind || '') !== 'email');
     const hasEmail = Boolean(preferredLeadId) || metadata.some(row => row.conversationKind === 'email' || String(row.lastMessage || '').startsWith('Email:'));
+    const hasWhatsApp = metadata.some(row => Boolean(row.hasWhatsApp) || String(row.lastMessage || '').startsWith('WhatsApp:'));
 
     return {
       ...base,
       status: conversationStatus(sorted),
       conversationIds,
-      chatConversationId: activeChatTarget?.id,
+      chatConversationId: chatTarget?.id,
       crmLeadId: preferredLeadId,
       crmLeadIds,
       hasChat,
       hasEmail,
-      channelCount: Number(hasChat) + Number(hasEmail),
+      hasWhatsApp,
+      channelCount: Number(hasChat) + Number(hasEmail) + Number(hasWhatsApp),
       conversationKind: 'unified',
       customerIdentityId: String((base as any).customerIdentityId || '') || undefined,
     } as UnifiedCustomerConversation;
