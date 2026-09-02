@@ -11,6 +11,13 @@ export type CommunicationAttachment = {
 
 export type UploadedCommunicationAttachment = CommunicationAttachment & { file: File };
 
+type AttachmentApiPayload = {
+  attachment?: CommunicationAttachment;
+  error?: string;
+  success?: boolean;
+  attachmentId?: string;
+};
+
 export const COMMUNICATION_ATTACHMENT_MAX_BYTES = 50 * 1024 * 1024;
 export const COMMUNICATION_ATTACHMENT_MAX_COUNT = 5;
 export const PROFESSIONAL_EMAIL_ATTACHMENT_MAX_TOTAL_BYTES = 10 * 1024 * 1024;
@@ -51,6 +58,10 @@ async function authorizationHeaders(conversationId?: string) {
   return publicToken ? { 'X-ProFox-Chat-Token': publicToken } : bearerHeader();
 }
 
+async function responsePayload(response: Response): Promise<AttachmentApiPayload> {
+  return response.json().catch(() => ({})) as Promise<AttachmentApiPayload>;
+}
+
 async function upload(form: FormData, publicToken?: string): Promise<UploadedCommunicationAttachment> {
   const file = form.get('file');
   if (!(file instanceof File)) throw new Error('Choose a file to attach.');
@@ -59,9 +70,9 @@ async function upload(form: FormData, publicToken?: string): Promise<UploadedCom
     ? { 'X-ProFox-Chat-Token': publicToken }
     : await bearerHeader();
   const response = await fetch('/api/communication-attachments/upload', { method: 'POST', headers, body: form });
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok || !payload?.attachment?.id) throw new Error(payload?.error || 'The attachment could not be uploaded.');
-  return { ...payload.attachment, file } as UploadedCommunicationAttachment;
+  const payload = await responsePayload(response);
+  if (!response.ok || !payload.attachment?.id) throw new Error(payload.error || 'The attachment could not be uploaded.');
+  return { ...payload.attachment, file };
 }
 
 export async function uploadSalesAttachment(input: {
@@ -105,8 +116,8 @@ export async function fetchCommunicationAttachmentBlob(input: {
   const headers = await authorizationHeaders(input.conversationId);
   const response = await fetch(`/api/communication-attachments/${encodeURIComponent(input.attachment.id)}`, { headers, cache: 'no-store' });
   if (!response.ok) {
-    const payload = await response.json().catch(() => ({}));
-    throw new Error(payload?.error || 'The attachment could not be opened.');
+    const payload = await responsePayload(response);
+    throw new Error(payload.error || 'The attachment could not be opened.');
   }
   return response.blob();
 }
@@ -137,8 +148,8 @@ export async function deleteCommunicationAttachment(input: {
   const headers = await authorizationHeaders(input.conversationId);
   const response = await fetch(`/api/communication-attachments/${encodeURIComponent(input.attachment.id)}`, { method: 'DELETE', headers, cache: 'no-store' });
   if (!response.ok) {
-    const payload = await response.json().catch(() => ({}));
-    throw new Error(payload?.error || 'The unused attachment could not be removed.');
+    const payload = await responsePayload(response);
+    throw new Error(payload.error || 'The unused attachment could not be removed.');
   }
 }
 
@@ -147,13 +158,4 @@ export function formatAttachmentSize(bytes: number) {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(bytes >= 10 * 1024 * 1024 ? 0 : 1)} MB`;
-}
-
-export async function fileToBase64(file: File) {
-  validateCommunicationAttachmentFile(file);
-  const buffer = new Uint8Array(await file.arrayBuffer());
-  let binary = '';
-  const chunk = 0x8000;
-  for (let i = 0; i < buffer.length; i += chunk) binary += String.fromCharCode(...buffer.subarray(i, i + chunk));
-  return btoa(binary);
 }
