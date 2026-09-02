@@ -80,6 +80,15 @@ export async function uploadSalesAttachment(input: {
   return upload(form, publicToken || undefined);
 }
 
+export async function uploadClientPortalSalesAttachment(input: { conversationId: string; file: File }) {
+  const form = new FormData();
+  form.set('scope', 'client_relationship');
+  form.set('conversationId', input.conversationId);
+  form.set('channel', 'chat');
+  form.set('file', input.file);
+  return upload(form);
+}
+
 export async function uploadInternalAttachment(input: { threadId: string; file: File }) {
   const form = new FormData();
   form.set('scope', 'internal');
