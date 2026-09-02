@@ -98,6 +98,7 @@ const ServiceDetailView = lazy(() => import('./pages/ServiceDetailView'));
 const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'));
 const PublicBookingPage = lazy(() => import('./pages/PublicBookingPage'));
 const BookingManagementPage = lazy(() => import('./pages/BookingManagementPage'));
+const CustomerChatPage = lazy(() => import('./pages/CustomerChatPage'));
 const PublicQuotationReview = lazy(() => import('./pages/PublicQuotationReview'));
 const PublicPaymentCheckout = lazy(() => import('./pages/PublicPaymentCheckout'));
 const SalesPartnerAgreementSign = lazy(() => import('./pages/SalesPartnerAgreementSign'));
@@ -181,6 +182,8 @@ export default function App() {
     <Route path="/employee/payout-setup" element={<EmployeePayoutSetup/>}/>
     <Route path="/design-academy" element={<DesignAcademyPage/>}/>
     <Route path="/academy/final-certification" element={<RoleFinalCertificationPage/>}/>
+    <Route path="/chat/:token" element={<CustomerChatPage/>}/>
+    <Route path="/chat/session/:conversationId" element={<CustomerChatPage/>}/>
     <Route path="/client-portal" element={<ClientPortalEntry/>}/>
     <Route path="/sales/mock-call-evaluator" element={<MockCallEvaluatorWorkspace/>}/>
     <Route element={<WorkspaceRouteFrame/>}>
