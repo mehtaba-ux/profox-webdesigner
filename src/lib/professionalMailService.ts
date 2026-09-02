@@ -1,4 +1,10 @@
 import { supabase } from './supabase';
+import {
+  fileToBase64,
+  PROFESSIONAL_EMAIL_ATTACHMENT_MAX_TOTAL_BYTES,
+  validateCommunicationAttachmentSelection,
+  type UploadedCommunicationAttachment,
+} from './communicationAttachmentService';
 
 export type ProfessionalMailSendConnectionStatus = 'disconnected' | 'connected' | 'reconnect_required' | 'error';
 
@@ -104,7 +110,23 @@ export const professionalMailService = {
     };
   },
 
-  async sendLeadEmail(input: { leadId: string; subject: string; body: string; idempotencyKey: string }): Promise<ProfessionalMailSendResult> {
+  async sendLeadEmail(input: {
+    leadId: string;
+    subject: string;
+    body: string;
+    idempotencyKey: string;
+    attachments?: UploadedCommunicationAttachment[];
+  }): Promise<ProfessionalMailSendResult> {
+    const attachments = input.attachments || [];
+    validateCommunicationAttachmentSelection(attachments.map(item => item.file), PROFESSIONAL_EMAIL_ATTACHMENT_MAX_TOTAL_BYTES);
+    const encodedAttachments = await Promise.all(attachments.map(async attachment => ({
+      id: attachment.id,
+      name: attachment.name,
+      contentType: attachment.contentType,
+      sizeBytes: attachment.sizeBytes,
+      contentBase64: await fileToBase64(attachment.file),
+    })));
+
     const { data, error } = await supabase.functions.invoke('zoho-mail-admin', {
       body: {
         action: 'send',
@@ -112,6 +134,7 @@ export const professionalMailService = {
         subject: input.subject,
         body: input.body,
         idempotencyKey: input.idempotencyKey,
+        attachments: encodedAttachments,
       },
     });
     if (error) throw new Error(messageFromError(error, 'Professional email could not be sent.'));
