@@ -1,6 +1,14 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { AlertCircle, ChevronUp, Loader2, MessageCircle, Send, ShieldCheck, UserRound } from 'lucide-react';
 import { useAuth } from '../../lib/AuthContext';
+import CommunicationAttachmentList from '../communication/CommunicationAttachmentList';
+import CommunicationComposerTools from '../communication/CommunicationComposerTools';
+import RichMessageText from '../communication/RichMessageText';
+import {
+  deleteCommunicationAttachment,
+  uploadInternalAttachment,
+  type UploadedCommunicationAttachment,
+} from '../../lib/communicationAttachmentService';
 import {
   internalChatService,
   type InternalChatContact,
@@ -34,6 +42,7 @@ export default function ClientProjectChat() {
   const [messages, setMessages] = useState<InternalChatMessage[]>([]);
   const [selectedThread, setSelectedThread] = useState<InternalChatThread | null>(null);
   const [draft, setDraft] = useState('');
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [loadingOlder, setLoadingOlder] = useState(false);
@@ -60,6 +69,7 @@ export default function ClientProjectChat() {
         setSelectedThread(null);
         setMessages([]);
         setHasOlder(false);
+        setPendingFiles([]);
       }
     }
     if (!quiet) setLoading(false);
@@ -170,6 +180,7 @@ export default function ClientProjectChat() {
 
   const open = async (thread: InternalChatThread) => {
     setSelectedThread(thread);
+    setPendingFiles([]);
     setError('');
     await loadInitialMessages(thread);
   };
@@ -194,24 +205,31 @@ export default function ClientProjectChat() {
       unreadCount: 0
     };
     setSelectedThread(thread);
+    setPendingFiles([]);
     await loadInitialMessages(thread);
     await loadDirectory(true);
   };
 
   const send = async () => {
-    if (!selectedThread || !draft.trim() || sending) return;
+    if (!selectedThread || (!draft.trim() && pendingFiles.length === 0) || sending) return;
     setSending(true);
     setError('');
-    const result = await internalChatService.sendMessage(selectedThread.threadId, draft.trim());
-    if (result.error) {
-      setError(messageOf(result.error, 'Message could not be sent. The project-chat grant may have changed.'));
-      await loadDirectory(true);
-    } else {
+    const uploaded: UploadedCommunicationAttachment[] = [];
+    try {
+      for (const file of pendingFiles) uploaded.push(await uploadInternalAttachment({ threadId: selectedThread.threadId, file }));
+      const result = await internalChatService.sendMessage(selectedThread.threadId, draft.trim(), uploaded.map(item => item.id));
+      if (result.error) throw result.error;
       setDraft('');
+      setPendingFiles([]);
       await refreshLatest(selectedThread, false);
       await loadDirectory(true);
+    } catch (sendError: any) {
+      if (uploaded.length) await Promise.allSettled(uploaded.map(attachment => deleteCommunicationAttachment({ attachment })));
+      setError(messageOf(sendError, 'Message could not be sent. The project-chat grant may have changed.'));
+      await loadDirectory(true);
+    } finally {
+      setSending(false);
     }
-    setSending(false);
   };
 
   const newContacts = useMemo(
@@ -228,7 +246,7 @@ export default function ClientProjectChat() {
     <div className="border-b border-slate-200 p-5">
       <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-[#000080]"><ShieldCheck className="h-4 w-4" />Authorized Project Chat</div>
       <h3 className="mt-2 text-lg font-black text-slate-900">Chat with an approved delivery specialist</h3>
-      <p className="mt-1 text-xs leading-5 text-slate-500">Realtime delivery is used when available. Every message still passes the same project authorization checks, and access disappears when the grant or project access ends.</p>
+      <p className="mt-1 text-xs leading-5 text-slate-500">Messages, safe links and project files stay inside the same authorized project thread. Every action still passes the existing project grant checks.</p>
     </div>
 
     {error && <div className="m-4 flex gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-xs font-semibold text-red-700"><AlertCircle className="h-4 w-4 shrink-0" />{error}</div>}
@@ -247,11 +265,15 @@ export default function ClientProjectChat() {
             {hasOlder && <div className="flex justify-center"><button type="button" disabled={loadingOlder} onClick={() => void loadOlder()} className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 px-3 py-1.5 text-[10px] font-black text-slate-600 disabled:opacity-50"><ChevronUp className="h-3.5 w-3.5" />{loadingOlder ? 'Loading…' : 'Load older messages'}</button></div>}
             {messages.map(message => {
               const mine = message.senderId === user?.id;
-              return <div key={message.messageId} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}><div className={`max-w-[82%] rounded-2xl px-4 py-3 ${mine ? 'bg-[#000080] text-white' : 'border border-slate-200 bg-slate-50 text-slate-800'}`}><div className={`text-[9px] font-black ${mine ? 'text-blue-200' : 'text-slate-400'}`}>{mine ? 'You' : message.senderFullName} · {time(message.createdAt)}</div><p className="mt-1 whitespace-pre-wrap break-words text-sm leading-6">{message.body}</p></div></div>;
+              return <div key={message.messageId} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}><div className={`max-w-[82%] rounded-2xl px-4 py-3 ${mine ? 'bg-[#000080] text-white' : 'border border-slate-200 bg-slate-50 text-slate-800'}`}><div className={`text-[9px] font-black ${mine ? 'text-blue-200' : 'text-slate-400'}`}>{mine ? 'You' : message.senderFullName} · {time(message.createdAt)}</div><div className="mt-1 text-sm leading-6"><RichMessageText text={message.body} inverse={mine} /></div><CommunicationAttachmentList attachments={message.attachments} inverse={mine} /></div></div>;
             })}
             <div ref={endRef} />
           </div>
-          <div className="border-t border-slate-200 p-4"><div className="flex items-end gap-2"><textarea rows={2} maxLength={4000} value={draft} onChange={event => setDraft(event.target.value)} placeholder={`Message ${selectedThread.otherFullName} about ${selectedThread.projectName}...`} className="flex-1 resize-none rounded-xl border border-slate-200 p-3 text-sm outline-none focus:border-[#000080]" /><button type="button" disabled={sending || !draft.trim()} onClick={() => void send()} className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#000080] text-white disabled:opacity-40">{sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}</button></div><div className="mt-2 text-[9px] text-slate-400">Realtime delivery · secure 30-second fallback refresh · 30 messages/minute limit</div></div>
+          <div className="space-y-2 border-t border-slate-200 p-4">
+            <CommunicationComposerTools files={pendingFiles} onFilesChange={setPendingFiles} text={draft} onTextChange={setDraft} disabled={sending} compact />
+            <div className="flex items-end gap-2"><textarea rows={2} maxLength={4000} value={draft} onChange={event => setDraft(event.target.value)} placeholder={`Message ${selectedThread.otherFullName} about ${selectedThread.projectName}...`} className="flex-1 resize-none rounded-xl border border-slate-200 p-3 text-sm outline-none focus:border-[#000080]" /><button type="button" disabled={sending || (!draft.trim() && pendingFiles.length === 0)} onClick={() => void send()} className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#000080] text-white disabled:opacity-40">{sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}</button></div>
+            <div className="text-[9px] text-slate-400">Private R2 file storage · realtime delivery · secure 30-second fallback refresh · 30 messages/minute limit</div>
+          </div>
         </>}
       </div>
     </div>
