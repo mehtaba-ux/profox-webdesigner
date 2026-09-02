@@ -4,6 +4,7 @@ import { getChatMessages, getConversations, updateConversationStatus } from './c
 export type UnifiedCustomerConversation = ChatConversation & {
   conversationIds: string[];
   chatConversationId?: string;
+  capabilityConversationId: string;
   crmLeadId?: string;
   crmLeadIds: string[];
   hasChat: boolean;
@@ -82,6 +83,7 @@ export function groupCustomerConversations(rows: ChatConversation[]): UnifiedCus
     const chatTarget = sorted.find(row => String((row as any).conversationKind || '') !== 'email');
     const crmLeadIds = [...new Set(metadata.map(row => String(row.crmLeadId || '')).filter(Boolean))];
     const preferredLeadId = String((base as any).crmLeadId || crmLeadIds[0] || '') || undefined;
+    const capabilityTarget = sorted.find(row => preferredLeadId && String((row as any).crmLeadId || '') === preferredLeadId) || base;
     const hasChat = metadata.some(row => String(row.conversationKind || '') !== 'email');
     const hasEmail = Boolean(preferredLeadId) || metadata.some(row => row.conversationKind === 'email' || String(row.lastMessage || '').startsWith('Email:'));
     const hasWhatsApp = metadata.some(row => Boolean(row.hasWhatsApp) || String(row.lastMessage || '').startsWith('WhatsApp:'));
@@ -91,6 +93,7 @@ export function groupCustomerConversations(rows: ChatConversation[]): UnifiedCus
       status: conversationStatus(sorted),
       conversationIds,
       chatConversationId: chatTarget?.id,
+      capabilityConversationId: capabilityTarget.id,
       crmLeadId: preferredLeadId,
       crmLeadIds,
       hasChat,
