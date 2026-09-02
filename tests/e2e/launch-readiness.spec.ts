@@ -2,6 +2,12 @@ import { expect, test } from '@playwright/test';
 
 const CONFIG_ERROR = 'Supabase is not configured';
 
+async function logLaunchDiagnostics(page: import('@playwright/test').Page, label: string) {
+  const title = await page.title().catch(() => '');
+  const body = await page.locator('body').innerText().catch(() => '');
+  console.log(`[launch-diagnostic:${label}] url=${page.url()} title=${JSON.stringify(title)} body=${JSON.stringify(body.slice(0, 2400))}`);
+}
+
 test('homepage renders its primary experience without configuration errors', async ({ page }) => {
   await page.goto('/');
   await expect(page.locator('h1').first()).toBeVisible();
@@ -42,8 +48,15 @@ test('legacy careers routes resolve to the canonical careers page', async ({ pag
 });
 
 test('contact page exposes connected quote and meeting entry points', async ({ page }) => {
+  page.on('pageerror', error => console.log(`[launch-pageerror:contact] ${error.stack || error.message}`));
   await page.goto('/contact-us?intent=quote');
-  await expect(page.getByRole('tab', { name: 'Get a Quote' })).toHaveAttribute('aria-selected', 'true');
+  const quoteTab = page.getByRole('tab', { name: 'Get a Quote' });
+  try {
+    await expect(quoteTab).toHaveAttribute('aria-selected', 'true');
+  } catch (error) {
+    await logLaunchDiagnostics(page, 'contact');
+    throw error;
+  }
   await expect(page.getByRole('heading', { name: /tell us what you're building/i })).toBeVisible();
   await expect(page.locator('body')).not.toContainText(CONFIG_ERROR);
 
@@ -62,10 +75,16 @@ test('contact page exposes connected quote and meeting entry points', async ({ p
 });
 
 test('standalone meeting page always provides a usable next action', async ({ page }) => {
+  page.on('pageerror', error => console.log(`[launch-pageerror:meeting] ${error.stack || error.message}`));
   await page.goto('/book-a-meeting');
   const bookingHeading = page.getByRole('heading', { name: /book a strategy call/i });
   const unavailableHeading = page.getByRole('heading', { name: /booking is currently unavailable/i });
-  await expect(bookingHeading.or(unavailableHeading)).toBeVisible();
+  try {
+    await expect(bookingHeading.or(unavailableHeading)).toBeVisible();
+  } catch (error) {
+    await logLaunchDiagnostics(page, 'meeting');
+    throw error;
+  }
   await expect(page.locator('body')).not.toContainText(CONFIG_ERROR);
   const firstAvailable = page.getByRole('button', { name: 'First available' });
   const quoteFallback = page.getByRole('link', { name: /get a quote/i });

@@ -3,6 +3,7 @@ import { ChevronRight, ExternalLink } from 'lucide-react';
 import { Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import AdminDashboard from '../AdminDashboard';
 import ClientOnboardingOperations from '../ClientOnboardingOperations';
+import SalesChatInbox from '../SalesChatInbox';
 import { useAuth } from '../../../lib/AuthContext';
 import {
   canAccessWorkspaceApp,
@@ -24,6 +25,14 @@ const TALENT_PARTNER_ITEM: WorkspaceNavItem = {
   roles: ['admin']
 };
 
+const CUSTOMER_CONVERSATIONS_ITEM: WorkspaceNavItem = {
+  id: 'customer-conversations',
+  label: 'Customer Conversations',
+  tab: 'inbox',
+  section: 'Client Communication',
+  roles: ['admin','project_manager','site_manager','content_writer','uiux_designer','developer','web_developer','developer_designer','qa','sales','sales_rep','sales_team']
+};
+
 export default function AdminAppWorkspace() {
   const { appId } = useParams<{ appId: string }>();
   const navigate = useNavigate();
@@ -34,9 +43,15 @@ export default function AdminAppWorkspace() {
 
   const app = getWorkspaceApp(appId);
   const visibleItems = useMemo(() => {
-    const items = app?.items.filter(item => canAccessWorkspaceItem(item, role, status)) || [];
+    let items = app?.items.filter(item => canAccessWorkspaceItem(item, role, status)) || [];
     if (app?.id === 'recruitment' && role === 'admin' && status === 'active' && !items.some(item => item.id === TALENT_PARTNER_ITEM.id)) {
-      return [...items, TALENT_PARTNER_ITEM];
+      items = [...items, TALENT_PARTNER_ITEM];
+    }
+    if (app?.id === 'crm') {
+      items = items.map(item => item.id === 'sales-inbox' ? { ...item, label: 'Customer Conversations', section: 'Communication' } : item);
+    }
+    if (app?.id === 'projects' && canAccessWorkspaceItem(CUSTOMER_CONVERSATIONS_ITEM, role, status) && !items.some(item => item.tab === 'inbox')) {
+      items = [...items, CUSTOMER_CONVERSATIONS_ITEM];
     }
     return items;
   }, [app, role, status]);
@@ -65,6 +80,7 @@ export default function AdminAppWorkspace() {
   if (!requestedTab) return <Navigate to={getWorkspaceAppLaunchPath(app, role, status)} replace />;
 
   const showClientOnboardingOperations = app.id === 'projects' && requestedTab === 'projects' && (role === 'admin' || role === 'project_manager');
+  const showUnifiedCustomerConversations = requestedTab === 'inbox' && (app.id === 'crm' || app.id === 'projects');
 
   const openItem = (item: WorkspaceNavItem) => {
     if (item.path) navigate(item.path, { state: { fromWorkspaceApp: app.id } });
@@ -81,7 +97,7 @@ export default function AdminAppWorkspace() {
       <div className="pf-page-heading">
         <div>
           <h1>{selectedItem?.label || app.label}</h1>
-          <p>{app.description}</p>
+          <p>{showUnifiedCustomerConversations ? 'One customer timeline for website chat, professional email, WhatsApp and private team notes.' : app.description}</p>
         </div>
       </div>
 
@@ -112,7 +128,7 @@ export default function AdminAppWorkspace() {
 
       <div className="profox-admin-app-embed min-h-0">
         {showClientOnboardingOperations && <ClientOnboardingOperations />}
-        <AdminDashboard key={`${app.id}:${location.search}`} />
+        {showUnifiedCustomerConversations ? <SalesChatInbox /> : <AdminDashboard key={`${app.id}:${location.search}`} />}
       </div>
     </WorkspaceShell>
   );

@@ -2,6 +2,7 @@ import React from 'react';
 import { ShieldCheck } from 'lucide-react';
 import LegacyConfigurationCenter from './ConfigurationCenterLegacy';
 import ProfessionalIntegrationsAdmin from './ProfessionalIntegrationsAdmin';
+import WhatsAppBusinessAdmin from './WhatsAppBusinessAdmin';
 import ContactLeadFormAdmin from './ContactLeadFormAdmin';
 import RevenueDistributionAdmin from './RevenueDistributionAdmin';
 
@@ -39,6 +40,7 @@ export default function ConfigurationCenter() {
       <RevenueDistributionAdmin />
       <ContactLeadFormAdmin />
       <ProfessionalIntegrationsAdmin />
+      <WhatsAppBusinessAdmin />
       <div className="legacy-configuration-center">
         <LegacyConfigurationCenter />
       </div>
