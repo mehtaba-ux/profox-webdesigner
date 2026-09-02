@@ -125,11 +125,11 @@ export default function MeetingSettingsAdmin() {
           </section>
 
           <section className="bg-white border border-slate-200 rounded-2xl p-6 space-y-5 shadow-sm">
-            <div><h2 className="font-bold">Provider & Reminder Policy</h2><p className="text-xs text-slate-500">Provider names may be prepared here, but external connection state is never granted by this screen.</p></div>
+            <div><h2 className="font-bold">Provider & Reminder Policy</h2><p className="text-xs text-slate-500">Provider names may be prepared here, while customer email timing has one authoritative automation setting.</p></div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Field label="Permitted Providers"><input value={form.providers.join(', ')} onChange={e => setForm({...form, providers:parseTextList(e.target.value)})} className={inputClass} /><p className="text-[11px] text-slate-400 mt-1">Manual keeps ProFox as the source of truth. Google Calendar/Meet and Zoho Calendar/Meeting are assigned and authorized securely from Professional Integrations and Calendar.</p></Field>
               <Field label="Default Provider"><input value={form.defaultProvider} readOnly className={`${inputClass} bg-slate-50 text-slate-500`} /></Field>
-              <Field label="Reminder Minutes"><input value={form.reminderMinutes.join(', ')} onChange={e => setForm({...form, reminderMinutes:parseNumberList(e.target.value)})} className={inputClass} placeholder="1440, 60" /></Field>
+              <Field label="Meeting Email Reminders"><div className="rounded-xl border border-blue-200 bg-blue-50 p-3"><div className="text-sm font-bold text-[#000080]">Managed in Notifications & Operational Automation</div><div className="mt-1 text-[11px] leading-5 text-blue-800">Current policy: 24 hours, 1 hour and the enabled final 15-minute reminder. This is intentionally controlled from one place so the UI cannot drift from the live email worker.</div><button type="button" onClick={()=>navigate('/admin/automation-settings')} className="mt-2 text-xs font-black text-[#000080] underline underline-offset-2">Open automation settings</button></div></Field>
               <Field label="Module Active"><label className="flex items-center gap-3 px-3 py-2.5 rounded-xl border border-slate-200"><input type="checkbox" checked={form.active} onChange={e => setForm({...form, active:e.target.checked})} /><span className="text-sm font-semibold">Allow new Sales meetings</span></label></Field>
             </div>
           </section>
