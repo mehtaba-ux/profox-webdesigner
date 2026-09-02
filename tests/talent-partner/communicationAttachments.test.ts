@@ -55,3 +55,11 @@ test('attachment bridge migration preserves customer-only portal access and serv
   assert.match(migration, /communication_attachment_service_prepare_email_ingest/);
   assert.match(migration, /client_get_relationship_history_v2/);
 });
+
+test('production dependency lock pins the patched qs release used by communication-facing Express paths', () => {
+  const pkg = JSON.parse(read('package.json'));
+  const lock = JSON.parse(read('package-lock.json'));
+
+  assert.equal(pkg?.overrides?.qs, '6.16.0');
+  assert.equal(lock?.packages?.['node_modules/qs']?.version, '6.16.0');
+});
