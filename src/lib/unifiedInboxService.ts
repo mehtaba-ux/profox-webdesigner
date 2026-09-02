@@ -30,11 +30,19 @@ function activityTime(conversation: any) {
   );
 }
 
-function customerGroupKey(conversation: any) {
-  const sellerId = String(conversation?.currentSalesId || conversation?.originalSalesId || 'unassigned');
-  const identityId = String(conversation?.customerIdentityId || '').trim();
-  const email = normalizedEmail(conversation?.customerEmail);
-  return `${sellerId}:${identityId ? `identity:${identityId}` : `email:${email}`}`;
+function sellerId(conversation: any) {
+  return String(conversation?.currentSalesId || conversation?.originalSalesId || 'unassigned');
+}
+
+function sameCustomer(a: ChatConversation, b: ChatConversation) {
+  if (sellerId(a) !== sellerId(b)) return false;
+  const aMeta = a as any;
+  const bMeta = b as any;
+  const aIdentity = String(aMeta.customerIdentityId || '').trim();
+  const bIdentity = String(bMeta.customerIdentityId || '').trim();
+  const aEmail = normalizedEmail(a.customerEmail);
+  const bEmail = normalizedEmail(b.customerEmail);
+  return Boolean((aIdentity && bIdentity && aIdentity === bIdentity) || (aEmail && bEmail && aEmail === bEmail));
 }
 
 function conversationStatus(rows: ChatConversation[]): ChatConversation['status'] {
@@ -44,31 +52,45 @@ function conversationStatus(rows: ChatConversation[]): ChatConversation['status'
 }
 
 export function groupCustomerConversations(rows: ChatConversation[]): UnifiedCustomerConversation[] {
-  const groups = new Map<string, ChatConversation[]>();
+  const groups: ChatConversation[][] = [];
 
   for (const row of rows) {
-    const key = customerGroupKey(row as any);
-    const existing = groups.get(key) || [];
-    existing.push(row);
-    groups.set(key, existing);
+    const matchingIndexes = groups
+      .map((group, index) => group.some(existing => sameCustomer(existing, row)) ? index : -1)
+      .filter(index => index >= 0);
+
+    if (!matchingIndexes.length) {
+      groups.push([row]);
+      continue;
+    }
+
+    const targetIndex = matchingIndexes[0];
+    groups[targetIndex].push(row);
+
+    // If one row bridges a legacy email-only record and an identity-linked website
+    // record, collapse those groups into one customer without altering stored rows.
+    for (const index of matchingIndexes.slice(1).sort((a, b) => b - a)) {
+      groups[targetIndex].push(...groups[index]);
+      groups.splice(index, 1);
+    }
   }
 
-  return [...groups.values()].map(group => {
+  return groups.map(group => {
     const sorted = [...group].sort((a, b) => activityTime(b as any) - activityTime(a as any));
     const base = sorted[0];
     const metadata = sorted.map(row => row as any);
     const conversationIds = sorted.map(row => row.id);
-    const chatTarget = sorted.find(row => String((row as any).conversationKind || '') !== 'email');
+    const activeChatTarget = sorted.find(row => String((row as any).conversationKind || '') !== 'email' && row.status !== 'resolved');
     const crmLeadIds = [...new Set(metadata.map(row => String(row.crmLeadId || '')).filter(Boolean))];
     const preferredLeadId = String((base as any).crmLeadId || crmLeadIds[0] || '') || undefined;
-    const hasEmail = metadata.some(row => row.conversationKind === 'email' || String(row.lastMessage || '').startsWith('Email:'));
-    const hasChat = Boolean(chatTarget);
+    const hasChat = metadata.some(row => String(row.conversationKind || '') !== 'email');
+    const hasEmail = Boolean(preferredLeadId) || metadata.some(row => row.conversationKind === 'email' || String(row.lastMessage || '').startsWith('Email:'));
 
     return {
       ...base,
       status: conversationStatus(sorted),
       conversationIds,
-      chatConversationId: chatTarget?.id,
+      chatConversationId: activeChatTarget?.id,
       crmLeadId: preferredLeadId,
       crmLeadIds,
       hasChat,
