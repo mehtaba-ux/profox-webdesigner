@@ -476,6 +476,7 @@ export default function LiveChatWidget() {
 
               <div className="flex-1 space-y-3 overflow-y-auto bg-white px-4 py-4">
                 {messages.map(message => {
+                  const meta = message as any;
                   const own = message.senderType === 'customer';
                   const system = message.senderType === 'system';
                   if (system) {
@@ -490,8 +491,9 @@ export default function LiveChatWidget() {
                       <div className={`max-w-[82%] rounded-2xl px-3.5 py-2.5 ${own ? 'rounded-br-md bg-[#000080] text-white' : 'rounded-bl-md bg-slate-100 text-slate-800'}`}>
                         {!own && <div className="mb-1 text-[10px] font-semibold text-slate-500">{message.senderName || representativeName}</div>}
                         <div className="whitespace-pre-wrap break-words text-[13px] leading-relaxed">{message.messageText}</div>
-                        <div className={`mt-1 text-[9px] ${own ? 'text-blue-200' : 'text-slate-400'}`}>
-                          {new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        <div className={`mt-1 flex items-center gap-1 text-[9px] ${own ? 'justify-end text-blue-200' : 'text-slate-400'}`}>
+                          <span>{new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                          {own && <><span>·</span><span>{meta.staffReadAt ? 'Seen' : 'Sent'}</span></>}
                         </div>
                       </div>
                     </div>
