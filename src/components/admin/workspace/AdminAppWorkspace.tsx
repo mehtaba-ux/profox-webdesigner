@@ -1,8 +1,9 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { ChevronRight, ExternalLink } from 'lucide-react';
-import { Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { Navigate, Route, Routes, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import AdminDashboard from '../AdminDashboard';
 import ClientOnboardingOperations from '../ClientOnboardingOperations';
+import CustomerCommunicationDrawer from '../CustomerCommunicationDrawer';
 import SalesChatInbox from '../SalesChatInbox';
 import { useAuth } from '../../../lib/AuthContext';
 import {
@@ -40,6 +41,8 @@ export default function AdminAppWorkspace() {
   const [searchParams] = useSearchParams();
   const { user, profile, role, status, isAdminOrEditor, loading } = useAuth();
   const [navigationQuery, setNavigationQuery] = useState('');
+  const previousContextSearchRef = useRef<string | null>(null);
+  const previousAppIdRef = useRef<string | undefined>(appId);
 
   const app = getWorkspaceApp(appId);
   const visibleItems = useMemo(() => {
@@ -61,6 +64,22 @@ export default function AdminAppWorkspace() {
     return visibleItems.filter(item => `${item.label} ${item.section || ''}`.toLowerCase().includes(query));
   }, [navigationQuery, visibleItems]);
   const requestedTab = searchParams.get('tab');
+  const requestedLeadId = searchParams.get('lead') || '';
+  const communicationRequest = requestedTab === 'inbox' && Boolean(requestedLeadId) && (app?.id === 'crm' || app?.id === 'projects');
+
+  if (previousAppIdRef.current !== appId) {
+    previousAppIdRef.current = appId;
+    previousContextSearchRef.current = null;
+  }
+  if (!communicationRequest && requestedTab && requestedTab !== 'inbox') {
+    previousContextSearchRef.current = location.search;
+  }
+
+  const communicationOverlay = Boolean(communicationRequest && previousContextSearchRef.current);
+  const contentSearch = communicationOverlay ? previousContextSearchRef.current! : location.search;
+  const contentParams = new URLSearchParams(contentSearch);
+  const contentTab = contentParams.get('tab') || requestedTab;
+  const contentLocation = communicationOverlay ? { ...location, search: contentSearch } : location;
 
   if (loading) {
     return <div className="flex min-h-screen items-center justify-center bg-[#f4f7fb]"><div className="h-8 w-8 animate-spin rounded-full border-2 border-[#000080] border-t-transparent" /></div>;
@@ -69,8 +88,8 @@ export default function AdminAppWorkspace() {
   if (!app || !canAccessWorkspaceApp(app, role, status)) return <Navigate to="/admin/workspace" replace />;
   if (app.launchPath) return <Navigate to={app.launchPath} replace />;
 
-  const selectedItem = requestedTab ? visibleItems.find(item => item.tab === requestedTab) : undefined;
-  if (requestedTab && !selectedItem) {
+  const selectedItem = contentTab ? visibleItems.find(item => item.tab === contentTab) : undefined;
+  if (requestedTab && !visibleItems.find(item => item.tab === requestedTab)) {
     const owningApp = getWorkspaceAppForTab(requestedTab, role, status);
     if (owningApp && owningApp.id !== app.id) {
       return <Navigate to={`/admin/app/${owningApp.id}?tab=${encodeURIComponent(requestedTab)}`} replace />;
@@ -79,12 +98,18 @@ export default function AdminAppWorkspace() {
   }
   if (!requestedTab) return <Navigate to={getWorkspaceAppLaunchPath(app, role, status)} replace />;
 
-  const showClientOnboardingOperations = app.id === 'projects' && requestedTab === 'projects' && (role === 'admin' || role === 'project_manager');
-  const showUnifiedCustomerConversations = requestedTab === 'inbox' && (app.id === 'crm' || app.id === 'projects');
+  const showClientOnboardingOperations = app.id === 'projects' && contentTab === 'projects' && (role === 'admin' || role === 'project_manager');
+  const showUnifiedCustomerConversations = !communicationOverlay && requestedTab === 'inbox' && (app.id === 'crm' || app.id === 'projects');
 
   const openItem = (item: WorkspaceNavItem) => {
     if (item.path) navigate(item.path, { state: { fromWorkspaceApp: app.id } });
     else if (item.tab) navigate(`/admin/app/${app.id}?tab=${encodeURIComponent(item.tab)}`);
+  };
+
+  const closeCommunicationOverlay = () => {
+    const restoreSearch = previousContextSearchRef.current;
+    if (restoreSearch) navigate({ pathname: location.pathname, search: restoreSearch }, { replace: true });
+    else navigate(`/admin/app/${app.id}?tab=inbox`, { replace: true });
   };
 
   return (
@@ -114,7 +139,7 @@ export default function AdminAppWorkspace() {
 
         <nav className="pf-context-navigation__items" aria-label={`${app.label} screens`}>
           {searchedItems.map(item => {
-            const active = Boolean(item.tab && item.tab === requestedTab);
+            const active = Boolean(item.tab && item.tab === contentTab);
             return (
               <button key={item.id} type="button" onClick={() => openItem(item)} className={`pf-context-navigation__item ${active ? 'is-active' : ''}`}>
                 <span>{item.label}</span>
@@ -128,8 +153,14 @@ export default function AdminAppWorkspace() {
 
       <div className="profox-admin-app-embed min-h-0">
         {showClientOnboardingOperations && <ClientOnboardingOperations />}
-        {showUnifiedCustomerConversations ? <SalesChatInbox /> : <AdminDashboard key={`${app.id}:${location.search}`} />}
+        {showUnifiedCustomerConversations ? <SalesChatInbox /> : (
+          <Routes location={contentLocation}>
+            <Route path="*" element={<AdminDashboard key={`${app.id}:${contentSearch}`} />} />
+          </Routes>
+        )}
       </div>
+
+      {communicationOverlay && <CustomerCommunicationDrawer leadId={requestedLeadId} onClose={closeCommunicationOverlay} />}
     </WorkspaceShell>
   );
 }
