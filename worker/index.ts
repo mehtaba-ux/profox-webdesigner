@@ -90,6 +90,10 @@ function publicChatToken(request: Request) {
   return UUID_RE.test(token) ? token : '';
 }
 
+function attachmentServiceToken(request: Request) {
+  return (request.headers.get('X-ProFox-Attachment-Ingest-Token') || '').trim();
+}
+
 function supabaseClientForRequest(request: Request, env: Env) {
   const supabaseUrl = env.SUPABASE_URL || '';
   const publishableKey = configuredPublishableKey(env);
@@ -99,6 +103,22 @@ function supabaseClientForRequest(request: Request, env: Env) {
     auth: { autoRefreshToken: false, persistSession: false },
     global: token ? { headers: { Authorization: `Bearer ${token}` } } : undefined,
   });
+}
+
+function supabasePublicClient(env: Env) {
+  const supabaseUrl = env.SUPABASE_URL || '';
+  const publishableKey = configuredPublishableKey(env);
+  if (!supabaseUrl || !publishableKey) return null;
+  return createClient(supabaseUrl, publishableKey, { auth: { autoRefreshToken: false, persistSession: false } });
+}
+
+async function requireAttachmentService(request: Request, env: Env) {
+  const token = attachmentServiceToken(request);
+  const client = supabasePublicClient(env);
+  if (!token || !client) return { ok: false, token: '', client, response: jsonResponse({ error: 'Attachment service authentication is unavailable.' }, 401) };
+  const { data, error } = await client.rpc('communication_attachment_validate_ingest_token', { p_token: token });
+  if (error || data !== true) return { ok: false, token: '', client, response: jsonResponse({ error: 'Attachment service authentication failed.' }, 403) };
+  return { ok: true, token, client, response: null as Response | null };
 }
 
 async function requireActiveStaff(request: Request, env: Env): Promise<StaffIdentity | Response> {
@@ -187,6 +207,16 @@ async function handleAttachmentUpload(request: Request, env: Env, url: URL) {
         p_internal_note: String(form.get('internalNote') || 'false') === 'true',
       });
       prepared = result.data; rpcError = result.error;
+    } else if (scope === 'client_relationship') {
+      const conversationId = String(form.get('conversationId') || '');
+      if (!UUID_RE.test(conversationId)) return jsonResponse({ error: 'A valid client conversation is required.' }, 400, cors.headers);
+      const result = await client.rpc('communication_attachment_prepare_client_portal_upload', {
+        p_conversation_id: conversationId,
+        p_original_name: file.name,
+        p_content_type: contentType,
+        p_size_bytes: file.size,
+      });
+      prepared = result.data; rpcError = result.error;
     } else if (scope === 'internal') {
       const threadId = String(form.get('threadId') || '');
       if (!UUID_RE.test(threadId)) return jsonResponse({ error: 'A valid project conversation is required.' }, 400, cors.headers);
@@ -230,6 +260,99 @@ async function handleAttachmentUpload(request: Request, env: Env, url: URL) {
     console.error('Communication attachment upload error:', error);
     return jsonResponse({ error: 'The attachment could not be stored.' }, 500, cors.headers);
   }
+}
+
+async function handleServiceEmailIngest(request: Request, env: Env) {
+  if (!env.MEDIA_BUCKET) return jsonResponse({ error: 'R2 storage is not configured.' }, 503);
+  const auth = await requireAttachmentService(request, env);
+  if (!auth.ok || !auth.client) return auth.response || jsonResponse({ error: 'Attachment service authentication failed.' }, 403);
+  if (!(request.headers.get('Content-Type') || '').includes('multipart/form-data')) return jsonResponse({ error: 'Multipart form data is required.' }, 415);
+
+  try {
+    const form = await request.formData();
+    const file = form.get('file');
+    const conversationId = String(form.get('conversationId') || '');
+    const emailMessageId = String(form.get('emailMessageId') || '');
+    const providerAttachmentId = String(form.get('providerAttachmentId') || '').trim();
+    if (!(file instanceof File)) return jsonResponse({ error: 'Attachment file is required.' }, 400);
+    if (!UUID_RE.test(conversationId) || !UUID_RE.test(emailMessageId) || !providerAttachmentId) return jsonResponse({ error: 'Inbound email attachment identifiers are invalid.' }, 400);
+    const contentType = (file.type || '').toLowerCase();
+    if (!ALLOWED_UPLOAD_TYPES.has(contentType)) return jsonResponse({ error: 'This inbound attachment type is not allowed.' }, 415);
+    if (file.size < 1 || file.size > MAX_UPLOAD_BYTES) return jsonResponse({ error: 'Inbound attachment size is outside the allowed range.' }, 413);
+
+    const prepared = await auth.client.rpc('communication_attachment_service_prepare_email_ingest', {
+      p_token: auth.token,
+      p_conversation_id: conversationId,
+      p_email_message_id: emailMessageId,
+      p_provider_attachment_id: providerAttachmentId,
+      p_original_name: file.name,
+      p_content_type: contentType,
+      p_size_bytes: file.size,
+    });
+    if (prepared.error || !prepared.data?.attachmentId) return jsonResponse({ error: prepared.error?.message || 'Inbound attachment was not authorized.' }, 403);
+
+    const attachmentId = String(prepared.data.attachmentId);
+    const key = safeObjectKey(String(prepared.data.storageKey || ''));
+    if (!UUID_RE.test(attachmentId) || !SAFE_ATTACHMENT_KEY.test(key)) return jsonResponse({ error: 'Inbound attachment storage path is invalid.' }, 500);
+    if (prepared.data.existing && String(prepared.data.state) === 'linked') {
+      return jsonResponse({ success: true, existing: true, attachment: { id: attachmentId, name: prepared.data.name, contentType: prepared.data.contentType, sizeBytes: Number(prepared.data.sizeBytes || file.size), channel: 'email' } });
+    }
+
+    const bytes = await file.arrayBuffer();
+    if (bytes.byteLength !== file.size) return jsonResponse({ error: 'Inbound attachment size changed during transfer.' }, 400);
+    const existingObject = await env.MEDIA_BUCKET.head(key);
+    if (!existingObject) {
+      const stored = await env.MEDIA_BUCKET.put(key, bytes, {
+        httpMetadata: { contentType, contentDisposition: `attachment; filename="${cleanDownloadName(file.name)}"` },
+        customMetadata: { attachmentId, communicationScope: 'inbound_email' },
+        onlyIf: { etagDoesNotMatch: '*' },
+      });
+      if (!stored) return jsonResponse({ error: 'Inbound attachment could not be written to R2.' }, 409);
+    }
+
+    const finalized = await auth.client.rpc('communication_attachment_service_finalize_email_ingest', {
+      p_token: auth.token,
+      p_attachment_id: attachmentId,
+      p_actual_size_bytes: bytes.byteLength,
+    });
+    if (finalized.error || !finalized.data?.id) {
+      if (!existingObject) await env.MEDIA_BUCKET.delete(key);
+      return jsonResponse({ error: finalized.error?.message || 'Inbound attachment metadata could not be finalized.' }, 500);
+    }
+    return jsonResponse({ success: true, existing: false, attachment: finalized.data }, 201);
+  } catch (error) {
+    console.error('Inbound email R2 ingest failed:', error);
+    return jsonResponse({ error: 'Inbound email attachment could not be stored.' }, 500);
+  }
+}
+
+async function handleServiceEmailExport(request: Request, env: Env, attachmentId: string) {
+  if (!env.MEDIA_BUCKET) return jsonResponse({ error: 'R2 storage is not configured.' }, 503);
+  if (!UUID_RE.test(attachmentId)) return jsonResponse({ error: 'A valid attachment is required.' }, 400);
+  const auth = await requireAttachmentService(request, env);
+  if (!auth.ok || !auth.client) return auth.response || jsonResponse({ error: 'Attachment service authentication failed.' }, 403);
+  const requestId = new URL(request.url).searchParams.get('requestId') || '';
+  if (!UUID_RE.test(requestId)) return jsonResponse({ error: 'A valid email request is required.' }, 400);
+
+  const allowed = await auth.client.rpc('communication_attachment_service_email_export', {
+    p_token: auth.token,
+    p_attachment_id: attachmentId,
+    p_request_id: requestId,
+  });
+  if (allowed.error || !allowed.data) return jsonResponse({ error: allowed.error?.message || 'Email attachment export denied.' }, 403);
+  const key = safeObjectKey(String(allowed.data.storageKey || ''));
+  if (!SAFE_ATTACHMENT_KEY.test(key)) return jsonResponse({ error: 'Email attachment storage path is invalid.' }, 500);
+  const object = await env.MEDIA_BUCKET.get(key);
+  if (!object) return jsonResponse({ error: 'Email attachment file was not found in R2.' }, 404);
+  const headers = new Headers();
+  object.writeHttpMetadata(headers);
+  const name = cleanDownloadName(allowed.data.name);
+  headers.set('Content-Type', String(allowed.data.contentType || object.httpMetadata?.contentType || 'application/octet-stream'));
+  headers.set('Content-Disposition', `attachment; filename="${name}"; filename*=UTF-8''${encodeURIComponent(name)}`);
+  headers.set('Content-Length', String(allowed.data.sizeBytes || object.size));
+  headers.set('Cache-Control', 'private, no-store');
+  headers.set('X-Content-Type-Options', 'nosniff');
+  return new Response(object.body, { status: 200, headers });
 }
 
 async function attachmentAuthorization(request: Request, env: Env, attachmentId: string, rpcName: 'communication_attachment_get_download' | 'communication_attachment_delete_authorize') {
@@ -298,8 +421,12 @@ async function handleRequest(request: Request, env: Env, _ctx?: WorkerExecutionC
   if (request.method === 'OPTIONS' && url.pathname.startsWith('/api/')) {
     const cors = privateCors(request, env, url);
     if (!cors.allowed) return jsonResponse({ error: 'Origin is not allowed.' }, 403, cors.headers);
-    return new Response(null, { status: 204, headers: { ...cors.headers, 'Access-Control-Allow-Methods': 'GET, HEAD, POST, DELETE, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-ProFox-Chat-Token', 'Access-Control-Max-Age': '86400' } });
+    return new Response(null, { status: 204, headers: { ...cors.headers, 'Access-Control-Allow-Methods': 'GET, HEAD, POST, DELETE, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-ProFox-Chat-Token, X-ProFox-Attachment-Ingest-Token', 'Access-Control-Max-Age': '86400' } });
   }
+
+  if (url.pathname === '/api/communication-attachments/service-email-ingest' && request.method === 'POST') return handleServiceEmailIngest(request, env);
+  const serviceExportMatch = /^\/api\/communication-attachments\/service-email-export\/([0-9a-f-]{36})$/i.exec(url.pathname);
+  if (serviceExportMatch && request.method === 'GET') return handleServiceEmailExport(request, env, serviceExportMatch[1]);
 
   if (url.pathname === '/api/communication-attachments/upload' && request.method === 'POST') return handleAttachmentUpload(request, env, url);
   const attachmentMatch = /^\/api\/communication-attachments\/([0-9a-f-]{36})$/i.exec(url.pathname);
