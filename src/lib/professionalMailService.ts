@@ -1,6 +1,5 @@
 import { supabase } from './supabase';
 import {
-  fileToBase64,
   PROFESSIONAL_EMAIL_ATTACHMENT_MAX_TOTAL_BYTES,
   validateCommunicationAttachmentSelection,
   type UploadedCommunicationAttachment,
@@ -41,6 +40,12 @@ export interface ProfessionalMailInboxSyncResult {
   synced: number;
   skippedExisting: number;
   skippedUnmatched: number;
+  attachmentMessagesScanned?: number;
+  attachmentMessagesFound?: number;
+  attachmentsImported?: number;
+  attachmentsSkippedExisting?: number;
+  attachmentsSkippedUnsupported?: number;
+  attachmentFailures?: number;
 }
 
 const CONNECTION_STATES = new Set<ProfessionalMailSendConnectionStatus>([
@@ -101,12 +106,26 @@ export const professionalMailService = {
     if (error) throw new Error(messageFromError(error, 'Professional inbox could not be synchronized.'));
     if (data?.error) throw new Error(String(data.error));
 
+    const attachmentSync = await supabase.functions.invoke('zoho-mail-attachments', {
+      body: { action: 'sync_inbox_attachments' },
+    });
+    if (attachmentSync.error) {
+      throw new Error(messageFromError(attachmentSync.error, 'Professional inbox messages synchronized, but attachments could not be synchronized.'));
+    }
+    if (attachmentSync.data?.error) throw new Error(String(attachmentSync.data.error));
+
     return {
       scanned: Number(data?.scanned || 0),
       matched: Number(data?.matched || 0),
       synced: Number(data?.synced || 0),
       skippedExisting: Number(data?.skippedExisting || 0),
       skippedUnmatched: Number(data?.skippedUnmatched || 0),
+      attachmentMessagesScanned: Number(attachmentSync.data?.scannedMessages || 0),
+      attachmentMessagesFound: Number(attachmentSync.data?.messagesWithAttachments || 0),
+      attachmentsImported: Number(attachmentSync.data?.imported || 0),
+      attachmentsSkippedExisting: Number(attachmentSync.data?.skippedExisting || 0),
+      attachmentsSkippedUnsupported: Number(attachmentSync.data?.skippedUnsupported || 0),
+      attachmentFailures: Number(attachmentSync.data?.failed || 0),
     };
   },
 
@@ -119,22 +138,21 @@ export const professionalMailService = {
   }): Promise<ProfessionalMailSendResult> {
     const attachments = input.attachments || [];
     validateCommunicationAttachmentSelection(attachments.map(item => item.file), PROFESSIONAL_EMAIL_ATTACHMENT_MAX_TOTAL_BYTES);
-    const encodedAttachments = await Promise.all(attachments.map(async attachment => ({
-      id: attachment.id,
-      name: attachment.name,
-      contentType: attachment.contentType,
-      sizeBytes: attachment.sizeBytes,
-      contentBase64: await fileToBase64(attachment.file),
-    })));
 
-    const { data, error } = await supabase.functions.invoke('zoho-mail-admin', {
+    const functionName = attachments.length ? 'zoho-mail-attachments' : 'zoho-mail-admin';
+    const { data, error } = await supabase.functions.invoke(functionName, {
       body: {
         action: 'send',
         leadId: input.leadId,
         subject: input.subject,
         body: input.body,
         idempotencyKey: input.idempotencyKey,
-        attachments: encodedAttachments,
+        attachments: attachments.map(attachment => ({
+          id: attachment.id,
+          name: attachment.name,
+          contentType: attachment.contentType,
+          sizeBytes: attachment.sizeBytes,
+        })),
       },
     });
     if (error) throw new Error(messageFromError(error, 'Professional email could not be sent.'));
