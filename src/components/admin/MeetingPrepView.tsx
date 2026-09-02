@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ArrowLeft, BriefcaseBusiness, CalendarDays, CheckCircle2, ExternalLink, Globe2, Loader2, Target, UserRound, UsersRound, WalletCards } from 'lucide-react';
+import { ArrowLeft, BriefcaseBusiness, CalendarDays, CheckCircle2, ExternalLink, Globe2, Loader2, Save, Target, UserRound, UsersRound, WalletCards } from 'lucide-react';
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../../lib/AuthContext';
 import { supabase } from '../../lib/supabase';
@@ -28,6 +28,9 @@ export default function MeetingPrepView() {
   const [saving,setSaving] = useState(false);
   const [error,setError] = useState('');
   const [message,setMessage] = useState('');
+  const [customerSummary,setCustomerSummary] = useState('');
+  const [customerNextStep,setCustomerNextStep] = useState('');
+  const [customerNextStepTiming,setCustomerNextStepTiming] = useState('');
 
   useEffect(()=>{
     if (!allowed || !id) return;
@@ -42,6 +45,9 @@ export default function MeetingPrepView() {
           meeting.opportunity_id?supabase.from('crm_opportunities').select('*').eq('id',meeting.opportunity_id).maybeSingle():Promise.resolve({data:null,error:null} as any)
         ]);
         setRecord({meeting,booking:bookingResult.data,lead:leadResult.data,opportunity:opportunityResult.data});
+        setCustomerSummary(meeting.customer_summary || '');
+        setCustomerNextStep(meeting.customer_next_step || '');
+        setCustomerNextStepTiming(meeting.customer_next_step_timing || '');
       } catch(err:any){setError(err?.message||'Meeting preparation could not be loaded.');}
       finally{setLoading(false);}
     })();
@@ -56,6 +62,25 @@ export default function MeetingPrepView() {
       setRecord((current:any)=>current ? {...current,meeting:{...current.meeting,prep_reviewed_at:preparedAt,prep_reviewed_by:user?.id}} : current);
       setMessage('Preparation reviewed. The canonical meeting record now reflects that this call is ready.');
     } catch(err:any){setError(err?.message||'Preparation status could not be saved.');}
+    finally{setSaving(false);}
+  };
+
+  const saveCustomerFollowup = async () => {
+    if (!record?.meeting) return;
+    setSaving(true); setError(''); setMessage('');
+    try {
+      const { data, error: saveError } = await supabase.rpc('save_sales_meeting_customer_followup', {
+        p_meeting_id: id,
+        p_customer_summary: customerSummary,
+        p_customer_next_step: customerNextStep,
+        p_customer_next_step_timing: customerNextStepTiming
+      });
+      if (saveError) throw saveError;
+      setRecord((current:any)=>current ? {...current,meeting:{...current.meeting,...(data || {}),customer_summary:customerSummary,customer_next_step:customerNextStep,customer_next_step_timing:customerNextStepTiming}} : current);
+      setMessage(record.meeting.status === 'Completed'
+        ? 'Customer-safe follow-up saved. ProFox will use only these approved fields for the post-meeting email.'
+        : 'Customer-safe follow-up saved. It will be ready when the meeting is completed.');
+    } catch(err:any){setError(err?.message||'Customer follow-up could not be saved.');}
     finally{setSaving(false);}
   };
 
@@ -75,6 +100,8 @@ export default function MeetingPrepView() {
     <section className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4"><PrepStat icon={Target} label="Service" value={service||'Not specified'}/><PrepStat icon={WalletCards} label="Budget" value={meeting.commercial_notes||booking?.qualification_answers?.budget_range||'Not specified'}/><PrepStat icon={CalendarDays} label="Timeline" value={meeting.timeline_notes||booking?.qualification_answers?.timeline||'Not specified'}/><PrepStat icon={UsersRound} label="Decision maker" value={meeting.decision_makers||booking?.qualification_answers?.decision_maker||'Not specified'}/></section>
 
     <section className="mt-6 grid gap-6 lg:grid-cols-2"><InfoBlock title="What they want to achieve" icon={Target} text={booking?.qualification_answers?.project_goal||meeting.requirements_summary||'No project goal was captured yet.'}/><InfoBlock title="Qualification summary" icon={BriefcaseBusiness} text={meeting.requirements_summary||'No qualification summary was captured yet.'}/><InfoBlock title="Problems identified" icon={UserRound} text={meeting.problems_identified||'To be completed during the meeting.'}/><InfoBlock title="Next step" icon={ExternalLink} text={meeting.next_step||'No next step has been set yet. After the meeting, record the next action so the CRM stays moving.'}/></section>
+
+    <section className="mt-6 rounded-3xl border border-blue-200 bg-white p-6 shadow-sm"><div className="flex items-start justify-between gap-4"><div><div className="text-[10px] font-black uppercase tracking-[0.16em] text-[#FF0E0E]">CUSTOMER FOLLOW-UP</div><h3 className="mt-2 text-xl font-black text-[#000080]">What the customer may receive after the meeting</h3><p className="mt-2 max-w-3xl text-xs leading-5 text-slate-500">Only these dedicated customer-safe fields can be used in the automated post-meeting email. Problems identified, commercial notes, internal CRM notes and private sales commentary are never copied into the customer message.</p></div></div><div className="mt-5 grid gap-4"><label className="text-xs font-black text-slate-600">What matters to the customer<textarea rows={3} value={customerSummary} onChange={e=>setCustomerSummary(e.target.value)} className="mt-1.5 w-full rounded-2xl border border-slate-200 p-4 text-sm font-medium outline-none focus:border-[#000080]" placeholder="A concise, customer-safe recap of what matters."/></label><label className="text-xs font-black text-slate-600">Agreed next step<textarea rows={2} value={customerNextStep} onChange={e=>setCustomerNextStep(e.target.value)} className="mt-1.5 w-full rounded-2xl border border-slate-200 p-4 text-sm font-medium outline-none focus:border-[#000080]" placeholder="The next action the customer should expect."/></label><label className="text-xs font-black text-slate-600">Timing<input value={customerNextStepTiming} onChange={e=>setCustomerNextStepTiming(e.target.value)} className="mt-1.5 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-medium outline-none focus:border-[#000080]" placeholder="Example: Proposal by Thursday, 3 PM"/></label></div><div className="mt-5 flex flex-wrap items-center justify-between gap-3"><p className="text-xs text-slate-500">If the meeting is already completed, saving a full recap replaces any pending generic thank-you email with the reviewed next-step email.</p><button onClick={()=>void saveCustomerFollowup()} disabled={saving} className="inline-flex items-center gap-2 rounded-xl bg-[#000080] px-4 py-2.5 text-xs font-black text-white disabled:opacity-50">{saving?<Loader2 className="h-4 w-4 animate-spin"/>:<Save className="h-4 w-4"/>}Save Customer Follow-Up</button></div></section>
 
     <section className="mt-6 grid gap-6 lg:grid-cols-2"><NextBestActionCard entityType="meeting" entityId={id}/><ProductivityPlaybookChecklist entityType="meeting" entityId={id}/><div className="lg:col-span-2"><ProductivityCopilot entityType="meeting" entityId={id}/></div></section>
 
