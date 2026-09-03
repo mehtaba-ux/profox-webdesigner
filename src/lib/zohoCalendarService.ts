@@ -14,6 +14,8 @@ export interface ZohoCalendarConnectionStatus {
   meetingEnabled: boolean;
   defaultCalendarProvider: 'google' | 'zoho';
   defaultMeetingProvider: 'google_meet' | 'zoho_meeting';
+  effectiveCalendarProvider: 'google' | 'zoho';
+  effectiveMeetingProvider: 'google_meet' | 'zoho_meeting';
   providerConfigured: boolean;
   managedByProFox: boolean;
   sellerAuthorizationRequired: boolean;
