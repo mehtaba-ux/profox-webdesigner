@@ -7,7 +7,9 @@ export type GatewayProviderStatus = {
   mode: string;
   configured: boolean;
   webhookConfigured: boolean;
+  checkoutReady?: boolean;
   productionReady?: boolean;
+  testMode?: boolean;
   keyId?: string;
   clientId?: string;
   webhookId?: string;
@@ -43,7 +45,14 @@ export type PublicPayment = {
   paidAt?: string;
   verifiedAt?: string;
   payable: boolean;
-  providers: Array<{ id: PaymentProviderId; label: string; enabled: boolean }>;
+  providers: Array<{
+    id: PaymentProviderId;
+    label: string;
+    enabled: boolean;
+    mode?: string;
+    productionReady?: boolean;
+    testMode?: boolean;
+  }>;
 };
 
 function throwIfError(error: any, fallback: string): never {

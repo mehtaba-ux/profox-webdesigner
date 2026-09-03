@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ClipboardList, FileText, Loader2, MessageSquareText, RefreshCw, Send, ShieldCheck } from 'lucide-react';
+import { ClipboardList, CreditCard, ExternalLink, FileText, Loader2, MessageSquareText, RefreshCw, Send, ShieldCheck } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { touchClientPortalConversation } from '../../lib/chatService';
 import {
@@ -19,6 +19,7 @@ function money(value: unknown, currency = 'USD') {
 
 export default function ClientRelationshipHistory() {
   const [data, setData] = useState<any>(null);
+  const [paymentActions, setPaymentActions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [selectedConversationId, setSelectedConversationId] = useState('');
@@ -32,11 +33,13 @@ export default function ClientRelationshipHistory() {
     if (response.error && /client_get_relationship_history_v2|function .* does not exist/i.test(response.error.message || '')) {
       response = await supabase.rpc('client_get_relationship_history');
     }
+    const paymentResponse = await supabase.rpc('client_get_payment_actions');
     const { data: result, error: rpcError } = response;
     if (rpcError) setError(rpcError.message || 'Relationship history could not be loaded.');
     else {
       setData(result || null);
-      setError('');
+      setPaymentActions(paymentResponse.error ? [] : Array.isArray(paymentResponse.data) ? paymentResponse.data : []);
+      setError(paymentResponse.error ? paymentResponse.error.message || 'Payment actions could not be loaded.' : '');
       const conversations = Array.isArray(result?.conversations) ? result.conversations : [];
       setSelectedConversationId(current => conversations.some((item: any) => item.id === current) ? current : conversations[0]?.id || '');
     }
@@ -51,6 +54,7 @@ export default function ClientRelationshipHistory() {
   const projects = Array.isArray(data?.projects) ? data.projects : [];
   const onboardings = Array.isArray(data?.onboardings) ? data.onboardings : [];
   const selected = useMemo(() => conversations.find((item: any) => item.id === selectedConversationId) || null, [conversations, selectedConversationId]);
+  const payableActions = useMemo(() => paymentActions.filter(payment => payment?.payable && payment?.paymentLink), [paymentActions]);
 
   useEffect(() => {
     setPendingFiles([]);
@@ -110,6 +114,8 @@ export default function ClientRelationshipHistory() {
     <div className="flex flex-col gap-4 rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm sm:flex-row sm:items-center sm:justify-between"><div><div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-[#000080]"><ShieldCheck className="h-4 w-4" />Permanent Relationship History</div><h2 className="mt-2 text-xl font-black text-slate-900">Your ProFox history stays with you</h2><p className="mt-1 max-w-3xl text-xs leading-5 text-slate-500">Conversations, customer-facing files, onboarding submissions, quotations, payments and projects remain connected to your verified account from the first enquiry onward.</p>{data?.identity?.email && <p className="mt-2 text-[11px] font-semibold text-slate-500">Verified relationship: {data.identity.email} · {data.identity.relationshipStatus === 'client' ? 'Client' : 'Prospect'}</p>}</div><button type="button" onClick={() => void load()} className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-black text-slate-700 hover:bg-slate-50"><RefreshCw className="h-4 w-4" />Refresh</button></div>
     {error && <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-xs font-semibold text-red-700">{error}</div>}
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5"><Metric label="Conversations" value={String(conversations.length)} /><Metric label="Onboardings" value={String(onboardings.length)} /><Metric label="Quotations" value={String(quotations.length)} /><Metric label="Payments" value={String(payments.length)} /><Metric label="Projects" value={String(projects.length)} /></div>
+
+    {payableActions.length > 0 && <div className="rounded-[2rem] border border-blue-200 bg-white p-6 shadow-sm"><div className="flex items-start gap-3"><div className="rounded-2xl bg-blue-50 p-3 text-[#000080]"><CreditCard className="h-5 w-5" /></div><div><h3 className="text-sm font-black text-slate-900">Payments requiring your action</h3><p className="mt-1 text-xs leading-5 text-slate-500">Open the secure ProFox checkout to complete the outstanding milestone with Razorpay.</p></div></div><div className="mt-5 grid gap-3 md:grid-cols-2">{payableActions.map(payment => <div key={payment.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4"><div className="flex items-start justify-between gap-3"><div><div className="text-[10px] font-black uppercase tracking-wider text-slate-500">{payment.milestoneLabel || payment.paymentType || 'Payment'}</div><div className="mt-1 text-lg font-black text-slate-900">{money(payment.outstanding, payment.currency)}</div><div className="mt-1 text-[10px] text-slate-500">{payment.paymentReference} · {payment.status}</div></div><span className="rounded-full bg-white px-2.5 py-1 text-[9px] font-black uppercase text-[#000080]">Due</span></div><a href={payment.paymentLink} target="_blank" rel="noreferrer" className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#000080] px-4 py-3 text-xs font-black text-white">Pay with Razorpay<ExternalLink className="h-3.5 w-3.5" /></a></div>)}</div></div>}
 
     <ClientProjectChat />
 
