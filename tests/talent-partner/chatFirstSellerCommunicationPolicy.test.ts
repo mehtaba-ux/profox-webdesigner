@@ -26,7 +26,7 @@ test('transactional communication points customers back to the persistent secure
 
 test('seller UI has no professional email channel while historical email remains renderable', () => {
   assert.match(inbox, /PROFESSIONAL_EMAIL_ROLES = new Set\(\['admin','project_manager','site_manager'\]\)/);
-  assert.match(inbox, /canUseProfessionalEmail && <button[^>]+>Professional Email/);
+  assert.match(inbox, /canUseProfessionalEmail && <button[\s\S]*?>Professional Email/);
   assert.match(inbox, /canUseProfessionalEmail && conversation\.hasEmail/);
   assert.match(inbox, /channel === 'email' \? <Mail/);
   assert.match(inbox, /!canUseProfessionalEmail && replyMode === 'email'/);
