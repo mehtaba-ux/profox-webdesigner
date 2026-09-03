@@ -43,6 +43,10 @@ async function getPublicBaseUrl(service: any) {
   return /^https:\/\//i.test(website) ? website : "https://www.profoxwebdesigner.com";
 }
 
+async function ignoreRpcFailure(request: PromiseLike<unknown>) {
+  try { await request; } catch { /* best-effort cleanup only */ }
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
@@ -137,12 +141,12 @@ Deno.serve(async (req: Request) => {
 
       const { error: activateError } = await service.rpc("service_activate_zoho_service_calendar");
       if (activateError) throw activateError;
-      await service.rpc("service_queue_existing_unsynced_meetings_for_central_zoho").catch(() => null);
+      await ignoreRpcFailure(service.rpc("service_queue_existing_unsynced_meetings_for_central_zoho"));
 
       return Response.redirect(`${publicBase}${returnPath}${returnPath.includes("?") ? "&" : "?"}zoho=service_connected`, 302);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Zoho Calendar and Meeting connection failed.";
-      await service.rpc("service_mark_zoho_service_calendar_state", { p_status: "error", p_error: message, p_success: false }).catch(() => null);
+      await ignoreRpcFailure(service.rpc("service_mark_zoho_service_calendar_state", { p_status: "error", p_error: message, p_success: false }));
       return Response.redirect(`${publicBase}${returnPath}${returnPath.includes("?") ? "&" : "?"}zoho=error&message=${encodeURIComponent(message.slice(0, 300))}`, 302);
     }
   }
