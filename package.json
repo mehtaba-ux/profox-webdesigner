@@ -14,8 +14,9 @@
     "migrations:apply": "node scripts/migrate-production.mjs --apply",
     "production:verify": "node scripts/verify-production-readiness.mjs && node scripts/verify-project-chat-readiness.mjs && node scripts/verify-professional-mailbox-readiness.mjs",
     "production:activate-privacy": "node scripts/activate-production-privacy-consent.mjs",
-    "test": "npm run test:talent-partner",
+    "test": "npm run test:talent-partner && npm run test:security",
     "test:talent-partner": "tsx --test tests/talent-partner/*.test.ts",
+    "test:security": "tsx --test tests/security/*.test.ts",
     "test:e2e": "playwright test",
     "deploy": "npm run build && wrangler deploy",
     "pages:deploy": "npm run build && wrangler pages deploy dist"
