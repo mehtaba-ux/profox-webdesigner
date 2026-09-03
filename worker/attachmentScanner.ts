@@ -75,6 +75,7 @@ function validateMagic(bytes: Uint8Array, contentType: string): string {
   if (contentType === 'application/pdf' && !startsWith(bytes, [0x25, 0x50, 0x44, 0x46, 0x2d])) return 'PDF signature mismatch';
   if (contentType === 'video/webm' && !startsWith(bytes, [0x1a, 0x45, 0xdf, 0xa3])) return 'WebM signature mismatch';
   if ((contentType === 'video/mp4' || contentType === 'video/quicktime') && !(bytes.length >= 12 && startsWith(bytes, [0x66, 0x74, 0x79, 0x70], 4))) return 'MP4/MOV signature mismatch';
+  if (contentType === 'video/mpeg' && !(startsWith(bytes, [0x00, 0x00, 0x01, 0xba]) || startsWith(bytes, [0x00, 0x00, 0x01, 0xb3]))) return 'MPEG signature mismatch';
   if (ZIP_OFFICE_TYPES.has(contentType) && !(startsWith(bytes, [0x50, 0x4b, 0x03, 0x04]) || startsWith(bytes, [0x50, 0x4b, 0x05, 0x06]) || startsWith(bytes, [0x50, 0x4b, 0x07, 0x08]))) return 'Office Open XML signature mismatch';
   if ((contentType === 'text/plain' || contentType === 'text/csv') && bytes.subarray(0, Math.min(bytes.length, 1024 * 1024)).some(byte => byte === 0)) return 'Text file contains binary NUL bytes';
   return '';
@@ -113,7 +114,7 @@ export function scanAttachmentBytes(buffer: ArrayBuffer, contentType: string): A
   if (ZIP_OFFICE_TYPES.has(type)) {
     const archiveDirectory = asciiLowerWindow(tail);
     const dangerous = DANGEROUS_ARCHIVE_NAMES.find(value => archiveDirectory.includes(value));
-    if (dangerous) return { safe: false, engine: ATTACHMENT_SCAN_ENGINE, reason: 'The Office document contains a macro, executable, script or shortcut payload and was quarantined.', signals: [`archive:${dangerous}`] };
+    if (dangerous) return { safe: false, engine: ATTACHMENT_SCAN_ENGINE, reason: 'The Office document contains a macro, executable, script or shortcut payload and was blocked.', signals: [`archive:${dangerous}`] };
     const familyMarker = type.includes('wordprocessingml') ? 'word/' : type.includes('spreadsheetml') ? 'xl/' : 'ppt/';
     if (!archiveDirectory.includes('[content_types].xml') || !archiveDirectory.includes(familyMarker)) {
       return { safe: false, engine: ATTACHMENT_SCAN_ENGINE, reason: 'The Office document structure does not match its declared file type.', signals: ['office-structure-mismatch'] };
