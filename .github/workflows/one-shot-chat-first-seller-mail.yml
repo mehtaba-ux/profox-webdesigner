@@ -84,11 +84,6 @@ jobs:
               raise SystemExit('zoho-mail-admin: eligibility wording not found')
           zoho.write_text(zoho_text.replace(old, 'Professional Email is available only to eligible active Management/Admin accounts.'))
 
-          deploy = '.github/workflows/deploy-professional-mailbox-worker.yml'
-          replace_once(deploy,
-              '      - name: Deploy professional mailbox provisioning worker\n        run: npx supabase functions deploy process-professional-mailbox-provisioning --no-verify-jwt --project-ref "$SUPABASE_PROJECT_REF"\n',
-              '      - name: Deploy professional mailbox workers\n        run: |\n          npx supabase functions deploy process-professional-mailbox-provisioning --no-verify-jwt --project-ref "$SUPABASE_PROJECT_REF"\n          npx supabase functions deploy process-professional-mailbox-lifecycle --no-verify-jwt --project-ref "$SUPABASE_PROJECT_REF"\n')
-
           test_path = Path('tests/talent-partner/chatFirstSellerCommunicationPolicy.test.ts')
           test_path.write_text("""import test from 'node:test';
           import assert from 'node:assert/strict';
@@ -142,7 +137,6 @@ jobs:
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git rm .github/workflows/one-shot-chat-first-seller-mail.yml
-          git add -A
+          git add src/components/admin/SalesChatInbox.tsx supabase/functions/process-professional-mailbox-provisioning/index.ts supabase/functions/zoho-mail-admin/index.ts tests/talent-partner/chatFirstSellerCommunicationPolicy.test.ts
           git commit -m "Complete chat-first seller communication policy"
           git push origin HEAD:main
