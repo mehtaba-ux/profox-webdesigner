@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { AlertCircle, ChevronUp, Loader2, MessageCircle, Send, ShieldCheck, UserRound } from 'lucide-react';
+import { AlertCircle, ChevronUp, Eye, Loader2, MessageCircle, Send, ShieldCheck, UserRound } from 'lucide-react';
 import { useAuth } from '../../lib/AuthContext';
 import CommunicationAttachmentList from '../communication/CommunicationAttachmentList';
 import CommunicationComposerTools from '../communication/CommunicationComposerTools';
@@ -242,11 +242,12 @@ export default function ClientProjectChat() {
   }
   if (!error && threads.length === 0 && newContacts.length === 0) return null;
 
-  return <section className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm">
-    <div className="border-b border-slate-200 p-5">
-      <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-[#000080]"><ShieldCheck className="h-4 w-4" />Authorized Project Chat</div>
-      <h3 className="mt-2 text-lg font-black text-slate-900">Chat with an approved delivery specialist</h3>
-      <p className="mt-1 text-xs leading-5 text-slate-500">Messages, safe links and project files stay inside the same authorized project thread. Every action still passes the existing project grant checks.</p>
+  return <section className="overflow-hidden rounded-[2rem] border border-amber-200 bg-white shadow-sm">
+    <div className="border-b border-amber-200 bg-amber-50/70 p-5">
+      <div className="flex flex-wrap items-center gap-2 text-[10px] font-black uppercase tracking-widest text-amber-900"><Eye className="h-4 w-4" />Customer-Visible Project Chat <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[8px] tracking-wide text-emerald-800"><ShieldCheck className="mr-1 inline h-3 w-3" />Grant controlled</span></div>
+      <h3 className="mt-2 text-lg font-black text-slate-900">Chat with your approved ProFox delivery specialist</h3>
+      <p className="mt-1 text-xs leading-5 text-slate-600">Everything shown in this section is customer-visible and belongs only to the approved project thread. Private ProFox team conversations and internal notes are never shown here.</p>
+      <div className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-[10px] font-semibold leading-4 text-emerald-900"><strong>File safety:</strong> project-chat uploads are checked server-side before they can enter private R2 storage. Executables, legacy macro-capable Office files, active-content PDFs and disguised file types are blocked.</div>
     </div>
 
     {error && <div className="m-4 flex gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-xs font-semibold text-red-700"><AlertCircle className="h-4 w-4 shrink-0" />{error}</div>}
@@ -260,7 +261,7 @@ export default function ClientProjectChat() {
 
       <div className="flex min-h-[420px] flex-col">
         {!selectedThread ? <div className="flex flex-1 items-center justify-center p-8 text-center"><div><MessageCircle className="mx-auto h-7 w-7 text-slate-300" /><p className="mt-3 text-xs font-black text-slate-600">Choose an approved project contact</p></div></div> : <>
-          <div className="border-b border-slate-200 bg-slate-50 p-4"><div className="text-sm font-black text-slate-900">{selectedThread.otherFullName}</div><div className="text-[10px] font-semibold text-slate-400">{selectedThread.projectName} · {selectedThread.otherDepartment}</div></div>
+          <div className="border-b border-amber-200 bg-amber-50/50 p-4"><div className="flex items-center gap-2"><div className="text-sm font-black text-slate-900">{selectedThread.otherFullName}</div><span className="rounded-full bg-amber-100 px-2 py-0.5 text-[8px] font-black uppercase tracking-wide text-amber-900">Visible to you</span></div><div className="text-[10px] font-semibold text-slate-400">{selectedThread.projectName} · {selectedThread.otherDepartment}</div></div>
           <div className="max-h-[420px] min-h-[260px] flex-1 space-y-3 overflow-y-auto p-4">
             {hasOlder && <div className="flex justify-center"><button type="button" disabled={loadingOlder} onClick={() => void loadOlder()} className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 px-3 py-1.5 text-[10px] font-black text-slate-600 disabled:opacity-50"><ChevronUp className="h-3.5 w-3.5" />{loadingOlder ? 'Loading…' : 'Load older messages'}</button></div>}
             {messages.map(message => {
@@ -269,10 +270,11 @@ export default function ClientProjectChat() {
             })}
             <div ref={endRef} />
           </div>
-          <div className="space-y-2 border-t border-slate-200 p-4">
+          <div className="space-y-2 border-t border-amber-200 bg-amber-50/30 p-4">
+            <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[10px] font-black text-amber-900"><Eye className="mr-1.5 inline h-3.5 w-3.5" />CLIENT VISIBLE — your message and attached files will be visible to the approved ProFox specialist in this project thread.</div>
             <CommunicationComposerTools files={pendingFiles} onFilesChange={setPendingFiles} text={draft} onTextChange={setDraft} disabled={sending} compact />
-            <div className="flex items-end gap-2"><textarea rows={2} maxLength={4000} value={draft} onChange={event => setDraft(event.target.value)} placeholder={`Message ${selectedThread.otherFullName} about ${selectedThread.projectName}...`} className="flex-1 resize-none rounded-xl border border-slate-200 p-3 text-sm outline-none focus:border-[#000080]" /><button type="button" disabled={sending || (!draft.trim() && pendingFiles.length === 0)} onClick={() => void send()} className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#000080] text-white disabled:opacity-40">{sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}</button></div>
-            <div className="text-[9px] text-slate-400">Private R2 file storage · realtime delivery · secure 30-second fallback refresh · 30 messages/minute limit</div>
+            <div className="flex items-end gap-2"><textarea rows={2} maxLength={4000} value={draft} onChange={event => setDraft(event.target.value)} placeholder={`Message ${selectedThread.otherFullName} about ${selectedThread.projectName}...`} className="flex-1 resize-none rounded-xl border border-amber-200 bg-white p-3 text-sm outline-none focus:border-[#000080]" /><button type="button" disabled={sending || (!draft.trim() && pendingFiles.length === 0)} onClick={() => void send()} className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#000080] text-white disabled:opacity-40">{sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}</button></div>
+            <div className="text-[9px] text-slate-400">Private R2 storage · pre-storage security scan · realtime delivery · secure 30-second fallback refresh · 30 messages/minute limit</div>
           </div>
         </>}
       </div>
