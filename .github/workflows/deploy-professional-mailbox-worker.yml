@@ -55,5 +55,7 @@ jobs:
             exit 1
           fi
 
-      - name: Deploy professional mailbox provisioning worker
-        run: npx supabase functions deploy process-professional-mailbox-provisioning --no-verify-jwt --project-ref "$SUPABASE_PROJECT_REF"
+      - name: Deploy professional mailbox workers
+        run: |
+          npx supabase functions deploy process-professional-mailbox-provisioning --no-verify-jwt --project-ref "$SUPABASE_PROJECT_REF"
+          npx supabase functions deploy process-professional-mailbox-lifecycle --no-verify-jwt --project-ref "$SUPABASE_PROJECT_REF"
