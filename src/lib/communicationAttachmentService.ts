@@ -16,6 +16,7 @@ type AttachmentApiPayload = {
   error?: string;
   success?: boolean;
   attachmentId?: string;
+  scan?: { status?: string; engine?: string; signals?: string[] };
 };
 
 export const COMMUNICATION_ATTACHMENT_MAX_BYTES = 50 * 1024 * 1024;
@@ -24,9 +25,9 @@ export const PROFESSIONAL_EMAIL_ATTACHMENT_MAX_TOTAL_BYTES = 10 * 1024 * 1024;
 export const COMMUNICATION_ATTACHMENT_ACCEPT = [
   'image/jpeg','image/png','image/webp','image/gif',
   'video/mp4','video/webm','video/quicktime','video/mpeg',
-  'application/pdf','application/msword',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document','application/vnd.ms-excel',
-  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet','application/vnd.ms-powerpoint',
+  'application/pdf',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   'application/vnd.openxmlformats-officedocument.presentationml.presentation','text/plain','text/csv',
 ].join(',');
 
@@ -34,7 +35,7 @@ const ALLOWED_TYPES = new Set(COMMUNICATION_ATTACHMENT_ACCEPT.split(','));
 
 export function validateCommunicationAttachmentFile(file: File) {
   const contentType = (file.type || '').toLowerCase();
-  if (!ALLOWED_TYPES.has(contentType)) throw new Error('This file type is not allowed. Use an image, MP4/WebM/MOV/MPEG video, PDF, Office document, TXT or CSV file.');
+  if (!ALLOWED_TYPES.has(contentType)) throw new Error('This file type is not allowed. Use an image, MP4/WebM/MOV/MPEG video, PDF, DOCX, XLSX, PPTX, TXT or CSV file. Legacy DOC/XLS/PPT files are blocked for security; convert them to a modern format first.');
   if (file.size < 1) throw new Error('The selected file is empty.');
   if (file.size > COMMUNICATION_ATTACHMENT_MAX_BYTES) throw new Error('Files must be 50 MB or smaller.');
 }
@@ -104,7 +105,7 @@ export async function uploadInternalAttachment(input: { threadId: string; file: 
   const form = new FormData();
   form.set('scope', 'internal');
   form.set('threadId', input.threadId);
-  form.set('channel', 'client_portal');
+  form.set('channel', 'project_chat');
   form.set('file', input.file);
   return upload(form);
 }
