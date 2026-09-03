@@ -130,7 +130,7 @@ export const DEFAULT_MEETING_SETTINGS: MeetingSettings = {
   active: true
 };
 
-const mapMeeting = (row: any): SalesMeeting => ({
+const mapMeeting = (row: any, meetingUrlOverride?: string | null): SalesMeeting => ({
   id: row.id,
   requestKey: row.request_key,
   leadId: row.lead_id || undefined,
@@ -147,7 +147,7 @@ const mapMeeting = (row: any): SalesMeeting => ({
   provider: row.provider || 'Manual',
   externalCalendarId: row.external_calendar_id || undefined,
   externalEventId: row.external_event_id || undefined,
-  meetingUrl: row.meeting_url || '',
+  meetingUrl: meetingUrlOverride === undefined ? (row.meeting_url || '') : (meetingUrlOverride || ''),
   attendeeName: row.attendee_name || '',
   attendeeEmail: row.attendee_email || '',
   status: row.status,
@@ -187,17 +187,41 @@ const mapCalendarSettings = (row: any): UserCalendarSettings => ({
   updatedAt: row.updated_at
 });
 
+async function getLaunchUrl(meetingId: string): Promise<string> {
+  const { data, error } = await supabase.rpc('get_my_meeting_launch_url', { p_meeting_id: meetingId });
+  if (error) throw error;
+  return typeof data === 'string' ? data : '';
+}
+
+async function getLaunchUrlMap(): Promise<Map<string, string>> {
+  const { data, error } = await supabase.rpc('get_my_meeting_launch_urls');
+  if (error) throw error;
+  return new Map((data || []).map((row: any) => [String(row.meeting_id), String(row.launch_url || '')]));
+}
+
+async function mapStaffMeeting(row: any): Promise<SalesMeeting> {
+  const launchUrl = await getLaunchUrl(String(row.id));
+  return mapMeeting(row, launchUrl);
+}
+
 export const meetingService = {
   async listMeetings(): Promise<SalesMeeting[]> {
-    const { data, error } = await supabase.from('sales_meetings').select('*').order('start_at', { ascending: true });
+    const [{ data, error }, launchUrls] = await Promise.all([
+      supabase.from('sales_meetings').select('*').order('start_at', { ascending: true }),
+      getLaunchUrlMap()
+    ]);
     if (error) throw error;
-    return (data || []).map(mapMeeting);
+    return (data || []).map(row => mapMeeting(row, launchUrls.get(String(row.id)) || ''));
   },
 
   async getMeeting(id: string): Promise<SalesMeeting | null> {
     const { data, error } = await supabase.from('sales_meetings').select('*').eq('id', id).maybeSingle();
     if (error) throw error;
-    return data ? mapMeeting(data) : null;
+    return data ? mapStaffMeeting(data) : null;
+  },
+
+  async getLaunchUrl(id: string): Promise<string> {
+    return getLaunchUrl(id);
   },
 
   async schedule(input: ScheduleMeetingInput): Promise<SalesMeeting> {
@@ -219,7 +243,7 @@ export const meetingService = {
       p_attendee_email: input.attendeeEmail || ''
     });
     if (error) throw error;
-    return mapMeeting(data);
+    return mapStaffMeeting(data);
   },
 
   async reschedule(id: string, startAt: string, endAt: string, timezone: string, meetingUrl?: string): Promise<SalesMeeting> {
@@ -231,7 +255,7 @@ export const meetingService = {
       p_meeting_url: meetingUrl ?? null
     });
     if (error) throw error;
-    return mapMeeting(data);
+    return mapStaffMeeting(data);
   },
 
   async cancel(id: string, reason = ''): Promise<SalesMeeting> {
@@ -240,7 +264,7 @@ export const meetingService = {
       p_reason: reason
     });
     if (error) throw error;
-    return mapMeeting(data);
+    return mapMeeting(data, '');
   },
 
   async finalize(id: string, input: FinalizeMeetingInput): Promise<SalesMeeting> {
@@ -257,7 +281,7 @@ export const meetingService = {
       p_follow_up_at: input.followUpAt || null
     });
     if (error) throw error;
-    return mapMeeting(data);
+    return mapMeeting(data, '');
   },
 
   async getCalendarSettings(userId: string): Promise<UserCalendarSettings | null> {
