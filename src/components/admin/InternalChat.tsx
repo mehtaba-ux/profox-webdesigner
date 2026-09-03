@@ -3,6 +3,7 @@ import {
   AlertCircle,
   ArrowLeft,
   ChevronUp,
+  Eye,
   LockKeyhole,
   MessageCircle,
   RefreshCw,
@@ -46,6 +47,10 @@ function mergeMessages(current: InternalChatMessage[], incoming: InternalChatMes
   return Array.from(map.values()).sort((a, b) => a.createdAt.localeCompare(b.createdAt));
 }
 
+function isClientRole(role?: string | null) {
+  return ['customer', 'client'].includes(String(role || '').toLowerCase());
+}
+
 interface Peer {
   projectId: string;
   projectName: string;
@@ -54,6 +59,7 @@ interface Peer {
   role: string;
   department: string;
   avatarUrl: string;
+  communicationScope: string;
 }
 
 export default function InternalChat() {
@@ -74,11 +80,13 @@ export default function InternalChat() {
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const shouldScrollToEndRef = useRef(false);
   const realtimeDebounceRef = useRef<number | null>(null);
+  const confirmedClientVisibleThreadsRef = useRef(new Set<string>());
 
   const isActiveInternalUser = Boolean(
     user && profile && status === 'active' && role && !['customer', 'client', 'pending', 'talent_partner'].includes(String(role))
   );
 
+  const selectedIsClientVisible = Boolean(selectedPeer && isClientRole(selectedPeer.role));
   const policySummary = 'Project-scoped access only. Sellers and delivery staff can collaborate only on projects they both actively belong to. Client access remains blocked unless the responsible Seller or an authorized Manager explicitly grants a delivery member access for that exact project.';
 
   const loadDirectory = async (silent = false) => {
@@ -99,6 +107,7 @@ export default function InternalChat() {
         setSelectedPeer(null);
         setMessages([]);
         setHasOlder(false);
+        setDraft('');
         setError('This conversation is no longer available because its project access changed.');
       }
     } catch (err: any) {
@@ -213,6 +222,7 @@ export default function InternalChat() {
 
   const openThread = async (thread: InternalChatThread) => {
     setError(null);
+    setDraft('');
     setSelectedThreadId(thread.threadId);
     setSelectedPeer({
       projectId: thread.projectId,
@@ -221,13 +231,15 @@ export default function InternalChat() {
       fullName: thread.otherFullName,
       role: thread.otherRole,
       department: thread.otherDepartment,
-      avatarUrl: thread.otherAvatarUrl
+      avatarUrl: thread.otherAvatarUrl,
+      communicationScope: isClientRole(thread.otherRole) ? 'Client' : 'Internal'
     });
     await loadInitialMessages(thread.threadId);
   };
 
   const startConversation = async (contact: InternalChatContact) => {
     setError(null);
+    setDraft('');
     const result = await internalChatService.getOrCreateThread(contact.userId, contact.projectId);
     if (result.error || !result.data) {
       setError(messageFromError(result.error, 'This project conversation is not permitted.'));
@@ -241,7 +253,8 @@ export default function InternalChat() {
       fullName: contact.fullName,
       role: contact.role,
       department: contact.department,
-      avatarUrl: contact.avatarUrl
+      avatarUrl: contact.avatarUrl,
+      communicationScope: contact.communicationScope
     });
     await loadInitialMessages(result.data);
     await loadDirectory(true);
@@ -249,7 +262,16 @@ export default function InternalChat() {
 
   const send = async () => {
     const body = draft.trim();
-    if (!body || !selectedThreadId || sending) return;
+    if (!body || !selectedThreadId || !selectedPeer || sending) return;
+
+    if (selectedIsClientVisible && !confirmedClientVisibleThreadsRef.current.has(selectedThreadId)) {
+      const confirmed = window.confirm(
+        `CLIENT-VISIBLE MESSAGE\n\n${selectedPeer.fullName} can read everything you send in this project thread. Do not include internal pricing, margins, credentials, private QA notes, staff discussion or other sensitive ProFox information.\n\nSend in this customer-visible conversation?`
+      );
+      if (!confirmed) return;
+      confirmedClientVisibleThreadsRef.current.add(selectedThreadId);
+    }
+
     setSending(true);
     setError(null);
     const result = await internalChatService.sendMessage(selectedThreadId, body);
@@ -303,7 +325,7 @@ export default function InternalChat() {
         <div className="flex min-w-0 items-center gap-3">
           <button type="button" onClick={() => navigate('/admin/workspace')} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-200 text-slate-500 hover:bg-slate-50" aria-label="Back to workspace"><ArrowLeft className="h-4 w-4" /></button>
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[#000080] text-white"><MessageCircle className="h-5 w-5" /></div>
-          <div className="min-w-0"><div className="flex items-center gap-2"><h1 className="truncate text-base font-black">Project Chat</h1><span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[9px] font-black uppercase tracking-wide text-emerald-700">Realtime</span></div><p className="truncate text-[11px] text-slate-500">Assignment-controlled team chat · realtime with secure fallback refresh</p></div>
+          <div className="min-w-0"><div className="flex items-center gap-2"><h1 className="truncate text-base font-black">Project Chat</h1><span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[9px] font-black uppercase tracking-wide text-emerald-700">Realtime</span></div><p className="truncate text-[11px] text-slate-500">Internal-only and client-visible channels are separated by project authorization</p></div>
         </div>
         <button type="button" onClick={() => void loadDirectory()} className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50"><RefreshCw className="h-4 w-4" /> Refresh</button>
       </div>
@@ -320,14 +342,18 @@ export default function InternalChat() {
           <div className="flex-1 overflow-y-auto p-3">
             {filteredThreads.length > 0 && <div className="mb-5"><div className="mb-2 px-2 text-[9px] font-black uppercase tracking-[0.16em] text-slate-400">Recent project conversations</div><div className="space-y-1">{filteredThreads.map(thread => {
               const active = selectedThreadId === thread.threadId;
-              return <button key={thread.threadId} type="button" onClick={() => void openThread(thread)} className={`flex w-full items-center gap-3 rounded-2xl p-3 text-left transition ${active ? 'bg-[#000080] text-white shadow-sm' : 'hover:bg-white'}`}>
+              const clientVisible = isClientRole(thread.otherRole);
+              return <button key={thread.threadId} type="button" onClick={() => void openThread(thread)} className={`flex w-full items-center gap-3 rounded-2xl p-3 text-left transition ${active ? 'bg-[#000080] text-white shadow-sm' : clientVisible ? 'border border-amber-200 bg-amber-50/60 hover:bg-amber-50' : 'hover:bg-white'}`}>
                 <Avatar name={thread.otherFullName} url={thread.otherAvatarUrl} active={active} />
-                <div className="min-w-0 flex-1"><div className="flex items-center justify-between gap-2"><span className="truncate text-xs font-black">{thread.otherFullName}</span><span className={`shrink-0 text-[9px] ${active ? 'text-blue-100' : 'text-slate-400'}`}>{formatMessageTime(thread.lastMessageAt)}</span></div><div className={`mt-0.5 truncate text-[10px] font-semibold ${active ? 'text-blue-100' : 'text-[#000080]'}`}>{thread.projectName}</div><div className={`mt-1 truncate text-[11px] ${active ? 'text-white/80' : 'text-slate-500'}`}>{thread.lastMessagePreview || 'Conversation ready'}</div></div>
+                <div className="min-w-0 flex-1"><div className="flex items-center gap-2"><span className="truncate text-xs font-black">{thread.otherFullName}</span><span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[7px] font-black uppercase tracking-wide ${active ? 'bg-white/15 text-white' : clientVisible ? 'bg-amber-100 text-amber-900' : 'bg-slate-200 text-slate-600'}`}>{clientVisible ? 'Client visible' : 'Internal only'}</span><span className={`ml-auto shrink-0 text-[9px] ${active ? 'text-blue-100' : 'text-slate-400'}`}>{formatMessageTime(thread.lastMessageAt)}</span></div><div className={`mt-0.5 truncate text-[10px] font-semibold ${active ? 'text-blue-100' : 'text-[#000080]'}`}>{thread.projectName}</div><div className={`mt-1 truncate text-[11px] ${active ? 'text-white/80' : 'text-slate-500'}`}>{thread.lastMessagePreview || 'Conversation ready'}</div></div>
                 {thread.unreadCount > 0 && <span className={`flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[9px] font-black ${active ? 'bg-white text-[#000080]' : 'bg-[#FF0E0E] text-white'}`}>{thread.unreadCount > 99 ? '99+' : thread.unreadCount}</span>}
               </button>;
             })}</div></div>}
 
-            {groupedContacts.map(group => <div key={group.projectId} className="mb-5"><div className="mb-2 flex items-center gap-2 px-2 text-[9px] font-black uppercase tracking-[0.16em] text-slate-400"><UsersRound className="h-3.5 w-3.5" /><span className="truncate">{group.projectName}</span></div><div className="space-y-1">{group.items.map(contact => <button key={`${contact.projectId}:${contact.userId}`} type="button" onClick={() => void startConversation(contact)} className="flex w-full items-center gap-3 rounded-2xl p-3 text-left transition hover:bg-white"><Avatar name={contact.fullName} url={contact.avatarUrl} /><div className="min-w-0 flex-1"><div className="truncate text-xs font-black text-slate-800">{contact.fullName}</div><div className="mt-0.5 truncate text-[10px] font-semibold text-slate-400">{contact.department} · {(ROLE_LABELS as any)[contact.role] || contact.role}</div></div><MessageCircle className="h-4 w-4 shrink-0 text-slate-300" /></button>)}</div></div>)}
+            {groupedContacts.map(group => <div key={group.projectId} className="mb-5"><div className="mb-2 flex items-center gap-2 px-2 text-[9px] font-black uppercase tracking-[0.16em] text-slate-400"><UsersRound className="h-3.5 w-3.5" /><span className="truncate">{group.projectName}</span></div><div className="space-y-1">{group.items.map(contact => {
+              const clientVisible = isClientRole(contact.role);
+              return <button key={`${contact.projectId}:${contact.userId}`} type="button" onClick={() => void startConversation(contact)} className={`flex w-full items-center gap-3 rounded-2xl p-3 text-left transition ${clientVisible ? 'border border-amber-200 bg-amber-50/60 hover:bg-amber-50' : 'hover:bg-white'}`}><Avatar name={contact.fullName} url={contact.avatarUrl} /><div className="min-w-0 flex-1"><div className="flex items-center gap-2"><div className="truncate text-xs font-black text-slate-800">{contact.fullName}</div><span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[7px] font-black uppercase tracking-wide ${clientVisible ? 'bg-amber-100 text-amber-900' : 'bg-slate-200 text-slate-600'}`}>{clientVisible ? 'Client visible' : 'Internal only'}</span></div><div className="mt-0.5 truncate text-[10px] font-semibold text-slate-400">{contact.department} · {(ROLE_LABELS as any)[contact.role] || contact.role}</div></div><MessageCircle className="h-4 w-4 shrink-0 text-slate-300" /></button>;
+            })}</div></div>)}
 
             {filteredThreads.length === 0 && groupedContacts.length === 0 && <div className="rounded-2xl border border-dashed border-slate-200 bg-white px-4 py-10 text-center"><UserRound className="mx-auto h-6 w-6 text-slate-300" /><div className="mt-2 text-xs font-black text-slate-600">No authorized project conversations</div><p className="mt-1 text-[10px] leading-4 text-slate-400">Contacts appear only while the current project and role policy permit communication.</p></div>}
           </div>
@@ -335,7 +361,11 @@ export default function InternalChat() {
 
         <section className={`${selectedThreadId ? 'flex' : 'hidden lg:flex'} min-h-[72vh] flex-col`}>
           {!selectedThreadId || !selectedPeer ? <div className="flex flex-1 items-center justify-center p-8 text-center"><div><div className="mx-auto flex h-14 w-14 items-center justify-center rounded-3xl bg-blue-50 text-[#000080]"><LockKeyhole className="h-6 w-6" /></div><h2 className="mt-4 text-base font-black text-slate-800">Choose an authorized project conversation</h2><p className="mx-auto mt-2 max-w-md text-xs leading-5 text-slate-500">Every thread belongs to one project. Revoking an assignment or client-chat grant removes access immediately.</p></div></div> : <>
-            <div className="flex items-center gap-3 border-b border-slate-200 px-4 py-4 sm:px-5"><button type="button" onClick={() => { setSelectedThreadId(null); setSelectedPeer(null); setMessages([]); setHasOlder(false); }} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-200 text-slate-500 lg:hidden" aria-label="Back to conversations"><ArrowLeft className="h-4 w-4" /></button><Avatar name={selectedPeer.fullName} url={selectedPeer.avatarUrl} /><div className="min-w-0"><div className="truncate text-sm font-black text-slate-900">{selectedPeer.fullName}</div><div className="mt-0.5 truncate text-[10px] font-semibold text-slate-400">{selectedPeer.projectName} · {selectedPeer.department} · {(ROLE_LABELS as any)[selectedPeer.role] || selectedPeer.role}</div></div><div className="ml-auto hidden items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[9px] font-black uppercase tracking-wide text-emerald-700 sm:flex"><ShieldCheck className="h-3.5 w-3.5" />Authorized</div></div>
+            <div className={`flex items-center gap-3 border-b px-4 py-4 sm:px-5 ${selectedIsClientVisible ? 'border-amber-200 bg-amber-50/60' : 'border-slate-200 bg-white'}`}><button type="button" onClick={() => { setSelectedThreadId(null); setSelectedPeer(null); setMessages([]); setHasOlder(false); setDraft(''); }} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-200 text-slate-500 lg:hidden" aria-label="Back to conversations"><ArrowLeft className="h-4 w-4" /></button><Avatar name={selectedPeer.fullName} url={selectedPeer.avatarUrl} /><div className="min-w-0"><div className="truncate text-sm font-black text-slate-900">{selectedPeer.fullName}</div><div className="mt-0.5 truncate text-[10px] font-semibold text-slate-400">{selectedPeer.projectName} · {selectedPeer.department} · {(ROLE_LABELS as any)[selectedPeer.role] || selectedPeer.role}</div></div><div className={`ml-auto hidden items-center gap-1.5 rounded-full border px-2.5 py-1 text-[9px] font-black uppercase tracking-wide sm:flex ${selectedIsClientVisible ? 'border-amber-300 bg-amber-100 text-amber-900' : 'border-blue-200 bg-blue-50 text-[#000080]'}`}>{selectedIsClientVisible ? <Eye className="h-3.5 w-3.5" /> : <LockKeyhole className="h-3.5 w-3.5" />}{selectedIsClientVisible ? 'Client visible' : 'Internal only'}</div></div>
+
+            <div className={`mx-4 mt-4 rounded-2xl border px-4 py-3 text-[11px] font-semibold leading-5 sm:mx-6 ${selectedIsClientVisible ? 'border-amber-300 bg-amber-50 text-amber-950' : 'border-blue-200 bg-blue-50 text-slate-700'}`}>
+              <div className="flex items-start gap-2">{selectedIsClientVisible ? <Eye className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" /> : <LockKeyhole className="mt-0.5 h-4 w-4 shrink-0 text-[#000080]" />}<div><strong>{selectedIsClientVisible ? 'CLIENT VISIBLE:' : 'INTERNAL ONLY:'}</strong> {selectedIsClientVisible ? 'The customer can read every message in this exact project thread through Client Portal. Never send internal margins, credentials, private QA notes, staff discussion or other sensitive ProFox information here.' : 'Only currently authorized ProFox project staff can read this thread. The customer cannot see these messages in Client Portal.'}</div></div>
+            </div>
 
             <div className="flex-1 overflow-y-auto bg-[linear-gradient(to_bottom,#f8fafc,#ffffff)] p-4 sm:p-6"><div className="mx-auto max-w-4xl space-y-3">
               {hasOlder && <div className="flex justify-center pb-2"><button type="button" disabled={loadingOlder} onClick={() => void loadOlderMessages()} className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[10px] font-black text-slate-600 hover:bg-slate-50 disabled:opacity-50"><ChevronUp className="h-3.5 w-3.5" />{loadingOlder ? 'Loading…' : 'Load older messages'}</button></div>}
@@ -347,7 +377,7 @@ export default function InternalChat() {
               <div ref={messagesEndRef} />
             </div></div>
 
-            <div className="border-t border-slate-200 bg-white p-4"><div className="mx-auto max-w-4xl"><div className="flex items-end gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-2 focus-within:border-[#000080]"><textarea value={draft} onChange={event => setDraft(event.target.value.slice(0, 4000))} onKeyDown={event => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); void send(); } }} rows={2} placeholder={`Write about ${selectedPeer.projectName}...`} className="max-h-40 min-h-[48px] flex-1 resize-none bg-transparent px-2 py-2 text-xs leading-5 outline-none" /><button type="button" onClick={() => void send()} disabled={!draft.trim() || sending} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#000080] text-white disabled:cursor-not-allowed disabled:opacity-40" aria-label="Send message"><Send className="h-4 w-4" /></button></div><div className="mt-2 flex justify-between gap-3 px-1 text-[9px] text-slate-400"><span>Realtime delivery · 30/minute abuse protection</span><span>{draft.length}/4000</span></div></div></div>
+            <div className={`border-t p-4 ${selectedIsClientVisible ? 'border-amber-200 bg-amber-50/40' : 'border-slate-200 bg-white'}`}><div className="mx-auto max-w-4xl"><div className={`mb-2 flex items-center gap-1.5 text-[9px] font-black uppercase tracking-wide ${selectedIsClientVisible ? 'text-amber-900' : 'text-[#000080]'}`}>{selectedIsClientVisible ? <Eye className="h-3.5 w-3.5" /> : <LockKeyhole className="h-3.5 w-3.5" />}{selectedIsClientVisible ? 'Customer will see this message' : 'Private ProFox team message'}</div><div className={`flex items-end gap-2 rounded-2xl border p-2 ${selectedIsClientVisible ? 'border-amber-300 bg-white focus-within:border-amber-500' : 'border-slate-200 bg-slate-50 focus-within:border-[#000080]'}`}><textarea value={draft} onChange={event => setDraft(event.target.value.slice(0, 4000))} onKeyDown={event => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); void send(); } }} rows={2} placeholder={selectedIsClientVisible ? `CLIENT VISIBLE — message ${selectedPeer.fullName} about ${selectedPeer.projectName}...` : `INTERNAL ONLY — discuss ${selectedPeer.projectName} with ${selectedPeer.fullName}...`} className="max-h-40 min-h-[48px] flex-1 resize-none bg-transparent px-2 py-2 text-xs leading-5 outline-none" /><button type="button" onClick={() => void send()} disabled={!draft.trim() || sending} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#000080] text-white disabled:cursor-not-allowed disabled:opacity-40" aria-label="Send message"><Send className="h-4 w-4" /></button></div><div className="mt-2 flex justify-between gap-3 px-1 text-[9px] text-slate-400"><span>{selectedIsClientVisible ? 'First send each session requires client-visibility confirmation' : 'Internal project scope'} · Realtime · 30/minute protection</span><span>{draft.length}/4000</span></div></div></div>
           </>}
         </section>
       </div>
