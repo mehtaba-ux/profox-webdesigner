@@ -3,6 +3,7 @@ import test from 'node:test';
 import { readFileSync } from 'node:fs';
 
 const migration = readFileSync('supabase/migrations/20260903121000_razorpay_test_checkout_and_customer_payment_actions.sql', 'utf8');
+const checkoutFunction = readFileSync('supabase/functions/payment-checkout/index.ts', 'utf8');
 const checkoutPage = readFileSync('src/pages/PublicPaymentCheckout.tsx', 'utf8');
 const gatewayService = readFileSync('src/lib/paymentGatewayService.ts', 'utf8');
 const relationshipHistory = readFileSync('src/components/client/ClientRelationshipHistory.tsx', 'utf8');
@@ -17,12 +18,33 @@ test('Razorpay Test mode can be checkout-ready without becoming production-ready
   assert.match(migration, /payment_gateway_provider_ready\(v_provider,v_pc\)/);
 });
 
+test('Razorpay checkout converts quotation currency to a locked INR provider charge', () => {
+  assert.match(checkoutFunction, /api\.frankfurter\.app\/latest/);
+  assert.match(checkoutFunction, /service_store_payment_gateway_quote/);
+  assert.match(checkoutFunction, /p_provider_currency: "INR"/);
+  assert.match(checkoutFunction, /Razorpay checkout must be created in INR/);
+  assert.match(checkoutFunction, /providerAmount: charge\.providerAmount/);
+  assert.match(checkoutFunction, /providerCurrency: charge\.providerCurrency/);
+  assert.match(checkoutFunction, /attempt\.providerAmount/);
+  assert.match(checkoutFunction, /attempt\.providerCurrency/);
+  assert.match(checkoutFunction, /locked ProFox INR payment request/);
+  assert.match(checkoutFunction, /Recent stored reference/);
+});
+
 test('public checkout exposes provider mode metadata and an explicit Razorpay Test action', () => {
   assert.match(gatewayService, /productionReady\?: boolean/);
   assert.match(gatewayService, /testMode\?: boolean/);
   assert.match(checkoutPage, /Pay with Razorpay/);
   assert.match(checkoutPage, /Razorpay is currently connected in Test Mode/);
   assert.match(checkoutPage, /no real customer funds should be charged/i);
+});
+
+test('public checkout explains and displays the automatic INR conversion', () => {
+  assert.match(checkoutPage, /latest available server-side reference rate/);
+  assert.match(checkoutPage, /Razorpay conversion locked/);
+  assert.match(checkoutPage, /Locked Razorpay amount/);
+  assert.match(checkoutPage, /currency: 'INR'/);
+  assert.match(checkoutPage, /Your quotation and accounting amount stay in/);
 });
 
 test('customer portal loads only authenticated customer payment actions and shows Razorpay CTA', () => {
