@@ -12,8 +12,17 @@ export interface ZohoCalendarConnectionStatus {
   lastError: string | null;
   calendarEnabled: boolean;
   meetingEnabled: boolean;
-  effectiveCalendarProvider: 'google' | 'zoho';
-  effectiveMeetingProvider: 'google_meet' | 'zoho_meeting';
+  defaultCalendarProvider: 'google' | 'zoho';
+  defaultMeetingProvider: 'google_meet' | 'zoho_meeting';
+  providerConfigured: boolean;
+  managedByProFox: boolean;
+  sellerAuthorizationRequired: boolean;
+}
+
+export interface ZohoCalendarIntegrationSnapshot {
+  connection: ZohoCalendarConnectionStatus;
+  providerConfigured: boolean;
+  redirectUri: string;
 }
 
 const endpoint = `${String(import.meta.env.VITE_SUPABASE_URL || '').replace(/\/$/, '')}/functions/v1/zoho-calendar-oauth`;
@@ -41,15 +50,15 @@ async function invoke<T>(body: Record<string, unknown>): Promise<T> {
 }
 
 export const zohoCalendarService = {
-  async getStatus(): Promise<{ connection: ZohoCalendarConnectionStatus; providerConfigured: boolean; redirectUri: string }> {
+  async getStatus(): Promise<ZohoCalendarIntegrationSnapshot> {
     return invoke({ action: 'status' });
   },
-  async connect(returnPath = '/admin/meetings?tab=availability'): Promise<void> {
+  async connect(returnPath = '/admin/calendar'): Promise<void> {
     const result = await invoke<{ authorizationUrl: string }>({ action: 'start', returnPath });
     if (!String(result.authorizationUrl || '').startsWith('https://')) throw new Error('Zoho returned an invalid authorization URL.');
     window.location.assign(result.authorizationUrl);
   },
-  async reconnect(returnPath = '/admin/meetings?tab=availability'): Promise<void> {
+  async reconnect(returnPath = '/admin/calendar'): Promise<void> {
     const result = await invoke<{ authorizationUrl: string }>({ action: 'reconnect', returnPath });
     if (!String(result.authorizationUrl || '').startsWith('https://')) throw new Error('Zoho returned an invalid authorization URL.');
     window.location.assign(result.authorizationUrl);
