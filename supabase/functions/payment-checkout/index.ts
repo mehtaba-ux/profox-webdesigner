@@ -13,6 +13,7 @@ function json(body: unknown, status = 200) {
 
 function clean(value: unknown, max = 500) { return String(value ?? "").trim().slice(0, max); }
 function asNumber(value: unknown) { const n = Number(value); return Number.isFinite(n) ? n : 0; }
+function roundMoney(value: number) { return Math.round((value + Number.EPSILON) * 100) / 100; }
 function apiError(provider: string, status: number, text: string) {
   let message = `${provider} returned HTTP ${status}`;
   try { const parsed = JSON.parse(text); message = clean(parsed?.error?.description || parsed?.message || parsed?.name || message, 400); } catch { /* no-op */ }
@@ -52,6 +53,97 @@ async function paypalToken(config: any) {
   return { base, token: String(payload.access_token) };
 }
 
+async function fetchFxRateToInr(service: any, sourceCurrency: string) {
+  const source = sourceCurrency.toUpperCase();
+  if (source === "INR") return { rate: 1, source: "No FX conversion", quotedAt: new Date().toISOString() };
+
+  let liveError = "";
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 6000);
+  try {
+    const response = await fetch(`https://api.frankfurter.app/latest?from=${encodeURIComponent(source)}&to=INR`, {
+      headers: { Accept: "application/json", "User-Agent": "ProFox-Payment-Checkout/1.0" },
+      signal: controller.signal,
+    });
+    const text = await response.text();
+    if (!response.ok) throw new Error(`Frankfurter returned HTTP ${response.status}`);
+    const payload = JSON.parse(text);
+    const rate = asNumber(payload?.rates?.INR);
+    if (!(rate > 0)) throw new Error("Frankfurter did not return a valid INR rate.");
+    const marketDate = clean(payload?.date, 32);
+    return {
+      rate,
+      source: marketDate ? `Frankfurter reference (${marketDate})` : "Frankfurter reference",
+      quotedAt: new Date().toISOString(),
+    };
+  } catch (error) {
+    liveError = error instanceof Error ? error.message : "Live FX lookup failed.";
+  } finally {
+    clearTimeout(timeout);
+  }
+
+  const cutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+  const { data: fallback } = await service
+    .from("payment_gateway_attempts")
+    .select("fx_rate,fx_source,fx_quoted_at")
+    .eq("provider", "razorpay")
+    .eq("currency", source)
+    .eq("provider_currency", "INR")
+    .not("fx_rate", "is", null)
+    .gte("fx_quoted_at", cutoff)
+    .order("fx_quoted_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const fallbackRate = asNumber(fallback?.fx_rate);
+  if (fallbackRate > 0) {
+    return {
+      rate: fallbackRate,
+      source: `Recent stored reference · ${clean(fallback?.fx_source || "ProFox FX", 120)}`,
+      quotedAt: new Date().toISOString(),
+    };
+  }
+  throw new Error(`Unable to obtain the current ${source} to INR exchange rate. ${liveError}`.trim());
+}
+
+async function lockRazorpayCharge(service: any, prepared: any) {
+  const sourceAmount = asNumber(prepared?.amount);
+  const sourceCurrency = clean(prepared?.currency, 10).toUpperCase();
+  if (!(sourceAmount > 0) || !/^[A-Z]{3}$/.test(sourceCurrency)) throw new Error("Payment amount or currency is invalid.");
+
+  const lockedAmount = asNumber(prepared?.providerAmount);
+  const lockedCurrency = clean(prepared?.providerCurrency, 10).toUpperCase();
+  if (lockedAmount > 0 && lockedCurrency === "INR") {
+    return {
+      providerAmount: lockedAmount,
+      providerCurrency: lockedCurrency,
+      fxRate: asNumber(prepared?.fxRate) || (sourceCurrency === "INR" ? 1 : 0),
+      fxSource: clean(prepared?.fxSource, 160),
+      fxQuotedAt: clean(prepared?.fxQuotedAt, 80),
+    };
+  }
+
+  const fx = await fetchFxRateToInr(service, sourceCurrency);
+  const providerAmount = sourceCurrency === "INR" ? roundMoney(sourceAmount) : roundMoney(sourceAmount * fx.rate);
+  if (!(providerAmount > 0)) throw new Error("Converted Razorpay amount is invalid.");
+
+  const { data: stored, error: storeError } = await service.rpc("service_store_payment_gateway_quote", {
+    p_attempt_id: prepared.attemptId,
+    p_provider_amount: providerAmount,
+    p_provider_currency: "INR",
+    p_fx_rate: sourceCurrency === "INR" ? 1 : fx.rate,
+    p_fx_source: fx.source,
+    p_fx_quoted_at: fx.quotedAt,
+  });
+  if (storeError) throw new Error(storeError.message);
+  return {
+    providerAmount: asNumber(stored?.providerAmount) || providerAmount,
+    providerCurrency: clean(stored?.providerCurrency || "INR", 10).toUpperCase(),
+    fxRate: asNumber(stored?.fxRate) || (sourceCurrency === "INR" ? 1 : fx.rate),
+    fxSource: clean(stored?.fxSource || fx.source, 160),
+    fxQuotedAt: clean(stored?.fxQuotedAt || fx.quotedAt, 80),
+  };
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
@@ -73,27 +165,74 @@ Deno.serve(async (req: Request) => {
       if (prepared?.alreadyPaid) return json({ ok: true, alreadyPaid: true, payment: prepared });
       if (prepared?.reused && prepared?.providerOrderId) {
         if (provider === "paypal" && prepared.checkoutUrl) return json({ ok: true, provider, attemptId: prepared.attemptId, redirectUrl: prepared.checkoutUrl, reused: true });
-        if (provider === "razorpay") return json({ ok: true, provider, attemptId: prepared.attemptId, orderId: prepared.providerOrderId, keyId: prepared.publicId, amount: toMinor(asNumber(prepared.amount), prepared.currency), currency: prepared.currency, customerName: prepared.customerName, customerEmail: prepared.customerEmail, paymentReference: prepared.paymentReference, reused: true });
+        if (provider === "razorpay") {
+          const providerAmount = asNumber(prepared.providerAmount);
+          const providerCurrency = clean(prepared.providerCurrency, 10).toUpperCase();
+          if (!(providerAmount > 0) || providerCurrency !== "INR") throw new Error("The existing Razorpay order does not contain a valid locked INR quote. Please retry after the previous attempt expires.");
+          return json({
+            ok: true, provider, attemptId: prepared.attemptId, orderId: prepared.providerOrderId, keyId: prepared.publicId,
+            amount: toMinor(providerAmount, providerCurrency), currency: providerCurrency,
+            providerAmount, providerCurrency, originalAmount: asNumber(prepared.amount), originalCurrency: prepared.currency,
+            fxRate: asNumber(prepared.fxRate), fxSource: prepared.fxSource, fxQuotedAt: prepared.fxQuotedAt,
+            customerName: prepared.customerName, customerEmail: prepared.customerEmail, paymentReference: prepared.paymentReference, reused: true,
+          });
+        }
       }
       const { data: config, error: configError } = await service.rpc("service_get_payment_gateway_provider", { p_provider: provider });
       if (configError) throw new Error("Unable to load payment provider configuration.");
       if (config?.enabled !== true || !clean(config?.apiSecret)) throw new Error("Selected payment provider is not fully configured.");
 
       if (provider === "razorpay") {
+        const charge = await lockRazorpayCharge(service, prepared);
+        if (charge.providerCurrency !== "INR") throw new Error("Razorpay checkout must be created in INR.");
         const authorization = `Basic ${btoa(`${clean(config.keyId, 300)}:${clean(config.apiSecret, 1000)}`)}`;
         const orderResponse = await fetch("https://api.razorpay.com/v1/orders", {
           method: "POST", headers: { Authorization: authorization, "Content-Type": "application/json" },
           body: JSON.stringify({
-            amount: toMinor(asNumber(prepared.amount), prepared.currency), currency: String(prepared.currency).toUpperCase(),
+            amount: toMinor(charge.providerAmount, charge.providerCurrency), currency: charge.providerCurrency,
             receipt: clean(prepared.paymentReference, 40),
-            notes: { payment_id: prepared.paymentId, attempt_id: prepared.attemptId, payment_reference: prepared.paymentReference },
+            notes: {
+              payment_id: prepared.paymentId,
+              attempt_id: prepared.attemptId,
+              payment_reference: prepared.paymentReference,
+              original_amount: moneyValue(asNumber(prepared.amount)),
+              original_currency: clean(prepared.currency, 10).toUpperCase(),
+              fx_rate: String(charge.fxRate || 1),
+              fx_source: clean(charge.fxSource, 120),
+            },
           }),
         });
-        const text = await orderResponse.text(); if (!orderResponse.ok) { await service.rpc("service_fail_payment_gateway_attempt", { p_attempt_id: prepared.attemptId, p_code: `RAZORPAY_${orderResponse.status}`, p_message: text.slice(0, 800) }); throw apiError("Razorpay", orderResponse.status, text); }
+        const text = await orderResponse.text();
+        if (!orderResponse.ok) {
+          await service.rpc("service_fail_payment_gateway_attempt", { p_attempt_id: prepared.attemptId, p_code: `RAZORPAY_${orderResponse.status}`, p_message: text.slice(0, 800) });
+          throw apiError("Razorpay", orderResponse.status, text);
+        }
         const order = JSON.parse(text);
-        const { error: storeError } = await service.rpc("service_store_payment_gateway_order", { p_attempt_id: prepared.attemptId, p_provider_order_id: order.id, p_checkout_url: null, p_metadata: { orderStatus: order.status, createdAt: order.created_at } });
+        const { error: storeError } = await service.rpc("service_store_payment_gateway_order", {
+          p_attempt_id: prepared.attemptId,
+          p_provider_order_id: order.id,
+          p_checkout_url: null,
+          p_metadata: {
+            orderStatus: order.status,
+            createdAt: order.created_at,
+            originalAmount: asNumber(prepared.amount),
+            originalCurrency: clean(prepared.currency, 10).toUpperCase(),
+            providerAmount: charge.providerAmount,
+            providerCurrency: charge.providerCurrency,
+            fxRate: charge.fxRate,
+            fxSource: charge.fxSource,
+            fxQuotedAt: charge.fxQuotedAt,
+          },
+        });
         if (storeError) throw new Error(storeError.message);
-        return json({ ok: true, provider, attemptId: prepared.attemptId, orderId: order.id, keyId: clean(config.keyId, 300), amount: order.amount, currency: order.currency, customerName: prepared.customerName, customerEmail: prepared.customerEmail, paymentReference: prepared.paymentReference });
+        return json({
+          ok: true, provider, attemptId: prepared.attemptId, orderId: order.id, keyId: clean(config.keyId, 300),
+          amount: order.amount, currency: order.currency,
+          providerAmount: charge.providerAmount, providerCurrency: charge.providerCurrency,
+          originalAmount: asNumber(prepared.amount), originalCurrency: clean(prepared.currency, 10).toUpperCase(),
+          fxRate: charge.fxRate, fxSource: charge.fxSource, fxQuotedAt: charge.fxQuotedAt,
+          customerName: prepared.customerName, customerEmail: prepared.customerEmail, paymentReference: prepared.paymentReference,
+        });
       }
 
       if (provider === "paypal") {
@@ -127,14 +266,32 @@ Deno.serve(async (req: Request) => {
       const authorization = `Basic ${btoa(`${clean(config.keyId, 300)}:${clean(config.apiSecret, 1000)}`)}`;
       let response = await fetch(`https://api.razorpay.com/v1/payments/${encodeURIComponent(paymentId)}`, { headers: { Authorization: authorization } });
       let text = await response.text(); if (!response.ok) throw apiError("Razorpay", response.status, text); let payment = JSON.parse(text);
-      const expectedMinor = toMinor(asNumber(attempt.amount), attempt.currency);
-      if (payment.order_id !== attempt.providerOrderId || Number(payment.amount) !== expectedMinor || String(payment.currency).toUpperCase() !== String(attempt.currency).toUpperCase()) throw new Error("Razorpay payment details do not match the ProFox payment request.");
+      const expectedAmount = asNumber(attempt.providerAmount);
+      const expectedCurrency = clean(attempt.providerCurrency, 10).toUpperCase();
+      if (!(expectedAmount > 0) || expectedCurrency !== "INR") throw new Error("Razorpay checkout attempt is missing its locked INR conversion quote.");
+      const expectedMinor = toMinor(expectedAmount, expectedCurrency);
+      if (payment.order_id !== attempt.providerOrderId || Number(payment.amount) !== expectedMinor || String(payment.currency).toUpperCase() !== expectedCurrency) throw new Error("Razorpay payment details do not match the locked ProFox INR payment request.");
       if (payment.status === "authorized") {
-        response = await fetch(`https://api.razorpay.com/v1/payments/${encodeURIComponent(paymentId)}/capture`, { method: "POST", headers: { Authorization: authorization, "Content-Type": "application/json" }, body: JSON.stringify({ amount: expectedMinor, currency: String(attempt.currency).toUpperCase() }) });
+        response = await fetch(`https://api.razorpay.com/v1/payments/${encodeURIComponent(paymentId)}/capture`, { method: "POST", headers: { Authorization: authorization, "Content-Type": "application/json" }, body: JSON.stringify({ amount: expectedMinor, currency: expectedCurrency }) });
         text = await response.text(); if (!response.ok) throw apiError("Razorpay capture", response.status, text); payment = JSON.parse(text);
       }
       if (payment.status !== "captured") throw new Error(`Razorpay payment is ${clean(payment.status, 40) || "not captured"}.`);
-      const { data: settled, error: settleError } = await service.rpc("service_finalize_payment_gateway_attempt", { p_attempt_id: attemptId, p_provider_payment_id: paymentId, p_provider_capture_id: paymentId, p_metadata: { status: payment.status, method: payment.method } });
+      const { data: settled, error: settleError } = await service.rpc("service_finalize_payment_gateway_attempt", {
+        p_attempt_id: attemptId,
+        p_provider_payment_id: paymentId,
+        p_provider_capture_id: paymentId,
+        p_metadata: {
+          status: payment.status,
+          method: payment.method,
+          providerAmount: expectedAmount,
+          providerCurrency: expectedCurrency,
+          originalAmount: asNumber(attempt.amount),
+          originalCurrency: clean(attempt.currency, 10).toUpperCase(),
+          fxRate: asNumber(attempt.fxRate),
+          fxSource: clean(attempt.fxSource, 160),
+          fxQuotedAt: clean(attempt.fxQuotedAt, 80),
+        },
+      });
       if (settleError) throw new Error(settleError.message); return json({ ok: true, verified: true, payment: settled });
     }
 
