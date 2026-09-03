@@ -65,7 +65,7 @@ Deno.serve(async(req:Request)=>{
 
    if(action==="start_user_send"){
      const {data:eligible,error:eligibleError}=await service.rpc("service_professional_mailbox_eligible",{p_user_id:userId});
-     if(eligibleError||eligible!==true)return json({error:"Professional email is available only to eligible active Sales and Management accounts."},403);
+     if(eligibleError||eligible!==true)return json({error:"Professional Email is available only to eligible active Management/Admin accounts."},403);
      const {data:account}=await service.from("staff_professional_accounts").select("work_email,mail_provider,mailbox_status,provider_account_id").eq("user_id",userId).maybeSingle();
      const workEmail=String(account?.work_email||"").trim().toLowerCase();const providerAccountId=String(account?.provider_account_id||"").trim();
      if(!account||String(account.mailbox_status)!=="active"||String(account.mail_provider)!=="zoho"||!workEmail||!providerAccountId)return json({error:"Your active Zoho professional mailbox is required before connecting professional email."},409);
@@ -83,7 +83,7 @@ Deno.serve(async(req:Request)=>{
 
    if(action==="sync_inbox"){
      const {data:eligible,error:eligibleError}=await service.rpc("service_professional_mailbox_eligible",{p_user_id:userId});
-     if(eligibleError||eligible!==true)return json({error:"Professional email is available only to eligible active Sales and Management accounts."},403);
+     if(eligibleError||eligible!==true)return json({error:"Professional Email is available only to eligible active Management/Admin accounts."},403);
      const {data:connection,error:connectionError}=await service.from("zoho_user_mail_send_connections").select("user_id,work_email,provider_account_id,data_center,scopes,status").eq("user_id",userId).maybeSingle();
      if(connectionError||!connection||String(connection.status)!=="connected")return json({error:"Connect your professional Zoho Mail permission before synchronizing customer replies.",reconnectRequired:true},409);
      const scopes=new Set((Array.isArray(connection.scopes)?connection.scopes:[]).map((scope:unknown)=>String(scope)));
