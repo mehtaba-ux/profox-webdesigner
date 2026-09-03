@@ -3,7 +3,7 @@ import { CheckCircle2, CreditCard, FileText, Loader2, LockKeyhole, ShieldCheck, 
 import { useParams, useSearchParams } from 'react-router-dom';
 import { PaymentProviderId, PublicPayment, paymentGatewayService } from '../lib/paymentGatewayService';
 
-function money(value: number, currency = 'USD') { try { return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(Number(value || 0)); } catch { return `${currency} ${Number(value || 0).toFixed(2)}`; } }
+function money(value: number, currency = 'USD') { try { return new Intl.NumberFormat(currency === 'INR' ? 'en-IN' : 'en-US', { style: 'currency', currency }).format(Number(value || 0)); } catch { return `${currency} ${Number(value || 0).toFixed(2)}`; } }
 function date(value?: string) { if (!value) return 'As agreed'; const d = new Date(`${value}T00:00:00`); return Number.isNaN(d.getTime()) ? value : d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }); }
 
 async function loadRazorpayScript() {
@@ -17,6 +17,16 @@ async function loadRazorpayScript() {
   });
 }
 
+type RazorpayQuote = {
+  originalAmount: number;
+  originalCurrency: string;
+  providerAmount: number;
+  providerCurrency: string;
+  fxRate: number;
+  fxSource?: string;
+  fxQuotedAt?: string;
+};
+
 export default function PublicPaymentCheckout() {
   const { token = '' } = useParams<{ token: string }>();
   const [searchParams] = useSearchParams();
@@ -25,6 +35,7 @@ export default function PublicPaymentCheckout() {
   const [busy, setBusy] = useState('');
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
+  const [razorpayQuote, setRazorpayQuote] = useState<RazorpayQuote | null>(null);
 
   const refresh = async () => { setLoading(true); setError(''); try { setPayment(await paymentGatewayService.openPublicPayment(token)); } catch (e: any) { setError(e?.message || 'This payment link could not be opened.'); } finally { setLoading(false); } };
   useEffect(() => { void refresh(); }, [token]);
@@ -50,6 +61,7 @@ export default function PublicPaymentCheckout() {
 
   const providers = useMemo(() => (payment?.providers || []).filter(p => p.enabled), [payment]);
   const hasTestProvider = useMemo(() => providers.some(provider => provider.testMode), [providers]);
+  const razorpayEnabled = useMemo(() => providers.some(provider => provider.id === 'razorpay'), [providers]);
 
   const startPayPal = async () => {
     setBusy('paypal'); setError(''); setMessage('');
@@ -58,19 +70,32 @@ export default function PublicPaymentCheckout() {
   };
 
   const startRazorpay = async () => {
-    setBusy('razorpay'); setError(''); setMessage('');
+    setBusy('razorpay'); setError(''); setMessage('Preparing the current INR conversion for Razorpay…');
     try {
       const result = await paymentGatewayService.checkout({ action: 'create', paymentToken: token, provider: 'razorpay' });
       if (result?.alreadyPaid) { await refresh(); setBusy(''); return; }
+      const providerCurrency = String(result?.providerCurrency || result?.currency || '').toUpperCase();
+      const providerAmount = Number(result?.providerAmount || (Number(result?.amount || 0) / 100));
+      const originalCurrency = String(result?.originalCurrency || payment?.currency || '').toUpperCase();
+      const originalAmount = Number(result?.originalAmount ?? payment?.outstanding ?? 0);
+      const fxRate = Number(result?.fxRate || (originalCurrency === 'INR' ? 1 : 0));
+      if (providerCurrency !== 'INR' || !(providerAmount > 0)) throw new Error('Razorpay did not return a valid INR checkout amount. Please try again.');
+      const quote: RazorpayQuote = { originalAmount, originalCurrency, providerAmount, providerCurrency, fxRate, fxSource: result?.fxSource, fxQuotedAt: result?.fxQuotedAt };
+      setRazorpayQuote(quote);
+      setMessage(originalCurrency === 'INR'
+        ? `Razorpay checkout prepared for ${money(providerAmount, 'INR')}.`
+        : `Razorpay conversion locked: ${money(originalAmount, originalCurrency)} → ${money(providerAmount, 'INR')}${fxRate > 0 ? ` at ${fxRate.toFixed(4)} INR per ${originalCurrency}` : ''}.`);
       if (!(await loadRazorpayScript())) throw new Error('Razorpay Checkout could not be loaded. Please try again.');
       const Razorpay = (window as any).Razorpay;
+      const descriptionBase = payment?.milestoneLabel || payment?.paymentType || 'Project payment';
+      const conversionDescription = originalCurrency === 'INR' ? `${money(providerAmount, 'INR')}` : `${money(originalAmount, originalCurrency)} → ${money(providerAmount, 'INR')}`;
       const checkout = new Razorpay({
-        key: result.keyId, amount: result.amount, currency: result.currency, order_id: result.orderId,
-        name: 'ProFox Web Designer', description: payment?.milestoneLabel || payment?.paymentType || 'Project payment',
+        key: result.keyId, amount: result.amount, currency: 'INR', order_id: result.orderId,
+        name: 'ProFox Web Designer', description: `${descriptionBase} · ${conversionDescription}`,
         prefill: { name: result.customerName || payment?.customerName || '', email: result.customerEmail || payment?.customerEmail || '' },
         notes: { payment_reference: result.paymentReference || payment?.paymentReference || '' },
         theme: { color: '#000080' },
-        modal: { ondismiss: () => { setBusy(''); setMessage('Razorpay checkout was closed. No payment is marked verified unless the gateway confirms capture.'); } },
+        modal: { ondismiss: () => { setBusy(''); setMessage('Razorpay checkout was closed. The locked INR quote is shown below; no payment is marked verified unless the gateway confirms capture.'); } },
         handler: async (response: any) => {
           try {
             setMessage('Verifying your Razorpay payment securely…');
@@ -94,7 +119,7 @@ export default function PublicPaymentCheckout() {
   return <Shell>{payment && <div className="mx-auto max-w-3xl space-y-5">
     <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm sm:p-8"><div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between"><div><div className="inline-flex items-center gap-2 text-[#000080]"><ShieldCheck className="h-5 w-5" /><span className="text-xs font-black uppercase tracking-wider">Secure ProFox Payment</span></div><h1 className="mt-3 text-2xl font-black sm:text-3xl">{payment.milestoneLabel || payment.paymentType}</h1><p className="mt-2 text-sm text-slate-500">For {payment.customerName} · {payment.paymentReference}</p></div><div className="rounded-full bg-slate-100 px-3 py-1.5 text-[10px] font-black uppercase text-slate-600">{payment.status}</div></div></section>
     {error && <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-700">{error}</div>}{message && <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4 text-sm font-semibold text-blue-800">{message}</div>}
-    <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8"><div className="grid gap-4 sm:grid-cols-2"><Info label="Quotation" value={payment.quotationNumber || '—'} icon={<FileText className="h-4 w-4" />} /><Info label="Due date" value={date(payment.dueDate)} /><Info label="Payment amount" value={money(payment.amountDue, payment.currency)} /><Info label="Already received" value={money(payment.amountPaid, payment.currency)} /></div><div className="mt-6 rounded-3xl bg-slate-50 p-5"><div className="text-xs font-black uppercase tracking-wider text-slate-500">Amount payable now</div><div className="mt-2 text-4xl font-black text-[#000080]">{money(payment.outstanding, payment.currency)}</div><p className="mt-2 text-xs leading-5 text-slate-500">This amount is generated from your accepted quotation and cannot be edited on this checkout page.</p></div></section>
+    <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8"><div className="grid gap-4 sm:grid-cols-2"><Info label="Quotation" value={payment.quotationNumber || '—'} icon={<FileText className="h-4 w-4" />} /><Info label="Due date" value={date(payment.dueDate)} /><Info label="Payment amount" value={money(payment.amountDue, payment.currency)} /><Info label="Already received" value={money(payment.amountPaid, payment.currency)} /></div><div className="mt-6 rounded-3xl bg-slate-50 p-5"><div className="text-xs font-black uppercase tracking-wider text-slate-500">Amount payable now</div><div className="mt-2 text-4xl font-black text-[#000080]">{money(payment.outstanding, payment.currency)}</div><p className="mt-2 text-xs leading-5 text-slate-500">This amount is generated from your accepted quotation and cannot be edited on this checkout page.</p>{razorpayEnabled && payment.currency !== 'INR' && <div className="mt-4 rounded-2xl border border-blue-200 bg-white p-4 text-xs leading-5 text-slate-600"><span className="font-black text-[#000080]">Razorpay INR conversion:</span> when you choose Razorpay, ProFox automatically locks the latest available server-side reference rate and opens Razorpay in INR. Your quotation and accounting amount stay in {payment.currency}.</div>}{razorpayQuote && <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-4"><div className="text-[10px] font-black uppercase tracking-wider text-emerald-700">Locked Razorpay amount</div><div className="mt-1 text-xl font-black text-emerald-900">{money(razorpayQuote.providerAmount, razorpayQuote.providerCurrency)}</div>{razorpayQuote.originalCurrency !== 'INR' && <div className="mt-1 text-xs text-emerald-800">From {money(razorpayQuote.originalAmount, razorpayQuote.originalCurrency)}{razorpayQuote.fxRate > 0 ? ` · 1 ${razorpayQuote.originalCurrency} = ${razorpayQuote.fxRate.toFixed(4)} INR` : ''}</div>}{razorpayQuote.fxSource && <div className="mt-1 text-[10px] text-emerald-700">Reference: {razorpayQuote.fxSource}</div>}</div>}</div></section>
     {payment.status === 'Verified' || payment.verifiedAt ? <section className="rounded-3xl border border-emerald-200 bg-emerald-50 p-8 text-center"><CheckCircle2 className="mx-auto h-11 w-11 text-emerald-600" /><h2 className="mt-4 text-xl font-black text-emerald-900">Payment verified</h2><p className="mt-2 text-sm leading-6 text-emerald-800">Thank you. ProFox has recorded this payment and the connected project workflow will continue automatically.</p></section> : payment.payable ? <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8"><div className="flex items-center gap-2"><LockKeyhole className="h-5 w-5 text-[#000080]" /><h2 className="font-black">Choose a secure payment method</h2></div>{hasTestProvider && <div className="mt-4 rounded-2xl border border-amber-300 bg-amber-50 p-4 text-sm font-semibold text-amber-900"><div className="font-black uppercase tracking-wide">Test Mode</div><p className="mt-1 text-xs leading-5">Razorpay is currently connected in Test Mode for end-to-end verification. Use Razorpay test payment details only; no real customer funds should be charged in this mode.</p></div>}{providers.length ? <div className="mt-5 grid gap-3 sm:grid-cols-2">{providers.map(provider => <button key={provider.id} disabled={!!busy} onClick={() => void pay(provider.id)} className="flex items-center justify-center gap-3 rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm font-black shadow-sm transition hover:border-[#000080] hover:bg-blue-50 disabled:opacity-50">{busy === provider.id ? <Loader2 className="h-5 w-5 animate-spin" /> : provider.id === 'paypal' ? <WalletCards className="h-5 w-5 text-[#000080]" /> : <CreditCard className="h-5 w-5 text-[#000080]" />}{provider.id === 'razorpay' ? 'Pay with Razorpay' : 'Pay with PayPal'}{provider.testMode ? ' · TEST' : ''}</button>)}</div> : <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">Online payment providers are temporarily unavailable for this payment. Please contact ProFox for assistance.</div>}<p className="mt-4 text-[11px] leading-5 text-slate-500">Your payment is processed by the selected provider. ProFox never exposes provider API secrets in this browser page, and a payment is marked verified only after server-side provider verification.</p></section> : <section className="rounded-3xl border border-slate-200 bg-white p-6 text-center"><h2 className="font-black">This milestone is not payable right now</h2><p className="mt-2 text-sm text-slate-500">Contact ProFox if you believe this payment should be available.</p></section>}
   </div>}</Shell>;
 }
