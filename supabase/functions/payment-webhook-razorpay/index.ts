@@ -28,8 +28,9 @@ Deno.serve(async(req:Request)=>{
       if(type==="payment.captured"){
         if(!payment)throw new Error("Captured event has no payment entity.");
         if(String(payment.order_id||"")!==String(attempt.providerOrderId||""))throw new Error("Razorpay order does not match the ProFox attempt.");
-        if(Number(payment.amount)!==toMinor(Number(attempt.amount),String(attempt.currency))||String(payment.currency||"").toUpperCase()!==String(attempt.currency).toUpperCase())throw new Error("Razorpay webhook amount or currency mismatch.");
-        const{error:settleError}=await service.rpc("service_finalize_payment_gateway_attempt",{p_attempt_id:attemptId,p_provider_payment_id:providerPaymentId,p_provider_capture_id:providerPaymentId,p_metadata:{status:payment.status,method:payment.method,eventId}});if(settleError)throw new Error(settleError.message);
+        const chargeAmount=Number(attempt.providerAmount||attempt.amount);const chargeCurrency=String(attempt.providerCurrency||attempt.currency||"").toUpperCase();
+        if(Number(payment.amount)!==toMinor(chargeAmount,chargeCurrency)||String(payment.currency||"").toUpperCase()!==chargeCurrency)throw new Error("Razorpay webhook amount or currency mismatch with the locked provider charge.");
+        const{error:settleError}=await service.rpc("service_finalize_payment_gateway_attempt",{p_attempt_id:attemptId,p_provider_payment_id:providerPaymentId,p_provider_capture_id:providerPaymentId,p_metadata:{status:payment.status,method:payment.method,eventId,providerAmount:chargeAmount,providerCurrency:chargeCurrency,fxRate:attempt.fxRate,fxSource:attempt.fxSource}});if(settleError)throw new Error(settleError.message);
       }else if(type==="payment.failed"){
         const{error:failError}=await service.rpc("service_fail_payment_gateway_attempt",{p_attempt_id:attemptId,p_code:clean(payment?.error_code,120)||"PAYMENT_FAILED",p_message:clean(payment?.error_description,800)||"Razorpay payment attempt failed."});if(failError)throw new Error(failError.message);
       }
