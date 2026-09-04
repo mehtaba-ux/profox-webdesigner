@@ -23,6 +23,7 @@ export default function ClientPortalEntry() {
   const [authBusy, setAuthBusy] = useState(false);
   const [authError, setAuthError] = useState('');
   const [authNotice, setAuthNotice] = useState('');
+  const [verificationQueued, setVerificationQueued] = useState(false);
   const [claimBusy, setClaimBusy] = useState(false);
   const [claimError, setClaimError] = useState('');
   const [recoveryMode, setRecoveryMode] = useState(() => window.location.hash.includes('type=recovery') || searchParams.get('type') === 'recovery' || searchParams.get('recovery') === '1');
@@ -34,6 +35,7 @@ export default function ClientPortalEntry() {
   const claimAttempt = useRef('');
 
   useEffect(() => {
+    setVerificationQueued(false);
     if (!inviteToken) { setInviteLoading(false); return; }
     setInviteLoading(true);
     setInviteError('');
@@ -78,6 +80,21 @@ export default function ClientPortalEntry() {
     });
   }, [user?.id, profile?.role, profile?.status, inviteToken, refreshProfile]);
 
+  const queuePortalVerification = async (action: 'create' | 'resend') => {
+    const { data, error } = await supabase.functions.invoke('client-portal-verification', {
+      body: {
+        action,
+        inviteToken,
+        fullName: fullName.trim() || inviteInfo?.contactName || '',
+        ...(action === 'create' ? { password } : {}),
+      },
+    });
+    if (error || data?.verificationQueued !== true) {
+      throw new Error(String(data?.error || messageOf(error, 'Client Portal verification email could not be queued.')));
+    }
+    return data;
+  };
+
   const handleAuth = async (event: React.FormEvent) => {
     event.preventDefault();
     setAuthBusy(true);
@@ -96,18 +113,32 @@ export default function ClientPortalEntry() {
         setAuthBusy(false);
         return;
       }
-      const redirectTo = `${window.location.origin}/client-portal?invite=${encodeURIComponent(inviteToken)}`;
-      const { data, error } = await supabase.auth.signUp({
-        email: normalizedEmail,
-        password,
-        options: { emailRedirectTo: redirectTo, data: { full_name: fullName.trim() || inviteInfo.contactName || '' } }
-      });
-      if (error) setAuthError(messageOf(error, 'Client Portal account could not be created.'));
-      else if (data.session) setAuthNotice('Account created. Activating your ProFox Client Portal…');
-      else setAuthNotice('Account created. Verify the email we sent you, then you will return here to finish portal activation.');
+      try {
+        await queuePortalVerification('create');
+        setVerificationQueued(true);
+        setPassword('');
+        setAuthNotice('Verification email queued securely through ProFox. Open that email to verify your address and return here to finish activation.');
+      } catch (error) {
+        setAuthError(messageOf(error, 'Client Portal account could not be prepared.'));
+      }
     } else {
       const { error } = await supabase.auth.signInWithPassword({ email: normalizedEmail, password });
       if (error) setAuthError('Invalid email/password or this Client Portal account has not been confirmed yet.');
+    }
+    setAuthBusy(false);
+  };
+
+  const resendVerification = async () => {
+    if (!inviteToken || !inviteInfo) return;
+    setAuthBusy(true);
+    setAuthError('');
+    setAuthNotice('');
+    try {
+      const data = await queuePortalVerification('resend');
+      setVerificationQueued(true);
+      setAuthNotice(`Another verification email was queued securely through ProFox${data?.attempt ? ` (attempt ${data.attempt})` : ''}.`);
+    } catch (error) {
+      setAuthError(messageOf(error, 'Verification email could not be queued again.'));
     }
     setAuthBusy(false);
   };
@@ -225,10 +256,11 @@ export default function ClientPortalEntry() {
 
           {mode === 'activate' && <label className="block"><span className="mb-1.5 block text-[10px] font-black uppercase tracking-wider text-slate-500">Your Name</span><input required value={fullName} onChange={event => setFullName(event.target.value)} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm outline-none focus:border-[#000080]" /></label>}
           <label className="block"><span className="mb-1.5 block text-[10px] font-black uppercase tracking-wider text-slate-500">Email</span><div className="relative"><Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><input type="email" required autoComplete="email" readOnly={mode === 'activate'} value={email} onChange={event => setEmail(event.target.value)} className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-3 text-sm outline-none focus:border-[#000080] read-only:text-slate-500" /></div></label>
-          <label className="block"><span className="mb-1.5 block text-[10px] font-black uppercase tracking-wider text-slate-500">{mode === 'activate' ? 'Create Password' : 'Password'}</span><div className="relative"><KeyRound className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><input type="password" required minLength={6} autoComplete={mode === 'activate' ? 'new-password' : 'current-password'} value={password} onChange={event => setPassword(event.target.value)} className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-3 text-sm outline-none focus:border-[#000080]" /></div></label>
+          <label className="block"><span className="mb-1.5 block text-[10px] font-black uppercase tracking-wider text-slate-500">{mode === 'activate' ? 'Create Password' : 'Password'}</span><div className="relative"><KeyRound className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><input type="password" required={!verificationQueued || mode === 'signin'} minLength={6} autoComplete={mode === 'activate' ? 'new-password' : 'current-password'} disabled={mode === 'activate' && verificationQueued} value={password} onChange={event => setPassword(event.target.value)} className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-3 text-sm outline-none focus:border-[#000080] disabled:opacity-60" /></div></label>
 
-          <button type="submit" disabled={authBusy || (mode === 'activate' && !canActivate)} className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#000080] py-3.5 text-sm font-bold text-white disabled:opacity-50">{authBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}{mode === 'activate' ? 'Create & Verify Portal Account' : 'Sign In'}</button>
+          <button type="submit" disabled={authBusy || (mode === 'activate' && (!canActivate || verificationQueued))} className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#000080] py-3.5 text-sm font-bold text-white disabled:opacity-50">{authBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}{mode === 'activate' ? (verificationQueued ? 'Verification Queued' : 'Create & Verify Portal Account') : 'Sign In'}</button>
 
+          {mode === 'activate' && verificationQueued && <button type="button" disabled={authBusy} onClick={() => void resendVerification()} className="w-full rounded-xl border border-[#000080]/20 bg-blue-50 py-3 text-xs font-black text-[#000080] disabled:opacity-50">Queue another verification email</button>}
           {canActivate && <button type="button" disabled={authBusy} onClick={() => { setMode(current => current === 'signin' ? 'activate' : 'signin'); setAuthError(''); setAuthNotice(''); }} className="w-full text-center text-xs font-bold text-[#000080] hover:underline">{mode === 'activate' ? 'Already created your account? Sign in' : 'Use this invitation to create your account'}</button>}
           {mode === 'signin' && <button type="button" disabled={authBusy} onClick={() => void resetPassword()} className="w-full text-center text-xs font-bold text-slate-500 hover:underline">Forgot password?</button>}
 
