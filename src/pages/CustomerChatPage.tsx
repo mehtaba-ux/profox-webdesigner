@@ -2,6 +2,7 @@ import { FormEvent, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, LockKeyhole, MessageSquare, Send, ShieldCheck, UserRound } from 'lucide-react';
 import type { ChatMessage } from '../types';
+import Logo from '../components/Logo';
 import CommunicationAttachmentList from '../components/communication/CommunicationAttachmentList';
 import CommunicationComposerTools from '../components/communication/CommunicationComposerTools';
 import RichMessageText from '../components/communication/RichMessageText';
@@ -172,7 +173,7 @@ export default function CustomerChatPage() {
   return <main className="min-h-screen bg-slate-50 text-slate-950">
     <header className="border-b border-slate-200 bg-white">
       <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-5 py-4 sm:px-8">
-        <Link to="/" className="text-xl font-black tracking-tight text-[#000080]">ProFox</Link>
+        <Link to="/" className="flex items-center" aria-label="ProFox home"><Logo className="h-8 w-auto sm:h-9" /></Link>
         <div className="flex items-center gap-2 text-[11px] font-bold text-slate-500"><ShieldCheck className="h-4 w-4 text-emerald-600" />Secure customer conversation</div>
       </div>
     </header>
