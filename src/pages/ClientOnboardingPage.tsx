@@ -13,6 +13,18 @@ type Field = {
   options?: string[];
 };
 
+type ScopeItem = {
+  id?: string;
+  productCode?: string;
+  productName?: string;
+  description?: string;
+  quantity?: number;
+  itemType?: string;
+  sectionKey?: string;
+  configuration?: Record<string, unknown>;
+  inclusions?: string[];
+};
+
 function errorMessage(error: any, fallback: string) {
   return error?.message || fallback;
 }
@@ -68,6 +80,7 @@ export default function ClientOnboardingPage() {
   }, [responses, dirty, data?.status]);
 
   const fields: Field[] = Array.isArray(data?.fields) ? data.fields : [];
+  const scopeItems: ScopeItem[] = Array.isArray(data?.scope?.items) ? data.scope.items : [];
   const sections = useMemo(() => {
     const order: string[] = [];
     fields.forEach(field => {
@@ -162,6 +175,32 @@ export default function ClientOnboardingPage() {
       <main className="mx-auto max-w-5xl space-y-6 px-5 py-8 sm:px-8">
         <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
           <div className="flex items-start gap-3"><ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-[#000080]" /><div><h2 className="text-sm font-black text-slate-900">Secure project onboarding</h2><p className="mt-1 text-xs leading-5 text-slate-500">This form is connected to your verified payment, accepted quotation, client record and project. Your registered email is fixed as the identity for future Client Portal access. Never enter passwords, card numbers or secret API keys in this form.</p></div></div>
+        </section>
+
+        <section className="rounded-3xl border border-blue-100 bg-white p-6 shadow-sm sm:p-7">
+          <div className="flex items-start gap-3">
+            <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-[#000080]"><ClipboardCheck className="h-5 w-5" /></div>
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <h2 className="text-base font-black text-slate-900">Your agreed project scope</h2>
+                  <p className="mt-1 text-xs leading-5 text-slate-500">The questions in this onboarding are generated only from the package, committed inclusions and purchased add-ons in your accepted quotation. Optional or unpurchased items are not included.</p>
+                </div>
+                {data.scope?.quotationNumber && <span className="rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-[10px] font-black text-[#000080]">{data.scope.quotationNumber}</span>}
+              </div>
+              {data.scope?.summary && <p className="mt-4 rounded-2xl bg-slate-50 p-4 text-xs leading-5 text-slate-600">{data.scope.summary}</p>}
+              {scopeItems.length > 0 && <div className="mt-4 grid gap-3 md:grid-cols-2">
+                {scopeItems.map((item, index) => {
+                  const inclusions = Array.isArray(item.inclusions) ? item.inclusions.filter(Boolean) : [];
+                  return <div key={item.id || `${item.productCode || item.productName}-${index}`} className="rounded-2xl border border-slate-200 bg-slate-50/60 p-4">
+                    <div className="flex items-start gap-2.5"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" /><div className="min-w-0"><div className="text-sm font-black text-slate-900">{item.productName || 'Included project item'}{Number(item.quantity || 1) > 1 ? ` × ${item.quantity}` : ''}</div>{item.description && <p className="mt-1 text-[11px] leading-5 text-slate-500">{item.description}</p>}</div></div>
+                    {inclusions.length > 0 && <ul className="mt-3 space-y-1.5 border-t border-slate-200 pt-3 text-[11px] leading-4 text-slate-600">{inclusions.map((inclusion, inclusionIndex) => <li key={`${inclusion}-${inclusionIndex}`} className="flex gap-2"><span className="text-[#000080]">•</span><span>{inclusion}</span></li>)}</ul>}
+                  </div>;
+                })}
+              </div>}
+              <p className="mt-4 text-[10px] leading-4 text-slate-400">Please answer for this agreed scope only. If you want something outside the quotation, contact your ProFox representative so it can be handled as a scope change or add-on instead of being mixed into onboarding.</p>
+            </div>
+          </div>
         </section>
 
         {error && <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-700">{error}</div>}
