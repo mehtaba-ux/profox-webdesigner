@@ -63,8 +63,11 @@ jobs:
 
           for attempt in 1 2 3; do
             echo "Running production dependency audit (attempt ${attempt}/3)..."
-            audit_output="$(npm audit --omit=dev 2>&1)"
-            audit_status=$?
+            if audit_output="$(npm audit --omit=dev 2>&1)"; then
+              audit_status=0
+            else
+              audit_status=$?
+            fi
             printf '%s\n' "$audit_output"
 
             if [ "$audit_status" -eq 0 ]; then
