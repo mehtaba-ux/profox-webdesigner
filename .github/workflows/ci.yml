@@ -51,7 +51,26 @@ jobs:
         run: node --check scripts/verify-production-readiness.mjs
 
       - name: Production dependency audit
-        run: npm audit --omit=dev
+        env:
+          NPM_CONFIG_FETCH_RETRIES: '1'
+          NPM_CONFIG_FETCH_RETRY_MINTIMEOUT: '1000'
+          NPM_CONFIG_FETCH_RETRY_MAXTIMEOUT: '5000'
+          NPM_CONFIG_FETCH_TIMEOUT: '30000'
+        shell: bash
+        run: |
+          set -uo pipefail
+          for attempt in 1 2 3; do
+            echo "Running production dependency audit (attempt ${attempt}/3)..."
+            if npm audit --omit=dev; then
+              exit 0
+            fi
+            if [ "$attempt" -lt 3 ]; then
+              echo "Dependency audit did not complete successfully; retrying after a short delay."
+              sleep $((attempt * 5))
+            fi
+          done
+          echo "::error::Production dependency audit failed after 3 attempts."
+          exit 1
 
       - name: Production build
         run: npm run build
