@@ -10,6 +10,7 @@ import {
   Headphones,
   Loader2,
   LockKeyhole,
+  MessageSquare,
   ReceiptText,
   ShieldCheck,
   UserRound,
@@ -370,7 +371,40 @@ function SecurityCard() {
 }
 
 function SupportCard() {
-  return <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm"><div className="flex items-start gap-3"><Headphones className="mt-0.5 h-5 w-5 shrink-0 text-[#000080]" /><div><div className="text-sm font-black text-slate-900">Need help before paying?</div><p className="mt-1 text-xs leading-5 text-slate-500">If the amount, milestone, currency conversion, or payment method does not look right, stop here and contact the ProFox representative who sent you this payment link.</p></div></div></section>;
+  const { token = '' } = useParams<{ token: string }>();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+
+  const openChat = async () => {
+    if (!token || busy) return;
+    setBusy(true);
+    setError('');
+    try {
+      const { conversationUrl } = await paymentGatewayService.openSupportChat(token);
+      const target = new URL(conversationUrl, window.location.origin);
+      if (!target.pathname.startsWith('/chat/')) throw new Error('Secure Sales chat link is invalid.');
+      window.location.assign(`${target.pathname}${target.search}${target.hash}`);
+    } catch (e: any) {
+      setError(e?.message || 'Secure Sales chat could not be opened.');
+      setBusy(false);
+    }
+  };
+
+  return <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+    <div className="flex items-start gap-3">
+      <Headphones className="mt-0.5 h-5 w-5 shrink-0 text-[#000080]" />
+      <div className="min-w-0 flex-1">
+        <div className="text-sm font-black text-slate-900">Need help before paying?</div>
+        <p className="mt-1 text-xs leading-5 text-slate-500">If the amount, milestone, currency conversion, or payment method does not look right, stop here and message the ProFox representative handling this quotation.</p>
+        <button type="button" onClick={() => void openChat()} disabled={busy || !token} className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#000080] px-4 py-3 text-xs font-black text-white shadow-sm transition hover:bg-[#000066] disabled:cursor-not-allowed disabled:opacity-60">
+          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <MessageSquare className="h-4 w-4" />}
+          {busy ? 'Opening secure chat…' : 'Chat with your ProFox representative'}
+        </button>
+        <p className="mt-2 text-[10px] leading-4 text-slate-400">Opens your existing secure customer conversation with the Sales representative responsible for this quotation.</p>
+        {error && <p className="mt-2 text-xs font-semibold leading-5 text-red-600">{error}</p>}
+      </div>
+    </div>
+  </section>;
 }
 
 function VerifiedPayment({ payment, projectPaid, projectOutstanding }: { payment: PublicPayment; projectPaid: number; projectOutstanding: number }) {
