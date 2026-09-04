@@ -1,6 +1,8 @@
 import { expect, test } from '@playwright/test';
 
 const CONFIG_ERROR = 'Supabase is not configured';
+const SUPABASE_AUTH_ORIGIN = 'https://calabtayklhltyiriiwo.supabase.co';
+const CLIENT_PORTAL_RECOVERY_URL = 'https://www.profoxwebdesigner.com/client-portal?recovery=1';
 
 async function logLaunchDiagnostics(page: import('@playwright/test').Page, label: string) {
   const title = await page.title().catch(() => '');
@@ -39,6 +41,62 @@ test('unauthenticated workspace is protected by the ProFox sign-in screen', asyn
   await expect(page.getByLabel('Email address')).toBeVisible();
   await expect(page.getByLabel('Password')).toBeVisible();
   await expect(page).toHaveURL(/\/admin(?:\/workspace)?$/);
+});
+
+test('Client Portal exposes invitation-only sign in without configuration errors', async ({ page }) => {
+  await page.goto('/client-portal');
+  await expect(page.getByRole('heading', { name: 'Secure Client Portal' })).toBeVisible();
+  await expect(page.getByLabel('Email')).toBeVisible();
+  await expect(page.getByLabel('Password')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Sign In' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Forgot password?' })).toBeVisible();
+  await expect(page.locator('body')).toContainText(/Portal accounts are invitation-only/i);
+  await expect(page.locator('body')).not.toContainText(CONFIG_ERROR);
+});
+
+test('Client Portal password reset request always sends the canonical production redirect', async ({ page }) => {
+  let observedRedirect = '';
+  await page.route(`${SUPABASE_AUTH_ORIGIN}/auth/v1/recover**`, async route => {
+    const requestUrl = new URL(route.request().url());
+    observedRedirect = requestUrl.searchParams.get('redirect_to') || '';
+    await route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
+  });
+
+  await page.goto('/client-portal');
+  await page.getByLabel('Email').fill('client-reset-smoke@example.com');
+  await page.getByRole('button', { name: 'Forgot password?' }).click();
+
+  await expect.poll(() => observedRedirect).toBe(CLIENT_PORTAL_RECOVERY_URL);
+  await expect(page.locator('body')).toContainText(/password reset link has been sent/i);
+});
+
+test('Client Portal sign in is wired to Supabase password auth and handles invalid credentials safely', async ({ page }) => {
+  let signInRequested = false;
+  await page.route(`${SUPABASE_AUTH_ORIGIN}/auth/v1/token?grant_type=password`, async route => {
+    signInRequested = true;
+    await route.fulfill({
+      status: 400,
+      contentType: 'application/json',
+      body: JSON.stringify({ error: 'invalid_grant', error_description: 'Invalid login credentials' }),
+    });
+  });
+
+  await page.goto('/client-portal');
+  await page.getByLabel('Email').fill('client-signin-smoke@example.com');
+  await page.getByLabel('Password').fill('incorrect-password');
+  await page.getByRole('button', { name: 'Sign In' }).click();
+
+  await expect.poll(() => signInRequested).toBe(true);
+  await expect(page.locator('body')).toContainText(/Invalid email\/password/i);
+});
+
+test('Client Portal recovery screen is reachable and does not expose an unauthenticated password update', async ({ page }) => {
+  await page.goto('/client-portal?recovery=1');
+  await expect(page.getByRole('heading', { name: 'Set a New Password' })).toBeVisible();
+  await expect(page.getByRole('textbox', { name: 'New Password', exact: true })).toBeVisible();
+  await expect(page.getByRole('textbox', { name: 'Confirm New Password', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Update Password' })).toBeDisabled();
+  await expect(page.locator('body')).toContainText(/recovery session is unavailable or expired/i);
 });
 
 test('legacy careers routes resolve to the canonical careers page', async ({ page }) => {
