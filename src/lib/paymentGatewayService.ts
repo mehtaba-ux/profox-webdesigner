@@ -27,6 +27,27 @@ export type PaymentGatewayStatus = {
   canConfigure: boolean;
 };
 
+export type PublicPaymentQuotationItem = {
+  name: string;
+  description?: string;
+  quantity?: number;
+  lineTotal?: number;
+  itemType?: string;
+};
+
+export type PublicPaymentMilestone = {
+  paymentId: string;
+  paymentReference?: string;
+  milestoneNumber?: number;
+  label: string;
+  amountDue: number;
+  amountPaid: number;
+  currency: string;
+  status: string;
+  dueDate?: string;
+  current?: boolean;
+};
+
 export type PublicPayment = {
   paymentId: string;
   paymentReference: string;
@@ -45,6 +66,30 @@ export type PublicPayment = {
   paidAt?: string;
   verifiedAt?: string;
   payable: boolean;
+  quotation?: {
+    number?: string;
+    proposalTitle?: string;
+    scopeSummary?: string;
+    total?: number;
+    currency?: string;
+    status?: string;
+    acceptedAt?: string;
+    paymentTerms?: string;
+    paymentSchedule?: Array<{ label?: string; percentage?: number; paymentType?: string; milestoneNumber?: number }>;
+    deliveryTimeline?: string;
+    items?: PublicPaymentQuotationItem[];
+  } | null;
+  paymentProgress?: PublicPaymentMilestone[];
+  lastGatewayCharge?: {
+    provider?: PaymentProviderId;
+    providerAmount?: number;
+    providerCurrency?: string;
+    fxRate?: number;
+    fxSource?: string;
+    fxQuotedAt?: string;
+    status?: string;
+    completedAt?: string;
+  } | null;
   providers: Array<{
     id: PaymentProviderId;
     label: string;

@@ -144,6 +144,36 @@ jobs:
       - name: Verify embedded Supabase configuration and public content
         run: node scripts/verify-public-content.mjs
 
+      - name: Sync official payment brand assets to Cloudflare R2
+        shell: bash
+        run: |
+          set -euo pipefail
+          asset_dir="$RUNNER_TEMP/profox-payment-brand-assets"
+          mkdir -p "$asset_dir"
+
+          # Official provider-hosted brand assets. Keep these files unmodified.
+          curl --fail --silent --show-error --location --retry 3 --retry-all-errors \
+            'https://www.paypalobjects.com/webstatic/mktg/Logo/pp-logo-200px.png' \
+            --output "$asset_dir/paypal-logo.png"
+          curl --fail --silent --show-error --location --retry 3 --retry-all-errors \
+            'https://d6xcmfyh68wv8.cloudfront.net/newsroom-content/uploads/2021/02/white.png' \
+            --output "$asset_dir/razorpay-logo.png"
+          cp assets/payment/secure-payment-badge.svg "$asset_dir/secure-payment-badge.svg"
+
+          test -s "$asset_dir/paypal-logo.png"
+          test -s "$asset_dir/razorpay-logo.png"
+          test -s "$asset_dir/secure-payment-badge.svg"
+
+          npx wrangler r2 object put 'profox-media/payment-brand/paypal-logo.png' \
+            --file "$asset_dir/paypal-logo.png" --content-type 'image/png' \
+            --cache-control 'public, max-age=31536000, immutable' --remote --force
+          npx wrangler r2 object put 'profox-media/payment-brand/razorpay-logo.png' \
+            --file "$asset_dir/razorpay-logo.png" --content-type 'image/png' \
+            --cache-control 'public, max-age=31536000, immutable' --remote --force
+          npx wrangler r2 object put 'profox-media/payment-brand/secure-payment-badge.svg' \
+            --file "$asset_dir/secure-payment-badge.svg" --content-type 'image/svg+xml' \
+            --cache-control 'public, max-age=31536000, immutable' --remote --force
+
       - name: Prepare encrypted Worker runtime configuration
         shell: bash
         run: |
@@ -176,6 +206,16 @@ jobs:
           }
           console.log(`Verified Cloudflare Worker health at ${new Date().toISOString()}`);
           NODE
+
+      - name: Verify payment brand assets are served from R2
+        shell: bash
+        run: |
+          set -euo pipefail
+          for asset in paypal-logo.png razorpay-logo.png secure-payment-badge.svg; do
+            url="${PUBLIC_APP_URL%/}/api/r2-media/payment-brand/$asset"
+            curl --fail --silent --show-error --head --location --max-time 30 "$url" >/dev/null
+            echo "Verified R2 payment asset: $url"
+          done
 
       - name: Verify deployed frontend configuration and public content
         env:

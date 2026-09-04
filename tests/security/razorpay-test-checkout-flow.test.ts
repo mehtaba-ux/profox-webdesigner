@@ -34,17 +34,18 @@ test('Razorpay checkout converts quotation currency to a locked INR provider cha
 test('public checkout exposes provider mode metadata and an explicit Razorpay Test action', () => {
   assert.match(gatewayService, /productionReady\?: boolean/);
   assert.match(gatewayService, /testMode\?: boolean/);
-  assert.match(checkoutPage, /Pay with Razorpay/);
-  assert.match(checkoutPage, /Razorpay is currently connected in Test Mode/);
+  assert.match(checkoutPage, /Pay with \{provider\.label\}/);
+  assert.match(checkoutPage, /PAYMENT_ASSETS\[provider\.id\]/);
+  assert.match(checkoutPage, /Razorpay · Test Mode/);
   assert.match(checkoutPage, /no real customer funds should be charged/i);
 });
 
 test('public checkout explains and displays the automatic INR conversion', () => {
-  assert.match(checkoutPage, /latest available server-side reference rate/);
+  assert.match(checkoutPage, /server-side USD→INR reference rate is locked/);
   assert.match(checkoutPage, /Razorpay conversion locked/);
-  assert.match(checkoutPage, /Locked Razorpay amount/);
+  assert.match(checkoutPage, /Final Razorpay charge/);
   assert.match(checkoutPage, /currency: 'INR'/);
-  assert.match(checkoutPage, /Your quotation and accounting amount stay in/);
+  assert.match(checkoutPage, /Equivalent to/);
 });
 
 test('customer portal loads only authenticated customer payment actions and shows Razorpay CTA', () => {
