@@ -93,8 +93,8 @@ test('Client Portal sign in is wired to Supabase password auth and handles inval
 test('Client Portal recovery screen is reachable and does not expose an unauthenticated password update', async ({ page }) => {
   await page.goto('/client-portal?recovery=1');
   await expect(page.getByRole('heading', { name: 'Set a New Password' })).toBeVisible();
-  await expect(page.getByLabel('New Password')).toBeVisible();
-  await expect(page.getByLabel('Confirm New Password')).toBeVisible();
+  await expect(page.getByRole('textbox', { name: 'New Password', exact: true })).toBeVisible();
+  await expect(page.getByRole('textbox', { name: 'Confirm New Password', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Update Password' })).toBeDisabled();
   await expect(page.locator('body')).toContainText(/recovery session is unavailable or expired/i);
 });
