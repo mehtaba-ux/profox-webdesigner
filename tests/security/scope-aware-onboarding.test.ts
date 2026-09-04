@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 
 const templates = readFileSync('supabase/migrations/20260904105019_explicit_service_family_onboarding_templates.sql', 'utf8');
 const editReconciliation = readFileSync('supabase/migrations/20260904105933_explicit_service_family_edit_reconciliation.sql', 'utf8');
+const dedupeLibrary = readFileSync('supabase/migrations/20260904110323_deduplicate_onboarding_field_library.sql', 'utf8');
 const snapshotResolver = readFileSync('supabase/migrations/20260904100016_scope_aware_onboarding_snapshot_backfill.sql', 'utf8');
 
 test('onboarding catalog has explicit future service families and template-backed product fields', () => {
@@ -29,6 +30,8 @@ test('purchased scope adds only feature-specific onboarding requirements and ded
     assert.match(templates, new RegExp(`v_extra:=array_append\\(v_extra,'${field}'\\)`));
   }
   assert.match(templates, /if not \(v_key=any\(v_result\)\) then v_result:=array_append\(v_result,v_key\)/);
+  assert.match(dedupeLibrary, /distinct on \(entry\.item->>'key'\)/);
+  assert.match(dedupeLibrary, /jsonb_set\(cfg\.config_value,'\{fieldLibrary\}'/);
 });
 
 test('quotation onboarding remains frozen to committed purchased lines only', () => {
