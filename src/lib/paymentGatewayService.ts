@@ -155,6 +155,14 @@ export const paymentGatewayService = {
     return data as PublicPayment;
   },
 
+  async openSupportChat(token: string): Promise<{ conversationUrl: string }> {
+    const { data, error } = await supabase.rpc('open_public_payment_support_chat', { p_token: token });
+    if (error) throwIfError(error, 'Secure Sales chat could not be opened.');
+    const conversationUrl = String(data?.conversationUrl || '');
+    if (!conversationUrl) throw new Error('Secure Sales chat link was not returned.');
+    return { conversationUrl };
+  },
+
   async checkout(body: Record<string, unknown>): Promise<any> {
     const { data, error } = await supabase.functions.invoke('payment-checkout', { body });
     if (error) throwIfError(error, 'Payment could not be processed.');
