@@ -70,3 +70,12 @@ test('verification email queue has resend cooldown, attempt cap and indexed look
   assert.match(sellerFlow, /v_attempt>=20/);
   assert.match(hardening, /notification_outbox_portal_verification_onboarding_idx/);
 });
+
+test('client portal password recovery always returns to the canonical production portal', () => {
+  assert.match(portalEntry, /CLIENT_PORTAL_RECOVERY_ORIGIN = 'https:\/\/www\.profoxwebdesigner\.com'/);
+  assert.match(portalEntry, /`\$\{CLIENT_PORTAL_RECOVERY_ORIGIN\}\/client-portal\?\$\{recoveryParams\.toString\(\)\}`/);
+  assert.match(portalEntry, /resetPasswordForEmail\(normalizedEmail, \{ redirectTo \}\)/);
+  assert.match(portalEntry, /event === 'PASSWORD_RECOVERY'/);
+  assert.match(portalEntry, /auth\.updateUser\(\{ password: recoveryPassword \}\)/);
+  assert.doesNotMatch(portalEntry, /`\$\{window\.location\.origin\}\/client-portal/);
+});

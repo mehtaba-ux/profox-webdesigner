@@ -5,6 +5,8 @@ import { useAuth } from '../../lib/AuthContext';
 import { supabase } from '../../lib/supabase';
 import ClientDashboard from './ClientDashboard';
 
+const CLIENT_PORTAL_RECOVERY_ORIGIN = 'https://www.profoxwebdesigner.com';
+
 function messageOf(error: any, fallback: string) {
   return error?.message || fallback;
 }
@@ -150,7 +152,7 @@ export default function ClientPortalEntry() {
     setAuthError('');
     const recoveryParams = new URLSearchParams({ recovery: '1' });
     if (inviteToken) recoveryParams.set('invite', inviteToken);
-    const redirectTo = `${window.location.origin}/client-portal?${recoveryParams.toString()}`;
+    const redirectTo = `${CLIENT_PORTAL_RECOVERY_ORIGIN}/client-portal?${recoveryParams.toString()}`;
     const { error } = await supabase.auth.resetPasswordForEmail(normalizedEmail, { redirectTo });
     setAuthNotice(error ? '' : 'If this email has a Client Portal account, a password reset link has been sent.');
     if (error) setAuthError('Password reset email could not be sent.');
