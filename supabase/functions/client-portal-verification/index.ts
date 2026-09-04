@@ -1,8 +1,9 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+const CLIENT_PORTAL_ORIGIN = "https://www.profoxwebdesigner.com";
 const allowedOrigins = new Set([
-  "https://www.profoxwebdesigner.com",
+  CLIENT_PORTAL_ORIGIN,
   "https://profoxwebdesigner.com",
   "http://localhost:3000",
   "http://localhost:5173",
@@ -10,7 +11,7 @@ const allowedOrigins = new Set([
 
 function cors(origin: string | null) {
   return {
-    "Access-Control-Allow-Origin": origin && allowedOrigins.has(origin) ? origin : "https://www.profoxwebdesigner.com",
+    "Access-Control-Allow-Origin": origin && allowedOrigins.has(origin) ? origin : CLIENT_PORTAL_ORIGIN,
     "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
     "Access-Control-Allow-Methods": "POST, OPTIONS",
     Vary: "Origin",
@@ -50,9 +51,9 @@ Deno.serve(async (req: Request) => {
     const fullName = cleanName(body?.fullName);
     const password = String(body?.password || "");
 
-    if (!['create', 'resend'].includes(action)) return json(headers, 400, { error: "Unsupported verification action" });
+    if (!["create", "resend"].includes(action)) return json(headers, 400, { error: "Unsupported verification action" });
     if (!isPortalToken(inviteToken)) return json(headers, 400, { error: "A valid Client Portal invitation is required" });
-    if (action === 'create' && password.length < 6) return json(headers, 400, { error: "Password must be at least 6 characters" });
+    if (action === "create" && password.length < 6) return json(headers, 400, { error: "Password must be at least 6 characters" });
     if (password.length > 256) return json(headers, 400, { error: "Password is too long" });
 
     const service = createClient(supabaseUrl, serviceKey, {
@@ -82,7 +83,7 @@ Deno.serve(async (req: Request) => {
     }
 
     let userId = String(existing?.id || "").trim();
-    if (action === 'resend' && !userId) return json(headers, 409, { error: "Create the Client Portal account before resending verification" });
+    if (action === "resend" && !userId) return json(headers, 409, { error: "Create the Client Portal account before resending verification" });
 
     if (!userId) {
       const { data: created, error: createError } = await service.auth.admin.createUser({
@@ -107,7 +108,7 @@ Deno.serve(async (req: Request) => {
         await service.auth.admin.deleteUser(userId).catch(() => undefined);
         throw new Error(profileError.message || "Client Portal profile could not be prepared");
       }
-    } else if (action === 'create') {
+    } else if (action === "create") {
       const { error: updateError } = await service.auth.admin.updateUserById(userId, {
         password,
         user_metadata: {
@@ -123,8 +124,9 @@ Deno.serve(async (req: Request) => {
       if (profileError) throw new Error(profileError.message || "Client Portal profile could not be updated");
     }
 
-    const safeOrigin = origin && allowedOrigins.has(origin) ? origin : "https://www.profoxwebdesigner.com";
-    const redirectTo = `${safeOrigin}/client-portal?invite=${encodeURIComponent(inviteToken)}`;
+    // Customer-facing email links must always return to the canonical production portal.
+    // Localhost stays CORS-allowed for developer testing, but it is never embedded into an email.
+    const redirectTo = `${CLIENT_PORTAL_ORIGIN}/client-portal?invite=${encodeURIComponent(inviteToken)}`;
     const { data: linkData, error: linkError } = await service.auth.admin.generateLink({
       type: "magiclink",
       email,
@@ -134,6 +136,17 @@ Deno.serve(async (req: Request) => {
 
     const verificationUrl = String(linkData?.properties?.action_link || "").trim();
     if (!verificationUrl) throw new Error("Secure verification link was not returned");
+
+    let generatedRedirect = "";
+    try {
+      const verification = new URL(verificationUrl);
+      generatedRedirect = verification.searchParams.get("redirect_to") || verification.searchParams.get("redirectTo") || "";
+    } catch {
+      throw new Error("Secure verification link format is invalid");
+    }
+    if (generatedRedirect && !generatedRedirect.startsWith(`${CLIENT_PORTAL_ORIGIN}/client-portal`)) {
+      throw new Error("Secure verification link did not preserve the production Client Portal redirect");
+    }
 
     const { data: queued, error: queueError } = await service.rpc("service_queue_client_portal_verification", {
       p_token: inviteToken,
