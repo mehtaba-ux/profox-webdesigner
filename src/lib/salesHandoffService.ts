@@ -7,6 +7,8 @@ export interface SalesHandoffBrief {
   projectStage: string;
   projectStatus: string;
   packageSnapshot?: string | null;
+  requirementsSummary?: string | null;
+  requirementsComplete: boolean;
   scopeSummary?: string | null;
   exclusions?: string | null;
   quotation: {
@@ -50,8 +52,17 @@ export interface SalesHandoffSubmission {
   sourceSellerSubmission: boolean;
   notes: string;
   submittedAt: string;
+  requirementsComplete?: boolean;
   onboardingComplete?: boolean;
   projectManagerAssigned?: boolean;
+}
+
+export interface SalesRequirementsCorrection {
+  projectId: string;
+  opportunityId: string;
+  requirementsSummary: string;
+  requirementsComplete: boolean;
+  updatedAt: string;
 }
 
 export const salesHandoffService = {
@@ -62,6 +73,16 @@ export const salesHandoffService = {
     if (error) throw error;
     if (!data) throw new Error('Sales handoff brief is unavailable.');
     return data as SalesHandoffBrief;
+  },
+
+  async correctRequirements(projectId: string, requirementsSummary: string): Promise<SalesRequirementsCorrection> {
+    const { data, error } = await supabase.rpc('crm_correct_sales_requirements_for_handoff', {
+      p_project_id: projectId,
+      p_requirements_summary: requirementsSummary
+    });
+    if (error) throw error;
+    if (!data) throw new Error('Seller requirements could not be saved.');
+    return data as SalesRequirementsCorrection;
   },
 
   async submit(projectId: string, notes: string): Promise<SalesHandoffSubmission> {
