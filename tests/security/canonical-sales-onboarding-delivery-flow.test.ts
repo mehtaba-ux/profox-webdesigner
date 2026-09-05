@@ -3,6 +3,7 @@ import test from 'node:test';
 import { readFileSync } from 'node:fs';
 
 const migration = readFileSync('supabase/migrations/20260905133000_align_sales_requirements_onboarding_delivery_flow.sql', 'utf8');
+const remediationMigration = readFileSync('supabase/migrations/20260905133500_add_missing_sales_requirements_remediation.sql', 'utf8');
 const stages = readFileSync('src/lib/canonicalProjectStages.ts', 'utf8');
 const main = readFileSync('src/main.tsx', 'utf8');
 const handoffView = readFileSync('src/components/admin/SalesProjectHandoverView.tsx', 'utf8');
@@ -59,8 +60,23 @@ test('handoff is blocked without Seller requirements and clearly starts Content 
   assert.doesNotMatch(handoffView, /proceeds to Requirements/);
 });
 
+test('legacy missing requirements can only be restored to canonical records before handoff', () => {
+  assert.match(remediationMigration, /record_missing_sales_project_requirements/);
+  assert.match(remediationMigration, /v_project\.stage<>'Sales Handover'/);
+  assert.match(remediationMigration, /workflow_key='sales_handover_submission'/);
+  assert.match(remediationMigration, /Only the source Seller or an active Administrator may restore missing Sales requirements/);
+  assert.match(remediationMigration, /update public\.crm_opportunities\s+set requirements_summary=v_requirements/s);
+  assert.match(remediationMigration, /update public\.projects\s+set requirements_summary=v_requirements/s);
+  assert.match(remediationMigration, /accepted quotation remains the commercial scope of record/);
+  assert.match(remediationMigration, /revoke all on function public\.record_missing_sales_project_requirements\(uuid,text\) from public,anon/);
+  assert.match(handoffService, /record_missing_sales_project_requirements/);
+  assert.match(handoffView, /Save Missing Sales Requirements/);
+  assert.match(handoffView, /does not change the accepted quotation or add new commercial scope/);
+});
+
 test('the fix reuses canonical records rather than creating a parallel requirements or onboarding system', () => {
   assert.doesNotMatch(migration, /create table[^;]*(requirements|onboarding|handoff)/i);
+  assert.doesNotMatch(remediationMigration, /create table/i);
   assert.match(migration, /public\.crm_opportunities/);
   assert.match(migration, /public\.client_onboardings/);
   assert.match(migration, /public\.projects/);
