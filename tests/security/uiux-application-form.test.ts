@@ -8,6 +8,7 @@ const adminSource = readFileSync('src/components/admin/CareerJobsAdmin.tsx', 'ut
 const adminLegacySource = readFileSync('src/components/admin/CareerJobsAdminLegacy.tsx', 'utf8');
 const editorSource = readFileSync('src/components/admin/UIUXApplicationFormEditor.tsx', 'utf8');
 const migrationSource = readFileSync('supabase/migrations/20260905150000_uiux_application_form_v2.sql', 'utf8');
+const backfillMigrationSource = readFileSync('supabase/migrations/20260905162000_uiux_application_form_v2_backfill.sql', 'utf8');
 
 test('UIUX public application is a guided six-step flow with review-before-submit', () => {
   for (const id of ['profile', 'experience', 'portfolio', 'skills', 'work', 'review']) {
@@ -50,4 +51,16 @@ test('server submission enforces Admin-configured required fields without weaken
   assert.match(migrationSource, /recruitment_upload_intents/);
   assert.match(migrationSource, /storage\.objects/);
   assert.match(migrationSource, /application_policy_snapshot/);
+});
+
+test('existing UIUX roles are backfilled with the v2 enforcement policy before first Admin edit', () => {
+  assert.match(backfillMigrationSource, /systemRole/);
+  assert.match(backfillMigrationSource, /'version', 2/);
+  assert.match(backfillMigrationSource, /fieldConfig/);
+  assert.match(backfillMigrationSource, /minimumWeeklyHours/);
+  assert.match(backfillMigrationSource, /sourceOptions/);
+  assert.match(backfillMigrationSource, /application_policy_snapshot|protected submission RPC/i);
+  for (const id of ['caseStudyOutcome', 'accessibilityExperience', 'businessConversionThinking', 'clientFeedbackScenario', 'designAcademyAcknowledgement']) {
+    assert.match(backfillMigrationSource, new RegExp(`"${id}"`));
+  }
 });
