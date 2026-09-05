@@ -150,11 +150,31 @@ export default function ClientPortalEntry() {
     if (!normalizedEmail) { setAuthError('Enter your registered Client Portal email first.'); return; }
     setAuthBusy(true);
     setAuthError('');
+    setAuthNotice('');
+
+    // A valid, unclaimed invitation means this customer does not have an active
+    // Client Portal account yet. Supabase password recovery intentionally does
+    // not create users, so route this state into the canonical activation flow
+    // instead of displaying a misleading "reset sent" message.
+    if (inviteToken && inviteInfo && !inviteInfo.alreadyLinked && !inviteError) {
+      const invitedEmail = String(inviteInfo.email || '').trim().toLowerCase();
+      if (normalizedEmail !== invitedEmail) {
+        setAuthError('Use the same email address registered for this ProFox client relationship.');
+      } else {
+        setMode('activate');
+        setPassword('');
+        setVerificationQueued(false);
+        setAuthNotice('This Client Portal has not been activated yet. Create your account below and ProFox will send the secure verification email to finish setup.');
+      }
+      setAuthBusy(false);
+      return;
+    }
+
     const recoveryParams = new URLSearchParams({ recovery: '1' });
     if (inviteToken) recoveryParams.set('invite', inviteToken);
     const redirectTo = `${CLIENT_PORTAL_RECOVERY_ORIGIN}/client-portal?${recoveryParams.toString()}`;
     const { error } = await supabase.auth.resetPasswordForEmail(normalizedEmail, { redirectTo });
-    setAuthNotice(error ? '' : 'If this email has a Client Portal account, a password reset link has been sent.');
+    setAuthNotice(error ? '' : 'If this email has an active Client Portal account, a password reset link has been sent.');
     if (error) setAuthError('Password reset email could not be sent.');
     setAuthBusy(false);
   };
