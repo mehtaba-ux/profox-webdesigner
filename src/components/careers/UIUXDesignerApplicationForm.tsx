@@ -5,7 +5,7 @@ import { applicantService } from '../../lib/applicantService';
 import { talentPartnerService } from '../../lib/talentPartnerService';
 import { supabase } from '../../lib/supabase';
 
-const input = 'w-full rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-sm text-slate-900 outline-none transition focus:border-[#000080] focus:ring-4 focus:ring-blue-100';
+const input = 'w-full rounded-md border border-slate-200 bg-white px-3.5 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100';
 const applicationImage = 'https://images.unsplash.com/photo-1739298061758-f950267d6d75?auto=format&fit=crop&w=1600&q=82';
 
 interface FormState {
@@ -70,36 +70,38 @@ export default function UIUXDesignerApplicationForm({ job }: { job: CareerJob })
   };
 
   if (submitted) return (
-    <section id="apply" className="border-y border-emerald-200 bg-emerald-50 py-16 sm:py-20">
+    <section id="apply" className="border-y border-emerald-200 bg-[#f4fbf6] py-20 sm:py-24">
       <div className="mx-auto max-w-3xl px-6 text-center">
-        <CheckCircle2 className="mx-auto h-12 w-12 text-emerald-600" />
-        <h2 className="mt-4 text-3xl font-black text-slate-900">{submitted.duplicate ? 'Your application is already active' : 'Application received'}</h2>
-        <p className="mx-auto mt-3 max-w-xl text-sm leading-7 text-slate-600">{submitted.duplicate ? 'We found an existing active application for this UI/UX Designer role. Please use the newest ProFox recruitment communication for any next step.' : 'Thank you. Your application is now in the connected ProFox recruitment workflow. Portfolio review is the next controlled step.'}</p>
-        {submitted.reference && <div className="mx-auto mt-5 w-fit rounded-xl border border-emerald-200 bg-white px-4 py-2 text-xs font-black text-emerald-800">Reference · {submitted.reference}</div>}
+        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-md bg-emerald-600 text-white">
+          <CheckCircle2 className="h-6 w-6" />
+        </div>
+        <h2 className="mt-5 text-3xl font-semibold tracking-[-0.035em] text-[#202126]">{submitted.duplicate ? 'Your application is already active' : 'Application received'}</h2>
+        <p className="mx-auto mt-4 max-w-xl text-sm leading-7 text-slate-600">{submitted.duplicate ? 'We found an existing active application for this UI/UX Designer role. Please use the newest ProFox recruitment communication for any next step.' : 'Thank you. Your application is now in the connected ProFox recruitment workflow. Portfolio review is the next controlled step.'}</p>
+        {submitted.reference && <div className="mx-auto mt-5 w-fit rounded-md border border-emerald-200 bg-white px-4 py-2 text-xs font-semibold text-emerald-800">Reference · {submitted.reference}</div>}
       </div>
     </section>
   );
 
   return (
-    <section id="apply" className="border-t border-slate-200 bg-slate-50 py-16 sm:py-20">
-      <div className="mx-auto max-w-5xl px-6">
-        <div className="grid gap-7 lg:grid-cols-[1fr_380px] lg:items-center">
-          <div className="max-w-3xl">
-            <div className="text-[11px] font-black uppercase tracking-[0.18em] text-[#FF0E0E]">Apply for paid project opportunities</div>
-            <h2 className="mt-3 text-3xl font-black tracking-tight text-[#071126] sm:text-4xl">One application. Structured evidence. Clear next steps.</h2>
-            <p className="mt-4 text-sm leading-7 text-slate-600">We review the work you actually contributed to, how you reason through design decisions and how ready you are to deliver inside a controlled client workflow. Portfolio production value alone does not decide the result.</p>
-            <div className="mt-5 rounded-2xl border border-blue-100 bg-blue-50/70 p-4 text-xs leading-6 text-slate-700">
-              <strong>Before you apply:</strong> this role starts as paid, project-based contract work. The stated $1,500+–$3,000+ monthly figure is earning potential, not guaranteed income. Strong performers may be considered for a salary discussion after at least six months.
+    <section id="apply" className="scroll-mt-24 border-t border-slate-200 bg-white py-20 sm:py-24 lg:py-28">
+      <div className="mx-auto max-w-6xl px-5 sm:px-6">
+        <div className="grid gap-10 lg:grid-cols-[.8fr_1.2fr] lg:items-center">
+          <div>
+            <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-600">Apply for paid project opportunities</div>
+            <h2 className="mt-4 text-4xl font-semibold leading-[1.05] tracking-[-0.045em] text-[#202126] sm:text-5xl">One application. Structured evidence. Clear next steps.</h2>
+            <p className="mt-5 max-w-xl text-sm leading-7 text-slate-600">We review the work you actually contributed to, how you reason through design decisions and how ready you are to deliver inside a controlled client workflow. Portfolio production value alone does not decide the result.</p>
+            <div className="mt-7 border-l-2 border-emerald-500 pl-5 text-xs leading-6 text-slate-600">
+              <strong className="font-semibold text-[#202126]">Before you apply:</strong> this role starts as paid, project-based contract work. The stated $1,500+–$3,000+ monthly figure is earning potential, not guaranteed income. Strong performers may be considered for a salary discussion after at least six months.
             </div>
           </div>
-          <div className="relative min-h-[260px] overflow-hidden rounded-3xl border border-slate-200 bg-slate-100 shadow-sm">
+          <div className="relative aspect-[16/10] overflow-hidden rounded-lg border border-slate-200 bg-slate-100">
             <img src={applicationImage} alt="Male professional in a structured interview setting" loading="lazy" className="absolute inset-0 h-full w-full object-cover transition duration-700 hover:scale-[1.025]" />
-            <div className="absolute inset-0 bg-gradient-to-t from-slate-950/20 to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-t from-slate-950/15 to-transparent" />
           </div>
         </div>
 
-        <form onSubmit={submit} className="mt-9 space-y-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-8">
-          {error && <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</div>}
+        <form onSubmit={submit} className="mt-12 space-y-8 border-t border-slate-200 pt-10">
+          {error && <div className="rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</div>}
           <Group title="Contact & professional profile" text="These fields become the canonical candidate identity for this application.">
             <Grid>
               <Field label="Full name *"><input className={input} value={form.fullName} onChange={e=>set('fullName',e.target.value)} autoComplete="name" /></Field>
@@ -111,10 +113,10 @@ export default function UIUXDesignerApplicationForm({ job }: { job: CareerJob })
               <Field label="LinkedIn"><input type="url" className={input} placeholder="https://linkedin.com/in/..." value={form.linkedinUrl} onChange={e=>set('linkedinUrl',e.target.value)} /></Field>
               <Field label="Portfolio / case studies *"><input type="url" className={input} placeholder="https://..." value={form.portfolioUrl} onChange={e=>set('portfolioUrl',e.target.value)} /></Field>
             </Grid>
-            <label className="mt-4 block rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-5">
-              <div className="flex items-start gap-3"><UploadCloud className="mt-0.5 h-5 w-5 text-[#000080]"/><div><div className="text-sm font-black text-slate-900">CV / resume *</div><div className="mt-1 text-xs text-slate-500">PDF, DOC or DOCX · max 8 MB. Stored in the existing secured recruitment application bucket.</div></div></div>
-              <input type="file" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" className="mt-4 block w-full text-xs" onChange={e=>setCv(e.target.files?.[0] || null)} />
-              {cv && <div className="mt-3 flex items-center gap-2 text-xs font-bold text-[#000080]"><FileText className="h-4 w-4"/>{cv.name}{cvProgress>0 && busy ? ` · ${cvProgress}%` : ''}</div>}
+            <label className="mt-4 block rounded-md border border-dashed border-slate-300 bg-[#f8f9fc] p-5 transition hover:border-emerald-300">
+              <div className="flex items-start gap-3"><UploadCloud className="mt-0.5 h-5 w-5 text-emerald-600"/><div><div className="text-sm font-semibold text-[#202126]">CV / resume *</div><div className="mt-1 text-xs text-slate-500">PDF, DOC or DOCX · max 8 MB. Stored in the existing secured recruitment application bucket.</div></div></div>
+              <input type="file" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" className="mt-4 block w-full text-xs text-slate-600" onChange={e=>setCv(e.target.files?.[0] || null)} />
+              {cv && <div className="mt-3 flex items-center gap-2 text-xs font-medium text-emerald-700"><FileText className="h-4 w-4"/>{cv.name}{cvProgress>0 && busy ? ` · ${cvProgress}%` : ''}</div>}
             </label>
           </Group>
 
@@ -143,15 +145,15 @@ export default function UIUXDesignerApplicationForm({ job }: { job: CareerJob })
             <Area label="Why do you want to work with the ProFox UI/UX Design team?" value={form.motivation} onChange={v=>set('motivation',v)} />
           </Group>
 
-          <div className="space-y-3 rounded-2xl border border-blue-100 bg-blue-50/50 p-5">
+          <div className="space-y-3 rounded-md border border-slate-200 bg-[#f8f9fc] p-5">
             <Check checked={form.hasLaptopInternet} onChange={v=>set('hasLaptopInternet',v)}>I have a reliable computer, internet connection and suitable environment for professional remote design work.</Check>
             <Check checked={form.consentAccurate} onChange={v=>set('consentAccurate',v)}>I confirm that the application, portfolio links and description of my contribution are accurate.</Check>
             <Check checked={form.consentPrivacy} onChange={v=>set('consentPrivacy',v)}>I consent to ProFox processing this information for recruitment and related onboarding purposes.</Check>
           </div>
 
-          <div className="flex flex-col justify-between gap-4 border-t border-slate-100 pt-6 sm:flex-row sm:items-center">
-            <div className="flex items-start gap-2 text-[11px] leading-5 text-slate-500"><ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-[#000080]"/><span>Your application goes into the same protected recruitment record used for review, assessment, interview, agreement and onboarding.</span></div>
-            <button type="submit" disabled={!canSubmit || busy} className="inline-flex min-w-[190px] items-center justify-center gap-2 rounded-xl bg-[#000080] px-5 py-3 text-sm font-black text-white transition hover:bg-[#000066] disabled:cursor-not-allowed disabled:opacity-40">{busy?<Loader2 className="h-4 w-4 animate-spin"/>:<Send className="h-4 w-4"/>}{busy?'Submitting...':'Submit application'}</button>
+          <div className="flex flex-col justify-between gap-5 border-t border-slate-200 pt-7 sm:flex-row sm:items-center">
+            <div className="flex max-w-2xl items-start gap-2 text-[11px] leading-5 text-slate-500"><ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600"/><span>Your application goes into the same protected recruitment record used for review, assessment, interview, agreement and onboarding.</span></div>
+            <button type="submit" disabled={!canSubmit || busy} className="inline-flex min-w-[190px] items-center justify-center gap-2 rounded-md bg-[#202126] px-5 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-40">{busy?<Loader2 className="h-4 w-4 animate-spin"/>:<Send className="h-4 w-4"/>}{busy?'Submitting...':'Submit application'}</button>
           </div>
         </form>
         <p className="mt-4 flex items-center gap-1.5 text-[10px] text-slate-400"><ExternalLink className="h-3 w-3"/>Portfolio links must be accessible to the recruitment reviewer without requesting private client credentials.</p>
@@ -160,8 +162,18 @@ export default function UIUXDesignerApplicationForm({ job }: { job: CareerJob })
   );
 }
 
-function Group({title,text,children}:{title:string;text:string;children:React.ReactNode}){return <section><div className="border-b border-slate-100 pb-3"><h3 className="text-base font-black text-slate-900">{title}</h3><p className="mt-1 text-xs leading-5 text-slate-500">{text}</p></div><div className="mt-4 space-y-4">{children}</div></section>}
+function Group({title,text,children}:{title:string;text:string;children:React.ReactNode}) {
+  return (
+    <section>
+      <div className="grid gap-2 border-b border-slate-200 pb-4 sm:grid-cols-[220px_1fr] sm:items-end">
+        <h3 className="text-base font-semibold text-[#202126]">{title}</h3>
+        <p className="text-xs leading-5 text-slate-500">{text}</p>
+      </div>
+      <div className="mt-5 space-y-4">{children}</div>
+    </section>
+  );
+}
 function Grid({children}:{children:React.ReactNode}){return <div className="grid gap-4 sm:grid-cols-2">{children}</div>}
-function Field({label,children}:{label:string;children:React.ReactNode}){return <label className="block"><span className="mb-1.5 block text-[10px] font-black uppercase tracking-wide text-slate-500">{label}</span>{children}</label>}
+function Field({label,children}:{label:string;children:React.ReactNode}){return <label className="block"><span className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-500">{label}</span>{children}</label>}
 function Area({label,value,onChange,placeholder}:{label:string;value:string;onChange:(v:string)=>void;placeholder?:string}){return <Field label={label}><textarea rows={3} className={input} value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder}/></Field>}
-function Check({checked,onChange,children}:{checked:boolean;onChange:(v:boolean)=>void;children:React.ReactNode}){return <label className="flex cursor-pointer items-start gap-3 text-xs leading-5 text-slate-700"><input type="checkbox" checked={checked} onChange={e=>onChange(e.target.checked)} className="mt-0.5 h-4 w-4 accent-[#000080]"/><span>{children}</span></label>}
+function Check({checked,onChange,children}:{checked:boolean;onChange:(v:boolean)=>void;children:React.ReactNode}){return <label className="flex cursor-pointer items-start gap-3 text-xs leading-5 text-slate-700"><input type="checkbox" checked={checked} onChange={e=>onChange(e.target.checked)} className="mt-0.5 h-4 w-4 accent-emerald-600"/><span>{children}</span></label>}
