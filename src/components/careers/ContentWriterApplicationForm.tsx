@@ -44,7 +44,11 @@ export default function ContentWriterApplicationForm({job}:Props){
     const value=answers[field.key];
     if(field.type==='file'||field.type==='video')return field.required&&!files[field.key]?`${field.label} is required.`:'';
     if(field.type==='checkbox')return field.required&&value!==true?'Please confirm this item.':'';
-    if(field.type==='multiselect')return field.required&&(!Array.isArray(value)||value.length===0)?`Please select at least one option.`:'';
+    if(field.type==='multiselect'){
+      if(field.required&&(!Array.isArray(value)||value.length===0))return 'Please select at least one option.';
+      if(Array.isArray(value)&&field.options?.length&&value.some(item=>!field.options?.includes(item)))return 'Please choose only available options.';
+      return '';
+    }
     const text=String(value??'').trim();
     if(field.required&&!text)return `${field.label} is required.`;
     if(text&&field.minLength&&text.length<field.minLength)return `Please provide a little more detail (at least ${field.minLength} characters).`;
@@ -55,8 +59,7 @@ export default function ContentWriterApplicationForm({job}:Props){
       if(field.min!==undefined&&number<field.min)return `Please enter ${field.min} or more.`;
       if(field.max!==undefined&&number>field.max)return `Please enter ${field.max} or less.`;
     }
-    if(text&&(field.type==='select')&&field.options?.length&&!field.options.includes(text))return 'Please choose one of the available options.';
-    if(Array.isArray(value)&&field.type==='multiselect'&&field.options?.length&&value.some(item=>!field.options?.includes(item)))return 'Please choose only available options.';
+    if(text&&field.type==='select'&&field.options?.length&&!field.options.includes(text))return 'Please choose one of the available options.';
     return '';
   };
 
@@ -114,7 +117,7 @@ export default function ContentWriterApplicationForm({job}:Props){
     <div id="content-application-card" className="mt-7 scroll-mt-28 overflow-hidden border border-slate-200 bg-white shadow-sm">
       <div className="border-b border-slate-200 bg-[#fbfcff] px-5 py-5 sm:px-7">
         <div className="flex items-center justify-between gap-4"><div><div className="text-[10px] font-black uppercase tracking-[.16em] text-[#000080]">Step {stepIndex+1} of {steps.length}</div><h3 className="mt-1 text-xl font-black text-[#22252b]">{step?.title}</h3><p className="mt-1 text-xs leading-5 text-slate-500">{step?.description}</p></div><div className="hidden text-right sm:block"><div className="text-2xl font-black text-[#22252b]">{Math.round(((stepIndex+1)/Math.max(1,steps.length))*100)}%</div><div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">complete</div></div></div>
-        <div className="mt-5 grid grid-cols-5 gap-1.5" aria-hidden="true">{steps.map((item,index)=><div key={item.id} className={`h-1.5 rounded-full ${index<=stepIndex?'bg-[#000080]':'bg-slate-200'}`}/>)}</div>
+        <div className="mt-5 grid gap-1.5" style={{gridTemplateColumns:`repeat(${Math.max(1,steps.length)},minmax(0,1fr))`}} aria-hidden="true">{steps.map((item,index)=><div key={item.id} className={`h-1.5 rounded-full ${index<=stepIndex?'bg-[#000080]':'bg-slate-200'}`}/>)}</div>
       </div>
 
       <div className="p-5 sm:p-7">
