@@ -6,6 +6,7 @@ import { talentPartnerService } from '../../lib/talentPartnerService';
 import { supabase } from '../../lib/supabase';
 
 const input = 'w-full rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-sm text-slate-900 outline-none transition focus:border-[#000080] focus:ring-4 focus:ring-blue-100';
+const applicationImage = 'https://images.unsplash.com/photo-1739298061758-f950267d6d75?auto=format&fit=crop&w=1600&q=82';
 
 interface FormState {
   fullName: string; email: string; phone: string; country: string; timezone: string; linkedinUrl: string; currentRole: string;
@@ -82,10 +83,19 @@ export default function UIUXDesignerApplicationForm({ job }: { job: CareerJob })
   return (
     <section id="apply" className="border-t border-slate-200 bg-slate-50 py-16 sm:py-20">
       <div className="mx-auto max-w-5xl px-6">
-        <div className="max-w-3xl">
-          <div className="text-[11px] font-black uppercase tracking-[0.18em] text-[#FF0E0E]">Apply to the UI/UX Design team</div>
-          <h2 className="mt-3 text-3xl font-black tracking-tight text-[#071126] sm:text-4xl">One application. Structured evidence. Clear next steps.</h2>
-          <p className="mt-4 text-sm leading-7 text-slate-600">We review the work you actually contributed to, how you reason through design decisions and how ready you are to deliver inside a controlled client workflow. Portfolio production value alone does not decide the result.</p>
+        <div className="grid gap-7 lg:grid-cols-[1fr_380px] lg:items-center">
+          <div className="max-w-3xl">
+            <div className="text-[11px] font-black uppercase tracking-[0.18em] text-[#FF0E0E]">Apply for paid project opportunities</div>
+            <h2 className="mt-3 text-3xl font-black tracking-tight text-[#071126] sm:text-4xl">One application. Structured evidence. Clear next steps.</h2>
+            <p className="mt-4 text-sm leading-7 text-slate-600">We review the work you actually contributed to, how you reason through design decisions and how ready you are to deliver inside a controlled client workflow. Portfolio production value alone does not decide the result.</p>
+            <div className="mt-5 rounded-2xl border border-blue-100 bg-blue-50/70 p-4 text-xs leading-6 text-slate-700">
+              <strong>Before you apply:</strong> this role starts as paid, project-based contract work. The stated $1,500+–$3,000+ monthly figure is earning potential, not guaranteed income. Strong performers may be considered for a salary discussion after at least six months.
+            </div>
+          </div>
+          <div className="relative min-h-[260px] overflow-hidden rounded-3xl border border-slate-200 bg-slate-100 shadow-sm">
+            <img src={applicationImage} alt="Male professional in a structured interview setting" loading="lazy" className="absolute inset-0 h-full w-full object-cover transition duration-700 hover:scale-[1.025]" />
+            <div className="absolute inset-0 bg-gradient-to-t from-slate-950/20 to-transparent" />
+          </div>
         </div>
 
         <form onSubmit={submit} className="mt-9 space-y-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-8">
@@ -113,6 +123,7 @@ export default function UIUXDesignerApplicationForm({ job }: { job: CareerJob })
               <Field label="Years of relevant experience"><input className={input} value={form.yearsExperience} onChange={e=>set('yearsExperience',e.target.value)} placeholder="e.g. 3 years" /></Field>
               <Field label="Weekly availability *"><input type="number" min={minimumWeeklyHours} max={80} className={input} value={form.availableHoursPerWeek} onChange={e=>set('availableHoursPerWeek',e.target.value)} placeholder={`Minimum ${minimumWeeklyHours} hours`} /></Field>
             </Grid>
+            <p className="-mt-1 text-[10px] leading-5 text-slate-400">Weekly availability helps us understand your project capacity. It does not represent guaranteed paid hours or guaranteed project volume.</p>
             <Area label="How do you use Figma in production work? *" value={form.figmaExperience} onChange={v=>set('figmaExperience',v)} placeholder="Auto Layout, components, variants, variables, prototypes, handoff..." />
             <Area label="How do you approach responsive design? *" value={form.responsiveExperience} onChange={v=>set('responsiveExperience',v)} />
             <Area label="Tell us about your design-system/component experience. *" value={form.designSystemsExperience} onChange={v=>set('designSystemsExperience',v)} />
@@ -129,7 +140,7 @@ export default function UIUXDesignerApplicationForm({ job }: { job: CareerJob })
               <Field label="How did you hear about ProFox?"><select className={input} value={form.heardAboutSource} onChange={e=>set('heardAboutSource',e.target.value)}>{sourceOptions.map(v=><option key={v}>{v}</option>)}</select></Field>
               <Field label="Source detail"><input className={input} value={form.heardAboutDetail} onChange={e=>set('heardAboutDetail',e.target.value)} /></Field>
             </Grid>
-            <Area label="Why do you want to join the ProFox UI/UX Design team?" value={form.motivation} onChange={v=>set('motivation',v)} />
+            <Area label="Why do you want to work with the ProFox UI/UX Design team?" value={form.motivation} onChange={v=>set('motivation',v)} />
           </Group>
 
           <div className="space-y-3 rounded-2xl border border-blue-100 bg-blue-50/50 p-5">
