@@ -11,7 +11,12 @@ export default function ContentWriterJobView({job}:Props){
 
   useEffect(()=>{
     const section=document.getElementById('apply');
-    setTarget(section);
+    if(!section)return;
+    const mount=document.createElement('div');
+    mount.setAttribute('data-content-writer-dynamic-form','true');
+    section.appendChild(mount);
+    setTarget(mount);
+    return()=>{setTarget(null);mount.remove();};
   },[]);
 
   return <>
