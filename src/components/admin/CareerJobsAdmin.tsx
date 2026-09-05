@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { ArrowLeft, ExternalLink, Loader2, Plus, Save, Trash2 } from 'lucide-react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../lib/AuthContext';
+import UIUXApplicationFormEditor from './UIUXApplicationFormEditor';
 import {
   careerService,
   type CareerApplicationType,
@@ -72,6 +73,7 @@ export default function CareerJobsAdmin() {
   );
 
   const details = form.roleDetails || {};
+  const isUIUXRole = details.systemRole === 'uiux_designer';
   const applicationForm = details.applicationForm || {};
   const expectedHours = Number(details.workingArrangement?.expectedHoursPerWeek ?? 35);
   const minimumExperienceMonths = Number(applicationForm.minimumSalesExperienceMonths ?? 6);
@@ -146,6 +148,11 @@ export default function CareerJobsAdmin() {
       if (isSalesRole && (minimumExperienceMonths < 0 || minimumExperienceMonths > 600)) throw new Error('Minimum sales experience must be between 0 and 600 months.');
       if (isSalesRole && (expectedHours < 1 || expectedHours > 80)) throw new Error('Expected weekly hours must be between 1 and 80.');
       if (isSalesRole && !(applicationForm.sourceOptions || []).length) throw new Error('Add at least one application source option.');
+      if (isUIUXRole) {
+        const minimumWeeklyHours = Number(applicationForm.minimumWeeklyHours ?? 20);
+        if (!Number.isFinite(minimumWeeklyHours) || minimumWeeklyHours < 1 || minimumWeeklyHours > 80) throw new Error('UI/UX minimum weekly hours must be between 1 and 80.');
+        if (!(applicationForm.sourceOptions || []).length) throw new Error('Add at least one UI/UX application source option.');
+      }
 
       const status = (form.status || 'Draft') as CareerJobStatus;
       const payload: Partial<CareerJob> = {
@@ -262,14 +269,17 @@ export default function CareerJobsAdmin() {
             {!isSalesRole && <TextArea label="Compensation blocks" hint="Generic jobs only. Sales-role pricing and commission remain in their canonical systems." value={(form.compensation || []).map((item) => [item.label, item.price, item.rate, item.example].filter(Boolean).join(' | ')).join('\n')} onChange={(value) => update('compensation', parseRows(value, 4).map(([label, price, rate, example]) => ({ label, price, rate, example })))} rows={5} />}
           </Card>
 
-          <Card title="Application behavior" description="The Sales Representative keeps the protected Sales recruitment pipeline. Generic roles remain separate.">
+          <Card title="Application behavior" description="Protected role-specific application flows remain separate from generic contact routing.">
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Application type"><select className={inputClass} value={form.applicationType || 'general'} onChange={(e) => update('applicationType', e.target.value as CareerApplicationType)}><option value="sales_representative">Sales Representative secure pipeline</option><option value="general">General / contact route</option><option value="external_link">External application link</option></select></Field>
+              <Field label="Application type"><select className={inputClass} value={form.applicationType || 'general'} onChange={(e) => update('applicationType', e.target.value as CareerApplicationType)}><option value="sales_representative">Sales Representative secure pipeline</option><option value="general">General / role-specific route</option><option value="external_link">External application link</option></select></Field>
               <Field label="CTA label"><input className={inputClass} value={form.applicationCta || ''} onChange={(e) => update('applicationCta', e.target.value)} /></Field>
-              <Field label="Application URL"><input className={inputClass} value={form.applicationUrl || ''} onChange={(e) => update('applicationUrl', e.target.value)} placeholder="https://... or leave blank for /contact-us" /></Field>
+              <Field label="Application URL"><input className={inputClass} value={form.applicationUrl || ''} onChange={(e) => update('applicationUrl', e.target.value)} placeholder="https://... or leave blank for the role-specific route" /></Field>
             </div>
             {isSalesRole && <SourceNote title="Protected Sales flow" text="This role uses the canonical structured application, Recruitment pipeline, agreement, Sales Academy and activation gates." />}
+            {isUIUXRole && <SourceNote title="Protected UI/UX flow" text="This role uses the configurable multi-step UI/UX application below and submits into the controlled UI/UX recruitment workflow." />}
           </Card>
+
+          {isUIUXRole && <UIUXApplicationFormEditor config={applicationForm} slug={form.slug || ''} onChange={(next) => updateDetails({ applicationForm: next })} />}
 
           {isSalesRole && <>
             <Card title="Application screening policy" description="One editable source for eligibility and Admin readiness checks.">

@@ -3,7 +3,41 @@ import { supabase } from './supabase';
 export type CareerJobStatus = 'Draft' | 'Published' | 'Closed';
 export type CareerApplicationType = 'sales_representative' | 'content_writer' | 'general' | 'external_link';
 
+export interface CareerApplicationFieldConfig {
+  label?: string;
+  help?: string;
+  placeholder?: string;
+  visible?: boolean;
+  required?: boolean;
+  options?: string[];
+}
+
+export interface CareerApplicationStepConfig {
+  id: string;
+  title?: string;
+  description?: string;
+  fields?: string[];
+}
+
+export interface CareerApplicationFormConfig {
+  version?: number;
+  minimumSalesExperienceMonths?: number;
+  minimumWeeklyHours?: number;
+  sourceOptions?: string[];
+  portfolioRequired?: boolean;
+  cvRequired?: boolean;
+  intro?: {
+    eyebrow?: string;
+    title?: string;
+    description?: string;
+    notice?: string;
+  };
+  steps?: CareerApplicationStepConfig[];
+  fieldConfig?: Record<string, CareerApplicationFieldConfig>;
+}
+
 export interface SalesRoleDetails {
+  systemRole?: string;
   subtitle?: string;
   focusMarkets?: string[];
   roleOverview?: string;
@@ -28,13 +62,7 @@ export interface SalesRoleDetails {
   authorityRestrictions?: string[];
   authorityNote?: string;
   applicationRequirements?: string[];
-  applicationForm?: {
-    minimumSalesExperienceMonths?: number;
-    minimumWeeklyHours?: number;
-    sourceOptions?: string[];
-    portfolioRequired?: boolean;
-    cvRequired?: boolean;
-  };
+  applicationForm?: CareerApplicationFormConfig;
   video?: {
     minimumSeconds?: number;
     recommendedMaximumSeconds?: number;
@@ -47,6 +75,7 @@ export interface SalesRoleDetails {
   targetRole?: string;
   targetDepartment?: string;
   academyKey?: string;
+  [key: string]: unknown;
 }
 
 export interface CareerJob {
