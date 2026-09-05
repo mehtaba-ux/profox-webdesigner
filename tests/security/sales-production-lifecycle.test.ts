@@ -59,7 +59,8 @@ test('handoff UI reviews the canonical brief and only accepts optional Sales exc
   assert.match(handoffView, /Additional Sales commitments \/ exceptions/);
   assert.match(handoffView, /Leave blank when there is nothing additional/);
   assert.match(handoffView, /Send Client Brief to Project Manager/);
-  assert.match(handoffView, /Client onboarding is not repeated after this handoff/);
+  assert.match(handoffView, /Requirements and client onboarding are not repeated in production/);
+  assert.match(handoffView, /production starts directly with Content/);
   assert.doesNotMatch(handoffView, /before Client Onboarding/);
   assert.doesNotMatch(handoffView, /Record the full sales-to-delivery handover context/);
   assert.doesNotMatch(handoffView, /clean\.length < 10/);
