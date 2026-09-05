@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { CheckCircle2, Clipboard, ExternalLink, Loader2, RefreshCw, Send, ShieldCheck } from 'lucide-react';
 import { supabase } from '../../../lib/supabase';
+import SellerCustomerLifecycleSummary from '../SellerCustomerLifecycleSummary';
 import CRMLeadDrawerBase, { type LeadDrawerTab } from './CRMLeadDrawerBase';
 
 export type { LeadDrawerTab };
@@ -49,6 +50,9 @@ export default function CRMLeadDrawer(props: Props) {
   return (
     <>
       <CRMLeadDrawerBase {...props} />
+      <div className="fixed right-4 top-4 z-[131] w-[calc(100%-2rem)] max-w-sm sm:right-5 sm:top-5">
+        <SellerCustomerLifecycleSummary leadId={props.lead.id} compact />
+      </div>
       <SellerOnboardingHandoff leadId={props.lead.id} onChanged={props.onChanged} />
     </>
   );
@@ -156,7 +160,7 @@ function SellerOnboardingHandoff({ leadId, onChanged }: { leadId: string; onChan
                 <div className="grid grid-cols-2 gap-2">
                   {onboardingUrl && <button type="button" onClick={() => window.open(onboardingUrl, '_blank', 'noopener,noreferrer')} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-[#000080] px-3 text-[10px] font-black text-white"><ExternalLink className="h-3.5 w-3.5" />Open form</button>}
                   {onboardingUrl && <button type="button" onClick={() => void copyLink()} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-[10px] font-black text-slate-700"><Clipboard className="h-3.5 w-3.5" />Copy link</button>}
-                  {handoff.canResend && <button type="button" disabled={busy} onClick={() => void resend()} className={`${onboardingUrl ? 'col-span-2' : 'col-span-2'} inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-[#000080]/20 bg-blue-50 px-3 text-[10px] font-black text-[#000080] disabled:opacity-50`}>{busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}Resend onboarding invite</button>}
+                  {handoff.canResend && <button type="button" disabled={busy} onClick={() => void resend()} className="col-span-2 inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-[#000080]/20 bg-blue-50 px-3 text-[10px] font-black text-[#000080] disabled:opacity-50">{busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}Resend onboarding invite</button>}
                 </div>
                 <p className="text-[9px] leading-4 text-slate-400">This uses the existing paid-project onboarding record. Resends are rate-limited server-side and do not create duplicate onboarding records.</p>
               </>
