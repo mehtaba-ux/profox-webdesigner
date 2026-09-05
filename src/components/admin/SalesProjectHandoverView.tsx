@@ -56,10 +56,13 @@ export default function SalesProjectHandoverView() {
   const allowed = Boolean(active && profile && (isAdmin || VIEW_ROLES.includes(profile.role)));
   const [brief, setBrief] = useState<SalesHandoffBrief | null>(null);
   const [notes, setNotes] = useState('');
+  const [requirementsDraft, setRequirementsDraft] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [savingRequirements, setSavingRequirements] = useState(false);
   const [error, setError] = useState('');
   const [submitted, setSubmitted] = useState(false);
+  const [requirementsSaved, setRequirementsSaved] = useState(false);
 
   const load = async () => {
     if (!allowed || !id) return;
@@ -69,6 +72,7 @@ export default function SalesProjectHandoverView() {
       const next = await salesHandoffService.getBrief(id);
       setBrief(next);
       setNotes(next.sellerNotes || '');
+      setRequirementsDraft(next.salesRequirements || '');
     } catch (err: any) {
       setError(err?.message || 'The protected Sales handoff brief could not be loaded.');
       setBrief(null);
@@ -82,6 +86,24 @@ export default function SalesProjectHandoverView() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allowed, id]);
 
+  const restoreRequirements = async () => {
+    if (!brief || savingRequirements || !isSeller || brief.requirementsCaptured) return;
+    setSavingRequirements(true);
+    setRequirementsSaved(false);
+    setError('');
+    try {
+      await salesHandoffService.restoreMissingRequirements(brief.projectId, requirementsDraft.trim());
+      const refreshed = await salesHandoffService.getBrief(brief.projectId);
+      setBrief(refreshed);
+      setRequirementsDraft(refreshed.salesRequirements || '');
+      setRequirementsSaved(true);
+    } catch (err: any) {
+      setError(err?.message || 'The missing Sales requirements could not be restored.');
+    } finally {
+      setSavingRequirements(false);
+    }
+  };
+
   const submit = async () => {
     if (!brief || saving || !isSeller || !brief.readyToSend) return;
     setSaving(true);
@@ -92,6 +114,7 @@ export default function SalesProjectHandoverView() {
       const refreshed = await salesHandoffService.getBrief(brief.projectId);
       setBrief(refreshed);
       setNotes(refreshed.sellerNotes || '');
+      setRequirementsDraft(refreshed.salesRequirements || '');
       setSubmitted(true);
     } catch (err: any) {
       setError(err?.message || 'The client brief could not be sent to Project Management.');
@@ -174,11 +197,41 @@ export default function SalesProjectHandoverView() {
                 </div>
 
                 {!brief.requirementsCaptured && (
-                  <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-xs leading-5 text-red-800">
-                    <div className="font-black">Sales handoff is blocked because the confirmed Sales requirements are missing.</div>
-                    <p className="mt-1">{brief.blockedReason || 'Requirements must be captured by Sales before quotation, payment, client onboarding and production handoff.'}</p>
-                  </div>
+                  <section className="rounded-2xl border border-red-200 bg-red-50 p-5 text-red-900">
+                    <div className="text-sm font-black">Sales handoff is blocked because the confirmed Sales requirements are missing.</div>
+                    <p className="mt-1 text-xs leading-5 text-red-800">{brief.blockedReason || 'Requirements must be captured by Sales before quotation, payment, client onboarding and production handoff.'}</p>
+                    {isSeller ? (
+                      <div className="mt-4 rounded-xl border border-red-200 bg-white p-4">
+                        <label className="text-[10px] font-black uppercase tracking-[0.14em] text-red-700">Restore missing Sales requirements</label>
+                        <p className="mt-1 text-[10px] leading-4 text-slate-500">For this legacy paid project only, record the factual requirements you already gathered from the customer. This does not change the accepted quotation or add new commercial scope.</p>
+                        <textarea
+                          value={requirementsDraft}
+                          onChange={event => { setRequirementsDraft(event.target.value); setRequirementsSaved(false); setError(''); }}
+                          rows={5}
+                          maxLength={10000}
+                          placeholder="Summarize the customer requirements gathered during Sales discovery..."
+                          className="mt-3 w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs leading-5 text-slate-800 outline-none focus:border-red-300 focus:ring-2 focus:ring-red-100"
+                        />
+                        <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                          <span className="text-[9px] font-semibold text-slate-400">Minimum 20 characters · canonical Sales opportunity + project snapshot only.</span>
+                          <button
+                            type="button"
+                            onClick={() => void restoreRequirements()}
+                            disabled={savingRequirements || requirementsDraft.trim().length < 20}
+                            className="inline-flex items-center justify-center gap-2 rounded-xl bg-red-700 px-4 py-2.5 text-xs font-black text-white disabled:cursor-not-allowed disabled:opacity-40"
+                          >
+                            {savingRequirements ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
+                            Save Missing Sales Requirements
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="mt-3 text-[10px] font-bold text-red-700">The source Seller must restore this missing legacy Sales discovery before handoff can continue.</p>
+                    )}
+                  </section>
                 )}
+
+                {requirementsSaved && <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs font-semibold text-emerald-800">Sales requirements restored to the canonical opportunity and project snapshot. No duplicate requirements record was created.</div>}
 
                 <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-xs leading-5 text-emerald-900">
                   <div className="flex items-center gap-2 font-black"><ShieldCheck className="h-4 w-4" /> Requirements and client onboarding are not repeated in production.</div>
