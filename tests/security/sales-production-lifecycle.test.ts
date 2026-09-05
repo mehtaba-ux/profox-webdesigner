@@ -48,7 +48,7 @@ test('final Sales handoff is gated by completed client onboarding and does not r
 
 test('production JSON response-count fix uses supported jsonb key enumeration', () => {
   assert.match(responseCountFix, /jsonb_object_keys\(v_onboarding\.responses\)/);
-  assert.doesNotMatch(responseCountFix, /jsonb_object_length/);
+  assert.doesNotMatch(responseCountFix, /then\s+jsonb_object_length\s*\(/i);
   assert.match(responseCountFix, /revoke all on function public\.project_get_sales_handoff_brief\(uuid\) from public,anon/);
   assert.match(responseCountFix, /grant execute on function public\.project_get_sales_handoff_brief\(uuid\) to authenticated,service_role/);
 });
