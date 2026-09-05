@@ -8,22 +8,22 @@ const culture = [
   {
     number: '01',
     title: 'Work That Actually Matters',
-    text: 'You will work on real business challenges, not throwaway tasks, helping teams grow and operate with more clarity.'
+    text: 'Work on real business challenges and client outcomes—not throwaway tasks.'
   },
   {
     number: '02',
-    title: 'Learn From Experienced People',
-    text: 'Work alongside people across strategy, design, development and sales while learning through real client work.'
+    title: 'Learn Through Real Delivery',
+    text: 'Work alongside people across strategy, design, development and sales while improving through real projects.'
   },
   {
     number: '03',
     title: 'Trust, Ownership, and Respect',
-    text: 'We expect people to own their work, manage their time and communicate clearly. In return, you get trust and responsibility.'
+    text: 'Own your work, manage your time and communicate clearly. In return, you get trust and responsibility.'
   },
   {
     number: '04',
-    title: 'Room to Grow Over Time',
-    text: 'As ProFox grows, strong contributors can take on more responsibility and build a larger role over time.'
+    title: 'Grow Through Performance',
+    text: 'Strong contributors can qualify for larger projects, more responsibility and longer-term opportunities over time.'
   }
 ];
 
@@ -37,8 +37,8 @@ export default function CareersListView() {
 
   useEffect(() => {
     let active = true;
-    document.title = 'Careers at ProFox | Current Opportunities';
-    const description = 'Explore current opportunities at ProFox and find a role where you can help businesses move from site to system.';
+    document.title = 'Careers & Project Opportunities at ProFox';
+    const description = 'Explore current careers and paid project opportunities at ProFox across design, development, content, sales and digital delivery.';
     let meta = document.querySelector<HTMLMetaElement>('meta[name="description"]');
     if (!meta) {
       meta = document.createElement('meta');
@@ -97,7 +97,7 @@ export default function CareersListView() {
           </Link>
 
           <div className="mt-9 max-w-4xl">
-            <span className="inline-flex rounded-md border border-[#000080]/15 bg-[#000080]/5 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.15em] text-[#000080]">Careers & Offers</span>
+            <span className="inline-flex rounded-md border border-[#000080]/15 bg-[#000080]/5 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.15em] text-[#000080]">Careers & Project Opportunities</span>
             {loading ? (
               <div className="mt-7 h-32 max-w-3xl animate-pulse rounded-3xl bg-slate-100" />
             ) : heroJob ? (
@@ -106,7 +106,7 @@ export default function CareersListView() {
                 <p className="mt-5 max-w-2xl text-base leading-7 text-slate-600 sm:text-lg">{heroJob.shortSummary}</p>
                 <div className="mt-7 flex flex-col items-start gap-4 sm:flex-row sm:items-center">
                   <Link to={`/careers/${heroJob.slug}`} className="inline-flex items-center gap-2 rounded-lg bg-[#000080] px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-[#000066]">
-                    View this role <ArrowRight className="h-4 w-4" />
+                    View this opportunity <ArrowRight className="h-4 w-4" />
                   </Link>
                   <HeroReviewProof />
                 </div>
@@ -128,7 +128,7 @@ export default function CareersListView() {
             ) : (
               <>
                 <h1 className="mt-5 text-4xl font-black tracking-[-0.04em] text-[#071126] sm:text-6xl">Build meaningful digital work with ProFox.</h1>
-                <p className="mt-5 max-w-2xl text-base leading-7 text-slate-600">There are no published openings right now. Check back as new roles are added.</p>
+                <p className="mt-5 max-w-2xl text-base leading-7 text-slate-600">There are no published opportunities right now. Check back as new roles and project opportunities are added.</p>
               </>
             )}
           </div>
@@ -154,7 +154,7 @@ export default function CareersListView() {
               <input
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder="Search position or location..."
+                placeholder="Search role, project or location..."
                 className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2.5 pl-10 pr-3 text-xs outline-none transition focus:border-[#000080]/40 focus:bg-white focus:ring-4 focus:ring-blue-50"
               />
             </label>
@@ -174,16 +174,16 @@ export default function CareersListView() {
                     <span className="text-slate-300">•</span>
                     <span>{job.category}</span>
                   </div>
-                  <p className="mt-2 max-w-3xl text-xs leading-5 text-slate-500">{job.description || job.shortSummary}</p>
+                  <p className="mt-2 max-w-3xl text-xs leading-5 text-slate-500">{job.shortSummary || job.description}</p>
                 </div>
                 <Link to={`/careers/${job.slug}`} className="inline-flex w-fit items-center gap-2 rounded-full bg-emerald-600 px-4 py-2.5 text-xs font-black text-white transition hover:bg-emerald-700">
-                  View Role <ArrowRight className="h-3.5 w-3.5" />
+                  View Opportunity <ArrowRight className="h-3.5 w-3.5" />
                 </Link>
               </article>
             )) : (
               <div className="py-12 text-center">
                 <BriefcaseBusiness className="mx-auto h-8 w-8 text-slate-300" />
-                <h2 className="mt-3 text-sm font-black text-slate-800">No roles match this view.</h2>
+                <h2 className="mt-3 text-sm font-black text-slate-800">No opportunities match this view.</h2>
                 <p className="mt-1 text-xs text-slate-500">Try another category or search term.</p>
               </div>
             )}
@@ -194,12 +194,12 @@ export default function CareersListView() {
       <section className="bg-[#050b1d] py-20 text-white sm:py-24">
         <div className="mx-auto max-w-6xl px-5 sm:px-6">
           <span className="inline-flex rounded-md bg-emerald-500/15 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.15em] text-emerald-300">Culture & Values</span>
-          <h2 className="mt-4 text-3xl font-black tracking-[-0.035em] sm:text-4xl">Why Work at ProFox</h2>
+          <h2 className="mt-4 text-3xl font-black tracking-[-0.035em] sm:text-4xl">Why Build With ProFox</h2>
           <div className="mt-10 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             {culture.map((item, index) => {
               const Icon = [Sparkles, Users, ShieldCheck, TrendingUp][index];
               return (
-                <div key={item.number} className="rounded-2xl border border-white/10 bg-white/[0.045] p-6">
+                <div key={item.number} className="rounded-2xl border border-white/10 bg-white/[0.045] p-6 transition hover:-translate-y-0.5 hover:bg-white/[0.07]">
                   <div className="flex items-center justify-between"><span className="rounded-full bg-emerald-500/10 px-2 py-1 text-[10px] font-black text-emerald-300">{item.number}</span><Icon className="h-4 w-4 text-slate-500" /></div>
                   <h3 className="mt-5 text-sm font-black leading-5">{item.title}</h3>
                   <p className="mt-3 text-xs leading-5 text-slate-400">{item.text}</p>
@@ -214,9 +214,9 @@ export default function CareersListView() {
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_85%_40%,rgba(0,0,128,0.55),transparent_42%)]" />
         <div className="relative mx-auto max-w-6xl px-5 sm:px-6">
           <div className="max-w-2xl">
-            <h2 className="text-4xl font-black leading-[1.04] tracking-[-0.045em] sm:text-5xl">Let&apos;s Create Real Digital Impact</h2>
-            <p className="mt-5 max-w-xl text-sm leading-7 text-slate-300">Build better experiences for customers and simpler systems for teams. Everything works together, so businesses can move with clarity and momentum.</p>
-            <Link to="/contact-us" className="mt-7 inline-flex items-center gap-2 rounded-lg bg-white px-5 py-3 text-xs font-black text-[#000080] transition hover:bg-slate-100">Speak With a Digital Advisor <ArrowRight className="h-4 w-4" /></Link>
+            <h2 className="text-4xl font-black leading-[1.04] tracking-[-0.045em] sm:text-5xl">Build Real Digital Impact</h2>
+            <p className="mt-5 max-w-xl text-sm leading-7 text-slate-300">Find the opportunity that matches your skill set, understand the working model clearly and grow through the quality of what you deliver.</p>
+            <a href="#top" onClick={(event)=>{event.preventDefault();window.scrollTo({top:0,behavior:'smooth'});}} className="mt-7 inline-flex items-center gap-2 rounded-lg bg-white px-5 py-3 text-xs font-black text-[#000080] transition hover:bg-slate-100">Explore Current Opportunities <ArrowRight className="h-4 w-4" /></a>
           </div>
         </div>
       </section>
