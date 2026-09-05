@@ -168,7 +168,7 @@ export default function ClientPortalEntry() {
         setConfirmPassword('');
         setShowPassword(false);
         setShowConfirmPassword(false);
-        setAuthNotice('Account created. A secure verification email has been queued through ProFox. Open that email to verify your address and finish Client Portal activation.');
+        setAuthNotice('Verification email queued securely through ProFox. Your Client Portal account has been created; open that email to verify your address and finish activation.');
       } catch (error) {
         setAuthError(messageOf(error, 'Client Portal account could not be prepared.'));
       }
