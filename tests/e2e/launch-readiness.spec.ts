@@ -49,6 +49,12 @@ test.beforeEach(async ({ page }) => {
   await disableLiveMaintenanceForLaunchTest(page);
 });
 
+test.afterEach(async ({ page }) => {
+  // CMS runtime refreshes may still be in flight as a test ends. Remove route handlers
+  // without surfacing teardown races; production traffic and live maintenance state are untouched.
+  await page.unrouteAll({ behavior: 'ignoreErrors' });
+});
+
 test('homepage renders its primary experience without configuration errors', async ({ page }) => {
   await page.goto('/');
   await expect(page.locator('h1').first()).toBeVisible();
