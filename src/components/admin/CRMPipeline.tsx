@@ -38,6 +38,7 @@ import {
 } from '../../lib/crmService';
 import { CRMLeadDetail, OpportunityStage } from '../../types';
 import { useAuth } from '../../lib/AuthContext';
+import MonthlyWonSalesColumn from './MonthlyWonSalesColumn';
 
 const VIEW_OPTIONS = [
   'All Open',
@@ -186,7 +187,9 @@ export default function CRMPipeline({ onNavigate }: { onNavigate?: (tab: string)
 
       <DndContext sensors={sensors} onDragStart={({ active }) => setActiveDrag(opportunities.find(item => item.id === String(active.id)) || null)} onDragCancel={() => setActiveDrag(null)} onDragEnd={handleDragEnd}>
         <div className="-mx-4 flex gap-4 overflow-x-auto px-4 pb-6 sm:-mx-8 sm:px-8">
-          {stages.map(stage => <PipelineColumn key={stage.name} stage={stage} opportunities={filtered.filter(item => item.stage === stage.name)} onOpen={setSelected} />)}
+          {stages.map(stage => stage.classification === 'won'
+            ? <MonthlyWonSalesColumn key={stage.name} stage={stage} ownerFilter={ownerFilter} />
+            : <PipelineColumn key={stage.name} stage={stage} opportunities={filtered.filter(item => item.stage === stage.name)} onOpen={setSelected} />)}
         </div>
         <DragOverlay>{activeDrag ? <PipelineCard opportunity={activeDrag} overlay onOpen={() => {}} /> : null}</DragOverlay>
       </DndContext>
