@@ -5,6 +5,7 @@ import test from 'node:test';
 const formSource = readFileSync('src/components/careers/UIUXDesignerApplicationForm.tsx', 'utf8');
 const configSource = readFileSync('src/lib/uiuxApplicationFormConfig.ts', 'utf8');
 const adminSource = readFileSync('src/components/admin/CareerJobsAdmin.tsx', 'utf8');
+const adminLegacySource = readFileSync('src/components/admin/CareerJobsAdminLegacy.tsx', 'utf8');
 const editorSource = readFileSync('src/components/admin/UIUXApplicationFormEditor.tsx', 'utf8');
 const migrationSource = readFileSync('supabase/migrations/20260905150000_uiux_application_form_v2.sql', 'utf8');
 
@@ -27,10 +28,13 @@ test('UIUX application keeps identity, portfolio, CV and consent controls non-op
   assert.doesNotMatch(formSource, /localStorage|sessionStorage/);
 });
 
-test('UIUX form content is editable from the existing Admin Job Posts screen', () => {
-  assert.match(adminSource, /UIUXApplicationFormEditor/);
-  assert.match(adminSource, /details\.systemRole === 'uiux_designer'/);
-  assert.match(adminSource, /onChange=\{\(next\) => updateDetails\(\{ applicationForm: next \}\)\}/);
+test('UIUX form content remains editable from the existing Admin Job Posts screen through the legacy editor body', () => {
+  // CareerJobsAdmin is now a composition wrapper; the established Job Posts
+  // implementation and UI/UX editor remain inside CareerJobsAdminLegacy.
+  assert.match(adminSource, /CareerJobsAdminLegacy/);
+  assert.match(adminLegacySource, /UIUXApplicationFormEditor/);
+  assert.match(adminLegacySource, /details\.systemRole === 'uiux_designer'/);
+  assert.match(adminLegacySource, /onChange=\{\(next\) => updateDetails\(\{ applicationForm: next \}\)\}/);
   assert.match(editorSource, /Form content, requirements & order/);
   assert.match(editorSource, /Minimum weekly hours/);
   assert.match(editorSource, /Recruitment source options/);

@@ -99,14 +99,22 @@ Deno.serve(async (req: Request) => {
       userId = String(created.user?.id || "").trim();
       if (!userId) throw new Error("Client Portal account identifier was not returned");
 
-      const { error: profileError } = await service.from("user_profiles").upsert({
-        id: userId,
-        email,
-        full_name: fullName || String(context.contactName || "").trim(),
-      }, { onConflict: "id" });
-      if (profileError) {
+      // auth.users -> public.user_profiles is already handled synchronously by
+      // the canonical on_auth_user_created trigger. Do not upsert that row here:
+      // an upsert becomes an UPDATE and correctly trips the privileged-profile
+      // security guard for service-role REST requests.
+      const { data: createdProfile, error: createdProfileError } = await service
+        .from("user_profiles")
+        .select("id,email,role,status")
+        .eq("id", userId)
+        .maybeSingle();
+      if (createdProfileError || !createdProfile) {
         await service.auth.admin.deleteUser(userId).catch(() => undefined);
-        throw new Error(profileError.message || "Client Portal profile could not be prepared");
+        throw new Error(createdProfileError?.message || "Client Portal profile was not created with the account");
+      }
+      if (!["pending", "customer"].includes(String(createdProfile.role))) {
+        await service.auth.admin.deleteUser(userId).catch(() => undefined);
+        throw new Error("Client Portal profile was created with an invalid role");
       }
     } else if (action === "create") {
       const { error: updateError } = await service.auth.admin.updateUserById(userId, {
@@ -117,11 +125,8 @@ Deno.serve(async (req: Request) => {
         },
       });
       if (updateError) throw new Error(updateError.message || "Client Portal account could not be prepared");
-
-      const { error: profileError } = await service.from("user_profiles").update({
-        full_name: fullName || String(context.contactName || "").trim(),
-      }).eq("id", userId);
-      if (profileError) throw new Error(profileError.message || "Client Portal profile could not be updated");
+      // The existing profile is already restricted to pending/customer above.
+      // Do not directly UPDATE privileged profile rows from the service client.
     }
 
     // Customer-facing email links must always return to the canonical production portal.

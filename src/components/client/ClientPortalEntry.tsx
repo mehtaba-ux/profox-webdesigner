@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ArrowRight, CheckCircle2, KeyRound, Loader2, Lock, LogOut, Mail, ShieldCheck, UserPlus } from 'lucide-react';
+import { ArrowRight, CheckCircle2, Eye, EyeOff, KeyRound, Loader2, Lock, LogOut, Mail, ShieldCheck, UserPlus } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../lib/AuthContext';
 import { supabase } from '../../lib/supabase';
@@ -9,6 +9,29 @@ const CLIENT_PORTAL_RECOVERY_ORIGIN = 'https://www.profoxwebdesigner.com';
 
 function messageOf(error: any, fallback: string) {
   return error?.message || fallback;
+}
+
+async function functionErrorMessage(error: any, data: any, fallback: string) {
+  const direct = String(data?.error || data?.message || '').trim();
+  if (direct) return direct;
+
+  const context = error?.context;
+  if (context) {
+    try {
+      const response = typeof context.clone === 'function' ? context.clone() : context;
+      if (typeof response.json === 'function') {
+        const payload = await response.json();
+        const fromBody = String(payload?.error || payload?.message || '').trim();
+        if (fromBody) return fromBody;
+      }
+    } catch {
+      // The response body may already be consumed; fall back to the SDK message.
+    }
+  }
+
+  const sdkMessage = String(error?.message || '').trim();
+  if (sdkMessage && !/Edge Function returned a non-2xx status code/i.test(sdkMessage)) return sdkMessage;
+  return fallback;
 }
 
 export default function ClientPortalEntry() {
@@ -22,6 +45,9 @@ export default function ClientPortalEntry() {
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [authBusy, setAuthBusy] = useState(false);
   const [authError, setAuthError] = useState('');
   const [authNotice, setAuthNotice] = useState('');
@@ -31,6 +57,8 @@ export default function ClientPortalEntry() {
   const [recoveryMode, setRecoveryMode] = useState(() => window.location.hash.includes('type=recovery') || searchParams.get('type') === 'recovery' || searchParams.get('recovery') === '1');
   const [recoveryPassword, setRecoveryPassword] = useState('');
   const [recoveryConfirm, setRecoveryConfirm] = useState('');
+  const [showRecoveryPassword, setShowRecoveryPassword] = useState(false);
+  const [showRecoveryConfirm, setShowRecoveryConfirm] = useState(false);
   const [recoveryBusy, setRecoveryBusy] = useState(false);
   const [recoveryError, setRecoveryError] = useState('');
   const [recoveryComplete, setRecoveryComplete] = useState(false);
@@ -38,6 +66,8 @@ export default function ClientPortalEntry() {
 
   useEffect(() => {
     setVerificationQueued(false);
+    setPassword('');
+    setConfirmPassword('');
     if (!inviteToken) { setInviteLoading(false); return; }
     setInviteLoading(true);
     setInviteError('');
@@ -92,7 +122,13 @@ export default function ClientPortalEntry() {
       },
     });
     if (error || data?.verificationQueued !== true) {
-      throw new Error(String(data?.error || messageOf(error, 'Client Portal verification email could not be queued.')));
+      throw new Error(await functionErrorMessage(
+        error,
+        data,
+        action === 'create'
+          ? 'Client Portal account could not be created. Please try again or contact ProFox support.'
+          : 'Client Portal verification email could not be queued. Please try again or contact ProFox support.',
+      ));
     }
     return data;
   };
@@ -115,11 +151,24 @@ export default function ClientPortalEntry() {
         setAuthBusy(false);
         return;
       }
+      if (password.length < 6) {
+        setAuthError('Password must be at least 6 characters.');
+        setAuthBusy(false);
+        return;
+      }
+      if (password !== confirmPassword) {
+        setAuthError('Passwords do not match. Please confirm the same password before creating your account.');
+        setAuthBusy(false);
+        return;
+      }
       try {
         await queuePortalVerification('create');
         setVerificationQueued(true);
         setPassword('');
-        setAuthNotice('Verification email queued securely through ProFox. Open that email to verify your address and return here to finish activation.');
+        setConfirmPassword('');
+        setShowPassword(false);
+        setShowConfirmPassword(false);
+        setAuthNotice('Verification email queued securely through ProFox. Your Client Portal account has been created; open that email to verify your address and finish activation.');
       } catch (error) {
         setAuthError(messageOf(error, 'Client Portal account could not be prepared.'));
       }
@@ -163,6 +212,9 @@ export default function ClientPortalEntry() {
       } else {
         setMode('activate');
         setPassword('');
+        setConfirmPassword('');
+        setShowPassword(false);
+        setShowConfirmPassword(false);
         setVerificationQueued(false);
         setAuthNotice('This Client Portal has not been activated yet. Create your account below and ProFox will send the secure verification email to finish setup.');
       }
@@ -203,6 +255,8 @@ export default function ClientPortalEntry() {
       setRecoveryComplete(true);
       setRecoveryPassword('');
       setRecoveryConfirm('');
+      setShowRecoveryPassword(false);
+      setShowRecoveryConfirm(false);
       const cleanUrl = inviteToken ? `/client-portal?invite=${encodeURIComponent(inviteToken)}` : '/client-portal';
       window.history.replaceState({}, document.title, cleanUrl);
     }
@@ -232,9 +286,27 @@ export default function ClientPortalEntry() {
             <form onSubmit={updateRecoveredPassword} className="space-y-5 p-8">
               {recoveryError && <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-xs font-semibold text-red-700">{recoveryError}</div>}
               {!user && <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs font-semibold text-amber-800">This recovery session is unavailable or expired. Return to sign in and request a new password reset email.</div>}
-              <label className="block"><span className="mb-1.5 block text-[10px] font-black uppercase tracking-wider text-slate-500">New Password</span><div className="relative"><KeyRound className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><input type="password" required minLength={6} autoComplete="new-password" value={recoveryPassword} onChange={event => setRecoveryPassword(event.target.value)} className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-3 text-sm outline-none focus:border-[#000080]" /></div></label>
-              <label className="block"><span className="mb-1.5 block text-[10px] font-black uppercase tracking-wider text-slate-500">Confirm New Password</span><div className="relative"><KeyRound className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><input type="password" required minLength={6} autoComplete="new-password" value={recoveryConfirm} onChange={event => setRecoveryConfirm(event.target.value)} className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-3 text-sm outline-none focus:border-[#000080]" /></div></label>
-              <button type="submit" disabled={recoveryBusy || !user} className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#000080] py-3.5 text-sm font-bold text-white disabled:opacity-50">{recoveryBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}Update Password</button>
+
+              <label className="block">
+                <span className="mb-1.5 block text-[10px] font-black uppercase tracking-wider text-slate-500">New Password</span>
+                <div className="relative">
+                  <KeyRound className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <input type={showRecoveryPassword ? 'text' : 'password'} required minLength={6} autoComplete="new-password" value={recoveryPassword} onChange={event => setRecoveryPassword(event.target.value)} className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-11 text-sm outline-none focus:border-[#000080]" />
+                  <button type="button" aria-label={showRecoveryPassword ? 'Hide password' : 'Show password'} onClick={() => setShowRecoveryPassword(value => !value)} className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-1 text-slate-400 hover:text-[#000080]">{showRecoveryPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button>
+                </div>
+              </label>
+
+              <label className="block">
+                <span className="mb-1.5 block text-[10px] font-black uppercase tracking-wider text-slate-500">Confirm New Password</span>
+                <div className="relative">
+                  <KeyRound className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <input type={showRecoveryConfirm ? 'text' : 'password'} required minLength={6} autoComplete="new-password" value={recoveryConfirm} onChange={event => setRecoveryConfirm(event.target.value)} className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-11 text-sm outline-none focus:border-[#000080]" />
+                  <button type="button" aria-label={showRecoveryConfirm ? 'Hide confirm password' : 'Show confirm password'} onClick={() => setShowRecoveryConfirm(value => !value)} className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-1 text-slate-400 hover:text-[#000080]">{showRecoveryConfirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button>
+                </div>
+              </label>
+
+              {recoveryConfirm && <div className={`rounded-xl border p-3 text-xs font-semibold ${recoveryPassword === recoveryConfirm ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : 'border-red-200 bg-red-50 text-red-700'}`}>{recoveryPassword === recoveryConfirm ? 'Passwords match.' : 'Passwords do not match.'}</div>}
+              <button type="submit" disabled={recoveryBusy || !user || recoveryPassword.length < 6 || recoveryPassword !== recoveryConfirm} className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#000080] py-3.5 text-sm font-bold text-white disabled:opacity-50">{recoveryBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}Update Password</button>
               <button type="button" disabled={recoveryBusy} onClick={() => setRecoveryMode(false)} className="w-full text-center text-xs font-bold text-slate-500 hover:underline">Return to sign in</button>
             </form>
           )}
@@ -260,6 +332,7 @@ export default function ClientPortalEntry() {
   }
 
   const canActivate = Boolean(inviteToken && inviteInfo && !inviteInfo.alreadyLinked && !inviteError);
+  const activationPasswordsMatch = password.length >= 6 && confirmPassword.length >= 6 && password === confirmPassword;
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-50 p-4">
@@ -278,12 +351,33 @@ export default function ClientPortalEntry() {
 
           {mode === 'activate' && <label className="block"><span className="mb-1.5 block text-[10px] font-black uppercase tracking-wider text-slate-500">Your Name</span><input required value={fullName} onChange={event => setFullName(event.target.value)} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm outline-none focus:border-[#000080]" /></label>}
           <label className="block"><span className="mb-1.5 block text-[10px] font-black uppercase tracking-wider text-slate-500">Email</span><div className="relative"><Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><input type="email" required autoComplete="email" readOnly={mode === 'activate'} value={email} onChange={event => setEmail(event.target.value)} className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-3 text-sm outline-none focus:border-[#000080] read-only:text-slate-500" /></div></label>
-          <label className="block"><span className="mb-1.5 block text-[10px] font-black uppercase tracking-wider text-slate-500">{mode === 'activate' ? 'Create Password' : 'Password'}</span><div className="relative"><KeyRound className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><input type="password" required={!verificationQueued || mode === 'signin'} minLength={6} autoComplete={mode === 'activate' ? 'new-password' : 'current-password'} disabled={mode === 'activate' && verificationQueued} value={password} onChange={event => setPassword(event.target.value)} className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-3 text-sm outline-none focus:border-[#000080] disabled:opacity-60" /></div></label>
 
-          <button type="submit" disabled={authBusy || (mode === 'activate' && (!canActivate || verificationQueued))} className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#000080] py-3.5 text-sm font-bold text-white disabled:opacity-50">{authBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}{mode === 'activate' ? (verificationQueued ? 'Verification Queued' : 'Create & Verify Portal Account') : 'Sign In'}</button>
+          <label className="block">
+            <span className="mb-1.5 block text-[10px] font-black uppercase tracking-wider text-slate-500">{mode === 'activate' ? 'Create Password' : 'Password'}</span>
+            <div className="relative">
+              <KeyRound className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <input type={showPassword ? 'text' : 'password'} required={!verificationQueued || mode === 'signin'} minLength={6} autoComplete={mode === 'activate' ? 'new-password' : 'current-password'} disabled={mode === 'activate' && verificationQueued} value={password} onChange={event => setPassword(event.target.value)} className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-11 text-sm outline-none focus:border-[#000080] disabled:opacity-60" />
+              <button type="button" disabled={mode === 'activate' && verificationQueued} aria-label={showPassword ? 'Hide password' : 'Show password'} onClick={() => setShowPassword(value => !value)} className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-1 text-slate-400 hover:text-[#000080] disabled:opacity-40">{showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button>
+            </div>
+            {mode === 'activate' && !verificationQueued && <span className="mt-1.5 block text-[11px] text-slate-500">Use at least 6 characters.</span>}
+          </label>
+
+          {mode === 'activate' && (
+            <label className="block">
+              <span className="mb-1.5 block text-[10px] font-black uppercase tracking-wider text-slate-500">Confirm Password</span>
+              <div className="relative">
+                <KeyRound className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <input type={showConfirmPassword ? 'text' : 'password'} required={!verificationQueued} minLength={6} autoComplete="new-password" disabled={verificationQueued} value={confirmPassword} onChange={event => setConfirmPassword(event.target.value)} className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-11 text-sm outline-none focus:border-[#000080] disabled:opacity-60" />
+                <button type="button" disabled={verificationQueued} aria-label={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'} onClick={() => setShowConfirmPassword(value => !value)} className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-1 text-slate-400 hover:text-[#000080] disabled:opacity-40">{showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button>
+              </div>
+              {!verificationQueued && confirmPassword && <span className={`mt-1.5 block text-[11px] font-semibold ${password === confirmPassword ? 'text-emerald-700' : 'text-red-600'}`}>{password === confirmPassword ? 'Passwords match.' : 'Passwords do not match.'}</span>}
+            </label>
+          )}
+
+          <button type="submit" disabled={authBusy || (mode === 'activate' && (!canActivate || verificationQueued || !activationPasswordsMatch))} className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#000080] py-3.5 text-sm font-bold text-white disabled:opacity-50">{authBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}{mode === 'activate' ? (verificationQueued ? 'Verification Queued' : 'Create & Verify Portal Account') : 'Sign In'}</button>
 
           {mode === 'activate' && verificationQueued && <button type="button" disabled={authBusy} onClick={() => void resendVerification()} className="w-full rounded-xl border border-[#000080]/20 bg-blue-50 py-3 text-xs font-black text-[#000080] disabled:opacity-50">Queue another verification email</button>}
-          {canActivate && <button type="button" disabled={authBusy} onClick={() => { setMode(current => current === 'signin' ? 'activate' : 'signin'); setAuthError(''); setAuthNotice(''); }} className="w-full text-center text-xs font-bold text-[#000080] hover:underline">{mode === 'activate' ? 'Already created your account? Sign in' : 'Use this invitation to create your account'}</button>}
+          {canActivate && <button type="button" disabled={authBusy} onClick={() => { setMode(current => current === 'signin' ? 'activate' : 'signin'); setPassword(''); setConfirmPassword(''); setShowPassword(false); setShowConfirmPassword(false); setAuthError(''); setAuthNotice(''); }} className="w-full text-center text-xs font-bold text-[#000080] hover:underline">{mode === 'activate' ? 'Already created your account? Sign in' : 'Use this invitation to create your account'}</button>}
           {mode === 'signin' && <button type="button" disabled={authBusy} onClick={() => void resetPassword()} className="w-full text-center text-xs font-bold text-slate-500 hover:underline">Forgot password?</button>}
 
           {!inviteToken && <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-[11px] leading-5 text-slate-500"><strong>New client?</strong> Portal accounts are invitation-only. After your first required payment is verified and mandatory onboarding is completed, ProFox sends your activation link automatically.</div>}
