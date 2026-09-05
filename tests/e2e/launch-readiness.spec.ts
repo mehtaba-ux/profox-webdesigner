@@ -92,7 +92,8 @@ test('Client Portal exposes invitation-only sign in without configuration errors
   await page.goto('/client-portal');
   await expect(page.getByRole('heading', { name: 'Secure Client Portal' })).toBeVisible();
   await expect(page.getByLabel('Email')).toBeVisible();
-  await expect(page.getByLabel('Password')).toBeVisible();
+  await expect(page.locator('input[autocomplete="current-password"]')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Show password', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Sign In' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Forgot password?' })).toBeVisible();
   await expect(page.locator('body')).toContainText(/Portal accounts are invitation-only/i);
@@ -128,7 +129,7 @@ test('Client Portal sign in is wired to Supabase password auth and handles inval
 
   await page.goto('/client-portal');
   await page.getByLabel('Email').fill('client-signin-smoke@example.com');
-  await page.getByLabel('Password').fill('incorrect-password');
+  await page.locator('input[autocomplete="current-password"]').fill('incorrect-password');
   await page.getByRole('button', { name: 'Sign In' }).click();
 
   await expect.poll(() => signInRequested).toBe(true);
@@ -138,8 +139,12 @@ test('Client Portal sign in is wired to Supabase password auth and handles inval
 test('Client Portal recovery screen is reachable and does not expose an unauthenticated password update', async ({ page }) => {
   await page.goto('/client-portal?recovery=1');
   await expect(page.getByRole('heading', { name: 'Set a New Password' })).toBeVisible();
-  await expect(page.getByRole('textbox', { name: 'New Password', exact: true })).toBeVisible();
-  await expect(page.getByRole('textbox', { name: 'Confirm New Password', exact: true })).toBeVisible();
+  const recoveryPasswords = page.locator('input[autocomplete="new-password"]');
+  await expect(recoveryPasswords).toHaveCount(2);
+  await expect(recoveryPasswords.nth(0)).toBeVisible();
+  await expect(recoveryPasswords.nth(1)).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Show password', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Show confirm password', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Update Password' })).toBeDisabled();
   await expect(page.locator('body')).toContainText(/recovery session is unavailable or expired/i);
 });
