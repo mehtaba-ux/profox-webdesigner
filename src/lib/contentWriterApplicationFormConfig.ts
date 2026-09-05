@@ -37,7 +37,7 @@ export interface ContentWriterApplicationFormConfig {
   fields:ContentWriterApplicationField[];
 }
 
-export const CONTENT_WRITER_APPLICATION_SCHEMA_VERSION = 3;
+export const CONTENT_WRITER_APPLICATION_SCHEMA_VERSION = 4;
 
 export const DEFAULT_CONTENT_WRITER_APPLICATION_FORM:ContentWriterApplicationFormConfig = {
   schemaVersion:CONTENT_WRITER_APPLICATION_SCHEMA_VERSION,
@@ -52,7 +52,7 @@ export const DEFAULT_CONTENT_WRITER_APPLICATION_FORM:ContentWriterApplicationFor
     {id:'experience',title:'Your Experience',description:'Tell us what you have worked on and where your writing experience comes from.',active:true},
     {id:'thinking',title:'How You Think',description:'We care about research, judgment and accuracy—not just polished sentences.',active:true},
     {id:'availability',title:'Availability',description:'Help us understand the project load you can responsibly support.',active:true},
-    {id:'confirm',title:'Application & Confirmation',description:'Upload your required material and confirm the working terms before submitting.',active:true},
+    {id:'confirm',title:'Application & Confirmation',description:'Upload your CV, share your introduction-video link, and confirm the working terms before submitting.',active:true},
   ],
   fields:[
     {key:'fullName',stepId:'about',label:'Full name',type:'text',required:true,active:true,system:true,locked:true,help:'Use the name you want us to use throughout recruitment.',minLength:2},
@@ -60,7 +60,7 @@ export const DEFAULT_CONTENT_WRITER_APPLICATION_FORM:ContentWriterApplicationFor
     {key:'phone',stepId:'about',label:'Phone',type:'tel',active:true,system:true,help:'Include your country code if possible.'},
     {key:'country',stepId:'about',label:'Country',type:'text',required:true,active:true,system:true,help:'Your current country of residence.'},
     {key:'currentRole',stepId:'about',label:'Current role',type:'text',active:true,system:true,help:'Your current job title, freelance role or main professional focus.'},
-    {key:'linkedinUrl',stepId:'about',label:'LinkedIn profile',type:'url',active:true,system:true,help:'Optional. Add a public LinkedIn profile if you have one.',placeholder:'https://linkedin.com/in/...'},
+    {key:'linkedinUrl',stepId:'about',label:'LinkedIn profile',type:'url',active:true,system:true,help:'Optional. Add a public LinkedIn profile if you have one.',placeholder:'https://linkedin.com/in/...' },
 
     {key:'yearsExperience',stepId:'experience',label:'Professional website/commercial writing experience',type:'select',required:true,active:true,help:'Count paid or professional work involving website, landing-page, UX, SEO or commercial copy.',options:['Less than 1 year','1–2 years','3–5 years','6+ years']},
     {key:'contentTypes',stepId:'experience',label:'What types of content have you worked on professionally?',type:'multiselect',required:true,active:true,help:'Select every type you have delivered professionally.',options:['Website Copy','Landing Pages','Service Pages','SEO Content','UX Copy','Email Copy','Other']},
@@ -81,7 +81,7 @@ export const DEFAULT_CONTENT_WRITER_APPLICATION_FORM:ContentWriterApplicationFor
     {key:'motivation',stepId:'availability',label:'Why do you want to work with the ProFox Content team?',type:'textarea',active:true,system:true,help:'Keep this specific. Tell us what fits your goals and working style.'},
 
     {key:'cv',stepId:'confirm',label:'CV / Resume',type:'file',required:true,active:true,system:true,locked:true,help:'Upload PDF, DOC or DOCX. Your portfolio is not required at this stage.',accept:'.pdf,.doc,.docx'},
-    {key:'video',stepId:'confirm',label:'Short introduction video',type:'video',required:true,active:true,system:true,locked:true,help:'Briefly introduce yourself, your relevant experience, how you research and how you protect quality before submission.',accept:'video/mp4,video/webm,video/quicktime,.mp4,.webm,.mov'},
+    {key:'video',stepId:'confirm',label:'Introduction video link',type:'url',required:true,active:true,system:true,locked:true,help:'Record a short introduction and paste a shareable Loom, YouTube, Vimeo, Google Drive or other video link that we can open without requesting access.',placeholder:'https://www.loom.com/share/...' },
     {key:'hasLaptopInternet',stepId:'confirm',label:'I have access to a reliable laptop and internet connection.',type:'checkbox',required:true,active:true,system:true,locked:true,help:'Reliable equipment and connectivity are required for remote project delivery.'},
     {key:'consentAccurate',stepId:'confirm',label:'The information and materials I submit accurately represent my experience and work.',type:'checkbox',required:true,active:true,system:true,locked:true},
     {key:'contractorAck',stepId:'confirm',label:'I understand that I am initially applying for project-based independent contractor work rather than an immediate salaried position.',type:'checkbox',required:true,active:true,system:true,locked:true},
