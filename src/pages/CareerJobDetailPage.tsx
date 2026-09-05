@@ -4,7 +4,7 @@ import { ArrowLeft, ArrowRight, BriefcaseBusiness, CheckCircle2, Clock3, Globe2,
 import { careerService, type CareerJob, type PublicSalesRoleContext } from '../lib/careerService';
 import SalesRepresentativeJobView from './SalesRepresentativeJobView';
 import ContentWriterJobView from './ContentWriterJobView';
-import UIUXDesignerApplicationForm from '../components/careers/UIUXDesignerApplicationForm';
+import UIUXDesignerJobView from './UIUXDesignerJobView';
 
 export default function CareerJobDetailPage() {
   const { slug = '' } = useParams<{ slug: string }>();
@@ -57,10 +57,10 @@ export default function CareerJobDetailPage() {
 
   if (salesContext) return <SalesRepresentativeJobView context={salesContext} />;
   if (job.applicationType === 'content_writer') return <ContentWriterJobView job={job} />;
+  if ((job.roleDetails as any)?.systemRole === 'uiux_designer') return <UIUXDesignerJobView job={job} />;
 
-  const isUiuxDesigner = (job.roleDetails as any)?.systemRole === 'uiux_designer';
-  const applyHref = isUiuxDesigner ? '#apply' : (job.applicationUrl || '/contact-us');
-  const external = !isUiuxDesigner && /^https?:\/\//i.test(applyHref);
+  const applyHref = job.applicationUrl || '/contact-us';
+  const external = /^https?:\/\//i.test(applyHref);
 
   return (
     <div className="min-h-screen bg-white text-slate-900">
@@ -77,7 +77,6 @@ export default function CareerJobDetailPage() {
       </section>
       <section className="border-b border-slate-200 bg-white py-8"><div className="mx-auto grid max-w-6xl gap-4 px-6 sm:grid-cols-3"><Meta icon={Globe2} label="Location" value={job.location} /><Meta icon={BriefcaseBusiness} label="Engagement" value={job.engagementType} /><Meta icon={Clock3} label="Experience" value={job.experience || 'Role dependent'} /></div></section>
       <section className="py-16 sm:py-20"><div className="mx-auto grid max-w-6xl gap-12 px-6 lg:grid-cols-[1fr_360px]"><div className="space-y-12"><section><Eyebrow>About the role</Eyebrow><h2 className="mt-3 text-3xl font-black tracking-tight text-[#071126]">What you will be part of</h2><p className="mt-5 whitespace-pre-line text-base leading-8 text-slate-600">{job.description || job.shortSummary}</p></section>{job.responsibilities.length > 0 && <BulletSection eyebrow="What you'll do" title="Your responsibilities" items={job.responsibilities} />}{job.requirements.length > 0 && <BulletSection eyebrow="What you need" title="What we're looking for" items={job.requirements} />}{job.selectionProcess.length > 0 && <section><Eyebrow>Selection process</Eyebrow><h2 className="mt-3 text-3xl font-black tracking-tight text-[#071126]">What happens next</h2><div className="mt-7 grid gap-4 sm:grid-cols-2">{job.selectionProcess.map((step,index)=><div key={`${step.title}-${index}`} className="rounded-2xl border border-slate-200 bg-slate-50 p-5"><div className="text-xs font-black text-[#FF0E0E]">{String(index+1).padStart(2,'0')}</div><h3 className="mt-3 font-black text-[#071126]">{step.title}</h3><p className="mt-2 text-sm leading-6 text-slate-600">{step.text}</p></div>)}</div></section>}</div><aside className="h-fit rounded-3xl border border-slate-200 bg-slate-50 p-6 lg:sticky lg:top-28"><div className="text-xs font-black uppercase tracking-[0.15em] text-[#000080]">Role snapshot</div><dl className="mt-5 space-y-4 text-sm"><Row label="Department" value={job.department} /><Row label="Category" value={job.category} /><Row label="Workplace" value={job.workplaceType} /><Row label="Location" value={job.location} /><Row label="Engagement" value={job.engagementType} /></dl><a href={applyHref} target={external ? '_blank' : undefined} rel={external ? 'noreferrer' : undefined} className="mt-7 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#000080] px-5 py-3 text-sm font-black text-white">{job.applicationCta} <ArrowRight className="h-4 w-4" /></a></aside></div></section>
-      {isUiuxDesigner && <UIUXDesignerApplicationForm job={job} />}
     </div>
   );
 }
