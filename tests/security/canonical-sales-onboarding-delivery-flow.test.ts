@@ -37,9 +37,12 @@ test('protected project flow starts production at Content after Sales handoff', 
 });
 
 test('active frontend project journey contains no duplicate onboarding or requirements stages', () => {
-  assert.match(stages, /'Sales Handover',\s*'Content'/s);
-  assert.doesNotMatch(stages, /CANONICAL_PROJECT_STAGES[\s\S]*?'Client Onboarding'/);
-  assert.doesNotMatch(stages, /CANONICAL_PROJECT_STAGES[\s\S]*?'Requirements'/);
+  const match = stages.match(/export const CANONICAL_PROJECT_STAGES: ProjectStage\[\] = \[([\s\S]*?)\];/);
+  assert.ok(match, 'canonical active stage array should be declared');
+  const activeStages = match[1];
+  assert.match(activeStages, /'Sales Handover',\s*'Content'/s);
+  assert.doesNotMatch(activeStages, /'Client Onboarding'/);
+  assert.doesNotMatch(activeStages, /'Requirements'/);
   assert.match(main, /initializeCanonicalProjectStages\(\);/);
   assert.ok(main.indexOf('initializeCanonicalProjectStages();') < main.indexOf('createRoot('));
 });
