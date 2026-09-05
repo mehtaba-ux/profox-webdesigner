@@ -8,7 +8,7 @@ set
   description = 'Join the ProFox Content team as a remote, project-based independent Content Writer. You will research client businesses and customers, structure website messaging, write conversion-focused copy, verify important claims, complete quality review and prepare approved content for UI/UX implementation. Strong performers who build at least six months of consistently high-quality, reliable service can earn the opportunity to transition into a salaried ProFox role, with salary and employment terms discussed at that time.',
   engagement_type = 'Independent Contractor / Project-Based',
   experience = 'Professional website, conversion, UX or commercial writing experience required',
-  responsibilities = jsonb_build_array(
+  responsibilities = array[
     'Research the client business, services, customers, offer, competitors and project objectives before writing.',
     'Understand customer intent, questions, objections and decision-making needs using available project evidence.',
     'Turn scattered information into a clear website message hierarchy and customer journey.',
@@ -17,8 +17,8 @@ set
     'Review your own work for accuracy, clarity, structure, tone, consistency and conversion logic before submitting.',
     'Respond professionally to editorial, fact-checking, SEO/conversion, project and client feedback.',
     'Prepare structured, approved content for a clear handoff to the UI/UX team.'
-  ),
-  requirements = jsonb_build_array(
+  ]::text[],
+  requirements = array[
     'Strong written English and the ability to make complex ideas clear and natural.',
     'Demonstrable website, landing-page, conversion, UX, service-page or similar commercial writing experience.',
     'Research discipline and the ability to separate verified facts from assumptions and missing information.',
@@ -26,7 +26,7 @@ set
     'Commercial awareness of how website copy helps the right customer understand an offer and decide what to do next.',
     'Professional feedback and revision discipline.',
     'Reliable laptop, internet connection and approximately 20 hours per week of available project capacity when actively accepting work.'
-  ),
+  ]::text[],
   selection_process = jsonb_build_array(
     jsonb_build_object('title','Application','text','Submit your details, current CV/resume and a short professional introduction video.'),
     jsonb_build_object('title','Initial Review','text','We review relevant experience, communication, availability, reliability and overall role fit.'),
