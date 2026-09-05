@@ -32,10 +32,12 @@ try {
         where version='20260903063353'
           and name='chat_first_seller_communication_policy'
       ) as chat_first_policy_applied,
-      not public.service_professional_mailbox_role_eligible('sales') as sales_blocked,
-      not public.service_professional_mailbox_role_eligible('sales_rep') as sales_rep_blocked,
-      not public.service_professional_mailbox_role_eligible('sales_team') as sales_team_blocked,
+      public.service_professional_mailbox_role_eligible('sales') as sales_allowed,
+      public.service_professional_mailbox_role_eligible('sales_rep') as sales_rep_allowed,
+      public.service_professional_mailbox_role_eligible('sales_team') as sales_team_allowed,
+      public.service_professional_mailbox_role_eligible('seller') as seller_allowed,
       public.service_professional_mailbox_role_eligible('admin') as admin_allowed,
+      public.service_professional_mailbox_role_eligible('manager') as manager_allowed,
       public.service_professional_mailbox_role_eligible('project_manager') as project_manager_allowed,
       public.service_professional_mailbox_role_eligible('site_manager') as site_manager_allowed,
       not public.service_professional_mailbox_role_eligible('content_writer') as content_writer_blocked,
@@ -51,8 +53,11 @@ try {
         select 1
         from public.user_profiles u
         where public.service_professional_mailbox_eligible(u.id)
-          and lower(coalesce(u.role,'')) not in ('admin','project_manager','site_manager')
-      ) as only_management_users_eligible,
+          and lower(coalesce(u.role,'')) not in (
+            'sales','sales_rep','sales_team','seller',
+            'admin','manager','project_manager','site_manager'
+          )
+      ) as only_approved_users_eligible,
       not exists(
         select 1
         from public.professional_mailbox_provisioning_jobs j
