@@ -45,13 +45,15 @@ begin
   for update;
   if not found then raise exception 'Source Sales opportunity not found.'; end if;
 
-  v_source_seller:=v_opp.salesperson_id=v_uid and exists(
-    select 1 from public.user_profiles u
-    where u.id=v_uid
-      and u.status='active'
-      and u.role in ('sales','sales_rep','sales_team')
-  );
-  if not v_source_seller and not public.is_admin() then
+  v_source_seller:=v_opp.salesperson_id is not null
+    and v_opp.salesperson_id=v_uid
+    and exists(
+      select 1 from public.user_profiles u
+      where u.id=v_uid
+        and u.status='active'
+        and u.role in ('sales','sales_rep','sales_team')
+    );
+  if coalesce(v_source_seller,false) is not true and not public.is_admin() then
     raise exception 'Only the source Seller or an active Administrator may restore missing Sales requirements.';
   end if;
 
