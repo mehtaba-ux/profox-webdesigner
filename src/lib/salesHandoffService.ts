@@ -7,6 +7,8 @@ export interface SalesHandoffBrief {
   projectStage: string;
   projectStatus: string;
   packageSnapshot?: string | null;
+  salesRequirements?: string | null;
+  requirementsCaptured: boolean;
   scopeSummary?: string | null;
   exclusions?: string | null;
   quotation: {
@@ -42,6 +44,7 @@ export interface SalesHandoffBrief {
   };
   sellerNotes?: string | null;
   readyToSend: boolean;
+  blockedReason?: string | null;
 }
 
 export interface SalesHandoffSubmission {
@@ -50,8 +53,10 @@ export interface SalesHandoffSubmission {
   sourceSellerSubmission: boolean;
   notes: string;
   submittedAt: string;
+  requirementsCaptured?: boolean;
   onboardingComplete?: boolean;
   projectManagerAssigned?: boolean;
+  nextProductionStage?: string;
 }
 
 export const salesHandoffService = {
