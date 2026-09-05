@@ -4,11 +4,50 @@ const CONFIG_ERROR = 'Supabase is not configured';
 const SUPABASE_AUTH_ORIGIN = 'https://calabtayklhltyiriiwo.supabase.co';
 const CLIENT_PORTAL_RECOVERY_URL = 'https://www.profoxwebdesigner.com/client-portal?recovery=1';
 
+async function disableLiveMaintenanceForLaunchTest(page: import('@playwright/test').Page) {
+  await page.route(`${SUPABASE_AUTH_ORIGIN}/rest/v1/content**`, async route => {
+    const response = await route.fetch();
+    const contentType = response.headers()['content-type'] || '';
+    if (!contentType.includes('application/json')) {
+      await route.fulfill({ response });
+      return;
+    }
+
+    const payload = await response.json().catch(() => null);
+    if (!Array.isArray(payload)) {
+      await route.fulfill({ response });
+      return;
+    }
+
+    const adjusted = payload.map((row: any) => {
+      if (row?.id !== 'siteSettings' || !row?.data || typeof row.data !== 'object') return row;
+      return {
+        ...row,
+        data: {
+          ...row.data,
+          maintenanceMode: {
+            ...(row.data.maintenanceMode || {}),
+            enabled: false
+          }
+        }
+      };
+    });
+
+    await route.fulfill({ response, json: adjusted });
+  });
+}
+
 async function logLaunchDiagnostics(page: import('@playwright/test').Page, label: string) {
   const title = await page.title().catch(() => '');
   const body = await page.locator('body').innerText().catch(() => '');
   console.log(`[launch-diagnostic:${label}] url=${page.url()} title=${JSON.stringify(title)} body=${JSON.stringify(body.slice(0, 2400))}`);
 }
+
+test.beforeEach(async ({ page }) => {
+  // Launch-readiness validates the application beneath the operational maintenance screen.
+  // Never mutate the live CMS setting just to make CI pass; override only the browser response.
+  await disableLiveMaintenanceForLaunchTest(page);
+});
 
 test('homepage renders its primary experience without configuration errors', async ({ page }) => {
   await page.goto('/');
