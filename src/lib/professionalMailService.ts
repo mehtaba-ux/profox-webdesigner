@@ -18,12 +18,8 @@ export interface ProfessionalMailSendStatus {
   sendConnected: boolean;
   lastVerifiedAt: string | null;
   lastError: string | null;
-}
-
-export interface ProfessionalMailAuthorizationStart {
-  authorizeUrl: string;
-  callbackUrl: string;
-  workEmail: string;
+  adminManaged: boolean;
+  authorizationRequired: boolean;
 }
 
 export interface ProfessionalMailSendResult {
@@ -73,6 +69,8 @@ function normalizeStatus(value: any): ProfessionalMailSendStatus {
     sendConnected: Boolean(value?.sendConnected),
     lastVerifiedAt: value?.lastVerifiedAt ? String(value.lastVerifiedAt) : null,
     lastError: value?.lastError ? String(value.lastError) : null,
+    adminManaged: value?.adminManaged === undefined ? true : Boolean(value.adminManaged),
+    authorizationRequired: Boolean(value?.authorizationRequired),
   };
 }
 
@@ -83,20 +81,10 @@ export const professionalMailService = {
     return normalizeStatus(data);
   },
 
-  async startAuthorization(): Promise<ProfessionalMailAuthorizationStart> {
-    const { data, error } = await supabase.functions.invoke('zoho-mail-admin', {
-      body: { action: 'start_user_send' },
-    });
-    if (error) throw new Error(messageFromError(error, 'Professional Zoho Mail authorization could not be started.'));
-    if (data?.error) throw new Error(String(data.error));
-
-    const authorizeUrl = String(data?.authorizeUrl || '');
-    const callbackUrl = String(data?.callbackUrl || '');
-    const workEmail = String(data?.workEmail || '');
-    if (!authorizeUrl.startsWith('https://') || !callbackUrl.startsWith('https://') || !workEmail) {
-      throw new Error('Professional Zoho Mail authorization returned an invalid response.');
-    }
-    return { authorizeUrl, callbackUrl, workEmail };
+  // Compatibility guard for any stale UI bundle. Professional Mail OAuth is
+  // organization-managed by ProFox Admin and staff must never authorize Zoho.
+  async startAuthorization(): Promise<never> {
+    throw new Error('Professional Email is managed centrally by ProFox Admin. No staff Zoho authorization is required.');
   },
 
   async syncInbox(): Promise<ProfessionalMailInboxSyncResult> {

@@ -1,5 +1,5 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { CheckCircle2, Loader2, LockKeyhole, Mail, RefreshCw, Send } from 'lucide-react';
+import React, { useCallback, useEffect, useState } from 'react';
+import { CheckCircle2, Loader2, LockKeyhole, RefreshCw, Send } from 'lucide-react';
 import { professionalMailService, type ProfessionalMailSendStatus } from '../../../lib/professionalMailService';
 
 interface CRMProfessionalEmailComposerProps {
@@ -20,10 +20,8 @@ export default function CRMProfessionalEmailComposer({
   const [subject, setSubject] = useState(`Re: ${leadTitle}`);
   const [body, setBody] = useState('');
   const [busy, setBusy] = useState(false);
-  const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const oauthWindowRef = useRef<Window | null>(null);
 
   const loadStatus = useCallback(async () => {
     setLoadingStatus(true);
@@ -47,41 +45,6 @@ export default function CRMProfessionalEmailComposer({
     setError('');
     setSuccess('');
   }, [leadId, leadTitle]);
-
-  useEffect(() => {
-    const onMessage = (event: MessageEvent) => {
-      if (event.source !== oauthWindowRef.current) return;
-      if (event.data?.type !== 'profox-zoho-mail-send-oauth') return;
-      setConnecting(false);
-      oauthWindowRef.current = null;
-      if (event.data?.success) {
-        setError('');
-        setSuccess('Professional Zoho Mail send permission connected.');
-        void loadStatus();
-      } else {
-        setSuccess('');
-        setError(String(event.data?.message || 'Professional Zoho Mail permission was not connected.'));
-      }
-    };
-    window.addEventListener('message', onMessage);
-    return () => window.removeEventListener('message', onMessage);
-  }, [loadStatus]);
-
-  const connect = async () => {
-    setConnecting(true);
-    setError('');
-    setSuccess('');
-    try {
-      const start = await professionalMailService.startAuthorization();
-      const popup = window.open(start.authorizeUrl, 'profox-zoho-professional-mail', 'popup=yes,width=680,height=760,resizable=yes,scrollbars=yes');
-      if (!popup) throw new Error('Your browser blocked the Zoho authorization window. Allow pop-ups for ProFox and try again.');
-      oauthWindowRef.current = popup;
-      popup.focus();
-    } catch (err: any) {
-      setConnecting(false);
-      setError(err?.message || 'Professional Zoho Mail permission could not be started.');
-    }
-  };
 
   const send = async () => {
     if (!recipientEmail || !status?.sendConnected) return;
@@ -122,27 +85,23 @@ export default function CRMProfessionalEmailComposer({
       {!activeMailbox ? (
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs leading-5 text-amber-800">
           <div className="font-black">Professional email is not ready for this account.</div>
-          <p className="mt-1">An active Zoho professional mailbox is required before customer email can be sent from ProFox.</p>
+          <p className="mt-1">An active professional mailbox must be provisioned by ProFox Admin before customer email can be sent.</p>
         </div>
       ) : connected ? (
         <div className="flex items-start gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-800">
           <LockKeyhole className="mt-0.5 h-4 w-4 shrink-0" />
           <div className="min-w-0 text-xs leading-5">
-            <div className="font-black">Sending securely through Zoho Mail</div>
+            <div className="font-black">Sending through the Admin-managed Zoho Mail service</div>
             <div className="break-all">From: {status?.workEmail}</div>
-            <div className="mt-1 text-[10px] text-emerald-700">ProFox logs the email only after Zoho accepts the send request. It does not falsely claim recipient delivery.</div>
+            <div className="mt-1 text-[10px] text-emerald-700">ProFox logs the email only after Zoho accepts the send request. Staff do not authorize Zoho or handle mailbox passwords.</div>
           </div>
         </div>
       ) : (
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs leading-5 text-amber-900">
-          <div className="font-black">Connect professional email once</div>
+          <div className="font-black">Company Mail service needs Admin attention</div>
           <p className="mt-1">Mailbox: <span className="font-bold">{status?.workEmail}</span></p>
-          <p className="mt-1">Authorize this exact Zoho mailbox so ProFox can send customer email without storing or exposing its password.</p>
-          {status?.sendConnectionStatus === 'reconnect_required' && <p className="mt-2 font-bold text-rose-700">Zoho permission expired or was revoked. Reconnect before sending.</p>}
-          <button type="button" disabled={connecting} onClick={() => void connect()} className="mt-3 inline-flex min-h-10 items-center gap-2 rounded-xl bg-[#000080] px-4 text-xs font-black text-white disabled:opacity-50">
-            {connecting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}
-            {connecting ? 'Waiting for Zoho…' : 'Connect professional email'}
-          </button>
+          <p className="mt-1">ProFox Admin manages the Zoho organization authorization centrally. You do not need to connect or approve Zoho yourself.</p>
+          {status?.sendConnectionStatus === 'reconnect_required' && <p className="mt-2 font-bold text-rose-700">The company Zoho Mail authorization must be reauthorized by a ProFox Administrator.</p>}
         </div>
       )}
 

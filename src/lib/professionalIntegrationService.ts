@@ -4,6 +4,7 @@ export type MailProvider = 'none' | 'zoho';
 export type CalendarProvider = 'google' | 'zoho';
 export type MeetingProvider = 'google_meet' | 'zoho_meeting';
 export type ZohoMailConnectionStatus = 'disconnected' | 'connected' | 'reconnect_required' | 'error';
+export type ZohoMailAuthorizationMode = 'legacy' | 'instance_org';
 
 export interface ProfessionalIntegrationsConfig {
   zohoEnabled: boolean;
@@ -20,6 +21,11 @@ export interface ProfessionalIntegrationsConfig {
   zohoProviderConfigured: boolean;
   zohoClientIdHint: string;
   zohoClientSecretStored: boolean;
+  zohoMailOrgProviderConfigured: boolean;
+  zohoMailOrgClientIdHint: string;
+  zohoMailOrgClientSecretStored: boolean;
+  zohoMailAuthorizationMode: ZohoMailAuthorizationMode;
+  zohoMailScopesReady: boolean;
   zohoMailConnectionStatus: ZohoMailConnectionStatus;
   zohoMailConnected: boolean;
   zohoMailLastVerifiedAt: string | null;
@@ -88,6 +94,11 @@ const DEFAULT_CONFIG: ProfessionalIntegrationsConfig = {
   zohoProviderConfigured: false,
   zohoClientIdHint: '',
   zohoClientSecretStored: false,
+  zohoMailOrgProviderConfigured: false,
+  zohoMailOrgClientIdHint: '',
+  zohoMailOrgClientSecretStored: false,
+  zohoMailAuthorizationMode: 'legacy',
+  zohoMailScopesReady: false,
   zohoMailConnectionStatus: 'disconnected',
   zohoMailConnected: false,
   zohoMailLastVerifiedAt: null,
@@ -105,6 +116,9 @@ function connectionStatus(value: unknown): ZohoMailConnectionStatus {
   return ['connected', 'reconnect_required', 'error'].includes(String(value))
     ? String(value) as ZohoMailConnectionStatus
     : 'disconnected';
+}
+function authorizationMode(value: unknown): ZohoMailAuthorizationMode {
+  return String(value) === 'instance_org' ? 'instance_org' : 'legacy';
 }
 function count(value: unknown) { const parsed = Number(value || 0); return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0; }
 function throwRpc(error: any, fallback: string): never { throw new Error(error?.message || fallback); }
@@ -127,6 +141,11 @@ function normalize(value: any): ProfessionalIntegrationsConfig {
     zohoProviderConfigured: Boolean(value?.zohoProviderConfigured),
     zohoClientIdHint: String(value?.zohoClientIdHint || ''),
     zohoClientSecretStored: Boolean(value?.zohoClientSecretStored),
+    zohoMailOrgProviderConfigured: Boolean(value?.zohoMailOrgProviderConfigured),
+    zohoMailOrgClientIdHint: String(value?.zohoMailOrgClientIdHint || ''),
+    zohoMailOrgClientSecretStored: Boolean(value?.zohoMailOrgClientSecretStored),
+    zohoMailAuthorizationMode: authorizationMode(value?.zohoMailAuthorizationMode),
+    zohoMailScopesReady: Boolean(value?.zohoMailScopesReady),
     zohoMailConnectionStatus: connectionStatus(value?.zohoMailConnectionStatus),
     zohoMailConnected: Boolean(value?.zohoMailConnected),
     zohoMailLastVerifiedAt: value?.zohoMailLastVerifiedAt ? String(value.zohoMailLastVerifiedAt) : null,
@@ -178,13 +197,25 @@ export const professionalIntegrationService = {
       p_organization_id: input.organizationId.trim(),
       p_data_center: input.dataCenter.trim(),
     });
-    if (error) throwRpc(error, 'Zoho provider configuration could not be saved.');
+    if (error) throwRpc(error, 'Zoho Calendar/Meeting provider configuration could not be saved.');
+    return normalize(data);
+  },
+  async saveZohoMailOrgProvider(input: { clientId: string; clientSecret?: string }): Promise<ProfessionalIntegrationsConfig> {
+    const rawClientId = input.clientId.trim();
+    const clientId = isMaskedCredential(rawClientId) ? '' : rawClientId;
+    const { data, error } = await supabase.rpc('admin_set_zoho_mail_org_provider', {
+      p_client_id: clientId,
+      p_client_secret: input.clientSecret?.trim() || '',
+    });
+    if (error) throwRpc(error, 'Zoho Mail ORG OAuth configuration could not be saved.');
     return normalize(data);
   },
   async startZohoMailAuthorization(): Promise<ZohoMailAuthorizationStart> {
     const { data, error } = await supabase.functions.invoke('zoho-mail-admin', { body: { action: 'start' } });
-    if (error) throwRpc(error, 'Zoho Mail authorization could not be started.');
-    const authorizeUrl = String(data?.authorizeUrl || ''); const callbackUrl = String(data?.callbackUrl || '');
+    if (error) throwRpc(error, 'Zoho Mail organization authorization could not be started.');
+    if (data?.error) throw new Error(String(data.error));
+    const authorizeUrl = String(data?.authorizeUrl || '');
+    const callbackUrl = String(data?.callbackUrl || '');
     if (!authorizeUrl.startsWith('https://') || !callbackUrl.startsWith('https://')) throw new Error('Zoho Mail authorization returned an invalid redirect.');
     return { authorizeUrl, callbackUrl };
   },
@@ -205,14 +236,21 @@ export const professionalIntegrationService = {
   async queueMailboxCanary(userId: string): Promise<string> {
     const { data, error } = await supabase.rpc('admin_queue_professional_mailbox_canary', { p_user_id: userId });
     if (error) throwRpc(error, 'Mailbox canary could not be queued.');
-    const jobId = String(data || ''); if (!jobId) throw new Error('Mailbox canary returned no job identifier.');
+    const jobId = String(data || '');
+    if (!jobId) throw new Error('Mailbox canary returned no job identifier.');
     return jobId;
   },
   async savePolicy(input: Pick<ProfessionalIntegrationsConfig, 'zohoEnabled'|'zohoMailEnabled'|'zohoCalendarEnabled'|'zohoMeetingEnabled'|'mailProvisioningEnabled'|'professionalEmailRequired'|'defaultMailProvider'|'defaultCalendarProvider'|'defaultMeetingProvider'>): Promise<ProfessionalIntegrationsConfig> {
     const { data, error } = await supabase.rpc('admin_set_professional_integrations', {
-      p_zoho_enabled: input.zohoEnabled, p_zoho_mail_enabled: input.zohoMailEnabled, p_zoho_calendar_enabled: input.zohoCalendarEnabled,
-      p_zoho_meeting_enabled: input.zohoMeetingEnabled, p_mail_provisioning_enabled: input.mailProvisioningEnabled, p_professional_email_required: input.professionalEmailRequired,
-      p_default_mail_provider: input.defaultMailProvider, p_default_calendar_provider: input.defaultCalendarProvider, p_default_meeting_provider: input.defaultMeetingProvider,
+      p_zoho_enabled: input.zohoEnabled,
+      p_zoho_mail_enabled: input.zohoMailEnabled,
+      p_zoho_calendar_enabled: input.zohoCalendarEnabled,
+      p_zoho_meeting_enabled: input.zohoMeetingEnabled,
+      p_mail_provisioning_enabled: input.mailProvisioningEnabled,
+      p_professional_email_required: input.professionalEmailRequired,
+      p_default_mail_provider: input.defaultMailProvider,
+      p_default_calendar_provider: input.defaultCalendarProvider,
+      p_default_meeting_provider: input.defaultMeetingProvider,
     });
     if (error) throwRpc(error, 'Professional integration policy could not be saved.');
     return normalize(data);
