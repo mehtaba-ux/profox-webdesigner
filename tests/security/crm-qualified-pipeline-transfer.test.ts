@@ -30,9 +30,17 @@ test('qualification uses the existing canonical conversion path and rolls back a
 
 test('qualification UI clearly explains that Qualified transfers the lead into Pipeline', () => {
   assert.match(stagePicker, /Qualify & move to Pipeline/);
-  assert.match(stagePicker, /one linked opportunity in Pipeline/);
-  assert.match(stagePicker, /original lead history stays preserved/);
+  assert.match(stagePicker, /One linked opportunity is used/);
+  assert.match(stagePicker, /original lead and its history stay preserved/i);
   assert.match(stagePicker, /value === 'Qualified'[\s\S]*setQualificationOpen\(true\)/);
+});
+
+test('qualification guide stays clean and does not use the rejected sparkle icon', () => {
+  assert.match(stagePicker, /Qualification criteria/);
+  assert.match(stagePicker, /Ready for Pipeline\?/);
+  assert.match(stagePicker, /Pipeline handoff/);
+  assert.doesNotMatch(stagePicker, /Sparkles/);
+  assert.doesNotMatch(stagePicker, /bg-slate-950 px-3 py-2\.5 text-\[10px\] font-bold leading-4 text-white/);
 });
 
 test('database history protects one opportunity per canonical lead and conversion is RPC based', () => {

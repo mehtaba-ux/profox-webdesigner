@@ -8,7 +8,6 @@ import {
   Info,
   Loader2,
   ShieldCheck,
-  Sparkles,
   X,
 } from 'lucide-react';
 import { CRMLead, LEAD_STATUSES, LeadStatus } from '../../../types';
@@ -80,7 +79,7 @@ export default function CRMLeadStagePicker({ lead, busy = false, onStage, fullWi
       return;
     }
     const width = 272;
-    const estimatedHeight = 330;
+    const estimatedHeight = 310;
     const left = Math.max(12, Math.min(rect.left, window.innerWidth - width - 12));
     const top = rect.bottom + 8 + estimatedHeight > window.innerHeight
       ? Math.max(12, rect.top - estimatedHeight - 8)
@@ -312,26 +311,41 @@ export default function CRMLeadStagePicker({ lead, busy = false, onStage, fullWi
 
 function QualificationGuide({ compact = false }: { compact?: boolean }) {
   return (
-    <section className={`overflow-hidden rounded-2xl border border-emerald-200 bg-white shadow-xl shadow-slate-950/10 ${compact ? 'shadow-none' : ''}`}>
-      <div className="border-b border-emerald-100 bg-emerald-50/80 px-4 py-3">
-        <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[.15em] text-emerald-700"><Sparkles className="h-3.5 w-3.5" />Qualification rule</div>
-        <div className="mt-1 text-sm font-black leading-5 text-slate-950">When can this lead move to Pipeline?</div>
+    <section className={`overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl shadow-slate-950/10 ${compact ? 'shadow-none' : ''}`}>
+      <div className="border-b border-slate-100 px-4 py-3.5">
+        <div className="flex items-center justify-between gap-3">
+          <div className="text-[9px] font-black uppercase tracking-[.14em] text-[#000080]">Qualification criteria</div>
+          <span className="shrink-0 rounded-full bg-blue-50 px-2 py-1 text-[8px] font-black text-[#000080]">4 required + 2 of 3</span>
+        </div>
+        <div className="mt-1.5 text-[15px] font-black leading-5 text-slate-950">Ready for Pipeline?</div>
+        <p className="mt-1 text-[10px] font-semibold leading-4 text-slate-500">Confirm every required check plus at least two commercial signals.</p>
       </div>
-      <div className="space-y-4 p-4">
-        <GuideGroup title="Required · all 4" rules={ESSENTIAL_RULES} />
-        <GuideGroup title="Commercial · any 2 of 3" rules={COMMERCIAL_RULES} />
-        <div className="rounded-xl bg-slate-950 px-3 py-2.5 text-[10px] font-bold leading-4 text-white">Qualified = one linked opportunity in Pipeline; the original lead history stays preserved.</div>
+      <div className="space-y-2.5 p-3">
+        <GuideGroup title="Required" requirement="All 4" rules={ESSENTIAL_RULES} />
+        <GuideGroup title="Commercial" requirement="Any 2 of 3" rules={COMMERCIAL_RULES} />
+        <div className="rounded-xl border border-blue-100 bg-blue-50/60 px-3 py-2.5">
+          <div className="text-[9px] font-black uppercase tracking-[.1em] text-[#000080]">Pipeline handoff</div>
+          <p className="mt-1 text-[10px] font-semibold leading-4 text-slate-600">One linked opportunity is used. The original lead and its history stay preserved.</p>
+        </div>
       </div>
     </section>
   );
 }
 
-function GuideGroup({ title, rules }: { title: string; rules: QualificationRule[] }) {
+function GuideGroup({ title, requirement, rules }: { title: string; requirement: string; rules: QualificationRule[] }) {
   return (
-    <div>
-      <div className="text-[9px] font-black uppercase tracking-[.12em] text-slate-400">{title}</div>
-      <div className="mt-2 space-y-2">
-        {rules.map(rule => <div key={rule.id} className="flex items-start gap-2 text-[10px] font-bold leading-4 text-slate-700"><CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-500" /><span>{rule.label}</span></div>)}
+    <div className="rounded-xl border border-slate-100 bg-slate-50/70 px-3 py-2.5">
+      <div className="flex items-center justify-between gap-2">
+        <div className="text-[9px] font-black uppercase tracking-[.1em] text-slate-500">{title}</div>
+        <div className="text-[9px] font-black text-slate-400">{requirement}</div>
+      </div>
+      <div className="mt-2 space-y-1.5">
+        {rules.map(rule => (
+          <div key={rule.id} className="flex items-start gap-2 text-[10px] font-bold leading-4 text-slate-700">
+            <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-500" />
+            <span>{rule.label}</span>
+          </div>
+        ))}
       </div>
     </div>
   );
