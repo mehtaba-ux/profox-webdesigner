@@ -49,4 +49,6 @@ Before merging a UI change:
 
 `tests/security/ui-icon-policy.test.ts` recursively scans frontend source and UI assets for the prohibited sparkle identifiers and glyph. The security test suite runs in CI, so a future PR that reintroduces them will fail verification.
 
+Do not disable, weaken, skip, or work around this test to merge a UI change. If the check fails, replace the prohibited visual with an approved semantic icon and keep the guard active.
+
 The automated check is intentionally backed by this written policy because arbitrary custom SVG paths cannot always be identified reliably by name alone. Reviewers must reject custom sparkle/glint-cluster artwork even if it bypasses identifier-based detection.
