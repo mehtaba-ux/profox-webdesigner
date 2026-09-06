@@ -1,0 +1,34 @@
+name: Sparkle cleanup artifact
+
+on:
+  push:
+    branches:
+      - chore/ban-sparkle-icon-systemwide
+
+permissions:
+  contents: read
+
+jobs:
+  transform:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      - name: Replace prohibited icon family
+        run: node scripts/replace-prohibited-sparkle-icons-safe.mjs
+
+      - name: Upload transformed frontend
+        uses: actions/upload-artifact@v4
+        with:
+          name: sparkle-cleanup
+          path: |
+            src
+            sparkle-cleanup-manifest.json
+          if-no-files-found: error
+          retention-days: 1
