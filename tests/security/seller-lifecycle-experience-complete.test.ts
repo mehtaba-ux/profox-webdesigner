@@ -53,7 +53,7 @@ test('qualified stage teaches and enforces the shared ProFox qualification stand
   assert.match(stagePicker, /4 required \+ any 2 of 3/);
   assert.match(stagePicker, /essentialCount === ESSENTIAL_RULES\.length && commercialCount >= 2/);
   assert.match(stagePicker, /Qualification checkpoint/);
-  assert.match(stagePicker, /Mark lead Qualified/);
+  assert.match(stagePicker, /Qualify & move to Pipeline/);
   assert.match(stagePicker, /aria-label="Show qualification rule"/);
   assert.match(stagePicker, /position\.mobile/);
   assert.match(stagePicker, /createPortal/);
