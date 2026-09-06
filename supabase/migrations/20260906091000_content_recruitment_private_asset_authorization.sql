@@ -43,12 +43,10 @@ BEGIN
     RAISE EXCEPTION 'Content recruitment reviewer permission required.';
   END IF;
 
-  SELECT a.*, j.* INTO v_app, v_job
-  FROM public.applicants a
-  JOIN public.career_jobs j ON j.id = a.career_job_id
-  WHERE a.id = p_applicant_id;
+  SELECT * INTO v_app FROM public.applicants WHERE id = p_applicant_id;
   IF NOT FOUND THEN RAISE EXCEPTION 'Candidate not found.'; END IF;
-  IF v_job.application_type <> 'content_writer' THEN
+  SELECT * INTO v_job FROM public.career_jobs WHERE id = v_app.career_job_id;
+  IF NOT FOUND OR v_job.application_type <> 'content_writer' THEN
     RAISE EXCEPTION 'This asset is not part of Content Writer recruitment.';
   END IF;
 
