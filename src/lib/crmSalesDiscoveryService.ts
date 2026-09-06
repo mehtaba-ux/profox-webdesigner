@@ -117,10 +117,7 @@ export interface CRMMeetingPreparation {
   meeting_objective: string | null;
   intended_advance: string | null;
   hypotheses: CRMJsonValue[];
-  preparation_state: CRMMeetingPreparationState;
   seller_notes: string | null;
-  prepared_by: string | null;
-  prepared_at: string | null;
   created_by: string;
   updated_by: string;
   created_at: string;
@@ -132,6 +129,9 @@ export interface CRMMeetingPreparationWorkspaceItem {
   title: string;
   scheduledAt: string;
   status: string;
+  preparationState: CRMMeetingPreparationState;
+  preparedBy: string | null;
+  preparedAt: string | null;
   preparation: CRMMeetingPreparation | null;
   selectedQuestionIds: string[];
 }
@@ -208,8 +208,14 @@ export interface SaveMeetingPreparationInput {
   meetingObjective?: string | null;
   intendedAdvance?: string | null;
   hypotheses?: CRMJsonValue[];
-  preparationState: CRMMeetingPreparationState;
   sellerNotes?: string | null;
+}
+
+export interface CRMMeetingPreparedResult {
+  meetingId: string;
+  prepReviewedAt: string;
+  prepReviewedBy: string;
+  prepared: boolean;
 }
 
 const actionError = (action: string): Error =>
@@ -334,7 +340,6 @@ export const crmSalesDiscoveryService = {
       meeting_objective: input.meetingObjective ?? null,
       intended_advance: input.intendedAdvance ?? null,
       hypotheses: input.hypotheses ?? [],
-      preparation_state: input.preparationState,
       seller_notes: input.sellerNotes ?? null,
     };
 
@@ -345,6 +350,14 @@ export const crmSalesDiscoveryService = {
       .single();
     if (error || !data) throw actionError('save Meeting Prep');
     return data as CRMMeetingPreparation;
+  },
+
+  async markMeetingPrepared(meetingId: string): Promise<CRMMeetingPreparedResult> {
+    const { data, error } = await supabase.rpc('mark_sales_meeting_prepared', {
+      p_meeting_id: meetingId,
+    });
+    if (error || !data) throw actionError('mark Meeting Prep ready');
+    return data as CRMMeetingPreparedResult;
   },
 
   async setMeetingQuestions(meetingId: string, questionIds: string[]): Promise<string[]> {
