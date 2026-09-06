@@ -30,10 +30,27 @@ const toBasicUtc = (value: string | Date) => {
 };
 const eventFrom = (payload: any) => Array.isArray(payload?.events) ? payload.events[0] : payload?.event || null;
 const sessionFrom = (payload: any) => payload?.session || payload?.meeting || null;
-const zohoError = (payload: any, status: number) => String(
-  payload?.error?.[0]?.description || payload?.error?.[0]?.message || payload?.status?.description ||
-  payload?.data?.errorCode || payload?.message || payload?.error_description || payload?.error ||
-  `Zoho API request failed (${status})`
+function detailValue(value: unknown): string {
+  if (value == null) return "";
+  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") return String(value);
+  if (Array.isArray(value)) {
+    for (const item of value) { const text = detailValue(item); if (text) return text; }
+    return "";
+  }
+  if (typeof value === "object") {
+    const obj = value as Record<string, unknown>;
+    for (const key of ["description", "message", "error_description", "errorCode", "code", "moreInfo", "details"]) {
+      const text = detailValue(obj[key]); if (text) return text;
+    }
+    try { return JSON.stringify(value); } catch { return ""; }
+  }
+  return "";
+}
+const zohoError = (payload: any, status: number) => (
+  detailValue(payload?.error?.[0]?.description) || detailValue(payload?.error?.[0]?.message) ||
+  detailValue(payload?.status?.description) || detailValue(payload?.data?.errorCode) ||
+  detailValue(payload?.message) || detailValue(payload?.error_description) || detailValue(payload?.error) ||
+  detailValue(payload) || `Zoho API request failed (${status})`
 ).slice(0, 1800);
 const retryable = (status: number) => status === 408 || status === 409 || status === 425 || status === 429 || status >= 500;
 const reconnectRequired = (status: number, payload: any) => status === 401 || status === 403 || /INVALID_OAUTHTOKEN|INVALID_TOKEN|invalid oauth|scope|permission/i.test(zohoError(payload, status));
@@ -183,47 +200,28 @@ Deno.serve(async (req: Request) => {
     const duration = Math.max(60000, new Date(meeting.end_at).getTime() - new Date(meeting.start_at).getTime());
     const agenda = `${String(meeting.description || "").trim()}${meeting.description ? "\n\n" : ""}${markerFor(String(meeting.id))}`;
     const session: any = {
-      topic: String(meeting.title || "ProFox Meeting").slice(0, 200),
-      agenda: agenda.slice(0, 2000),
-      presenter: String(connection.presenter_zuid),
-      startTime: meetingStart(String(meeting.start_at), timezone),
-      duration,
-      timezone,
+      topic: String(meeting.title || "ProFox Meeting").slice(0, 200), agenda: agenda.slice(0, 2000), presenter: String(connection.presenter_zuid),
+      startTime: meetingStart(String(meeting.start_at), timezone), duration, timezone,
     };
-    if (validEmail(String(meeting.attendee_email || ""))) {
-      session.participants = [{ email: String(meeting.attendee_email).trim().toLowerCase() }];
-    }
+    if (validEmail(String(meeting.attendee_email || ""))) session.participants = [{ email: String(meeting.attendee_email).trim().toLowerCase() }];
     return { session };
   }
-  async function getMeetingByKey(key: string) {
-    return api(meetingBase, `/api/v2/${encodeURIComponent(String(connection.meeting_org_id))}/sessions/${encodeURIComponent(key)}.json`, { method: "GET" }, true);
-  }
+  async function getMeetingByKey(key: string) { return api(meetingBase, `/api/v2/${encodeURIComponent(String(connection.meeting_org_id))}/sessions/${encodeURIComponent(key)}.json`, { method: "GET" }, true); }
   async function findExistingMeetingByMarker(meeting: any) {
     const marker = markerFor(String(meeting.id));
     const path = `/api/v2/${encodeURIComponent(String(connection.meeting_org_id))}/sessions.json?listtype=upcoming&index=1&count=100`;
     const listing = await api(meetingBase, path, { method: "GET" }, true);
     if (!listing.response.ok) return null;
-    const candidates = [
-      ...(Array.isArray(listing.payload?.sessions) ? listing.payload.sessions : []),
-      ...(Array.isArray(listing.payload?.session) ? listing.payload.session : []),
-    ];
+    const candidates = [...(Array.isArray(listing.payload?.sessions) ? listing.payload.sessions : []), ...(Array.isArray(listing.payload?.session) ? listing.payload.session : [])];
     const exact = candidates.filter((item: any) => String(item?.agenda || item?.description || "").includes(marker));
     if (exact.length !== 1) return null;
-    const key = String(exact[0]?.meetingKey || exact[0]?.meeting_key || "");
-    if (!key) return null;
-    const current = await getMeetingByKey(key);
-    return current.response.ok ? sessionFrom(current.payload) : null;
+    const key = String(exact[0]?.meetingKey || exact[0]?.meeting_key || ""); if (!key) return null;
+    const current = await getMeetingByKey(key); return current.response.ok ? sessionFrom(current.payload) : null;
   }
   async function persistPrivate(job: any, session: any) {
-    const key = String(session?.meetingKey || session?.meeting_key || "");
-    const join = String(session?.joinLink || session?.join_link || "");
-    const start = String(session?.startLink || session?.start_link || "");
-    if (!key || !/^https:\/\//i.test(join) || !/^https:\/\//i.test(start)) {
-      throw Object.assign(new Error("Zoho Meeting did not return meetingKey, joinLink and startLink."), { kind: "uncertain_create" });
-    }
-    const { error } = await service.rpc("service_upsert_meeting_provider_private_link", {
-      p_meeting_id: job.meeting_id, p_external_meeting_id: key, p_join_url: join, p_host_url: start,
-    });
+    const key = String(session?.meetingKey || session?.meeting_key || ""), join = String(session?.joinLink || session?.join_link || ""), start = String(session?.startLink || session?.start_link || "");
+    if (!key || !/^https:\/\//i.test(join) || !/^https:\/\//i.test(start)) throw Object.assign(new Error("Zoho Meeting did not return meetingKey, joinLink and startLink."), { kind: "uncertain_create" });
+    const { error } = await service.rpc("service_upsert_meeting_provider_private_link", { p_meeting_id: job.meeting_id, p_external_meeting_id: key, p_join_url: join, p_host_url: start });
     if (error) throw Object.assign(new Error(error.message), { kind: "persist" });
     return { key, join, start };
   }
@@ -231,42 +229,21 @@ Deno.serve(async (req: Request) => {
     const existing = await loadPrivateLink(job);
     if (existing?.external_meeting_id) {
       const current = await getMeetingByKey(String(existing.external_meeting_id));
-      if (current.response.status === 404) {
-        await finish(job, "dead_letter", "Stored Zoho meetingKey no longer exists. Automatic recreation is blocked to prevent duplicate provider meetings.");
-        return null;
-      }
+      if (current.response.status === 404) { await finish(job, "dead_letter", "Stored Zoho meetingKey no longer exists. Automatic recreation is blocked to prevent duplicate provider meetings."); return null; }
       if (!current.response.ok) { await handleFailure(job, current.response, current.payload, "idempotent", "Zoho Meeting"); return null; }
-      const update = await api(meetingBase, `/api/v2/${encodeURIComponent(String(connection.meeting_org_id))}/sessions/${encodeURIComponent(String(existing.external_meeting_id))}.json`, {
-        method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(meetingBody(meeting)),
-      }, true);
+      const update = await api(meetingBase, `/api/v2/${encodeURIComponent(String(connection.meeting_org_id))}/sessions/${encodeURIComponent(String(existing.external_meeting_id))}.json`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(meetingBody(meeting)) }, true);
       if (!update.response.ok) { await handleFailure(job, update.response, update.payload, "idempotent", "Zoho Meeting"); return null; }
       const updated = sessionFrom(update.payload) || sessionFrom(current.payload);
       try { return await persistPrivate(job, { ...updated, meetingKey: existing.external_meeting_id, joinLink: updated?.joinLink || existing.join_url, startLink: updated?.startLink || existing.host_url }); }
       catch (error) { await finish(job, "retry", error instanceof Error ? error.message : "Private Zoho Meeting link persistence failed.", retryDelay(Number(job.attempts || 1))); return null; }
     }
-
-    try {
-      const recovered = await findExistingMeetingByMarker(meeting);
-      if (recovered) return await persistPrivate(job, recovered);
-    } catch {
-      // Read-only preflight failure does not create anything; continue to the explicit create call.
-    }
-
+    try { const recovered = await findExistingMeetingByMarker(meeting); if (recovered) return await persistPrivate(job, recovered); } catch { /* read-only preflight */ }
     let created;
-    try {
-      created = await api(meetingBase, `/api/v2/${encodeURIComponent(String(connection.meeting_org_id))}/sessions.json`, {
-        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(meetingBody(meeting)),
-      }, true);
-    } catch (error) {
-      await quarantineCreate(job, "Zoho Meeting", error instanceof Error ? error.message : "Network failure");
-      return null;
-    }
+    try { created = await api(meetingBase, `/api/v2/${encodeURIComponent(String(connection.meeting_org_id))}/sessions.json`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(meetingBody(meeting)) }, true); }
+    catch (error) { await quarantineCreate(job, "Zoho Meeting", error instanceof Error ? error.message : "Network failure"); return null; }
     if (!created.response.ok) { await handleFailure(job, created.response, created.payload, "create", "Zoho Meeting"); return null; }
     try { return await persistPrivate(job, sessionFrom(created.payload)); }
-    catch (error: any) {
-      await quarantineCreate(job, "Zoho Meeting", error?.message || "Response could not be persisted");
-      return null;
-    }
+    catch (error: any) { await quarantineCreate(job, "Zoho Meeting", error?.message || "Response could not be persisted"); return null; }
   }
 
   function calendarEventData(meeting: any, eventUid?: string, etag?: string) {
@@ -278,32 +255,19 @@ Deno.serve(async (req: Request) => {
       transparency: 0, conference: "none", notifyType: 1, allowForwarding: true,
     };
     if (validEmail(String(meeting.attendee_email || ""))) data.attendees = [{ email: String(meeting.attendee_email).trim().toLowerCase(), status: "NEEDS-ACTION", attendance: 1 }];
-    if (eventUid) data.uid = eventUid;
-    if (etag) data.etag = etag;
-    return data;
+    if (eventUid) data.uid = eventUid; if (etag) data.etag = etag; return data;
   }
-  async function getCalendarEvent(eventId: string) {
-    const cal = encodeURIComponent(String(connection.calendar_id));
-    return api(calendarBase, `/api/v1/calendars/${cal}/events/${encodeURIComponent(eventId)}`, { method: "GET" });
-  }
+  async function getCalendarEvent(eventId: string) { const cal = encodeURIComponent(String(connection.calendar_id)); return api(calendarBase, `/api/v1/calendars/${cal}/events/${encodeURIComponent(eventId)}`, { method: "GET" }); }
   async function persistCalendar(job: any, event: any, operation: string, joinUrl: string) {
-    const uid = String(event?.uid || "");
-    if (!uid) throw new Error("Zoho Calendar returned no event UID.");
-    const { error } = await service.rpc("service_upsert_zoho_event_link", {
-      p_meeting_id: job.meeting_id, p_user_id: job.user_id, p_calendar_id: String(connection.calendar_id),
-      p_event_id: uid, p_etag: String(event?.etag || ""), p_meeting_url: joinUrl, p_operation: operation,
-    });
+    const uid = String(event?.uid || ""); if (!uid) throw new Error("Zoho Calendar returned no event UID.");
+    const { error } = await service.rpc("service_upsert_zoho_event_link", { p_meeting_id: job.meeting_id, p_user_id: job.user_id, p_calendar_id: String(connection.calendar_id), p_event_id: uid, p_etag: String(event?.etag || ""), p_meeting_url: joinUrl, p_operation: operation });
     if (error) throw new Error(error.message);
   }
   async function upsertCalendar(job: any, meeting: any, joinUrl: string) {
-    const cal = encodeURIComponent(String(connection.calendar_id));
-    const link = await loadCalendarLink(job);
+    const cal = encodeURIComponent(String(connection.calendar_id)), link = await loadCalendarLink(job);
     if (link?.external_event_id) {
       const current = await getCalendarEvent(String(link.external_event_id));
-      if (current.response.status === 404) {
-        await finish(job, "dead_letter", "Stored Zoho Calendar event ID no longer exists. Automatic recreation is blocked to prevent duplicate events.");
-        return false;
-      }
+      if (current.response.status === 404) { await finish(job, "dead_letter", "Stored Zoho Calendar event ID no longer exists. Automatic recreation is blocked to prevent duplicate events."); return false; }
       if (!current.response.ok) return handleFailure(job, current.response, current.payload, "idempotent", "Zoho Calendar event");
       const existing = eventFrom(current.payload);
       const params = new URLSearchParams({ eventdata: JSON.stringify(calendarEventData(meeting, String(link.external_event_id), String(existing?.etag || link.etag || ""))) });
@@ -312,7 +276,6 @@ Deno.serve(async (req: Request) => {
       try { await persistCalendar(job, eventFrom(written.payload) || { uid: link.external_event_id, etag: link.etag }, "update", joinUrl); return true; }
       catch (error: any) { await finish(job, "retry", error?.message || "Zoho Calendar event persistence failed.", retryDelay(Number(job.attempts || 1))); return false; }
     }
-
     const params = new URLSearchParams({ eventdata: JSON.stringify(calendarEventData(meeting)) });
     let written;
     try { written = await api(calendarBase, `/api/v1/calendars/${cal}/events?${params.toString()}`, { method: "POST" }); }
@@ -323,8 +286,7 @@ Deno.serve(async (req: Request) => {
   }
 
   async function deleteProviderObjects(job: any) {
-    const privateLink = await loadPrivateLink(job);
-    const calendarLink = await loadCalendarLink(job);
+    const privateLink = await loadPrivateLink(job), calendarLink = await loadCalendarLink(job);
     if (privateLink?.external_meeting_id) {
       let deleted;
       try { deleted = await api(meetingBase, `/api/v2/${encodeURIComponent(String(connection.meeting_org_id))}/sessions/${encodeURIComponent(String(privateLink.external_meeting_id))}.json`, { method: "DELETE" }, true); }
@@ -342,44 +304,25 @@ Deno.serve(async (req: Request) => {
       const { error } = await service.rpc("service_delete_meeting_provider_private_link", { p_meeting_id: job.meeting_id });
       if (error) { await finish(job, "retry", error.message, retryDelay(Number(job.attempts || 1))); return false; }
     }
-    await finish(job, "succeeded");
-    await markHealthy();
-    return true;
+    await finish(job, "succeeded"); await markHealthy(); return true;
   }
 
   for (const job of (jobs || [])) {
     try {
-      if (!job.meeting_id || !(await ensureStillZoho(job))) {
-        await finish(job, "skipped", "Meeting is not routed to Zoho.");
-        results.push({ id: job.id, status: "skipped" });
-        continue;
-      }
+      if (!job.meeting_id || !(await ensureStillZoho(job))) { await finish(job, "skipped", "Meeting is not routed to Zoho."); results.push({ id: job.id, status: "skipped" }); continue; }
       const meeting = await loadMeeting(job);
-      if (job.job_type === "delete_event" || meeting.status === "Cancelled") {
-        const ok = await deleteProviderObjects(job);
-        results.push({ id: job.id, status: ok ? "succeeded" : "deferred", operation: "delete" });
-        continue;
-      }
-      if (!["Scheduled", "Rescheduled"].includes(String(meeting.status))) {
-        await finish(job, "skipped", `Meeting status ${meeting.status} is not syncable.`);
-        results.push({ id: job.id, status: "skipped" });
-        continue;
-      }
-      const meetingLink = await ensureMeeting(job, meeting);
-      if (!meetingLink) { results.push({ id: job.id, status: "deferred", operation: "meeting" }); continue; }
-      const calendarOk = await upsertCalendar(job, meeting, meetingLink.join);
-      if (!calendarOk) { results.push({ id: job.id, status: "deferred", operation: "calendar" }); continue; }
-      await finish(job, "succeeded");
-      await markHealthy();
-      results.push({ id: job.id, status: "succeeded", operation: "upsert" });
+      if (job.job_type === "delete_event" || meeting.status === "Cancelled") { const ok = await deleteProviderObjects(job); results.push({ id: job.id, status: ok ? "succeeded" : "deferred", operation: "delete" }); continue; }
+      if (!["Scheduled", "Rescheduled"].includes(String(meeting.status))) { await finish(job, "skipped", `Meeting status ${meeting.status} is not syncable.`); results.push({ id: job.id, status: "skipped" }); continue; }
+      const meetingLink = await ensureMeeting(job, meeting); if (!meetingLink) { results.push({ id: job.id, status: "deferred", operation: "meeting" }); continue; }
+      const calendarOk = await upsertCalendar(job, meeting, meetingLink.join); if (!calendarOk) { results.push({ id: job.id, status: "deferred", operation: "calendar" }); continue; }
+      await finish(job, "succeeded"); await markHealthy(); results.push({ id: job.id, status: "succeeded", operation: "upsert" });
     } catch (error: any) {
-      const message = error?.message || "Zoho synchronization failed.";
+      const message = detailValue(error?.message) || detailValue(error) || "Zoho synchronization failed.";
       if (error?.kind === "network") await finish(job, "retry", message, retryDelay(Number(job.attempts || 1)));
       else if (error?.kind === "uncertain_create") await finish(job, "dead_letter", message);
       else await finish(job, "failed", message);
       results.push({ id: job.id, status: "error", error: message });
     }
   }
-
   return json({ processed: results.length, results, centralZohoReady: true, manual });
 });
