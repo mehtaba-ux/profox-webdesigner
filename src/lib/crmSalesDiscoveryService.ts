@@ -356,7 +356,7 @@ export const crmSalesDiscoveryService = {
   async saveMeetingPreparation(input: SaveMeetingPreparationInput): Promise<CRMMeetingPreparation> {
     const payload = {
       meeting_id: input.meetingId,
-      meeting_objective: input.intendedAdvance ?? null,
+      meeting_objective: input.meetingObjective ?? null,
       intended_advance: input.intendedAdvance ?? null,
       hypotheses: input.hypotheses ?? [],
       seller_notes: input.sellerNotes ?? null,
