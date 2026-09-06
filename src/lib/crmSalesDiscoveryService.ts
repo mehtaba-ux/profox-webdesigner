@@ -210,8 +210,6 @@ export interface SaveMeetingPreparationInput {
   hypotheses?: CRMJsonValue[];
   preparationState: CRMMeetingPreparationState;
   sellerNotes?: string | null;
-  preparedBy?: string | null;
-  preparedAt?: string | null;
 }
 
 const actionError = (action: string): Error =>
@@ -331,7 +329,6 @@ export const crmSalesDiscoveryService = {
   },
 
   async saveMeetingPreparation(input: SaveMeetingPreparationInput): Promise<CRMMeetingPreparation> {
-    const ready = input.preparationState === 'READY';
     const payload = {
       meeting_id: input.meetingId,
       meeting_objective: input.meetingObjective ?? null,
@@ -339,10 +336,7 @@ export const crmSalesDiscoveryService = {
       hypotheses: input.hypotheses ?? [],
       preparation_state: input.preparationState,
       seller_notes: input.sellerNotes ?? null,
-      prepared_by: ready ? input.preparedBy ?? null : input.preparedBy ?? null,
-      prepared_at: ready ? input.preparedAt ?? new Date().toISOString() : input.preparedAt ?? null,
     };
-    if (ready && !payload.prepared_by) throw new Error('Prepared by is required before Meeting Prep can be marked ready.');
 
     const { data, error } = await supabase
       .from('crm_meeting_preparations')
