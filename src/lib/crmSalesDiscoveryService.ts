@@ -35,8 +35,22 @@ export const CRM_DISCOVERY_FRAMEWORKS = [
 
 export type CRMDiscoveryFramework = (typeof CRM_DISCOVERY_FRAMEWORKS)[number];
 export type CRMRequirementState = 'ACTIVE' | 'ARCHIVED';
+export type CRMRequirementClass = 'CORE' | 'RECOMMENDED' | 'CONDITIONAL' | 'COMPLEX';
 export type CRMMeetingPreparationState = 'NOT_STARTED' | 'IN_PROGRESS' | 'READY';
 export type CRMJsonValue = null | boolean | number | string | CRMJsonValue[] | { [key: string]: CRMJsonValue };
+
+export const CRM_REQUIREMENT_MANUAL_SOURCE = 'SELLER_MANUAL_ENTRY' as const;
+
+export interface CRMRequirementDefinition {
+  requirementKey: string;
+  category: string;
+  title: string;
+  helpText: string;
+  requirementClass: CRMRequirementClass;
+  sortOrder: number;
+  active: boolean;
+  applicability: CRMJsonValue;
+}
 
 export interface CRMRequirement {
   id: string;
@@ -139,6 +153,7 @@ export interface CRMMeetingPreparationWorkspaceItem {
 export interface CRMSalesDiscoveryWorkspace {
   leadId: string;
   opportunityId: string | null;
+  requirementDefinitions: CRMRequirementDefinition[];
   requirements: CRMRequirement[];
   questions: CRMDiscoveryQuestion[];
   responses: CRMDiscoveryResponse[];
@@ -233,7 +248,11 @@ export const crmSalesDiscoveryService = {
       p_opportunity_id: reference.opportunityId ?? null,
     });
     if (error || !data) throw actionError('load sales discovery');
-    return data as CRMSalesDiscoveryWorkspace;
+    const workspace = data as Omit<CRMSalesDiscoveryWorkspace, 'requirementDefinitions'> & { requirementDefinitions?: CRMRequirementDefinition[] };
+    return {
+      ...workspace,
+      requirementDefinitions: Array.isArray(workspace.requirementDefinitions) ? workspace.requirementDefinitions : [],
+    };
   },
 
   async saveRequirement(input: SaveRequirementInput): Promise<CRMRequirement> {
