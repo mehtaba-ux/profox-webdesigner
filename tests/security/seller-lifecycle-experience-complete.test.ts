@@ -25,18 +25,23 @@ test('customer detail shows one lifecycle bar, owner, project stage, next action
   assert.match(drawer, /SellerCustomerLifecycleSummary/);
 });
 
-test('lead lifecycle and onboarding cards stay in responsive document flow', () => {
+test('lead lifecycle stays compact by default and onboarding uses a controllable bottom dock', () => {
   assert.match(drawerBase, /headerSummary\?: React\.ReactNode/);
-  assert.match(drawerBase, /overviewSidebarExtra\?: React\.ReactNode/);
-  assert.match(drawerBase, /lg:grid-cols-\[minmax\(0,1fr\)_380px\]/);
-  assert.match(drawerBase, /lg:grid-cols-\[minmax\(0,1fr\)_320px\]/);
-  assert.match(drawer, /headerSummary=\{<SellerCustomerLifecycleSummary/);
-  assert.match(drawer, /overviewSidebarExtra=\{<SellerOnboardingHandoff/);
+  assert.match(drawer, /headerSummary=\{/);
+  assert.match(drawer, /collapsible/);
+  assert.match(drawer, /defaultExpanded=\{false\}/);
   assert.doesNotMatch(drawer, /fixed right-4 top-4/);
-  assert.doesNotMatch(drawer, /fixed bottom-4 right-4/);
-  assert.doesNotMatch(drawer, /z-\[13[01]\]/);
-  assert.match(summary, /compact \? 'grid-cols-4'/);
-  assert.doesNotMatch(summary, /truncate text-\[8px\]/);
+  assert.match(summary, /aria-label="Expand customer journey"/);
+  assert.match(summary, /aria-label="Minimize customer journey"/);
+  assert.match(summary, /completedCount/);
+
+  assert.match(drawer, /fixed bottom-4 right-4/);
+  assert.match(drawer, /setExpanded\(false\)/);
+  assert.match(drawer, /setDismissed\(true\)/);
+  assert.match(drawer, /Minimize client onboarding/);
+  assert.match(drawer, /Expand client onboarding/);
+  assert.match(drawer, /Close client onboarding/);
+  assert.doesNotMatch(drawer, /overviewSidebarExtra=\{<SellerOnboardingHandoff/);
 });
 
 test('onboarding deep links remain supported while lead and conversation clicks stay contextual', () => {
