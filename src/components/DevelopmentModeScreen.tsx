@@ -7,7 +7,6 @@ import {
   RefreshCw, 
   ShieldCheck, 
   Lock, 
-  Sparkles, 
   Globe, 
   ArrowRight, 
   CheckCircle2,
@@ -69,7 +68,7 @@ export default function DevelopmentModeScreen({
         <div className="flex items-center gap-3">
           {isPreview ? (
             <span className="px-3 py-1 bg-purple-500/20 text-purple-300 border border-purple-500/30 rounded-full text-xs font-bold flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5" /> Preview Simulation
+              <Globe className="w-3.5 h-3.5" /> Preview Simulation
             </span>
           ) : (
             <Link
