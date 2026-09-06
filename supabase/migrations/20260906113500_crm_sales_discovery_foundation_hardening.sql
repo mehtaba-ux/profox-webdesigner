@@ -1,4 +1,5 @@
--- Part 1 hardening: protect attribution/identity and make meeting RLS references explicit.
+-- Part 1 hardening: protect attribution and immutable identity fields.
+-- Meeting readiness remains canonical on sales_meetings via mark_sales_meeting_prepared(uuid).
 
 create or replace function public.crm_sales_discovery_stamp_insert_actor()
 returns trigger
@@ -12,9 +13,12 @@ begin
 
   if tg_table_name = 'crm_meeting_discovery_questions' then
     new.added_by := auth.uid();
+    new.created_at := now();
   else
     new.created_by := auth.uid();
     new.updated_by := auth.uid();
+    new.created_at := now();
+    new.updated_at := now();
   end if;
 
   return new;
@@ -53,8 +57,15 @@ language plpgsql
 set search_path = public, pg_temp
 as $$
 begin
+  if tg_table_name <> 'crm_meeting_discovery_questions' then
+    new.created_by := old.created_by;
+    new.created_at := old.created_at;
+  end if;
+
   if tg_table_name = 'crm_requirements' then
-    if new.lead_id is distinct from old.lead_id or new.requirement_key is distinct from old.requirement_key then
+    if new.lead_id is distinct from old.lead_id
+      or new.requirement_key is distinct from old.requirement_key
+      or new.is_custom is distinct from old.is_custom then
       raise exception 'Requirement identity cannot be changed.';
     end if;
   elsif tg_table_name = 'crm_discovery_questions' then
@@ -102,76 +113,3 @@ for each row execute function public.crm_sales_discovery_protect_identity();
 create trigger crm_meeting_preparations_protect_identity
 before update on public.crm_meeting_preparations
 for each row execute function public.crm_sales_discovery_protect_identity();
-
-create or replace function public.crm_meeting_preparation_stamp_ready()
-returns trigger
-language plpgsql
-set search_path = public, pg_temp
-as $$
-begin
-  if new.preparation_state = 'READY' then
-    if tg_op = 'INSERT' or old.preparation_state is distinct from 'READY' or new.prepared_by is null or new.prepared_at is null then
-      new.prepared_by := auth.uid();
-      new.prepared_at := now();
-    else
-      new.prepared_by := old.prepared_by;
-      new.prepared_at := old.prepared_at;
-    end if;
-  else
-    new.prepared_by := null;
-    new.prepared_at := null;
-  end if;
-
-  return new;
-end;
-$$;
-
-revoke all on function public.crm_meeting_preparation_stamp_ready() from public, anon, authenticated;
-
-create trigger crm_meeting_preparations_stamp_ready
-before insert or update on public.crm_meeting_preparations
-for each row execute function public.crm_meeting_preparation_stamp_ready();
-
-drop policy crm_meeting_preparations_access on public.crm_meeting_preparations;
-create policy crm_meeting_preparations_access
-on public.crm_meeting_preparations
-for all
-to authenticated
-using (
-  exists (
-    select 1 from public.sales_meetings m
-    where m.id = public.crm_meeting_preparations.meeting_id
-      and m.lead_id is not null
-      and public.crm_can_access_lead(m.lead_id)
-  )
-)
-with check (
-  exists (
-    select 1 from public.sales_meetings m
-    where m.id = public.crm_meeting_preparations.meeting_id
-      and m.lead_id is not null
-      and public.crm_can_access_lead(m.lead_id)
-  )
-);
-
-drop policy crm_meeting_discovery_questions_access on public.crm_meeting_discovery_questions;
-create policy crm_meeting_discovery_questions_access
-on public.crm_meeting_discovery_questions
-for all
-to authenticated
-using (
-  exists (
-    select 1 from public.sales_meetings m
-    where m.id = public.crm_meeting_discovery_questions.meeting_id
-      and m.lead_id is not null
-      and public.crm_can_access_lead(m.lead_id)
-  )
-)
-with check (
-  exists (
-    select 1 from public.sales_meetings m
-    where m.id = public.crm_meeting_discovery_questions.meeting_id
-      and m.lead_id is not null
-      and public.crm_can_access_lead(m.lead_id)
-  )
-);
