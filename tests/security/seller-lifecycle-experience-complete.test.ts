@@ -47,6 +47,8 @@ test('lead lifecycle stays compact by default and onboarding uses a controllable
 
 test('qualified stage teaches and enforces the shared ProFox qualification standard', () => {
   assert.match(workspace, /CRMLeadStagePicker/);
+  assert.match(drawerBase, /CRMLeadStagePicker/);
+  assert.match(drawerBase, /fullWidth/);
   for (const rule of ['Need confirmed', 'Service fit confirmed', 'Prospect engaged', 'Next step agreed', 'Budget viable', 'Decision-maker identified', 'Timeline realistic']) assert.match(stagePicker, new RegExp(rule));
   assert.match(stagePicker, /4 required \+ any 2 of 3/);
   assert.match(stagePicker, /essentialCount === ESSENTIAL_RULES\.length && commercialCount >= 2/);
