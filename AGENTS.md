@@ -11,3 +11,12 @@
 - Use a semantic alternative instead: `Info` for guidance, `ShieldCheck` for rules/qualification, `CheckCircle2` or `BadgeCheck` for completion/approval, `Lightbulb` for suggestions, `CircleHelp` for help, and `Star` only when the meaning is specifically rating/favorite.
 - Do not use decorative “magic/AI sparkle” affordances as a substitute.
 - Read `docs/UI_ICON_POLICY.md` before adding or changing UI icons. CI contains a system-wide regression check that blocks the prohibited sparkle identifiers/glyph from frontend source.
+
+## Sales SOP / CRM Workflow Policy
+- Before changing the Seller Command Center, CRM leads/opportunities, pipeline stages or transitions, Meeting Prep/Management, Sales Catalog integration, quotations, Sales communication, payments/Won behavior, client onboarding, or Sales-to-Delivery handoff, **read `docs/sales-sop-system-implementation-spec.md` completely**.
+- Also read `docs/seller-command-center-source-of-truth.md`. Extend the existing authoritative CRM/Sales records instead of creating parallel business records or hard-coded commercial truth.
+- Critical SOP gates must remain server-authoritative. A disabled frontend control is not sufficient enforcement.
+- Current package/product commercial truth comes from `sales_products`; individual client commercial truth comes from the quotation snapshot/accepted quotation. Do not duplicate package price, scope, payment terms, or delivery guidance in UI components.
+- Do not make sellers fabricate values to satisfy required fields. Preserve explicit unknown/awaiting/specialist-validation states and route the appropriate downstream gate or escalation.
+- Do not allow AI inference, seller convenience, or UI-only logic to bypass technical/commercial review, accepted-quotation requirements, verified-payment-controlled Won, or Sales-to-Delivery handoff requirements.
+- Any implementation that changes SOP behavior must include the applicable authorization/RLS review, audit behavior, blocker messaging, and automated tests defined by the implementation specification.
