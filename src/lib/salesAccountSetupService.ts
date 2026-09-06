@@ -12,6 +12,7 @@ export interface SalesAccountSetupStatus {
   professionalEmailAuthorizedOnce: boolean;
   professionalEmailSendConnected: boolean;
   professionalEmailSendConnectionStatus: ProfessionalEmailSendConnectionStatus;
+  professionalEmailAdminManaged: boolean;
   workEmail: string;
   mailProvider: 'none' | 'zoho';
   calendarProvider: 'google' | 'zoho';
@@ -39,8 +40,8 @@ export interface SalesAccountSetupStatus {
   progressPercent: number;
 }
 
-// Retained for backwards compatibility with the existing support RPC. Seller
-// onboarding no longer reveals or depends on a Zoho first-login password.
+// Legacy support type only. Current seller onboarding never reveals or depends
+// on a Zoho mailbox password; provider authorization is Admin-managed.
 export interface ProfessionalMailboxFirstLogin {
   available: boolean;
   workEmail: string;
@@ -72,6 +73,7 @@ function normalizeStatus(value: any): SalesAccountSetupStatus {
     professionalEmailAuthorizedOnce: Boolean(value?.professionalEmailAuthorizedOnce),
     professionalEmailSendConnected: Boolean(value?.professionalEmailSendConnected),
     professionalEmailSendConnectionStatus: MAIL_CONNECTION_STATES.has(rawMailConnectionStatus) ? rawMailConnectionStatus : 'disconnected',
+    professionalEmailAdminManaged: value?.professionalEmailAdminManaged === undefined ? true : Boolean(value.professionalEmailAdminManaged),
     workEmail: String(value?.workEmail || ''),
     mailProvider: value?.mailProvider === 'zoho' ? 'zoho' : 'none',
     calendarProvider,
@@ -121,8 +123,7 @@ export const salesAccountSetupService = {
     return normalizeStatus(data);
   },
 
-  // Legacy support path only. Seller onboarding uses professionalMailService
-  // OAuth and never asks sellers to handle mailbox passwords.
+  // Legacy support RPC only. It is not part of seller onboarding.
   async getMyProfessionalMailboxFirstLogin(): Promise<ProfessionalMailboxFirstLogin> {
     const { data, error } = await supabase.rpc('get_my_professional_mailbox_first_login');
     if (error) throw error;
