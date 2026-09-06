@@ -1,6 +1,7 @@
 -- Part 1: connected sales discovery foundation.
 -- Additive only. Reuses crm_leads, crm_opportunities, sales_meetings,
--- crm_can_access_lead(), and crm_lead_events. No downstream sales gates change.
+-- crm_can_access_lead(), mark_sales_meeting_prepared(), crm_write_lead_event(),
+-- and crm_lead_events. No downstream sales gates change.
 
 create table public.crm_requirements (
   id uuid primary key default gen_random_uuid(),
@@ -138,28 +139,20 @@ create table public.crm_client_voice (
   updated_at timestamptz not null default now()
 );
 
--- One seller-only preparation record per canonical sales_meetings row.
--- This intentionally remains separate from sales_meetings because that table has
--- customer/token read policies and seller hypotheses must not be exposed there.
+-- Seller-only Meeting Prep details that are genuinely missing from sales_meetings.
+-- Canonical readiness remains sales_meetings.prep_reviewed_at/prep_reviewed_by and
+-- the existing mark_sales_meeting_prepared(uuid) RPC.
 create table public.crm_meeting_preparations (
   meeting_id uuid primary key references public.sales_meetings(id) on delete cascade,
   meeting_objective text,
   intended_advance text,
   hypotheses jsonb not null default '[]'::jsonb,
-  preparation_state text not null default 'NOT_STARTED'
-    check (preparation_state in ('NOT_STARTED', 'IN_PROGRESS', 'READY')),
   seller_notes text,
-  prepared_by uuid,
-  prepared_at timestamptz,
   created_by uuid not null default auth.uid(),
   updated_by uuid not null default auth.uid(),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  check (jsonb_typeof(hypotheses) = 'array'),
-  check (
-    (preparation_state = 'READY' and prepared_by is not null and prepared_at is not null)
-    or preparation_state <> 'READY'
-  )
+  check (jsonb_typeof(hypotheses) = 'array')
 );
 
 create table public.crm_meeting_discovery_questions (
@@ -187,6 +180,35 @@ create index crm_client_voice_requirement_idx
 create index crm_meeting_discovery_questions_question_idx
   on public.crm_meeting_discovery_questions(question_id);
 
+create or replace function public.crm_sales_discovery_meeting_lead_id(p_meeting_id uuid)
+returns uuid
+language sql
+stable
+security definer
+set search_path = public, pg_temp
+as $$
+  select coalesce(m.lead_id, o.lead_id)
+  from public.sales_meetings m
+  left join public.crm_opportunities o on o.id = m.opportunity_id
+  where m.id = p_meeting_id
+$$;
+
+revoke all on function public.crm_sales_discovery_meeting_lead_id(uuid) from public, anon, authenticated;
+
+create or replace function public.crm_can_access_sales_discovery_meeting(p_meeting_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public, pg_temp
+as $$
+  select (select auth.uid()) is not null
+    and public.crm_can_access_lead(public.crm_sales_discovery_meeting_lead_id(p_meeting_id))
+$$;
+
+revoke all on function public.crm_can_access_sales_discovery_meeting(uuid) from public, anon;
+grant execute on function public.crm_can_access_sales_discovery_meeting(uuid) to authenticated;
+
 create or replace function public.crm_sales_discovery_touch_updated_at()
 returns trigger
 language plpgsql
@@ -194,7 +216,7 @@ set search_path = public, pg_temp
 as $$
 begin
   new.updated_at := now();
-  new.updated_by := coalesce(auth.uid(), new.updated_by, old.updated_by);
+  new.updated_by := coalesce(auth.uid(), old.updated_by);
   return new;
 end;
 $$;
@@ -204,19 +226,15 @@ revoke all on function public.crm_sales_discovery_touch_updated_at() from public
 create trigger crm_requirements_touch_updated_at
 before update on public.crm_requirements
 for each row execute function public.crm_sales_discovery_touch_updated_at();
-
 create trigger crm_discovery_questions_touch_updated_at
 before update on public.crm_discovery_questions
 for each row execute function public.crm_sales_discovery_touch_updated_at();
-
 create trigger crm_discovery_responses_touch_updated_at
 before update on public.crm_discovery_responses
 for each row execute function public.crm_sales_discovery_touch_updated_at();
-
 create trigger crm_client_voice_touch_updated_at
 before update on public.crm_client_voice
 for each row execute function public.crm_sales_discovery_touch_updated_at();
-
 create trigger crm_meeting_preparations_touch_updated_at
 before update on public.crm_meeting_preparations
 for each row execute function public.crm_sales_discovery_touch_updated_at();
@@ -224,6 +242,7 @@ for each row execute function public.crm_sales_discovery_touch_updated_at();
 create or replace function public.crm_validate_sales_discovery_linkage()
 returns trigger
 language plpgsql
+security definer
 set search_path = public, pg_temp
 as $$
 declare
@@ -241,21 +260,23 @@ begin
     end if;
 
     if new.meeting_id is not null then
-      select m.lead_id into v_meeting_lead_id from public.sales_meetings m where m.id = new.meeting_id;
+      v_meeting_lead_id := public.crm_sales_discovery_meeting_lead_id(new.meeting_id);
       if v_meeting_lead_id is null or v_meeting_lead_id is distinct from new.lead_id then
-        raise exception 'Discovery answer meeting must belong to the same lead.';
+        raise exception 'Discovery answer meeting must belong to the same lead lifecycle.';
       end if;
     end if;
   elsif tg_table_name = 'crm_client_voice' then
     if new.meeting_id is not null then
-      select m.lead_id into v_meeting_lead_id from public.sales_meetings m where m.id = new.meeting_id;
+      v_meeting_lead_id := public.crm_sales_discovery_meeting_lead_id(new.meeting_id);
       if v_meeting_lead_id is null or v_meeting_lead_id is distinct from new.lead_id then
-        raise exception 'Client Voice meeting must belong to the same lead.';
+        raise exception 'Client Voice meeting must belong to the same lead lifecycle.';
       end if;
     end if;
 
     if new.linked_requirement_id is not null then
-      select r.lead_id into v_requirement_lead_id from public.crm_requirements r where r.id = new.linked_requirement_id;
+      select r.lead_id into v_requirement_lead_id
+      from public.crm_requirements r
+      where r.id = new.linked_requirement_id;
       if v_requirement_lead_id is null or v_requirement_lead_id is distinct from new.lead_id then
         raise exception 'Linked requirement must belong to the same lead.';
       end if;
@@ -271,14 +292,14 @@ revoke all on function public.crm_validate_sales_discovery_linkage() from public
 create trigger crm_discovery_responses_validate_linkage
 before insert or update on public.crm_discovery_responses
 for each row execute function public.crm_validate_sales_discovery_linkage();
-
 create trigger crm_client_voice_validate_linkage
 before insert or update on public.crm_client_voice
 for each row execute function public.crm_validate_sales_discovery_linkage();
 
-create or replace function public.crm_validate_meeting_discovery_question()
+create or replace function public.crm_validate_meeting_discovery_record()
 returns trigger
 language plpgsql
+security definer
 set search_path = public, pg_temp
 as $$
 declare
@@ -286,12 +307,9 @@ declare
   v_question_lead_id uuid;
   v_question_active boolean;
 begin
-  select m.lead_id into v_meeting_lead_id
-  from public.sales_meetings m
-  where m.id = new.meeting_id;
-
+  v_meeting_lead_id := public.crm_sales_discovery_meeting_lead_id(new.meeting_id);
   if v_meeting_lead_id is null then
-    raise exception 'Meeting Prep requires a sales meeting linked to a CRM lead.';
+    raise exception 'Meeting Prep requires a sales meeting connected to the CRM lead lifecycle.';
   end if;
 
   if tg_table_name = 'crm_meeting_discovery_questions' then
@@ -312,15 +330,14 @@ begin
 end;
 $$;
 
-revoke all on function public.crm_validate_meeting_discovery_question() from public, anon, authenticated;
+revoke all on function public.crm_validate_meeting_discovery_record() from public, anon, authenticated;
 
 create trigger crm_meeting_preparations_validate_meeting
 before insert or update on public.crm_meeting_preparations
-for each row execute function public.crm_validate_meeting_discovery_question();
-
+for each row execute function public.crm_validate_meeting_discovery_record();
 create trigger crm_meeting_discovery_questions_validate_linkage
 before insert or update on public.crm_meeting_discovery_questions
-for each row execute function public.crm_validate_meeting_discovery_question();
+for each row execute function public.crm_validate_meeting_discovery_record();
 
 alter table public.crm_requirements enable row level security;
 alter table public.crm_discovery_questions enable row level security;
@@ -397,43 +414,15 @@ create policy crm_meeting_preparations_access
 on public.crm_meeting_preparations
 for all
 to authenticated
-using (
-  exists (
-    select 1 from public.sales_meetings m
-    where m.id = meeting_id
-      and m.lead_id is not null
-      and public.crm_can_access_lead(m.lead_id)
-  )
-)
-with check (
-  exists (
-    select 1 from public.sales_meetings m
-    where m.id = meeting_id
-      and m.lead_id is not null
-      and public.crm_can_access_lead(m.lead_id)
-  )
-);
+using (public.crm_can_access_sales_discovery_meeting(meeting_id))
+with check (public.crm_can_access_sales_discovery_meeting(meeting_id));
 
 create policy crm_meeting_discovery_questions_access
 on public.crm_meeting_discovery_questions
 for all
 to authenticated
-using (
-  exists (
-    select 1 from public.sales_meetings m
-    where m.id = meeting_id
-      and m.lead_id is not null
-      and public.crm_can_access_lead(m.lead_id)
-  )
-)
-with check (
-  exists (
-    select 1 from public.sales_meetings m
-    where m.id = meeting_id
-      and m.lead_id is not null
-      and public.crm_can_access_lead(m.lead_id)
-  )
-);
+using (public.crm_can_access_sales_discovery_meeting(meeting_id))
+with check (public.crm_can_access_sales_discovery_meeting(meeting_id));
 
 revoke all on table public.crm_requirements from anon;
 revoke all on table public.crm_discovery_questions from anon;
@@ -447,7 +436,7 @@ grant select, insert, update, delete on table public.crm_discovery_questions to 
 grant select, insert, update, delete on table public.crm_discovery_responses to authenticated;
 grant select, insert, update, delete on table public.crm_client_voice to authenticated;
 grant select, insert, update, delete on table public.crm_meeting_preparations to authenticated;
-grant select, insert, update, delete on table public.crm_meeting_discovery_questions to authenticated;
+grant select, insert, delete on table public.crm_meeting_discovery_questions to authenticated;
 
 create or replace function public.crm_sales_discovery_audit_event()
 returns trigger
@@ -459,19 +448,14 @@ declare
   v_record jsonb;
   v_lead_id uuid;
   v_entity_id text;
+  v_metadata jsonb;
 begin
-  if tg_op = 'DELETE' then
-    v_record := to_jsonb(old);
-  else
-    v_record := to_jsonb(new);
-  end if;
+  v_record := case when tg_op = 'DELETE' then to_jsonb(old) else to_jsonb(new) end;
 
   if tg_table_name in ('crm_requirements', 'crm_discovery_questions', 'crm_discovery_responses', 'crm_client_voice') then
     v_lead_id := nullif(v_record->>'lead_id', '')::uuid;
   elsif tg_table_name in ('crm_meeting_preparations', 'crm_meeting_discovery_questions') then
-    select m.lead_id into v_lead_id
-    from public.sales_meetings m
-    where m.id = nullif(v_record->>'meeting_id', '')::uuid;
+    v_lead_id := public.crm_sales_discovery_meeting_lead_id(nullif(v_record->>'meeting_id', '')::uuid);
   end if;
 
   if v_lead_id is null then
@@ -479,21 +463,24 @@ begin
   end if;
 
   v_entity_id := coalesce(v_record->>'id', v_record->>'meeting_id', v_record->>'question_id');
+  v_metadata := jsonb_strip_nulls(jsonb_build_object(
+    'entity', tg_table_name,
+    'entityId', v_entity_id,
+    'operation', lower(tg_op),
+    'meetingId', v_record->>'meeting_id',
+    'questionId', v_record->>'question_id',
+    'recordState', v_record->>'record_state',
+    'informationCertainty', v_record->>'information_certainty',
+    'questionState', v_record->>'question_state'
+  ));
 
-  insert into public.crm_lead_events(lead_id, actor_id, event_type, event_data)
-  values (
-    v_lead_id,
-    auth.uid(),
-    'sales_discovery.' || tg_table_name || '.' || lower(tg_op),
-    jsonb_strip_nulls(jsonb_build_object(
-      'entity', tg_table_name,
-      'entityId', v_entity_id,
-      'operation', lower(tg_op),
-      'questionId', v_record->>'question_id',
-      'informationCertainty', v_record->>'information_certainty',
-      'questionState', v_record->>'question_state',
-      'preparationState', v_record->>'preparation_state'
-    ))
+  perform public.crm_write_lead_event(
+    p_lead_id => v_lead_id,
+    p_event_type => 'sales_discovery.' || tg_table_name || '.' || lower(tg_op),
+    p_title => 'Sales discovery ' || replace(tg_table_name, 'crm_', '') || ' ' || lower(tg_op),
+    p_description => '',
+    p_metadata => v_metadata,
+    p_actor_user_id => auth.uid()
   );
 
   return null;
@@ -505,23 +492,18 @@ revoke all on function public.crm_sales_discovery_audit_event() from public, ano
 create trigger crm_requirements_audit
 after insert or update or delete on public.crm_requirements
 for each row execute function public.crm_sales_discovery_audit_event();
-
 create trigger crm_discovery_questions_audit
 after insert or update or delete on public.crm_discovery_questions
 for each row execute function public.crm_sales_discovery_audit_event();
-
 create trigger crm_discovery_responses_audit
 after insert or update or delete on public.crm_discovery_responses
 for each row execute function public.crm_sales_discovery_audit_event();
-
 create trigger crm_client_voice_audit
 after insert or update or delete on public.crm_client_voice
 for each row execute function public.crm_sales_discovery_audit_event();
-
 create trigger crm_meeting_preparations_audit
 after insert or update or delete on public.crm_meeting_preparations
 for each row execute function public.crm_sales_discovery_audit_event();
-
 create trigger crm_meeting_discovery_questions_audit
 after insert or delete on public.crm_meeting_discovery_questions
 for each row execute function public.crm_sales_discovery_audit_event();
@@ -546,7 +528,7 @@ begin
     where o.id = p_opportunity_id;
 
     if v_lead_id is null then
-      raise exception 'Opportunity not found.';
+      raise exception 'Opportunity is not connected to a CRM lead.';
     end if;
 
     if p_lead_id is not null and p_lead_id is distinct from v_lead_id then
@@ -586,7 +568,8 @@ begin
         and (
           q.active
           or exists (
-            select 1 from public.crm_discovery_responses dr
+            select 1
+            from public.crm_discovery_responses dr
             where dr.lead_id = v_lead_id and dr.question_id = q.id
           )
         )
@@ -606,8 +589,18 @@ begin
         jsonb_build_object(
           'meetingId', m.id,
           'title', m.title,
-          'scheduledAt', m.scheduled_at,
+          'scheduledAt', m.start_at,
           'status', m.status,
+          'preparationState', case
+            when m.prep_reviewed_at is not null then 'READY'
+            when mp.meeting_id is not null
+              or exists (
+                select 1 from public.crm_meeting_discovery_questions mdqx where mdqx.meeting_id = m.id
+              ) then 'IN_PROGRESS'
+            else 'NOT_STARTED'
+          end,
+          'preparedBy', m.prep_reviewed_by,
+          'preparedAt', m.prep_reviewed_at,
           'preparation', to_jsonb(mp),
           'selectedQuestionIds', coalesce((
             select jsonb_agg(mdq.question_id order by mdq.created_at, mdq.question_id)
@@ -615,11 +608,12 @@ begin
             where mdq.meeting_id = m.id
           ), '[]'::jsonb)
         )
-        order by m.scheduled_at desc, m.id
+        order by m.start_at desc, m.id
       )
       from public.sales_meetings m
+      left join public.crm_opportunities mo on mo.id = m.opportunity_id
       left join public.crm_meeting_preparations mp on mp.meeting_id = m.id
-      where m.lead_id = v_lead_id
+      where coalesce(m.lead_id, mo.lead_id) = v_lead_id
     ), '[]'::jsonb)
   );
 end;
@@ -642,12 +636,9 @@ declare
   v_question_id uuid;
   v_distinct_ids uuid[];
 begin
-  select m.lead_id into v_lead_id
-  from public.sales_meetings m
-  where m.id = p_meeting_id;
-
+  v_lead_id := public.crm_sales_discovery_meeting_lead_id(p_meeting_id);
   if v_lead_id is null then
-    raise exception 'Meeting Prep requires a sales meeting linked to a CRM lead.';
+    raise exception 'Meeting Prep requires a sales meeting connected to the CRM lead lifecycle.';
   end if;
 
   if not public.crm_can_access_lead(v_lead_id) then
