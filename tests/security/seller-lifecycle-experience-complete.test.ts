@@ -24,12 +24,15 @@ test('customer detail shows one lifecycle bar, owner, project stage, next action
   assert.match(drawer, /SellerCustomerLifecycleSummary/);
 });
 
-test('onboarding action opens the exact canonical lead detail and CRM honors deep links', () => {
+test('onboarding deep links remain supported while lead and conversation clicks stay contextual', () => {
   assert.match(service, /nextActionLabel: 'View Onboarding'/);
   assert.match(service, /tab=leads&lead=/);
   assert.match(workspace, /searchParams\.get\('lead'\)/);
-  assert.match(workspace, /next\.set\('lead',lead\.id\)/);
+  assert.match(workspace, /setSelected\(lead\);setDrawerTab\(tab\)/);
+  assert.match(workspace, /CustomerCommunicationDrawer/);
   assert.match(workspace, /next\.delete\('lead'\)/);
+  assert.doesNotMatch(workspace, /window\.location\.assign/);
+  assert.doesNotMatch(workspace, /next\.set\('tab','leads'\)/);
 });
 
 test('closed customers are searchable and paginated rather than limited to recent 20', () => {
