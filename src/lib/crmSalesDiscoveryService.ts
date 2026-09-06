@@ -261,13 +261,13 @@ export const crmSalesDiscoveryService = {
       category: input.category,
       title: input.title,
       content: input.content ?? null,
-      structured_value: input.structuredValue ?? null,
       is_custom: input.isCustom ?? false,
       information_certainty: input.informationCertainty,
       record_state: input.recordState ?? 'ACTIVE',
       source_type: input.source?.type ?? null,
       source_record_id: input.source?.recordId ?? null,
       source_recorded_at: input.source?.recordedAt ?? null,
+      ...(!input.id || input.structuredValue !== undefined ? { structured_value: input.structuredValue ?? null } : {}),
     };
 
     const query = input.id
@@ -356,7 +356,7 @@ export const crmSalesDiscoveryService = {
   async saveMeetingPreparation(input: SaveMeetingPreparationInput): Promise<CRMMeetingPreparation> {
     const payload = {
       meeting_id: input.meetingId,
-      meeting_objective: input.meetingObjective ?? null,
+      meeting_objective: input.intendedAdvance ?? null,
       intended_advance: input.intendedAdvance ?? null,
       hypotheses: input.hypotheses ?? [],
       seller_notes: input.sellerNotes ?? null,
