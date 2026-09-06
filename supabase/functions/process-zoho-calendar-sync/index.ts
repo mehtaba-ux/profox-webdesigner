@@ -94,11 +94,12 @@ Deno.serve(async (req: Request) => {
     manual = true;
   }
 
-  const { data: ready } = await service.rpc("service_central_zoho_ready");
-  if (!ready) return json({ processed: 0, results: [], centralZohoReady: false, manual });
+  const { data: workerReady, error: readyError } = await service.rpc("service_central_zoho_worker_ready");
+  if (readyError) return json({ error: readyError.message }, 500);
+  if (!workerReady) return json({ processed: 0, results: [], centralZohoReady: false, manual });
 
   const { data: connection, error: connectionError } = await service.from("zoho_service_calendar_connection").select("*").eq("singleton_key", "primary").maybeSingle();
-  if (connectionError || !connection || connection.status !== "connected") return json({ error: connectionError?.message || "Central Zoho service connection is unavailable." }, 503);
+  if (connectionError || !connection || !["connected", "error"].includes(String(connection.status))) return json({ error: connectionError?.message || "Central Zoho service connection is unavailable." }, 503);
   if (!connection.calendar_id || !connection.meeting_org_id || !connection.presenter_zuid || !connection.meeting_ready) return json({ error: "Central Zoho Calendar/Meeting capability is incomplete." }, 503);
 
   const { data: provider, error: providerError } = await service.rpc("service_get_zoho_provider_credentials");
@@ -127,16 +128,6 @@ Deno.serve(async (req: Request) => {
   }
   const token = String(tokenPayload.access_token);
 
-  const { data: jobs, error: claimError } = await service.rpc("service_claim_zoho_sync_jobs", { p_limit: 25 });
-  if (claimError) return json({ error: claimError.message }, 500);
-  const results: any[] = [];
-
-  async function finish(job: any, status: string, message = "", retrySeconds?: number) {
-    await service.rpc("service_finish_zoho_sync_job", { p_job_id: job.id, p_status: status, p_error: message || null, p_retry_seconds: retrySeconds ?? null });
-  }
-  async function markHealthy() {
-    await service.rpc("service_mark_zoho_service_calendar_state", { p_status: "connected", p_error: null, p_success: true });
-  }
   async function api(base: string, path: string, init: RequestInit = {}, meetingApi = false) {
     let response: Response;
     try {
@@ -156,6 +147,44 @@ Deno.serve(async (req: Request) => {
     let payload: any = {};
     try { payload = text ? JSON.parse(text) : {}; } catch { payload = { raw: text }; }
     return { response, payload };
+  }
+
+  if (String(connection.status) === "error") {
+    try {
+      const range = JSON.stringify({ start: toBasicUtc(new Date()), end: toBasicUtc(new Date(Date.now() + 24 * 60 * 60 * 1000)) });
+      const calendarProbe = await api(calendarBase, `/api/v1/calendars/${encodeURIComponent(String(connection.calendar_id))}/events?${new URLSearchParams({ range }).toString()}`, { method: "GET" });
+      if (!calendarProbe.response.ok) {
+        const message = `Zoho Calendar recovery probe failed: ${zohoError(calendarProbe.payload, calendarProbe.response.status)}`.slice(0, 1800);
+        const reconnect = reconnectRequired(calendarProbe.response.status, calendarProbe.payload);
+        await service.rpc("service_mark_zoho_service_calendar_state", { p_status: reconnect ? "reconnect_required" : "error", p_error: message, p_success: false });
+        return json({ error: message, recoveryProbe: "calendar" }, reconnect ? 401 : 503);
+      }
+
+      const meetingProbe = await api(meetingBase, `/api/v2/${encodeURIComponent(String(connection.meeting_org_id))}/sessions.json?listtype=upcoming&index=1&count=1`, { method: "GET" }, true);
+      if (!meetingProbe.response.ok) {
+        const message = `Zoho Meeting recovery probe failed: ${zohoError(meetingProbe.payload, meetingProbe.response.status)}`.slice(0, 1800);
+        const reconnect = reconnectRequired(meetingProbe.response.status, meetingProbe.payload);
+        await service.rpc("service_mark_zoho_service_calendar_state", { p_status: reconnect ? "reconnect_required" : "error", p_error: message, p_success: false });
+        return json({ error: message, recoveryProbe: "meeting" }, reconnect ? 401 : 503);
+      }
+
+      await service.rpc("service_mark_zoho_service_calendar_state", { p_status: "connected", p_error: null, p_success: false });
+    } catch (error) {
+      const message = `Zoho central recovery probe could not complete: ${error instanceof Error ? error.message : "network error"}`.slice(0, 1800);
+      await service.rpc("service_mark_zoho_service_calendar_state", { p_status: "error", p_error: message, p_success: false });
+      return json({ error: message, recoveryProbe: "network" }, 503);
+    }
+  }
+
+  const { data: jobs, error: claimError } = await service.rpc("service_claim_zoho_sync_jobs", { p_limit: 25 });
+  if (claimError) return json({ error: claimError.message }, 500);
+  const results: any[] = [];
+
+  async function finish(job: any, status: string, message = "", retrySeconds?: number) {
+    await service.rpc("service_finish_zoho_sync_job", { p_job_id: job.id, p_status: status, p_error: message || null, p_retry_seconds: retrySeconds ?? null });
+  }
+  async function markHealthy() {
+    await service.rpc("service_mark_zoho_service_calendar_state", { p_status: "connected", p_error: null, p_success: true });
   }
   async function loadMeeting(job: any) {
     const { data, error } = await service.from("sales_meetings").select("*").eq("id", job.meeting_id).eq("salesperson_id", job.user_id).maybeSingle();
