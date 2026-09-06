@@ -9,6 +9,7 @@ import {
   CheckCircle2,
   ChevronDown,
   CircleDot,
+  ClipboardList,
   Clock3,
   FileText,
   History,
@@ -33,8 +34,9 @@ import {
   LeadStatus,
 } from '../../../types';
 import CRMLeadStagePicker from './CRMLeadStagePicker';
+import CRMRequirementsWorkspace from './CRMRequirementsWorkspace';
 
-export type LeadDrawerTab = 'overview' | 'timeline' | 'communication' | 'activities';
+export type LeadDrawerTab = 'overview' | 'requirements' | 'timeline' | 'communication' | 'activities';
 
 type CRMLeadDrawerBaseProps = {
   lead: CRMLead;
@@ -59,6 +61,7 @@ const qualityTone: Record<LeadQuality, string> = {
 
 const tabs: Array<{ id: LeadDrawerTab; label: string; icon: React.ReactNode }> = [
   { id: 'overview', label: 'Overview', icon: <Building2 className="h-4 w-4" /> },
+  { id: 'requirements', label: 'Requirements', icon: <ClipboardList className="h-4 w-4" /> },
   { id: 'timeline', label: 'Complete log', icon: <History className="h-4 w-4" /> },
   { id: 'communication', label: 'Conversation', icon: <MessageCircle className="h-4 w-4" /> },
   { id: 'activities', label: 'Follow-ups', icon: <Activity className="h-4 w-4" /> },
@@ -98,6 +101,7 @@ export default function CRMLeadDrawerBase({
 }: CRMLeadDrawerBaseProps) {
   const navigate = useNavigate();
   const [tab, setTab] = useState<LeadDrawerTab>(initialTab);
+  const [requirementsVisited, setRequirementsVisited] = useState(initialTab === 'requirements');
   const [detail, setDetail] = useState<CRMLeadDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState('');
@@ -119,6 +123,7 @@ export default function CRMLeadDrawerBase({
 
   useEffect(() => {
     setTab(initialTab);
+    setRequirementsVisited(initialTab === 'requirements');
     void loadDetail();
   }, [lead.id, initialTab]);
 
@@ -219,7 +224,14 @@ export default function CRMLeadDrawerBase({
             {tabs.map(item => (
               <button
                 key={item.id}
-                onClick={() => item.id === 'communication' ? onOpenConversation() : setTab(item.id)}
+                onClick={() => {
+                  if (item.id === 'communication') {
+                    onOpenConversation();
+                    return;
+                  }
+                  if (item.id === 'requirements') setRequirementsVisited(true);
+                  setTab(item.id);
+                }}
                 className={`inline-flex min-h-10 shrink-0 items-center gap-2 rounded-lg px-3 text-[11px] font-black ${tab === item.id ? 'bg-white text-[#000080] shadow-sm' : 'text-slate-500'}`}
               >
                 {item.icon}{item.label}
@@ -254,6 +266,11 @@ export default function CRMLeadDrawerBase({
                   onQuote={() => navigate(`/admin/quotations/new?opportunityId=${lead.convertedOpportunityId}`)}
                   sidebarExtra={overviewSidebarExtra}
                 />
+              )}
+              {requirementsVisited && (
+                <div className={tab === 'requirements' ? 'block' : 'hidden'} aria-hidden={tab !== 'requirements'}>
+                  <CRMRequirementsWorkspace leadId={lead.id} refreshKey={lead.updatedAt} onChanged={onChanged} />
+                </div>
               )}
               {tab === 'timeline' && <Timeline leadId={lead.id} events={detail?.events || []} onAdded={async () => { await loadDetail(); await onChanged('Internal note added to the lead timeline.'); }} />}
               {tab === 'communication' && <ConversationHandoff lead={lead} onOpen={onOpenConversation} />}
