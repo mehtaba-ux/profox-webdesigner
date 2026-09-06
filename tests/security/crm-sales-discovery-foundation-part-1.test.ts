@@ -74,20 +74,40 @@ test('Client Voice keeps customer language separate from seller interpretation a
   assert.match(service, /linkedRequirementId/);
 });
 
-test('Meeting Prep remains a protected child of canonical sales_meetings', () => {
+test('Meeting Prep extends canonical sales_meetings without duplicating readiness', () => {
   assert.match(migration, /meeting_id uuid primary key references public\.sales_meetings\(id\)/);
   assert.match(migration, /meeting_objective text/);
   assert.match(migration, /intended_advance text/);
   assert.match(migration, /hypotheses jsonb/);
-  assert.match(migration, /preparation_state text/);
-  assert.match(migration, /prepared_by uuid/);
-  assert.match(migration, /prepared_at timestamptz/);
   assert.match(migration, /seller_notes text/);
+  assert.doesNotMatch(migration, /preparation_state text not null/);
+  assert.doesNotMatch(migration, /prepared_by uuid/);
+  assert.doesNotMatch(migration, /prepared_at timestamptz/);
+  assert.doesNotMatch(hardening, /crm_meeting_preparation_stamp_ready/);
+  assert.match(service, /mark_sales_meeting_prepared/);
+  assert.match(service, /markMeetingPrepared/);
+  assert.match(migration, /prep_reviewed_at/);
+  assert.match(migration, /prep_reviewed_by/);
   assert.match(migration, /crm_set_meeting_discovery_questions/);
+  assert.doesNotMatch(migration, /create or replace function public\.mark_sales_meeting_prepared/i);
   assert.doesNotMatch(migration, /alter table public\.sales_meetings add column/i);
 });
 
-test('RLS reuses current lead authorization, denies anon, and audit reuses crm_lead_events', () => {
+test('meeting continuity resolves direct leads and opportunity-only sales meetings', () => {
+  assert.match(migration, /crm_sales_discovery_meeting_lead_id/);
+  assert.match(migration, /left join public\.crm_opportunities o on o\.id = m\.opportunity_id/);
+  assert.match(migration, /coalesce\(m\.lead_id, o\.lead_id\)/);
+  assert.match(migration, /left join public\.crm_opportunities mo on mo\.id = m\.opportunity_id/);
+  assert.match(migration, /where coalesce\(m\.lead_id, mo\.lead_id\) = v_lead_id/);
+});
+
+test('workspace uses the actual canonical sales_meetings scheduling columns', () => {
+  assert.match(migration, /'scheduledAt', m\.start_at/);
+  assert.match(migration, /order by m\.start_at desc/);
+  assert.doesNotMatch(migration, /m\.scheduled_at/);
+});
+
+test('RLS reuses current lead authorization, denies anon, and audit reuses canonical lead event writer', () => {
   for (const table of [
     'crm_requirements',
     'crm_discovery_questions',
@@ -100,11 +120,14 @@ test('RLS reuses current lead authorization, denies anon, and audit reuses crm_l
     assert.match(migration, new RegExp(`revoke all on table public\\.${table} from anon`));
   }
   assert.match(migration, /public\.crm_can_access_lead/);
-  assert.match(migration, /insert into public\.crm_lead_events/);
+  assert.match(migration, /public\.crm_can_access_sales_discovery_meeting/);
+  assert.match(migration, /perform public\.crm_write_lead_event/);
+  assert.doesNotMatch(migration, /insert into public\.crm_lead_events/);
   assert.match(migration, /security definer/);
   assert.match(hardening, /crm_sales_discovery_stamp_insert_actor/);
   assert.match(hardening, /crm_sales_discovery_protect_identity/);
-  assert.match(hardening, /crm_meeting_preparation_stamp_ready/);
+  assert.match(hardening, /new\.created_by := old\.created_by/);
+  assert.match(hardening, /new\.created_at := old\.created_at/);
 });
 
 test('frontend foundation uses the existing Supabase client and one coherent workspace read model', () => {
@@ -112,6 +135,7 @@ test('frontend foundation uses the existing Supabase client and one coherent wor
   assert.doesNotMatch(service, /createClient/);
   assert.match(service, /crm_get_sales_discovery_workspace/);
   assert.match(service, /crm_set_meeting_discovery_questions/);
+  assert.match(service, /mark_sales_meeting_prepared/);
   assert.match(migration, /crm_get_sales_discovery_workspace/);
 });
 
