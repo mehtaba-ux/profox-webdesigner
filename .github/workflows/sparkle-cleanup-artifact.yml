@@ -24,7 +24,7 @@ jobs:
         run: grep -RniE 'Sparkle|Sparkles|WandSparkles|sparkle|sparkles|wandsparkles|✨' src --include='*.ts' --include='*.tsx' --include='*.js' --include='*.jsx' --include='*.html' --include='*.svg' --include='*.css' || true
 
       - name: Replace prohibited icon family
-        run: node scripts/replace-prohibited-sparkle-icons-safe.mjs
+        run: node scripts/replace-prohibited-sparkle-icons-v2.mjs
 
       - name: Upload transformed frontend
         uses: actions/upload-artifact@v4
