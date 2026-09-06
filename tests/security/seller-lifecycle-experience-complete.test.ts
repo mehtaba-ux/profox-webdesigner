@@ -7,6 +7,7 @@ const service = readFileSync('src/lib/sellerLifecycleService.ts', 'utf8');
 const panel = readFileSync('src/components/admin/SellerLifecyclePanel.tsx', 'utf8');
 const summary = readFileSync('src/components/admin/SellerCustomerLifecycleSummary.tsx', 'utf8');
 const drawer = readFileSync('src/components/admin/crm/CRMLeadDrawer.tsx', 'utf8');
+const drawerBase = readFileSync('src/components/admin/crm/CRMLeadDrawerBase.tsx', 'utf8');
 const workspace = readFileSync('src/components/admin/crm/CRMLeadWorkspace.tsx', 'utf8');
 const commandCenter = readFileSync('src/components/admin/SellerExperienceClosure.tsx', 'utf8');
 
@@ -33,6 +34,12 @@ test('onboarding deep links remain supported while lead and conversation clicks 
   assert.match(workspace, /next\.delete\('lead'\)/);
   assert.doesNotMatch(workspace, /window\.location\.assign/);
   assert.doesNotMatch(workspace, /next\.set\('tab','leads'\)/);
+
+  assert.match(drawer, /CustomerCommunicationDrawer/);
+  assert.match(drawer, /conversationOpen/);
+  assert.match(drawerBase, /item\.id==='communication'\?onOpenConversation\(\):setTab\(item\.id\)/);
+  assert.match(drawerBase, /ConversationHandoff lead=\{lead\} onOpen=\{onOpenConversation\}/);
+  assert.doesNotMatch(drawerBase, /tab=inbox&lead=/);
 });
 
 test('closed customers are searchable and paginated rather than limited to recent 20', () => {
