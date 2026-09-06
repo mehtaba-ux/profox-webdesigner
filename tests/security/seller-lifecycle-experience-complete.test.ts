@@ -25,6 +25,20 @@ test('customer detail shows one lifecycle bar, owner, project stage, next action
   assert.match(drawer, /SellerCustomerLifecycleSummary/);
 });
 
+test('lead lifecycle and onboarding cards stay in responsive document flow', () => {
+  assert.match(drawerBase, /headerSummary\?: React\.ReactNode/);
+  assert.match(drawerBase, /overviewSidebarExtra\?: React\.ReactNode/);
+  assert.match(drawerBase, /lg:grid-cols-\[minmax\(0,1fr\)_380px\]/);
+  assert.match(drawerBase, /lg:grid-cols-\[minmax\(0,1fr\)_320px\]/);
+  assert.match(drawer, /headerSummary=\{<SellerCustomerLifecycleSummary/);
+  assert.match(drawer, /overviewSidebarExtra=\{<SellerOnboardingHandoff/);
+  assert.doesNotMatch(drawer, /fixed right-4 top-4/);
+  assert.doesNotMatch(drawer, /fixed bottom-4 right-4/);
+  assert.doesNotMatch(drawer, /z-\[13[01]\]/);
+  assert.match(summary, /compact \? 'grid-cols-4'/);
+  assert.doesNotMatch(summary, /truncate text-\[8px\]/);
+});
+
 test('onboarding deep links remain supported while lead and conversation clicks stay contextual', () => {
   assert.match(service, /nextActionLabel: 'View Onboarding'/);
   assert.match(service, /tab=leads&lead=/);
@@ -37,7 +51,7 @@ test('onboarding deep links remain supported while lead and conversation clicks 
 
   assert.match(drawer, /CustomerCommunicationDrawer/);
   assert.match(drawer, /conversationOpen/);
-  assert.match(drawerBase, /item\.id==='communication'\?onOpenConversation\(\):setTab\(item\.id\)/);
+  assert.match(drawerBase, /item\.id === 'communication' \? onOpenConversation\(\) : setTab\(item\.id\)/);
   assert.match(drawerBase, /ConversationHandoff lead=\{lead\} onOpen=\{onOpenConversation\}/);
   assert.doesNotMatch(drawerBase, /tab=inbox&lead=/);
 });
