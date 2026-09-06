@@ -9,6 +9,7 @@ const summary = readFileSync('src/components/admin/SellerCustomerLifecycleSummar
 const drawer = readFileSync('src/components/admin/crm/CRMLeadDrawer.tsx', 'utf8');
 const drawerBase = readFileSync('src/components/admin/crm/CRMLeadDrawerBase.tsx', 'utf8');
 const workspace = readFileSync('src/components/admin/crm/CRMLeadWorkspace.tsx', 'utf8');
+const stagePicker = readFileSync('src/components/admin/crm/CRMLeadStagePicker.tsx', 'utf8');
 const commandCenter = readFileSync('src/components/admin/SellerExperienceClosure.tsx', 'utf8');
 
 test('detail lifecycle is protected and aggregates canonical systems only', () => {
@@ -42,6 +43,20 @@ test('lead lifecycle stays compact by default and onboarding uses a controllable
   assert.match(drawer, /Expand client onboarding/);
   assert.match(drawer, /Close client onboarding/);
   assert.doesNotMatch(drawer, /overviewSidebarExtra=\{<SellerOnboardingHandoff/);
+});
+
+test('qualified stage teaches and enforces the shared ProFox qualification standard', () => {
+  assert.match(workspace, /CRMLeadStagePicker/);
+  assert.match(drawerBase, /CRMLeadStagePicker/);
+  assert.match(drawerBase, /fullWidth/);
+  for (const rule of ['Need confirmed', 'Service fit confirmed', 'Prospect engaged', 'Next step agreed', 'Budget viable', 'Decision-maker identified', 'Timeline realistic']) assert.match(stagePicker, new RegExp(rule));
+  assert.match(stagePicker, /4 required \+ any 2 of 3/);
+  assert.match(stagePicker, /essentialCount === ESSENTIAL_RULES\.length && commercialCount >= 2/);
+  assert.match(stagePicker, /Qualification checkpoint/);
+  assert.match(stagePicker, /Mark lead Qualified/);
+  assert.match(stagePicker, /aria-label="Show qualification rule"/);
+  assert.match(stagePicker, /position\.mobile/);
+  assert.match(stagePicker, /createPortal/);
 });
 
 test('onboarding deep links remain supported while lead and conversation clicks stay contextual', () => {

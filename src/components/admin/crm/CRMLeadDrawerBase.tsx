@@ -29,10 +29,10 @@ import {
   CRMLeadDetail,
   CRMLeadEvent,
   CRMLeadPerson,
-  LEAD_STATUSES,
   LeadQuality,
   LeadStatus,
 } from '../../../types';
+import CRMLeadStagePicker from './CRMLeadStagePicker';
 
 export type LeadDrawerTab = 'overview' | 'timeline' | 'communication' | 'activities';
 
@@ -349,15 +349,10 @@ function Overview({
       <aside className="min-w-0 space-y-4">
         <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="text-[10px] font-black uppercase tracking-[.12em] text-slate-400">Pipeline controls</div>
-          <label className="mt-4 block text-[10px] font-black uppercase text-slate-500">
-            Stage
-            <div className="relative mt-1.5">
-              <select value={lead.status} disabled={busy === 'stage'} onChange={event => onStage(event.target.value as LeadStatus)} className="h-11 w-full appearance-none rounded-xl border border-slate-200 bg-slate-50 px-3 pr-9 text-xs font-black outline-none focus:border-[#000080]">
-                {LEAD_STATUSES.map(value => <option key={value}>{value}</option>)}
-              </select>
-              {busy === 'stage' ? <Loader2 className="absolute right-3 top-3.5 h-4 w-4 animate-spin text-[#000080]" /> : <ChevronDown className="pointer-events-none absolute right-3 top-3.5 h-4 w-4 text-slate-400" />}
-            </div>
-          </label>
+          <div className="mt-4">
+            <div className="mb-1.5 text-[10px] font-black uppercase text-slate-500">Stage</div>
+            <CRMLeadStagePicker lead={lead} busy={busy === 'stage'} onStage={onStage} fullWidth />
+          </div>
           <label className="mt-4 block text-[10px] font-black uppercase text-slate-500">
             Assignee
             <div className="relative mt-1.5">
