@@ -16,6 +16,12 @@ type PortfolioCase = {
 
 type PortfolioAnswers = { portfolioCases: PortfolioCase[] };
 
+type PortfolioInstruction = string | {
+  key?: string;
+  title?: string;
+  text?: string;
+};
+
 type PublicTask = {
   taskKey: string;
   stage: string;
@@ -25,7 +31,7 @@ type PublicTask = {
   targetNiche: string;
   requiredItems: number;
   estimatedMinutes: number;
-  instructions: string[];
+  instructions: PortfolioInstruction[];
   attemptNo: number;
   maxAttempts: number;
   candidateName: string;
@@ -61,6 +67,21 @@ function isHttpUrl(value: string) {
   } catch {
     return false;
   }
+}
+
+function normalizeInstructions(value: unknown): PortfolioInstruction[] {
+  if (!Array.isArray(value)) return [];
+  return value.map((item: any) => {
+    if (typeof item === 'string') return item;
+    if (item && typeof item === 'object') {
+      return {
+        key: item.key == null ? undefined : String(item.key),
+        title: item.title == null ? undefined : String(item.title),
+        text: item.text == null ? undefined : String(item.text),
+      };
+    }
+    return String(item ?? '');
+  }).filter(item => typeof item === 'string' ? item.trim().length > 0 : Boolean(item.title?.trim() || item.text?.trim()));
 }
 
 function normalizeAnswers(value: any, requiredItems: number): PortfolioAnswers {
@@ -115,7 +136,7 @@ export default function ContentPortfolioTaskPage() {
         ...data,
         taskKey: String(data.taskKey || ''), stage: String(data.stage || ''), title: String(data.title || 'Portfolio Review'),
         description: String(data.description || ''), targetMarket: String(data.targetMarket || ''), targetNiche: String(data.targetNiche || ''),
-        requiredItems, estimatedMinutes: Number(data.estimatedMinutes || 60), instructions: Array.isArray(data.instructions) ? data.instructions.map(String) : [],
+        requiredItems, estimatedMinutes: Number(data.estimatedMinutes || 60), instructions: normalizeInstructions(data.instructions),
         attemptNo: Number(data.attemptNo || 1), maxAttempts: Number(data.maxAttempts || 1), candidateName: String(data.candidateName || 'Candidate'),
         applicationReference: String(data.applicationReference || ''), status: String(data.status || 'Issued'), issuedAt: String(data.issuedAt || ''), dueAt: String(data.dueAt || ''),
         submittedAt: data.submittedAt || null, retryFeedback: String(data.retryFeedback || ''), expired: data.expired === true, canEdit: data.canEdit === true,
@@ -190,7 +211,13 @@ export default function ContentPortfolioTaskPage() {
       <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8"><div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between"><div className="max-w-3xl"><div className="text-xs font-black uppercase tracking-[.14em] text-[#000080]">Portfolio Review · Attempt {task.attemptNo}</div><h1 className="mt-2 text-3xl font-black tracking-tight">{task.title}</h1><p className="mt-3 text-sm leading-7 text-slate-600">{task.description}</p></div><span className={`w-fit rounded-full px-3 py-1.5 text-xs font-black ${submitted?'bg-emerald-100 text-emerald-800':task.expired?'bg-red-100 text-red-800':'bg-blue-100 text-[#000080]'}`}>{task.status}</span></div>
         <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4"><Summary label="Application" value={task.applicationReference || 'ProFox candidate'}/><Summary label="Required cases" value={`${task.requiredItems} case studies`}/><Summary label="Expected time" value={`${task.estimatedMinutes} minutes`}/><Summary label="Deadline" value={formatDate(task.dueAt)}/></div>
         {task.retryFeedback&&<div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-4"><div className="text-sm font-black text-amber-900">Reviewer feedback</div><p className="mt-1 text-sm leading-6 text-amber-800">{task.retryFeedback}</p></div>}
-        <div className="mt-5 rounded-2xl border border-blue-100 bg-blue-50/60 p-4"><div className="flex items-start gap-3"><ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-[#000080]"/><div><h2 className="text-sm font-black text-[#000080]">What to submit</h2><ul className="mt-2 space-y-2 text-sm leading-6 text-slate-700">{task.instructions.map((item,index)=><li key={index} className="flex gap-2"><span className="font-black text-[#000080]">{index+1}.</span><span>{item}</span></li>)}</ul></div></div></div>
+        <div className="mt-5 rounded-2xl border border-blue-100 bg-blue-50/60 p-4"><div className="flex items-start gap-3"><ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-[#000080]"/><div><h2 className="text-sm font-black text-[#000080]">What to submit</h2><ul className="mt-2 space-y-2 text-sm leading-6 text-slate-700">{task.instructions.map((item,index)=>{
+          const title=typeof item==='string'?'':String(item.title||'').trim();
+          const text=typeof item==='string'?item.trim():String(item.text||'').trim();
+          const body=text||title;
+          const key=typeof item==='string'?`${index}-${item}`:(item.key||`${index}-${title}-${text}`);
+          return <li key={key} className="flex gap-2"><span className="font-black text-[#000080]">{index+1}.</span><span>{title&&text&&title!==text?<><strong className="font-black text-slate-800">{title}</strong><span className="block">{text}</span></>:body}</span></li>;
+        })}</ul></div></div></div>
       </section>
 
       {error&&<div className="flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm leading-6 text-red-700"><AlertCircle className="mt-0.5 h-5 w-5 shrink-0"/><span>{error}</span></div>}
