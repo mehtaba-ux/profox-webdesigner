@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   ArrowLeft,
   ArrowRight,
@@ -10,7 +10,6 @@ import {
   Compass,
   FileText,
   Handshake,
-  KeyRound,
   ListTodo,
   Loader2,
   Mail,
@@ -24,7 +23,6 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../lib/AuthContext';
 import { googleCalendarService } from '../../lib/googleCalendarService';
-import { zohoCalendarService } from '../../lib/zohoCalendarService';
 import { profileService } from '../../lib/profileService';
 import { professionalMailService, type ProfessionalMailSendStatus } from '../../lib/professionalMailService';
 import { salesAccountSetupService, type SalesAccountSetupStatus } from '../../lib/salesAccountSetupService';
@@ -117,10 +115,10 @@ function Requirement({ complete, label, detail }: { complete: boolean; label: st
 }
 
 function mailConnectionLabel(status?: string | null) {
-  if (status === 'connected') return 'Connected';
-  if (status === 'reconnect_required') return 'Reconnect required';
-  if (status === 'error') return 'Needs attention';
-  return 'Not connected';
+  if (status === 'connected') return 'Admin-managed service ready';
+  if (status === 'reconnect_required') return 'Admin action required';
+  if (status === 'error') return 'Admin service needs attention';
+  return 'Waiting for Admin setup';
 }
 
 export default function SalesAccountSetup({ onCompleted }: { onCompleted?: () => Promise<void> | void }) {
@@ -131,32 +129,16 @@ export default function SalesAccountSetup({ onCompleted }: { onCompleted?: () =>
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [photoSaving, setPhotoSaving] = useState(false);
-  const [mailBusy, setMailBusy] = useState(false);
-  const [mailError, setMailError] = useState('');
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [avatarUrl, setAvatarUrl] = useState(profile?.avatarUrl || '');
   const [reviewStep, setReviewStep] = useState(1);
-  const oauthWindowRef = useRef<Window | null>(null);
-  const oauthOriginRef = useRef('');
-  const oauthPollRef = useRef<number | null>(null);
 
-  const clearOAuthPoll = () => {
-    if (oauthPollRef.current !== null) {
-      window.clearInterval(oauthPollRef.current);
-      oauthPollRef.current = null;
-    }
-  };
-
-  const loadMailStatus = async (quiet = false) => {
-    if (!quiet) setMailBusy(true);
-    setMailError('');
+  const loadMailStatus = async () => {
     try {
       setMailStatus(await professionalMailService.getMyStatus());
-    } catch (err) {
-      setMailError(errorMessage(err, 'Professional email status could not be loaded.'));
-    } finally {
-      if (!quiet) setMailBusy(false);
+    } catch {
+      setMailStatus(null);
     }
   };
 
@@ -170,7 +152,7 @@ export default function SalesAccountSetup({ onCompleted }: { onCompleted?: () =>
         const nextRequired = Math.min(6, Math.max(1, next.crmTourStep + 1));
         return current < 1 || current > 6 ? nextRequired : current;
       });
-      await loadMailStatus(true);
+      await loadMailStatus();
       if (next.setupCompleted) await onCompleted?.();
     } catch (err) {
       setError(errorMessage(err, 'Your Sales account setup status could not be loaded.'));
@@ -183,41 +165,11 @@ export default function SalesAccountSetup({ onCompleted }: { onCompleted?: () =>
   useEffect(() => { void load(); }, [user?.id]);
 
   useEffect(() => {
-    const onMessage = (event: MessageEvent) => {
-      if (event.source !== oauthWindowRef.current) return;
-      if (oauthOriginRef.current && event.origin !== oauthOriginRef.current) return;
-      if (event.data?.type !== 'profox-zoho-mail-send-oauth') return;
-
-      clearOAuthPoll();
-      setMailBusy(false);
-      oauthWindowRef.current = null;
-      oauthOriginRef.current = '';
-
-      if (event.data?.success) {
-        setMailError('');
-        setMessage('Professional email activated. ProFox will now handle customer sending, reply synchronization and OAuth token refresh automatically.');
-        void load(true);
-      } else {
-        setMessage('');
-        setMailError(String(event.data?.message || 'Professional email permission was not connected.'));
-      }
-    };
-
-    window.addEventListener('message', onMessage);
-    return () => {
-      window.removeEventListener('message', onMessage);
-      clearOAuthPoll();
-    };
-  }, []);
-
-  useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const zoho = params.get('zoho');
     if (!zoho) return;
-    if (zoho === 'connected') setMessage(params.get('meeting') === 'unavailable'
-      ? 'Zoho Calendar connected, but this account did not report Zoho Meeting conferencing. Contact your ProFox administrator if Zoho Meeting is required.'
-      : 'Zoho Calendar connected. Your assigned meeting capability is being verified.');
-    if (zoho === 'error') setError(params.get('message') || 'Zoho Calendar connection was not completed.');
+    if (zoho === 'service_connected') setMessage('The ProFox Administrator connected the company-managed Zoho Calendar and Meeting service.');
+    if (zoho === 'error') setError(params.get('message') || 'The company-managed Zoho Calendar connection was not completed.');
     params.delete('zoho'); params.delete('meeting'); params.delete('message');
     const query = params.toString();
     window.history.replaceState({}, '', `${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash}`);
@@ -239,83 +191,28 @@ export default function SalesAccountSetup({ onCompleted }: { onCompleted?: () =>
     } finally { setPhotoSaving(false); }
   };
 
-  const connectProfessionalEmail = async () => {
-    if (mailBusy) return;
-    setMailBusy(true); setMailError(''); setMessage('');
-    try {
-      const start = await professionalMailService.startAuthorization();
-      oauthOriginRef.current = new URL(start.callbackUrl).origin;
-      const popup = window.open(start.authorizeUrl, 'profox-zoho-professional-mail', 'popup=yes,width=680,height=760,resizable=yes,scrollbars=yes');
-      if (!popup) throw new Error('Your browser blocked the Zoho authorization window. Allow pop-ups for ProFox and try again.');
-      oauthWindowRef.current = popup;
-      popup.focus();
-
-      clearOAuthPoll();
-      oauthPollRef.current = window.setInterval(() => {
-        if (!oauthWindowRef.current?.closed) return;
-        clearOAuthPoll();
-        oauthWindowRef.current = null;
-        oauthOriginRef.current = '';
-        setMailBusy(false);
-        void loadMailStatus(true);
-      }, 500);
-    } catch (err) {
-      clearOAuthPoll();
-      setMailBusy(false);
-      oauthWindowRef.current = null;
-      oauthOriginRef.current = '';
-      setMailError(errorMessage(err, 'Professional email connection could not be started.'));
-    }
-  };
-
   const connectGoogle = async () => {
-    const snapshot = await googleCalendarService.getSnapshot();
-    const authorizationUrl = await googleCalendarService.startConnection(snapshot.connection.status === 'reconnect_required', '/admin/workspace');
-    window.location.assign(authorizationUrl);
-  };
-
-  const connectAssignedCalendar = async () => {
-    if (!status) return;
     setBusy(true); setError(''); setMessage('');
     try {
-      if (status.calendarProvider === 'zoho') {
-        const snapshot = await zohoCalendarService.getStatus();
-        if (!snapshot.providerConfigured) throw new Error('Zoho OAuth is not configured by the Administrator yet.');
-        if (snapshot.connection.status === 'reconnect_required' || snapshot.connection.status === 'error') await zohoCalendarService.reconnect('/admin/workspace');
-        else await zohoCalendarService.connect('/admin/workspace');
-        return;
-      }
-      await connectGoogle();
+      const snapshot = await googleCalendarService.getSnapshot();
+      const authorizationUrl = await googleCalendarService.startConnection(snapshot.connection.status === 'reconnect_required', '/admin/workspace');
+      window.location.assign(authorizationUrl);
     } catch (err) {
-      setError(errorMessage(err, `${status.calendarProvider === 'zoho' ? 'Zoho' : 'Google'} Calendar connection could not be started.`));
+      setError(errorMessage(err, 'Google Calendar connection could not be started.'));
       setBusy(false);
     }
   };
 
-  const enableAssignedMeeting = async () => {
-    if (!status) return;
+  const enableGoogleMeet = async () => {
     setBusy(true); setError(''); setMessage('');
     try {
-      if (status.meetingProvider === 'zoho_meeting') {
-        const snapshot = await zohoCalendarService.getStatus();
-        if (!snapshot.connection.connected) {
-          setBusy(false);
-          await connectAssignedCalendar();
-          return;
-        }
-        if (!snapshot.connection.meetingEnabled) throw new Error('Zoho Meeting is not enabled by the ProFox Administrator yet.');
-        if (!snapshot.connection.meetingReady) throw new Error('This Zoho account does not currently report Zoho Meeting conferencing capability. Reconnect after the plan/permission is available.');
-        await load(true);
-        setMessage('Zoho Meeting capability is verified. ProFox can request Meeting links for synchronized CRM meetings.');
-        return;
-      }
       const snapshot = await googleCalendarService.getSnapshot();
       if (snapshot.connection.status !== 'connected') throw new Error('Connect Google Calendar first.');
       await googleCalendarService.updatePreferences(snapshot.connection.syncEnabled !== false, true);
       await load(true);
       setMessage('Google Meet creation is enabled. ProFox can now create Meet links for eligible scheduled meetings.');
     } catch (err) {
-      setError(errorMessage(err, 'The assigned meeting provider could not be enabled.'));
+      setError(errorMessage(err, 'Google Meet could not be enabled.'));
     } finally { setBusy(false); }
   };
 
@@ -338,7 +235,7 @@ export default function SalesAccountSetup({ onCompleted }: { onCompleted?: () =>
   const technicalChecks = useMemo(() => status ? [
     status.profilePhotoReady,
     status.timezoneReady,
-    ...(status.professionalEmailRequired ? [status.professionalEmailReady, status.professionalEmailAuthorizedOnce] : []),
+    ...(status.professionalEmailRequired ? [status.professionalEmailReady, status.professionalEmailSendConnected] : []),
     status.calendarConnected,
     status.meetingReady,
     status.availabilityReady,
@@ -360,8 +257,8 @@ export default function SalesAccountSetup({ onCompleted }: { onCompleted?: () =>
   const mailboxActive = Boolean(mailStatus?.eligible && mailStatus.mailProvider === 'zoho' && mailStatus.mailboxStatus === 'active' && mailStatus.workEmail);
   const mailboxConnected = Boolean(mailboxActive && mailStatus?.sendConnected);
   const showMailboxCard = mailboxEligible || status.professionalEmailRequired || status.mailProvider === 'zoho' || Boolean(status.workEmail);
-  const mailboxAuthorizedOnce = status.professionalEmailAuthorizedOnce;
   const mailboxConnectionStatus = mailStatus?.sendConnectionStatus || status.professionalEmailSendConnectionStatus;
+  const zohoManaged = status.calendarProvider === 'zoho' || status.meetingProvider === 'zoho_meeting';
 
   const professionalEmailCard = showMailboxCard ? (
     <div className="rounded-3xl border border-slate-200 p-5 sm:p-6">
@@ -370,40 +267,22 @@ export default function SalesAccountSetup({ onCompleted }: { onCompleted?: () =>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <div className="text-xs font-black uppercase tracking-wide text-indigo-700">Step B · Professional email</div>
-            <span className={`rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-wide ${status.professionalEmailRequired ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-500'}`}>{status.professionalEmailRequired ? 'Required' : 'Recommended'}</span>
+            <span className={`rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-wide ${status.professionalEmailRequired ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-500'}`}>{status.professionalEmailRequired ? 'Required' : 'Managed'}</span>
           </div>
-          <h3 className="mt-1 text-lg font-black">Activate once. Work from ProFox after that.</h3>
-          <p className="mt-1 text-xs leading-5 text-slate-500">Zoho opens only for the one-time consent to your exact professional mailbox. After approval, ProFox refreshes OAuth tokens, sends customer email and synchronizes replies automatically.</p>
+          <h3 className="mt-1 text-lg font-black">Your professional mailbox is managed by ProFox Admin.</h3>
+          <p className="mt-1 text-xs leading-5 text-slate-500">You never sign in to Zoho or approve Zoho OAuth for ProFox. Admin manages the company authorization centrally; ProFox sends and synchronizes eligible customer email through your fixed professional address.</p>
         </div>
       </div>
-
       <div className="mt-5 grid gap-2">
-        <Requirement complete={mailboxActive || status.professionalEmailReady} label="Professional mailbox active" detail={mailStatus?.workEmail || status.workEmail || 'Your professional mailbox is still being provisioned by ProFox.'} />
-        <Requirement
-          complete={mailboxAuthorizedOnce}
-          label="One-time Zoho authorization completed"
-          detail={mailboxAuthorizedOnce ? 'This exact professional mailbox has already been authorized. You do not need to manage Zoho day-to-day.' : 'Click Activate Professional Email once and approve the exact mailbox shown above.'}
-        />
+        <Requirement complete={mailboxActive || status.professionalEmailReady} label="Professional mailbox active" detail={mailStatus?.workEmail || status.workEmail || 'Your professional mailbox is still being provisioned by ProFox Admin.'} />
+        <Requirement complete={mailboxConnected} label="Company Mail service ready" detail={mailboxConnected ? 'Admin-managed Zoho Mail authorization is active. No action is required from you.' : 'The mailbox or company Mail authorization still needs Admin attention. You do not need to authorize Zoho yourself.'} />
       </div>
-
-      <div className={`mt-4 rounded-2xl border p-4 ${mailboxConnected ? 'border-emerald-200 bg-emerald-50/70' : mailboxAuthorizedOnce ? 'border-amber-200 bg-amber-50/70' : 'border-blue-100 bg-blue-50/60'}`}>
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2 text-xs font-black text-slate-900"><KeyRound className="h-4 w-4 text-[#000080]" />ProFox Mail Connection</div>
-            <div className={`mt-1 text-[11px] font-bold ${mailboxConnected ? 'text-emerald-700' : mailboxAuthorizedOnce ? 'text-amber-800' : 'text-slate-600'}`}>{mailConnectionLabel(mailboxConnectionStatus)}</div>
-            <p className="mt-1 text-[11px] leading-5 text-slate-500">{mailboxConnected ? 'Ready for automatic customer sending and inbound reply synchronization inside ProFox.' : mailboxAuthorizedOnce ? 'Your one-time authorization is preserved. Reconnect Zoho to resume email; your CRM, Chat and Meetings access remains available.' : mailboxActive ? 'One approval is still needed. ProFox never asks you to store your Zoho password here.' : 'The mailbox must be active before OAuth authorization can start.'}</p>
-          </div>
-          {mailboxConnected ? (
-            <div className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-xl bg-emerald-100 px-4 text-xs font-black text-emerald-800"><CheckCircle2 className="h-4 w-4" />Connected</div>
-          ) : (
-            <button type="button" onClick={() => void connectProfessionalEmail()} disabled={mailBusy || !mailboxActive} className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-xl bg-[#000080] px-4 text-xs font-black text-white disabled:cursor-not-allowed disabled:opacity-45">
-              {mailBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <KeyRound className="h-4 w-4" />}
-              {mailboxAuthorizedOnce ? 'Reconnect Professional Email' : 'Activate Professional Email'}
-            </button>
-          )}
+      <div className={`mt-4 rounded-2xl border p-4 ${mailboxConnected ? 'border-emerald-200 bg-emerald-50/70' : 'border-amber-200 bg-amber-50/70'}`}>
+        <div className="flex items-start gap-3">
+          <ShieldCheck className={`mt-0.5 h-5 w-5 shrink-0 ${mailboxConnected ? 'text-emerald-700' : 'text-amber-700'}`} />
+          <div><div className="text-xs font-black text-slate-900">{mailConnectionLabel(mailboxConnectionStatus)}</div><p className="mt-1 text-[11px] leading-5 text-slate-500">{mailboxConnected ? 'Ready for customer sending and matched reply synchronization inside ProFox.' : 'Contact your ProFox Administrator if Professional Email is required for your role. Staff OAuth is intentionally disabled.'}</p></div>
         </div>
       </div>
-      {mailError && <div className="mt-3 rounded-xl border border-red-200 bg-red-50 p-3 text-[11px] font-semibold leading-5 text-red-700">{mailError}</div>}
       <button type="button" onClick={() => navigate('/admin/seller-profile')} className="mt-4 text-xs font-black text-[#000080] hover:underline">Review professional email details →</button>
     </div>
   ) : null;
@@ -415,19 +294,9 @@ export default function SalesAccountSetup({ onCompleted }: { onCompleted?: () =>
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-3xl bg-emerald-100 text-emerald-700"><BadgeCheck className="h-8 w-8" /></div>
           <div className="mt-5 text-[10px] font-black uppercase tracking-[0.18em] text-emerald-700">Sales account ready</div>
           <h1 className="mt-2 text-2xl font-black text-slate-950 sm:text-3xl">Your ProFox Sales workspace is ready.</h1>
-          <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-slate-600">Your professional identity, {calendarProviderLabel}, {meetingProviderLabel}, working availability and CRM orientation are verified. Professional email health is handled separately so a future reconnect never locks you out of your workspace.</p>
+          <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-slate-600">Your professional identity, {calendarProviderLabel}, {meetingProviderLabel}, working availability and CRM orientation are verified. Zoho services assigned by ProFox are centrally managed; you never need to approve a staff-level Zoho authorization.</p>
           <button type="button" onClick={() => navigate('/admin/today')} className="mt-7 inline-flex min-h-12 items-center gap-2 rounded-xl bg-[#000080] px-6 text-sm font-black text-white hover:bg-[#000066]">Open my Sales workspace <ArrowRight className="h-4 w-4" /></button>
         </div>
-        {showMailboxCard && !mailboxConnected && (
-          <div className="rounded-3xl border border-indigo-200 bg-white p-5 shadow-sm sm:p-6">
-            <div className="flex items-start gap-3">
-              <Mail className="mt-0.5 h-5 w-5 shrink-0 text-indigo-700" />
-              <div className="min-w-0 flex-1"><div className="text-sm font-black text-slate-900">Finish your one-time Professional Email activation</div><p className="mt-1 text-xs leading-5 text-slate-500">This does not block CRM, Chat or Meetings. Activate the mailbox once so customer email can run entirely inside ProFox.</p></div>
-            </div>
-            <button type="button" onClick={() => void connectProfessionalEmail()} disabled={mailBusy || !mailboxActive} className="mt-4 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#000080] px-4 text-xs font-black text-white disabled:opacity-45">{mailBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <KeyRound className="h-4 w-4" />}{mailboxAuthorizedOnce ? 'Reconnect Professional Email' : 'Activate Professional Email'}</button>
-            {mailError && <div className="mt-3 text-xs font-semibold text-red-700">{mailError}</div>}
-          </div>
-        )}
       </div>
     );
   }
@@ -440,7 +309,7 @@ export default function SalesAccountSetup({ onCompleted }: { onCompleted?: () =>
             <div className="max-w-3xl">
               <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.18em] text-blue-200"><Sparkles className="h-4 w-4" />Welcome to your active Sales account</div>
               <h1 className="mt-3 text-2xl font-black sm:text-3xl">Set up your workspace before you start selling.</h1>
-              <p className="mt-3 max-w-2xl text-sm leading-6 text-blue-100">Complete these steps once so your professional identity, customer communication, calendar, meetings and CRM workflow are ready. Professional email uses secure one-time OAuth—not mailbox password handling.</p>
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-blue-100">Complete your professional identity, assigned provider readiness, availability and CRM orientation. ProFox Admin manages company Zoho authorization centrally; staff never approve Zoho access individually.</p>
             </div>
             <div className="rounded-2xl border border-white/20 bg-white/10 p-4 backdrop-blur-sm lg:min-w-[220px]">
               <div className="flex items-center justify-between text-xs font-bold text-blue-100"><span>Account setup</span><span>{status.progressPercent}%</span></div>
@@ -459,9 +328,9 @@ export default function SalesAccountSetup({ onCompleted }: { onCompleted?: () =>
           <div>
             <div className="text-[10px] font-black uppercase tracking-[0.16em] text-[#000080]">Part 1 · Account setup</div>
             <h2 className="mt-1 text-xl font-black">Make your account customer-ready</h2>
-            <p className="mt-1 text-sm leading-6 text-slate-500">These checks come from the real mailbox, OAuth, provider and availability state.</p>
+            <p className="mt-1 text-sm leading-6 text-slate-500">These checks come from real mailbox, provider and availability state.</p>
           </div>
-          <button type="button" onClick={() => void load()} disabled={busy || photoSaving || mailBusy} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 px-3 text-xs font-black text-slate-600 disabled:opacity-50"><RefreshCw className="h-4 w-4" />Refresh checks</button>
+          <button type="button" onClick={() => void load()} disabled={busy || photoSaving} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 px-3 text-xs font-black text-slate-600 disabled:opacity-50"><RefreshCw className="h-4 w-4" />Refresh checks</button>
         </div>
 
         <div className="mt-6 grid gap-5 lg:grid-cols-2">
@@ -483,18 +352,20 @@ export default function SalesAccountSetup({ onCompleted }: { onCompleted?: () =>
           <div className="rounded-3xl border border-slate-200 p-5 sm:p-6">
             <div className="flex items-start gap-3">
               <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-rose-50 text-rose-700"><CalendarDays className="h-5 w-5" /></div>
-              <div><div className="text-xs font-black uppercase tracking-wide text-rose-700">Step {showMailboxCard ? 'C' : 'B'} · Calendar & meetings</div><h3 className="mt-1 text-lg font-black">Connect {calendarProviderLabel} + {meetingProviderLabel}</h3><p className="mt-1 text-xs leading-5 text-slate-500">Your provider is assigned by Admin. Connect it once so CRM meetings can synchronize without manual link copying.</p></div>
+              <div><div className="text-xs font-black uppercase tracking-wide text-rose-700">Step {showMailboxCard ? 'C' : 'B'} · Calendar & meetings</div><h3 className="mt-1 text-lg font-black">{calendarProviderLabel} + {meetingProviderLabel}</h3><p className="mt-1 text-xs leading-5 text-slate-500">{zohoManaged ? 'Zoho Calendar and Meeting are company-managed by ProFox Admin. You do not authorize Zoho from your account.' : 'Google is assigned to your account and requires your own Google authorization.'}</p></div>
             </div>
             <div className="mt-5 grid gap-2">
-              <Requirement complete={status.calendarConnected} label={`${calendarProviderLabel} connected`} detail={calendarAccountEmail || `Connect the ${calendarProviderLabel} account assigned to your ProFox work.`} />
-              <Requirement complete={status.meetingReady} label={`${meetingProviderLabel} ready`} detail={status.meetingProvider === 'zoho_meeting' ? 'Zoho Calendar must report zmeeting conferencing capability.' : 'Eligible ProFox meetings must be able to create a Google Meet link.'} />
+              <Requirement complete={status.calendarConnected} label={`${calendarProviderLabel} connected`} detail={calendarAccountEmail || (zohoManaged ? 'Waiting for the company-managed Zoho service.' : `Connect the ${calendarProviderLabel} account assigned to your ProFox work.`)} />
+              <Requirement complete={status.meetingReady} label={`${meetingProviderLabel} ready`} detail={zohoManaged ? 'Admin-managed Zoho Meeting capability must be healthy; no seller authorization is required.' : 'Eligible ProFox meetings must be able to create a Google Meet link.'} />
               <Requirement complete={status.availabilityReady} label="Working availability configured" detail={status.availabilityReady ? `Working hours saved${status.workStart && status.workEnd ? ` · ${status.workStart}–${status.workEnd}` : ''}.` : 'Set your working days, hours, buffers and booking availability.'} />
             </div>
             <div className="mt-4 grid gap-2 sm:grid-cols-2">
-              {!status.calendarConnected ? (
-                <button type="button" onClick={() => void connectAssignedCalendar()} disabled={busy} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#000080] px-4 text-xs font-black text-white disabled:opacity-50">{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <CalendarDays className="h-4 w-4" />}Connect {calendarProviderLabel}</button>
+              {zohoManaged ? (
+                <div className={`flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 text-xs font-black ${status.calendarConnected && status.meetingReady ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-800'}`}><ShieldCheck className="h-4 w-4" />{status.calendarConnected && status.meetingReady ? 'Company Zoho service ready' : 'Waiting for ProFox Admin'}</div>
+              ) : !status.calendarConnected ? (
+                <button type="button" onClick={() => void connectGoogle()} disabled={busy} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#000080] px-4 text-xs font-black text-white disabled:opacity-50">{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <CalendarDays className="h-4 w-4" />}Connect Google Calendar</button>
               ) : !status.meetingReady ? (
-                <button type="button" onClick={() => void enableAssignedMeeting()} disabled={busy} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#000080] px-4 text-xs font-black text-white disabled:opacity-50">{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Video className="h-4 w-4" />}Verify {meetingProviderLabel}</button>
+                <button type="button" onClick={() => void enableGoogleMeet()} disabled={busy} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#000080] px-4 text-xs font-black text-white disabled:opacity-50">{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Video className="h-4 w-4" />}Enable Google Meet</button>
               ) : (
                 <div className="flex min-h-11 items-center justify-center gap-2 rounded-xl bg-emerald-50 px-4 text-xs font-black text-emerald-700"><CheckCircle2 className="h-4 w-4" />Calendar & meeting ready</div>
               )}
@@ -512,7 +383,7 @@ export default function SalesAccountSetup({ onCompleted }: { onCompleted?: () =>
         </div>
         {!technicalReady ? (
           <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-5">
-            <div className="flex items-start gap-3"><ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-amber-700" /><div><div className="font-black text-amber-950">Finish the mandatory account setup first</div><p className="mt-1 text-sm leading-6 text-amber-800">The CRM tour unlocks after your professional identity{status.professionalEmailRequired ? ', one-time professional email authorization' : ''}, {calendarProviderLabel}, {meetingProviderLabel} and working availability are verified.</p></div></div>
+            <div className="flex items-start gap-3"><ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-amber-700" /><div><div className="font-black text-amber-950">Finish the mandatory account setup first</div><p className="mt-1 text-sm leading-6 text-amber-800">The CRM tour unlocks after your professional identity{status.professionalEmailRequired ? ', Admin-managed professional email' : ''}, {calendarProviderLabel}, {meetingProviderLabel} and working availability are ready.</p></div></div>
           </div>
         ) : (
           <div className="mt-6 grid gap-5 lg:grid-cols-[240px_minmax(0,1fr)]">
@@ -544,7 +415,7 @@ export default function SalesAccountSetup({ onCompleted }: { onCompleted?: () =>
       </section>
 
       <section className="rounded-3xl border border-slate-200 bg-slate-50 p-5 sm:p-6">
-        <div className="flex items-start gap-3"><ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-[#000080]" /><div><h3 className="text-sm font-black text-slate-900">Why this setup is mandatory</h3><p className="mt-1 text-xs leading-5 text-slate-500">A professional identity builds trust, secure OAuth protects customer email, accurate calendar authorization prevents scheduling failures, the configured meeting provider keeps customer links reliable, and disciplined CRM usage protects the customer journey.</p></div></div>
+        <div className="flex items-start gap-3"><ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-[#000080]" /><div><h3 className="text-sm font-black text-slate-900">Why this setup is mandatory</h3><p className="mt-1 text-xs leading-5 text-slate-500">A professional identity builds trust, accurate provider state prevents scheduling failures, working availability protects customer booking quality, and the CRM guide keeps every lead auditable. Company-managed Zoho credentials never belong to individual staff accounts.</p></div></div>
       </section>
     </div>
   );
