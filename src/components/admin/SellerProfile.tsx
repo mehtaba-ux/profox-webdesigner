@@ -1,8 +1,7 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ArrowLeft,
   Award,
-  CalendarDays,
   CheckCircle2,
   Clock3,
   FileCheck2,
@@ -53,11 +52,8 @@ export default function SellerProfile() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [mailStatus, setMailStatus] = useState<ProfessionalMailSendStatus | null>(null);
   const [mailLoading, setMailLoading] = useState(false);
-  const [mailConnecting, setMailConnecting] = useState(false);
   const [mailError, setMailError] = useState('');
   const [mailMessage, setMailMessage] = useState('');
-  const oauthWindowRef = useRef<Window | null>(null);
-  const oauthOriginRef = useRef('');
 
   const load = async () => {
     setLoading(true);
@@ -97,46 +93,6 @@ export default function SellerProfile() {
       void loadMailStatus();
     }
   }, [allowed]);
-
-  useEffect(() => {
-    const onMessage = (event: MessageEvent) => {
-      if (event.source !== oauthWindowRef.current) return;
-      if (oauthOriginRef.current && event.origin !== oauthOriginRef.current) return;
-      if (event.data?.type !== 'profox-zoho-mail-send-oauth') return;
-      setMailConnecting(false);
-      oauthWindowRef.current = null;
-      oauthOriginRef.current = '';
-      if (event.data?.success) {
-        setMailError('');
-        setMailMessage('Professional email connected. ProFox can now send and synchronize customer replies through this mailbox.');
-        void loadMailStatus();
-      } else {
-        setMailMessage('');
-        setMailError(String(event.data?.message || 'Professional email permission was not connected.'));
-      }
-    };
-    window.addEventListener('message', onMessage);
-    return () => window.removeEventListener('message', onMessage);
-  }, []);
-
-  const connectProfessionalEmail = async () => {
-    setMailConnecting(true);
-    setMailError('');
-    setMailMessage('');
-    try {
-      const start = await professionalMailService.startAuthorization();
-      oauthOriginRef.current = new URL(start.callbackUrl).origin;
-      const popup = window.open(start.authorizeUrl, 'profox-zoho-professional-mail', 'popup=yes,width=680,height=760,resizable=yes,scrollbars=yes');
-      if (!popup) throw new Error('Your browser blocked the Zoho authorization window. Allow pop-ups for ProFox and try again.');
-      oauthWindowRef.current = popup;
-      popup.focus();
-    } catch (err: any) {
-      setMailConnecting(false);
-      oauthWindowRef.current = null;
-      oauthOriginRef.current = '';
-      setMailError(err?.message || 'Professional email connection could not be started.');
-    }
-  };
 
   const syncProfessionalInbox = async () => {
     setMailLoading(true);
@@ -218,7 +174,7 @@ export default function SellerProfile() {
       {loading || !context ? <div className="flex min-h-[420px] items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-[#000080]" /></div> : <>
         <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <StatusCard icon={ShieldCheck} label="Account" value={label(context.profile.status)} note={`${label(context.profile.role)} access`} good={context.profile.status === 'active'} />
-          <StatusCard icon={Mail} label="Professional Email" value={connectedMailbox ? 'Connected' : activeMailbox ? 'Setup required' : 'Not ready'} note={mailStatus?.workEmail || 'Customer-facing mailbox'} good={connectedMailbox} />
+          <StatusCard icon={Mail} label="Professional Email" value={connectedMailbox ? 'Ready' : activeMailbox ? 'Admin service required' : 'Not ready'} note={mailStatus?.workEmail || 'Customer-facing mailbox'} good={connectedMailbox} />
           <StatusCard icon={FileCheck2} label="Partner Agreement" value={label(context.agreement.status)} note={context.agreement.agreementNumber || 'No agreement number available'} good={Boolean(context.agreement.verifiedAt)} />
           <StatusCard icon={Award} label="Final Certification" value={label(context.academy.finalCertificationStatus)} note={context.academy.finalCertificationScore == null ? label(context.academy.finalCertificationReviewStatus) : `Score ${context.academy.finalCertificationScore}%`} good={context.academy.finalCertificationStatus === 'Passed' || context.academy.finalCertificationStatus === 'Completed'} />
         </section>
@@ -258,7 +214,7 @@ export default function SellerProfile() {
 
         <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-7">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-            <div className="flex items-start gap-3"><div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700"><Mail className="h-5 w-5" /></div><div><h2 className="font-black">Professional Email Setup</h2><p className="mt-1 max-w-2xl text-xs leading-5 text-slate-500">Your Account Email signs you into ProFox. Your Professional Email is the customer-facing identity. Zoho stays in the background as the secure mail transport.</p></div></div>
+            <div className="flex items-start gap-3"><div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700"><Mail className="h-5 w-5" /></div><div><h2 className="font-black">Professional Email</h2><p className="mt-1 max-w-2xl text-xs leading-5 text-slate-500">Your Account Email signs you into ProFox. Your Professional Email is the customer-facing identity. Zoho authorization is managed centrally by ProFox Admin—sellers never connect or approve Zoho themselves.</p></div></div>
             <button type="button" disabled={mailLoading} onClick={() => void loadMailStatus()} className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-xl border border-slate-200 px-3 text-[10px] font-black text-slate-600 disabled:opacity-50"><RefreshCw className={`h-3.5 w-3.5 ${mailLoading ? 'animate-spin' : ''}`} />Refresh status</button>
           </div>
 
@@ -268,19 +224,19 @@ export default function SellerProfile() {
           <div className="mt-5 grid gap-3 md:grid-cols-3">
             <EmailIdentityCard label="Account Email" value={accountEmail} note="Use this to sign in to ProFox." good />
             <EmailIdentityCard label="Professional Email" value={mailStatus?.workEmail || 'Not provisioned'} note="Customers see this address." good={activeMailbox} />
-            <EmailIdentityCard label="ProFox Mail Connection" value={connectedMailbox ? 'Connected' : mailStatus?.sendConnectionStatus === 'reconnect_required' ? 'Reconnect required' : activeMailbox ? 'Connection required' : 'Not ready'} note={connectedMailbox ? 'Send + customer reply sync enabled.' : 'No mailbox password is stored in the browser.'} good={connectedMailbox} />
+            <EmailIdentityCard label="Admin-managed Mail Service" value={connectedMailbox ? 'Ready' : activeMailbox ? 'Admin action required' : 'Not ready'} note={connectedMailbox ? 'Send + customer reply sync enabled.' : 'No seller OAuth or mailbox password is required.'} good={connectedMailbox} />
           </div>
 
           <div className="mt-5 grid gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-xs leading-5 text-slate-600 md:grid-cols-3">
             <div><span className="font-black text-slate-900">1. Sign in</span><br />Always use your Account Email and ProFox password.</div>
-            <div><span className="font-black text-slate-900">2. Connect once</span><br />Authorize the exact Professional Zoho mailbox shown above.</div>
-            <div><span className="font-black text-slate-900">3. Work in ProFox</span><br />Send email and read matched customer replies without operating Zoho day to day.</div>
+            <div><span className="font-black text-slate-900">2. Admin manages Zoho</span><br />ProFox Admin authorizes the company Mail service centrally.</div>
+            <div><span className="font-black text-slate-900">3. Work in ProFox</span><br />Send email and read matched customer replies without operating Zoho.</div>
           </div>
 
           <div className="mt-5 flex flex-wrap gap-2">
-            {activeMailbox && !connectedMailbox && <button type="button" disabled={mailConnecting} onClick={() => void connectProfessionalEmail()} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-[#000080] px-4 text-xs font-black text-white disabled:opacity-50">{mailConnecting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}{mailConnecting ? 'Waiting for Zoho…' : mailStatus?.sendConnectionStatus === 'reconnect_required' ? 'Reconnect professional email' : 'Connect professional email'}</button>}
             {connectedMailbox && <button type="button" disabled={mailLoading} onClick={() => void syncProfessionalInbox()} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-[#000080] px-4 text-xs font-black text-white disabled:opacity-50">{mailLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}Sync customer replies</button>}
-            {!activeMailbox && <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-bold text-amber-800">Your active professional mailbox must be provisioned before connection is available.</div>}
+            {activeMailbox && !connectedMailbox && <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-bold text-amber-800">Your mailbox exists, but the company Mail service needs ProFox Admin attention. You do not need to authorize Zoho.</div>}
+            {!activeMailbox && <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-bold text-amber-800">Your professional mailbox must be provisioned by ProFox Admin before customer email is available.</div>}
           </div>
         </section>
 
