@@ -34,33 +34,38 @@ export default function SellerCustomerLifecycleSummary({ leadId, projectId, show
   if (error || !data) return <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-xs font-semibold text-rose-700">{error || 'Lifecycle status unavailable.'}</div>;
 
   return (
-    <section className={`rounded-2xl border border-slate-200 bg-white shadow-sm ${compact ? 'p-4' : 'p-5'}`}>
+    <section className={`min-w-0 rounded-2xl border border-slate-200 bg-white shadow-sm ${compact ? 'p-4' : 'p-5'}`}>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
+        <div className="min-w-0">
           <div className="text-[9px] font-black uppercase tracking-[.16em] text-[#000080]">Customer Journey</div>
-          <div className="mt-1 text-lg font-black text-slate-950">{data.lifecycleStage}</div>
-          <div className="mt-1 text-[10px] text-slate-500">Project Stage: <span className="font-black text-slate-700">{data.projectStage || 'Not started'}</span></div>
+          <div className="mt-1 break-words text-lg font-black text-slate-950">{data.lifecycleStage}</div>
+          <div className="mt-1 break-words text-[10px] leading-4 text-slate-500">Project Stage: <span className="font-black text-slate-700">{data.projectStage || 'Not started'}</span></div>
         </div>
-        <div className="rounded-xl bg-slate-50 px-3 py-2 text-[10px] text-slate-500">
+        <div className="min-w-[120px] rounded-xl bg-slate-50 px-3 py-2 text-[10px] text-slate-500">
           <div className="font-black uppercase tracking-wide text-slate-400">Current Owner</div>
-          <div className="mt-1 font-black text-slate-800">{data.currentOwnerName || data.currentOwnerRole || 'Management'}</div>
-          <div>{data.currentOwnerRole || ''}</div>
+          <div className="mt-1 break-words font-black text-slate-800">{data.currentOwnerName || data.currentOwnerRole || 'Management'}</div>
+          <div className="break-words">{data.currentOwnerRole || ''}</div>
         </div>
       </div>
 
-      <div className="mt-5 grid grid-cols-7 gap-1">
+      <div className={`mt-5 grid gap-x-2 gap-y-3 ${compact ? 'grid-cols-4' : 'grid-cols-4 sm:grid-cols-7'}`}>
         {MILESTONES.map(({ key, label }) => {
           const done = Boolean(data.milestones?.[key]);
           const current = !done && ((key === 'handoff' && data.queueKey === 'ready_for_handoff') || (key === 'onboarding' && data.queueKey === 'onboarding') || (key === 'payment' && data.queueKey === 'awaiting_payment') || (key === 'production' && data.lifecycleStage.includes('Production')));
-          return <div key={key} className="min-w-0 text-center"><div className={`mx-auto flex h-7 w-7 items-center justify-center rounded-full border ${done ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : current ? 'border-amber-300 bg-amber-50 text-amber-700' : 'border-slate-200 bg-slate-50 text-slate-300'}`}>{done ? <Check className="h-3.5 w-3.5" /> : <Circle className="h-3 w-3" />}</div><div className="mt-1 truncate text-[8px] font-black text-slate-500">{label}</div></div>;
+          return (
+            <div key={key} className="min-w-0 text-center">
+              <div className={`mx-auto flex h-7 w-7 items-center justify-center rounded-full border ${done ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : current ? 'border-amber-300 bg-amber-50 text-amber-700' : 'border-slate-200 bg-slate-50 text-slate-300'}`}>{done ? <Check className="h-3.5 w-3.5" /> : <Circle className="h-3 w-3" />}</div>
+              <div className="mt-1 break-words text-[8px] font-black leading-3 text-slate-500">{label}</div>
+            </div>
+          );
         })}
       </div>
 
       <div className="mt-5 rounded-xl border border-blue-100 bg-blue-50/60 p-3">
         <div className="text-[9px] font-black uppercase tracking-[.14em] text-[#000080]">NEXT ACTION</div>
-        <div className="mt-1 text-xs font-black text-slate-900">{data.nextActionLabel}</div>
-        {data.blocker && <div className="mt-2 flex items-start gap-2 text-[10px] font-bold text-amber-800"><AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />Blocker: {data.blocker}</div>}
-        {showAction && data.actionUrl && <button type="button" onClick={() => navigate(data.actionUrl)} className="mt-3 inline-flex items-center gap-2 rounded-lg bg-[#000080] px-3 py-2 text-[10px] font-black text-white">{data.nextActionLabel}<ArrowRight className="h-3.5 w-3.5" /></button>}
+        <div className="mt-1 break-words text-xs font-black leading-5 text-slate-900">{data.nextActionLabel}</div>
+        {data.blocker && <div className="mt-2 flex items-start gap-2 break-words text-[10px] font-bold leading-4 text-amber-800"><AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" /><span>Blocker: {data.blocker}</span></div>}
+        {showAction && data.actionUrl && <button type="button" onClick={() => navigate(data.actionUrl)} className="mt-3 inline-flex max-w-full items-center gap-2 rounded-lg bg-[#000080] px-3 py-2 text-left text-[10px] font-black leading-4 text-white"><span className="break-words">{data.nextActionLabel}</span><ArrowRight className="h-3.5 w-3.5 shrink-0" /></button>}
       </div>
     </section>
   );
