@@ -8,6 +8,10 @@ This contains everything you need to run your app locally.
 
 View your app in AI Studio: https://ai.studio/apps/8d172d53-5633-4b8b-970c-c29d8fc582f0
 
+## Developer UI rules
+
+Before changing product UI, read [`docs/UI_ICON_POLICY.md`](docs/UI_ICON_POLICY.md). The prohibited sparkle/glint icon family is a system-wide design rule and is enforced by CI.
+
 ## Run Locally
 
 **Prerequisites:**  Node.js
