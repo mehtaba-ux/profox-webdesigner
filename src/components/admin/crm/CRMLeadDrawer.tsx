@@ -1,12 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { CheckCircle2, Clipboard, ExternalLink, Loader2, RefreshCw, Send, ShieldCheck } from 'lucide-react';
 import { supabase } from '../../../lib/supabase';
+import CustomerCommunicationDrawer from '../CustomerCommunicationDrawer';
 import SellerCustomerLifecycleSummary from '../SellerCustomerLifecycleSummary';
 import CRMLeadDrawerBase, { type LeadDrawerTab } from './CRMLeadDrawerBase';
 
 export type { LeadDrawerTab };
 
-type Props = React.ComponentProps<typeof CRMLeadDrawerBase>;
+type Props = Omit<React.ComponentProps<typeof CRMLeadDrawerBase>, 'onOpenConversation'>;
 
 type OnboardingHandoff = {
   exists?: boolean;
@@ -47,13 +48,21 @@ function safeOnboardingUrl(value?: string | null) {
 }
 
 export default function CRMLeadDrawer(props: Props) {
+  const [conversationOpen, setConversationOpen] = useState(false);
+  const customerLabel = props.lead.contactName || props.lead.companyName || props.lead.title;
+
+  useEffect(() => {
+    setConversationOpen(false);
+  }, [props.lead.id]);
+
   return (
     <>
-      <CRMLeadDrawerBase {...props} />
+      <CRMLeadDrawerBase {...props} onOpenConversation={() => setConversationOpen(true)} />
       <div className="fixed right-4 top-4 z-[131] w-[calc(100%-2rem)] max-w-sm sm:right-5 sm:top-5">
         <SellerCustomerLifecycleSummary leadId={props.lead.id} compact />
       </div>
       <SellerOnboardingHandoff leadId={props.lead.id} onChanged={props.onChanged} />
+      {conversationOpen && <CustomerCommunicationDrawer leadId={props.lead.id} customerLabel={customerLabel} onClose={() => setConversationOpen(false)} />}
     </>
   );
 }
