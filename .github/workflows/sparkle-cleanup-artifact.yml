@@ -6,10 +6,11 @@ on:
       - chore/ban-sparkle-icon-systemwide
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   transform:
+    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -20,18 +21,21 @@ jobs:
         with:
           node-version: 22
 
-      - name: Report existing prohibited icon usages
-        run: grep -RniE 'Sparkle|Sparkles|WandSparkles|sparkle|sparkles|wandsparkles|✨' src --include='*.ts' --include='*.tsx' --include='*.js' --include='*.jsx' --include='*.html' --include='*.svg' --include='*.css' || true
-
       - name: Replace prohibited icon family
         run: node scripts/replace-prohibited-sparkle-icons-v2.mjs
 
-      - name: Upload transformed frontend
-        uses: actions/upload-artifact@v4
-        with:
-          name: sparkle-cleanup
-          path: |
-            src
-            sparkle-cleanup-manifest.json
-          if-no-files-found: error
-          retention-days: 1
+      - name: Verify transformed frontend
+        run: |
+          if grep -RniE 'Sparkle|Sparkles|WandSparkles|sparkle|sparkles|wandsparkles|✨' src --include='*.ts' --include='*.tsx' --include='*.js' --include='*.jsx' --include='*.html' --include='*.svg' --include='*.css'; then
+            echo 'Prohibited icon usage remains after transformation.'
+            exit 1
+          fi
+
+      - name: Commit transformed frontend
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src
+          git diff --cached --quiet && exit 0
+          git commit -m 'Replace prohibited sparkle icons system-wide'
+          git push origin HEAD:chore/ban-sparkle-icon-systemwide
