@@ -1,24 +1,23 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence, MotionValue, useReducedMotion, useScroll, useTransform } from 'motion/react';
-import { 
-  ArrowLeft, 
-  Sparkles, 
-  CheckCircle2, 
-  Globe, 
-  Award, 
-  Monitor, 
-  Cpu, 
-  Zap, 
-  Shield, 
-  Users, 
-  Check, 
-  ChevronRight, 
-  Edit3, 
-  Quote, 
-  Clock, 
-  Laptop, 
-  Code, 
-  Layers, 
+import {
+  ArrowLeft,
+  Users,
+  CheckCircle2,
+  Globe,
+  Award,
+  Monitor,
+  Cpu,
+  Zap,
+  Shield,
+  Check,
+  ChevronRight,
+  Edit3,
+  Quote,
+  Clock,
+  Laptop,
+  Code,
+  Layers,
   ArrowUpRight,
   Eye,
   Compass,
@@ -30,7 +29,7 @@ import {
   Bot,
   ArrowRight,
   Star,
-  ExternalLink
+  ExternalLink,
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { cn } from '../lib/utils';
@@ -297,7 +296,7 @@ export default function AboutUsDetailView({ page }: { page?: any }) {
             className="max-w-6xl space-y-5"
           >
             <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#000080]/10 border border-[#000080]/20 text-[#000080] text-xs font-bold uppercase tracking-widest">
-              <Sparkles className="w-3.5 h-3.5" />
+              <Users className="w-3.5 h-3.5" />
               <span>{heroData.badge}</span>
             </div>
 

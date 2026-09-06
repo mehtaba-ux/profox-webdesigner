@@ -30,7 +30,7 @@ export const services: Service[] = [
     title: 'Automate workflows & secure your digital foundation',
     subtitle: '',
     description: 'Email Marketing & Business Automation',
-    icon: 'sparkles',
+    icon: 'workflow',
     tags: [],
     link: '/services/email-marketing-and-business-automation',
     image: 'https://images.unsplash.com/photo-1677442136019-21780ecad995?auto=format&fit=crop&q=80&w=1200',

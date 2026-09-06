@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { motion, useScroll, useTransform, AnimatePresence, useMotionValueEvent } from 'motion/react';
-import { ArrowUpRight, ChevronDown, Check, Monitor, Database, Cloud, Code, Smartphone, Sparkles, Award, Trophy, Shield, Star } from 'lucide-react';
+import { ArrowUpRight, ChevronDown, Check, Monitor, Database, Cloud, Code, Smartphone, Workflow, Award, Trophy, Shield, Star } from 'lucide-react';
 import { Link, useParams } from 'react-router-dom';
 import { cn } from '../lib/utils';
 import { useCMS } from '../lib/CMSProvider';
@@ -15,8 +15,8 @@ const MotionLink = motion.create ? motion.create(Link) : motion(Link as any);
 const renderAwardIcon = (iconName: string) => {
   const norm = (iconName || '').toLowerCase().trim();
   switch (norm) {
-    case 'sparkles':
-      return <Sparkles className="w-6 h-6" />;
+    case 'workflow':
+      return <Workflow className="w-6 h-6" />;
     case 'monitor':
       return <Monitor className="w-6 h-6" />;
     case 'award':
@@ -724,7 +724,7 @@ function ScrollDrivenTechStack({
                         </h3>
                       </div>
                       <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 shrink-0">
-                        <Sparkles className="w-5 h-5 animate-pulse" />
+                        <Workflow className="w-5 h-5 animate-pulse" />
                       </div>
                     </div>
 
@@ -842,7 +842,7 @@ function ScrollDrivenTechStack({
                         </h3>
                       </div>
                       <div className="w-7 h-7 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 shrink-0">
-                        <Sparkles className="w-3.5 h-3.5" />
+                        <Workflow className="w-3.5 h-3.5" />
                       </div>
                     </div>
 
@@ -1008,7 +1008,7 @@ export default function ServiceDetailView({ page }: { page?: any }) {
         .filter((a: any) => a.show !== false)
         .map((a: any) => {
           let icon = "Award";
-          if (a.type === 'CLUTCH') icon = "Sparkles";
+          if (a.type === 'CLUTCH') icon = "Workflow";
           else if (a.type === 'TEXT') icon = "Monitor";
           return {
             text: a.name + (a.subtext ? ` - ${a.subtext}` : ''),

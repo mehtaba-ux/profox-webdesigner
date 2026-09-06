@@ -3,19 +3,19 @@ import { useCMS } from '../../lib/CMSProvider';
 import { ConfirmProvider, useConfirmContext } from './ConfirmContext';
 import { ConfirmButton } from './ConfirmButton';
 import { supabase } from '../../lib/supabase';
-import { 
-  Layout, 
-  Home, 
-  Layers, 
-  Briefcase, 
-  FileText, 
-  MessageSquare, 
-  Settings, 
-  Save, 
-  Check, 
+import {
+  Layout,
+  Home,
+  Layers,
+  Briefcase,
+  FileText,
+  MessageSquare,
+  Settings,
+  Save,
+  Check,
   Loader2,
-  Plus, 
-  Trash2, 
+  Plus,
+  Trash2,
   ArrowLeft,
   Users,
   Eye,
@@ -41,7 +41,7 @@ import {
   EyeOff,
   ExternalLink,
   Info,
-  Sparkles,
+  BadgeCheck,
   HelpCircle,
   Hammer,
   Award,
@@ -54,7 +54,7 @@ import {
   Receipt,
   ListChecks,
   BookOpen,
-  Sliders
+  Sliders,
 } from 'lucide-react';
 import { navItems, services, featuredCaseStudies, recentSuccess, articles, defaultCustomPages, defaultPortfolioItems, defaultPortfolioCategories } from '../../data';
 import { CustomPage, PortfolioItem, PortfolioCategory, Service, ROLE_LABELS, STATUS_LABELS } from '../../types';
@@ -1978,7 +1978,7 @@ function ServicesEditor({ initialData, servicePages = [], onSave }: { initialDat
   const iconOptions = [
     { value: 'monitor', label: 'Monitor', icon: Monitor },
     { value: 'grid', label: 'Grid', icon: Grid },
-    { value: 'sparkles', label: 'Sparkles', icon: Sparkles },
+    { value: 'badgecheck', label: 'BadgeCheck', icon: BadgeCheck },
   ];
 
   return (
@@ -2227,7 +2227,7 @@ function ServicePackagesEditor({ initialData, onSave }: { initialData: any, onSa
       <div className="flex items-center justify-between border-b border-slate-200 pb-4">
         <div className="flex items-center gap-4">
           <div className={`p-2 rounded-xl ${form.enabled === true ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`}>
-            {form.enabled === true ? <Sparkles className="w-5 h-5" /> : <EyeOff className="w-5 h-5" />}
+            {form.enabled === true ? <BadgeCheck className="w-5 h-5" /> : <EyeOff className="w-5 h-5" />}
           </div>
           <div>
             <h1 className="text-2xl font-bold text-slate-900">Service Packages Manager</h1>
@@ -3049,7 +3049,7 @@ function HomepageSectionsManager({
     { id: 'services', label: 'How We Help', icon: Layers },
     { id: 'caseStudies', label: 'Case Studies', icon: Briefcase },
     { id: 'insights', label: 'Expert Insights', icon: FileText },
-    { id: 'growth', label: 'Awards & Growth', icon: Sparkles },
+    { id: 'growth', label: 'Awards & Growth', icon: BadgeCheck },
     { id: 'faq', label: 'FAQ Section', icon: HelpCircle },
     { id: 'feedback', label: 'Testimonials', icon: MessageSquare },
     { id: 'cta', label: 'CTA Banner', icon: MessageSquare },

@@ -1,15 +1,15 @@
 import { ConfirmButton } from "./ConfirmButton";
 import { useConfirmContext } from "./ConfirmContext";
 import React, { useState } from 'react';
-import { 
-  Layout, 
-  Search, 
-  Plus, 
-  Trash2, 
-  ChevronRight, 
-  Settings, 
-  Eye, 
-  Save, 
+import {
+  Layout,
+  Search,
+  Plus,
+  Trash2,
+  ChevronRight,
+  Settings,
+  Eye,
+  Save,
   AlertCircle,
   Copy,
   Layers,
@@ -19,7 +19,7 @@ import {
   Tablet,
   Maximize2,
   X,
-  Sparkles,
+  LayoutTemplate,
   Info,
   Check,
   DollarSign,
@@ -27,7 +27,7 @@ import {
   RefreshCw,
   Upload,
   Loader2,
-  Award
+  Award,
 } from 'lucide-react';
 import { useCMS } from '../../lib/CMSProvider';
 import ImageUploader from './ImageUploader';
@@ -611,7 +611,7 @@ const defaultAboutUsData = {
     screenImage: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&q=80&w=1600",
     badgeText: "High-FPS Responsive Web Systems",
     features: [
-      { title: "Fluid Parallax & Scroll Physics", desc: "Silky-smooth 60FPS scroll animations and magnetic interactive cards.", icon: "Sparkles" },
+      { title: "Fluid Parallax & Scroll Physics", desc: "Silky-smooth 60FPS scroll animations and magnetic interactive cards.", icon: "LayoutTemplate" },
       { title: "Responsive Computer Frames", desc: "Adaptive layouts crafted specifically for 4K desktop, laptop, tablet, and mobile viewports.", icon: "Monitor" },
       { title: "Next-Gen Frontend Architecture", desc: "Built with React, Vite, Tailwind CSS, and optimized Framer Motion acceleration.", icon: "Cpu" }
     ]
@@ -624,7 +624,7 @@ const defaultAboutUsData = {
     visionText: "A practical digital partner for businesses that want customer-facing experiences, applications, marketing communication, customer data, and internal workflows to work as one connected growth system."
   },
   values: [
-    { title: "Pixel-Perfect Precision", desc: "We adhere strictly to mathematical spacing, typographic hierarchy, and visual harmony.", icon: "Sparkles", iconColor: "bg-blue-500" },
+    { title: "Pixel-Perfect Precision", desc: "We adhere strictly to mathematical spacing, typographic hierarchy, and visual harmony.", icon: "LayoutTemplate", iconColor: "bg-blue-500" },
     { title: "Agile Innovation", desc: "Rapid prototyping, continuous integration, and transparent client collaboration.", icon: "Zap", iconColor: "bg-emerald-500" },
     { title: "Uncompromising Quality", desc: "Rigorous accessibility standards, fast load times, and rock-solid reliability.", icon: "Shield", iconColor: "bg-indigo-500" },
     { title: "Human-Centric UX", desc: "Putting user needs and intuitive flows at the heart of every technological design.", icon: "Users", iconColor: "bg-amber-500" }
@@ -1605,7 +1605,7 @@ export default function TemplateManager() {
           
           {savedMessage && (
             <div className="bg-emerald-50 border border-emerald-200 text-emerald-700 px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 shadow-sm animate-in zoom-in duration-300">
-              <Sparkles className="w-4 h-4" /> {savedMessage}
+              <LayoutTemplate className="w-4 h-4" /> {savedMessage}
             </div>
           )}
         </div>
@@ -2480,7 +2480,7 @@ export default function TemplateManager() {
                       </div>
                       <button onClick={() => {
                           const currentStats = data.hero?.stats || [];
-                          setDraftData({ ...data, hero: { ...data.hero, stats: [...currentStats, { number: '100+', label: 'New Metric', icon: 'Sparkles' }] } });
+                          setDraftData({ ...data, hero: { ...data.hero, stats: [...currentStats, { number: '100+', label: 'New Metric', icon: 'LayoutTemplate' }] } });
                         }}
                         className="py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-[#000080] font-bold text-xs rounded-xl flex items-center gap-2 transition-all" >
                         <Plus className="w-4 h-4" /> Add Stat Metric
@@ -2584,7 +2584,7 @@ export default function TemplateManager() {
                         </div>
                         <button onClick={() => {
                             const current = data.computerShowcase?.features || [];
-                            setDraftData({ ...data, computerShowcase: { ...data.computerShowcase, features: [...current, { title: 'New Feature', desc: 'Feature description', icon: 'Sparkles' }] } });
+                            setDraftData({ ...data, computerShowcase: { ...data.computerShowcase, features: [...current, { title: 'New Feature', desc: 'Feature description', icon: 'LayoutTemplate' }] } });
                           }}
                           className="py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-[#000080] font-bold text-xs rounded-xl flex items-center gap-2 transition-all" >
                           <Plus className="w-4 h-4" /> Add Feature Highlight
@@ -2706,7 +2706,7 @@ export default function TemplateManager() {
                       </div>
                       <button onClick={() => {
                           const current = data.values || [];
-                          setDraftData({ ...data, values: [...current, { title: 'New Core Value', desc: 'Description of value', icon: 'Sparkles', iconColor: 'bg-blue-500' }] });
+                          setDraftData({ ...data, values: [...current, { title: 'New Core Value', desc: 'Description of value', icon: 'LayoutTemplate', iconColor: 'bg-blue-500' }] });
                         }}
                         className="py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-[#000080] font-bold text-xs rounded-xl flex items-center gap-2 transition-all" >
                         <Plus className="w-4 h-4" /> Add Core Value Card

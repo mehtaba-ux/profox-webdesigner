@@ -15,7 +15,7 @@ import {
   Mail,
   RefreshCw,
   ShieldCheck,
-  Sparkles,
+  UserCheck,
   UserRound,
   UsersRound,
   Video,
@@ -307,7 +307,7 @@ export default function SalesAccountSetup({ onCompleted }: { onCompleted?: () =>
         <div className="bg-gradient-to-br from-[#000080] to-[#1111a8] px-5 py-7 text-white sm:px-8 sm:py-9">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
             <div className="max-w-3xl">
-              <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.18em] text-blue-200"><Sparkles className="h-4 w-4" />Welcome to your active Sales account</div>
+              <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.18em] text-blue-200"><UserCheck className="h-4 w-4" />Welcome to your active Sales account</div>
               <h1 className="mt-3 text-2xl font-black sm:text-3xl">Set up your workspace before you start selling.</h1>
               <p className="mt-3 max-w-2xl text-sm leading-6 text-blue-100">Complete your professional identity, assigned provider readiness, availability and CRM orientation. ProFox Admin manages company Zoho authorization centrally; staff never approve Zoho access individually.</p>
             </div>

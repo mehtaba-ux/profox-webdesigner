@@ -17,8 +17,8 @@ import {
   RefreshCw,
   Save,
   ShieldCheck,
-  Sparkles,
-  Target
+  FileCheck,
+  Target,
 } from 'lucide-react';
 import {
   ContentBrief,
@@ -319,7 +319,7 @@ export default function ContentDeliveryTaskWorkspace({ taskId, onTaskChanged }: 
 
       <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex items-start gap-3"><div className={`rounded-2xl p-3 ${blocked ? 'bg-red-50 text-red-600' : waiting ? 'bg-violet-50 text-violet-700' : 'bg-blue-50 text-[#000080]'}`}>{blocked ? <Ban className="h-5 w-5" /> : waiting ? <Lock className="h-5 w-5" /> : <Sparkles className="h-5 w-5" />}</div><div><div className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Next action</div><h3 className="mt-1 text-base font-black">{blocked ? 'Resolve missing information' : waiting ? 'Waiting on the controlled review / approval process' : nextActionLabel(deliverable.lifecycle_stage)}</h3><p className="mt-1 max-w-2xl text-xs leading-5 text-slate-500">{blocked ? 'Resume only when the missing information or dependency is genuinely resolved.' : waiting ? 'No extra task is created. The same deliverable continues through review, client approval, implementation and QA.' : 'The backend checks the SOP gate before moving forward. If a required condition is missing, the transition is blocked.'}</p></div></div>
+          <div className="flex items-start gap-3"><div className={`rounded-2xl p-3 ${blocked ? 'bg-red-50 text-red-600' : waiting ? 'bg-violet-50 text-violet-700' : 'bg-blue-50 text-[#000080]'}`}>{blocked ? <Ban className="h-5 w-5" /> : waiting ? <Lock className="h-5 w-5" /> : <FileCheck className="h-5 w-5" />}</div><div><div className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Next action</div><h3 className="mt-1 text-base font-black">{blocked ? 'Resolve missing information' : waiting ? 'Waiting on the controlled review / approval process' : nextActionLabel(deliverable.lifecycle_stage)}</h3><p className="mt-1 max-w-2xl text-xs leading-5 text-slate-500">{blocked ? 'Resume only when the missing information or dependency is genuinely resolved.' : waiting ? 'No extra task is created. The same deliverable continues through review, client approval, implementation and QA.' : 'The backend checks the SOP gate before moving forward. If a required condition is missing, the transition is blocked.'}</p></div></div>
           <div className="flex flex-wrap gap-2">
             {blocked ? <button type="button" onClick={() => void resume()} disabled={busy === 'resume'} className="flex items-center gap-2 rounded-xl bg-[#000080] px-5 py-2.5 text-xs font-bold text-white disabled:opacity-50">{busy === 'resume' ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}Resume Work</button> : !waiting ? <button type="button" onClick={() => void advance()} disabled={busy === 'advance'} className="flex items-center gap-2 rounded-xl bg-[#000080] px-5 py-2.5 text-xs font-bold text-white disabled:opacity-50">{busy === 'advance' ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}{nextActionLabel(deliverable.lifecycle_stage)}</button> : null}
           </div>

@@ -1,13 +1,59 @@
 import { ConfirmButton } from "./ConfirmButton";
 import { useConfirmContext } from "./ConfirmContext";
 import React, { useState } from 'react';
-import { 
-  Plus, Search, Edit2, Trash2, Check, ArrowLeft, Image as ImageIcon, Save, Settings, 
-  FileText, BarChart, MessageSquare, Eye, Tag, X, FolderPlus, Layers, Building2, Palette, 
-  Layout, Monitor, Sparkles, Type, Cpu, Code2, Globe, ShoppingBag, ShoppingCart, Store, 
-  LayoutTemplate, Workflow, Target, FileCode2, Atom, Terminal, Code, FileCode, RefreshCw, 
-  Server, Zap, Boxes, Network, Link as LinkIcon, Radio, CreditCard, Database, HardDrive, 
-  Flame, Cloud, CloudLightning, Box, PenTool 
+import {
+  Plus,
+  Search,
+  Edit2,
+  Trash2,
+  Check,
+  ArrowLeft,
+  Image as ImageIcon,
+  Save,
+  Settings,
+  FileText,
+  BarChart,
+  MessageSquare,
+  Eye,
+  Tag,
+  X,
+  FolderPlus,
+  Layers,
+  Building2,
+  Palette,
+  Layout,
+  Monitor,
+  Images,
+  Type,
+  Cpu,
+  Code2,
+  Globe,
+  ShoppingBag,
+  ShoppingCart,
+  Store,
+  LayoutTemplate,
+  Workflow,
+  Target,
+  FileCode2,
+  Atom,
+  Terminal,
+  Code,
+  FileCode,
+  RefreshCw,
+  Server,
+  Zap,
+  Boxes,
+  Network,
+  Link as LinkIcon,
+  Radio,
+  CreditCard,
+  Database,
+  HardDrive,
+  Flame,
+  Cloud,
+  CloudLightning,
+  Box,
+  PenTool,
 } from 'lucide-react';
 import { PortfolioItem, PortfolioCategory, SEOConfig } from '../../types';
 import { defaultPortfolioCategories } from '../../data';
@@ -130,7 +176,7 @@ export default function PortfolioManager({ items, categories: propsCategories, o
       case 'Link': return <LinkIcon {...props} />;
       case 'Radio': return <Radio {...props} />;
       case 'CreditCard': return <CreditCard {...props} />;
-      case 'Sparkles': return <Sparkles {...props} />;
+      case 'Images': return <Images {...props} />;
       case 'Database': return <Database {...props} />;
       case 'HardDrive': return <HardDrive {...props} />;
       case 'Flame': return <Flame {...props} />;
@@ -1427,7 +1473,7 @@ export default function PortfolioManager({ items, categories: propsCategories, o
                   <div className="flex items-center justify-between">
                     <div>
                       <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider text-[#000080] flex items-center gap-1.5">
-                        <Sparkles className="w-4 h-4" /> UI & UX Design Highlights
+                        <Images className="w-4 h-4" /> UI & UX Design Highlights
                       </h4>
                       <p className="text-[11px] text-slate-500">Key pillars like accessibility, micro-interactions, responsive frameworks, or design systems.</p>
                     </div>

@@ -1,6 +1,6 @@
 import React, { lazy, Suspense, useState } from 'react';
 import { useCMS } from '../../lib/CMSProvider';
-import { Edit3, Check, X, Image as ImageIcon, Sparkles } from 'lucide-react';
+import { Edit3, Check, X, Image as ImageIcon, PencilRuler } from 'lucide-react';
 import { ConfirmButton } from "./ConfirmButton";
 import { useConfirmContext } from "./ConfirmContext";
 
@@ -77,7 +77,7 @@ export default function VisualEditable({
             <div className="flex items-center justify-between border-b border-slate-200 pb-4">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-lg bg-[#000080]/20 text-[#000080] flex items-center justify-center">
-                  <Sparkles className="w-4 h-4" />
+                  <PencilRuler className="w-4 h-4" />
                 </div>
                 <h3 className="font-bold text-lg text-slate-900">
                   Edit {label || field}

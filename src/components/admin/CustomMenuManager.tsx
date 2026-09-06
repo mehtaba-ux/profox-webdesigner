@@ -3,16 +3,16 @@ import { useConfirmContext } from "./ConfirmContext";
 import React, { useEffect, useState, useMemo } from 'react';
 import { NavItem, CustomPage, PortfolioItem, PortfolioCategory, Service } from '../../types';
 import { defaultCustomPages, defaultPortfolioItems, defaultPortfolioCategories, services as defaultServices } from '../../data';
-import { 
-  Plus, 
-  Trash2, 
-  ChevronUp, 
-  ChevronDown, 
-  Link as LinkIcon, 
-  ExternalLink, 
-  Menu as MenuIcon, 
-  CornerDownRight, 
-  Sparkles,
+import {
+  Plus,
+  Trash2,
+  ChevronUp,
+  ChevronDown,
+  Link as LinkIcon,
+  ExternalLink,
+  Menu as MenuIcon,
+  CornerDownRight,
+  Menu,
   FileText,
   CheckSquare,
   Square,
@@ -29,7 +29,7 @@ import {
   ChevronRight,
   Settings2,
   Monitor,
-  RefreshCw
+  RefreshCw,
 } from 'lucide-react';
 import {
   DndContext,
@@ -1281,7 +1281,7 @@ export default function CustomMenuManager({
                       <DraggableSourceItem
                         id={`source-service-${idx}`}
                         label={service.title}
-                        icon={Sparkles}
+                        icon={Menu}
                         data={{ 
                           label: service.title, 
                           href: service.link || `/services/${service.id}`, 

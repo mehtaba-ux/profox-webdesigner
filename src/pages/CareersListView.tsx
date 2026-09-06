@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, BriefcaseBusiness, MapPin, Search, ShieldCheck, Sparkles, TrendingUp, Users } from 'lucide-react';
+import { ArrowLeft, ArrowRight, BriefcaseBusiness, MapPin, Search, ShieldCheck, Briefcase, TrendingUp, Users } from 'lucide-react';
 import HeroReviewProof from '../components/HeroReviewProof';
 import { careerService, type CareerJob } from '../lib/careerService';
 
@@ -197,7 +197,7 @@ export default function CareersListView() {
           <h2 className="mt-4 text-3xl font-black tracking-[-0.035em] sm:text-4xl">Why Build With ProFox</h2>
           <div className="mt-10 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             {culture.map((item, index) => {
-              const Icon = [Sparkles, Users, ShieldCheck, TrendingUp][index];
+              const Icon = [Briefcase, Users, ShieldCheck, TrendingUp][index];
               return (
                 <div key={item.number} className="rounded-2xl border border-white/10 bg-white/[0.045] p-6 transition hover:-translate-y-0.5 hover:bg-white/[0.07]">
                   <div className="flex items-center justify-between"><span className="rounded-full bg-emerald-500/10 px-2 py-1 text-[10px] font-black text-emerald-300">{item.number}</span><Icon className="h-4 w-4 text-slate-500" /></div>

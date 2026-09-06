@@ -1,5 +1,5 @@
 import { motion } from 'motion/react';
-import { Monitor, Grid, Sparkles, ArrowUpRight } from 'lucide-react';
+import { Monitor, Grid, Workflow, ArrowUpRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { services as defaultServices } from '../data';
 import { useCMS } from '../lib/CMSProvider';
@@ -8,7 +8,7 @@ import VisualEditable from './admin/VisualEditable';
 const iconMap = {
   monitor: Monitor,
   grid: Grid,
-  sparkles: Sparkles,
+  workflow: Workflow,
 };
 
 interface ServicesProps {

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Briefcase, CheckCircle2, ChevronRight, Clock, Eye, Search, ShieldCheck, Sparkles, X } from 'lucide-react';
+import { Briefcase, CheckCircle2, ChevronRight, Clock, Eye, Search, ShieldCheck, X } from 'lucide-react';
 import { format } from 'date-fns';
 import { useSearchParams } from 'react-router-dom';
 import { projectService } from '../../lib/projectService';
@@ -252,7 +252,7 @@ export default function MyWorkDashboard() {
         <section className="rounded-[28px] bg-gradient-to-br from-[#000080] to-[#00005c] p-5 text-white shadow-xl shadow-blue-950/10 sm:p-6">
           <div className="grid gap-5 lg:grid-cols-[1fr_auto] lg:items-center">
             <div>
-              <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.18em] text-blue-200"><Sparkles className="h-3.5 w-3.5" /> Focus now</div>
+              <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.18em] text-blue-200"><Briefcase className="h-3.5 w-3.5" /> Focus now</div>
               <h2 className="mt-2 text-xl font-black">{focusTask.title}</h2>
               <p className="mt-1 text-sm text-blue-100">{focusTask.project?.client?.company_name || focusTask.project?.client?.companyName || 'Client'} · {focusTask.project?.project_name || focusTask.project?.projectName || 'Project'}</p>
             </div>
