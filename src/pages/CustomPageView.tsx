@@ -16,23 +16,23 @@ import { motion } from 'motion/react';
 import { getCanonicalUrl, getPagePath } from '../lib/seoUrls';
 import { resolveContactCtaUrl } from '../lib/contactCta';
 import HeroReviewProof from '../components/HeroReviewProof';
-import { 
-  ArrowLeft, 
-  Sparkles, 
-  CheckCircle2, 
-  Award, 
-  User, 
-  FileText, 
-  Bot, 
-  Cpu, 
-  Edit3, 
+import {
+  ArrowLeft,
+  BadgeCheck,
+  CheckCircle2,
+  Award,
+  User,
+  FileText,
+  Bot,
+  Cpu,
+  Edit3,
   ArrowUpRight,
-  Quote
+  Quote,
 } from 'lucide-react';
 
 const iconMap: Record<string, any> = {
   award: Award,
-  sparkles: Sparkles,
+  badgecheck: BadgeCheck,
   user: User,
   file: FileText,
   bot: Bot,
@@ -362,7 +362,7 @@ export default function CustomPageView() {
 
                       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
                         {block.items?.map((item, i) => {
-                          const IconComp = iconMap[item.icon || 'sparkles'] || Sparkles;
+                          const IconComp = iconMap[item.icon || 'badgecheck'] || BadgeCheck;
                           return (
                             <div key={i} className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm space-y-3 hover:shadow-md transition-shadow">
                               <div className="w-10 h-10 bg-slate-50 text-[#000080] rounded-xl flex items-center justify-center">

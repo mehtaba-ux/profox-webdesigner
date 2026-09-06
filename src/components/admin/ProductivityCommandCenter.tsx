@@ -1,5 +1,5 @@
 import React,{useEffect,useMemo,useState} from 'react';
-import {AlertCircle,ArrowLeft,ArrowRight,CheckCircle2,Clock3,Layers3,Loader2,RefreshCw,Sparkles,Target,UsersRound} from 'lucide-react';
+import { AlertCircle, ArrowLeft, ArrowRight, CheckCircle2, Clock3, Layers3, Loader2, RefreshCw, Target, UsersRound } from 'lucide-react';
 import {Navigate,useNavigate} from 'react-router-dom';
 import {useAuth} from '../../lib/AuthContext';
 import {ProductivityBucket,ProductivityCommandCenter as CommandCenter,ProductivityItem,ProductivityMetrics,productivityService} from '../../lib/productivityService';
@@ -63,7 +63,7 @@ export default function ProductivityCommandCenter(){
 
       {loading&&!data?<div className="flex min-h-[420px] items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-[#000080]"/></div>:<>
         <section className="mt-7 rounded-[2rem] border border-blue-200 bg-[linear-gradient(135deg,#000080,#10106f)] p-6 text-white shadow-xl shadow-blue-950/10 sm:p-8">
-          <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between"><div><div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.18em] text-blue-200"><Sparkles className="h-4 w-4"/> Focus first</div><h2 className="mt-2 text-2xl font-black">{data?.items[0]?.title||'Your queue is clear.'}</h2><p className="mt-2 max-w-2xl text-sm leading-6 text-blue-100">{data?.items[0]?.subtitle||'No urgent work is waiting. Use the time for planned work instead of hunting through screens.'}</p></div>{data?.items[0]&&<button onClick={()=>void act(data.items[0])} disabled={running===data.items[0].itemKey} className="inline-flex shrink-0 items-center justify-center gap-2 rounded-2xl bg-white px-5 py-3 text-sm font-black text-[#000080] disabled:opacity-60">{running===data.items[0].itemKey?<Loader2 className="h-4 w-4 animate-spin"/>:<ArrowRight className="h-4 w-4"/>}{data.items[0].actionLabel}</button>}</div>
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between"><div><div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.18em] text-blue-200"><Target className="h-4 w-4"/> Focus first</div><h2 className="mt-2 text-2xl font-black">{data?.items[0]?.title||'Your queue is clear.'}</h2><p className="mt-2 max-w-2xl text-sm leading-6 text-blue-100">{data?.items[0]?.subtitle||'No urgent work is waiting. Use the time for planned work instead of hunting through screens.'}</p></div>{data?.items[0]&&<button onClick={()=>void act(data.items[0])} disabled={running===data.items[0].itemKey} className="inline-flex shrink-0 items-center justify-center gap-2 rounded-2xl bg-white px-5 py-3 text-sm font-black text-[#000080] disabled:opacity-60">{running===data.items[0].itemKey?<Loader2 className="h-4 w-4 animate-spin"/>:<ArrowRight className="h-4 w-4"/>}{data.items[0].actionLabel}</button>}</div>
         </section>
 
         <section className="mt-7 grid gap-6 xl:grid-cols-2">

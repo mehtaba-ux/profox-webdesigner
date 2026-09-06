@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { AlertCircle, ArrowRight, Clock3, Loader2, Sparkles } from 'lucide-react';
+import { AlertCircle, ArrowRight, Clock3, Loader2, Focus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { ProductivityCommandCenter, productivityService } from '../../../lib/productivityService';
 
@@ -33,7 +33,7 @@ export default function WorkspaceFocusStrip() {
     <section className="pf-reference-card mb-5 overflow-hidden border-blue-100">
       <div className="flex flex-col gap-4 border-b border-slate-100 bg-[linear-gradient(135deg,#f8fbff,#ffffff)] px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <div className="flex items-center gap-2 text-[9px] font-extrabold uppercase tracking-[0.16em] text-[#FF0E0E]"><Sparkles className="h-3.5 w-3.5" /> Start here</div>
+          <div className="flex items-center gap-2 text-[9px] font-extrabold uppercase tracking-[0.16em] text-[#FF0E0E]"><Focus className="h-3.5 w-3.5" /> Start here</div>
           <h2 className="mt-1 text-base font-extrabold">{data.counts.total === 0 ? 'You are clear to focus.' : 'Your next work is already organized.'}</h2>
           <p className="mt-1 text-[10px] text-slate-500">
             {data.counts.overdue > 0

@@ -2,24 +2,24 @@ import React, { useState } from 'react';
 import { CustomPage, PageBlock, PageBlockItem, SEOConfig } from '../../types';
 import ImageUploader from './ImageUploader';
 import { defaultBlueprintsList } from './TemplateManager';
-import { 
-  FileText, 
-  Plus, 
-  Search, 
-  CheckCircle2, 
-  AlertCircle, 
-  ExternalLink, 
-  Trash2, 
-  Edit3, 
-  Eye, 
-  Globe, 
-  Copy, 
-  Sparkles, 
-  Layout, 
-  Check, 
-  Layers, 
-  Share2, 
-  Code, 
+import {
+  FileText,
+  Plus,
+  Search,
+  CheckCircle2,
+  AlertCircle,
+  ExternalLink,
+  Trash2,
+  Edit3,
+  Eye,
+  Globe,
+  Copy,
+  BadgeCheck,
+  Layout,
+  Check,
+  Layers,
+  Share2,
+  Code,
   ArrowLeft,
   ArrowUp,
   ArrowDown,
@@ -38,7 +38,7 @@ import {
   Rss,
   Upload,
   Loader2,
-  Award
+  Award,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useCMS } from '../../lib/CMSProvider';
@@ -339,7 +339,7 @@ export default function PagesManager({ pages, onSavePage, onDeletePage, onRestor
       newBlock.subheading = 'Accelerate your digital growth with enterprise engineering.';
       newBlock.items = [
         { title: 'Custom Architecture', description: 'Tailored solutions built for scale and high performance.', icon: 'cpu' },
-        { title: 'Cloud Automation', description: 'CI/CD deployment and modern cloud server infrastructure.', icon: 'sparkles' },
+        { title: 'Cloud Automation', description: 'CI/CD deployment and modern cloud server infrastructure.', icon: 'badgecheck' },
         { title: 'AI Integration', description: 'Next-gen LLM workflows and intelligent predictive analytics.', icon: 'bot' }
       ];
     } else if (type === 'quote') {
@@ -1730,7 +1730,7 @@ export default function PagesManager({ pages, onSavePage, onDeletePage, onRestor
                                 <div className="space-y-3">
                                   <label className="block text-xs font-bold text-slate-700">Badges List</label>
                                   {(data.awards || [
-                                    { text: 'CLUTCH', icon: 'Sparkles' },
+                                    { text: 'CLUTCH', icon: 'BadgeCheck' },
                                     { text: 'DESIGNRUSH', icon: 'Monitor' },
                                     { text: 'BestDesign', icon: '' }
                                   ]).map((award: any, idx: number) => (
@@ -1745,7 +1745,7 @@ export default function PagesManager({ pages, onSavePage, onDeletePage, onRestor
                                             value={award.text}
                                             onChange={(e) => {
                                               const next = [...(data.awards || [
-                                                { text: 'CLUTCH', icon: 'Sparkles' },
+                                                { text: 'CLUTCH', icon: 'BadgeCheck' },
                                                 { text: 'DESIGNRUSH', icon: 'Monitor' },
                                                 { text: 'BestDesign', icon: '' }
                                               ])];
@@ -1761,7 +1761,7 @@ export default function PagesManager({ pages, onSavePage, onDeletePage, onRestor
                                             value={award.icon || ''}
                                             onChange={(e) => {
                                               const next = [...(data.awards || [
-                                                { text: 'CLUTCH', icon: 'Sparkles' },
+                                                { text: 'CLUTCH', icon: 'BadgeCheck' },
                                                 { text: 'DESIGNRUSH', icon: 'Monitor' },
                                                 { text: 'BestDesign', icon: '' }
                                               ])];
@@ -1770,7 +1770,7 @@ export default function PagesManager({ pages, onSavePage, onDeletePage, onRestor
                                             }}
                                          >
                                             <option value="">No Icon</option>
-                                            <option value="Sparkles">Sparkles</option>
+                                            <option value="BadgeCheck">BadgeCheck</option>
                                             <option value="Monitor">Monitor</option>
                                             <option value="Award">Award</option>
                                             <option value="Trophy">Trophy</option>
@@ -1784,7 +1784,7 @@ export default function PagesManager({ pages, onSavePage, onDeletePage, onRestor
                                         </div>
                                         <button onClick={() => {
                                             const currentAwards = data.awards || [
-                                              { text: 'CLUTCH', icon: 'Sparkles' },
+                                              { text: 'CLUTCH', icon: 'BadgeCheck' },
                                               { text: 'DESIGNRUSH', icon: 'Monitor' },
                                               { text: 'BestDesign', icon: '' }
                                             ];
@@ -1800,7 +1800,7 @@ export default function PagesManager({ pages, onSavePage, onDeletePage, onRestor
                                           value={award.image || ''}
                                           onChange={(url) => {
                                             const next = [...(data.awards || [
-                                              { text: 'CLUTCH', icon: 'Sparkles' },
+                                              { text: 'CLUTCH', icon: 'BadgeCheck' },
                                               { text: 'DESIGNRUSH', icon: 'Monitor' },
                                               { text: 'BestDesign', icon: '' }
                                             ])];
@@ -1813,7 +1813,7 @@ export default function PagesManager({ pages, onSavePage, onDeletePage, onRestor
                                   ))}
                                   <button onClick={() => {
                                       const currentAwards = data.awards || [
-                                        { text: 'CLUTCH', icon: 'Sparkles' },
+                                        { text: 'CLUTCH', icon: 'BadgeCheck' },
                                         { text: 'DESIGNRUSH', icon: 'Monitor' },
                                         { text: 'BestDesign', icon: '' }
                                       ];
@@ -2907,7 +2907,7 @@ export default function PagesManager({ pages, onSavePage, onDeletePage, onRestor
                                   onClick={() => {
                                     const updated = [...(selectedPage.blocks || [])];
                                     const current = updated[index].items || [];
-                                    updated[index].items = [...current, { title: 'New Feature', description: 'Feature description details.', icon: 'sparkles' }];
+                                    updated[index].items = [...current, { title: 'New Feature', description: 'Feature description details.', icon: 'badgecheck' }];
                                     setSelectedPage({ ...selectedPage, blocks: updated });
                                   }}
                                   className="px-2.5 py-1 bg-slate-100 hover:bg-slate-700 text-xs font-bold text-[#000080] rounded-lg flex items-center gap-1">

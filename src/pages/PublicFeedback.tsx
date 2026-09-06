@@ -1,23 +1,22 @@
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { 
-  Star, 
-  MessageSquare, 
-  ExternalLink, 
-  CheckCircle2, 
-  ArrowRight, 
-  ArrowLeft, 
-  Upload, 
-  X, 
-  Sparkles, 
-  Copy, 
-  Check, 
-  ShieldCheck, 
-  Building, 
-  Globe, 
-  Mail, 
+import {
+  Star,
+  MessageSquare,
+  ExternalLink,
+  CheckCircle2,
+  ArrowRight,
+  ArrowLeft,
+  Upload,
+  X,
+  Copy,
+  Check,
+  ShieldCheck,
+  Building,
+  Globe,
+  Mail,
   User,
-  HeartHandshake
+  HeartHandshake,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useCMS } from '../lib/CMSProvider';
@@ -234,7 +233,7 @@ export default function LeaveFeedback() {
             <div className="relative z-10 space-y-3">
               <div className="flex items-center justify-between">
                 <span className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-indigo-200 bg-white/10 backdrop-blur-sm px-3 py-1 rounded-full border border-white/10">
-                  <Sparkles className="w-3 h-3 text-yellow-300" />
+                  <MessageSquare className="w-3 h-3 text-yellow-300" />
                   Client Review
                 </span>
                 

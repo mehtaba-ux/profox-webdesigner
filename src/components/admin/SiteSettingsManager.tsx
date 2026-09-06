@@ -5,13 +5,13 @@ import { useCMS } from '../../lib/CMSProvider';
 import { SiteSettings, MaintenanceConfig } from '../../types';
 import { SITE_SETTINGS_DEFAULTS } from '../../lib/siteSettings';
 import DevelopmentModeScreen from '../DevelopmentModeScreen';
-import { 
-  Building2, 
-  Globe, 
-  Mail, 
-  Phone, 
-  ShieldCheck, 
-  MapPin, 
+import {
+  Building2,
+  Globe,
+  Mail,
+  Phone,
+  ShieldCheck,
+  MapPin,
   Home,
   Save,
   Check,
@@ -21,10 +21,10 @@ import {
   AlertTriangle,
   Eye,
   X,
-  Sparkles,
+  Settings,
   ToggleLeft,
   ToggleRight,
-  MessageSquare
+  MessageSquare,
 } from 'lucide-react';
 
 export default function SiteSettingsManager() {
@@ -282,7 +282,7 @@ export default function SiteSettingsManager() {
 
             <div>
               <label className={labelClass}>
-                <Sparkles className="w-3.5 h-3.5 text-amber-500" /> Badge Label
+                <Settings className="w-3.5 h-3.5 text-amber-500" /> Badge Label
               </label>
               <input
                 type="text"
@@ -348,7 +348,7 @@ export default function SiteSettingsManager() {
 
             <div className="pt-2 border-t border-slate-100">
               <label className={labelClass}>
-                <Sparkles className="w-3.5 h-3.5 text-[#000080]" /> Website Favicon (Tab Icon)
+                <Settings className="w-3.5 h-3.5 text-[#000080]" /> Website Favicon (Tab Icon)
               </label>
               <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center bg-slate-50 p-4 rounded-xl border border-slate-100">
                 <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center shadow-sm border border-slate-200 shrink-0 overflow-hidden">

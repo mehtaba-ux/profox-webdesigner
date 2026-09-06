@@ -9,7 +9,7 @@ import {
   FileText,
   Loader2,
   RefreshCw,
-  Sparkles
+  CalendarCheck,
 } from 'lucide-react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../lib/AuthContext';
@@ -59,7 +59,7 @@ export default function SellerTodayDashboard() {
   const counts = data?.counts || { meetingsToday: 0, overdueActivities: 0, newBookings: 0, quotationFollowUps: 0, unreadNotifications: 0 };
   const cards = [
     { label: 'Meetings Today', value: counts.meetingsToday, icon: CalendarDays, tone: 'bg-blue-50 text-[#000080]' },
-    { label: 'New Bookings', value: counts.newBookings, icon: Sparkles, tone: 'bg-emerald-50 text-emerald-700' },
+    { label: 'New Bookings', value: counts.newBookings, icon: CalendarCheck, tone: 'bg-emerald-50 text-emerald-700' },
     { label: 'Follow-Ups Overdue', value: counts.overdueActivities, icon: AlertCircle, tone: 'bg-red-50 text-red-700' },
     { label: 'Quotation Follow-Ups', value: counts.quotationFollowUps, icon: FileText, tone: 'bg-amber-50 text-amber-700' },
     { label: 'Unread Alerts', value: counts.unreadNotifications, icon: Bell, tone: 'bg-violet-50 text-violet-700' }

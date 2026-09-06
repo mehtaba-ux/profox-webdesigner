@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'motion/react';
-import { ArrowLeft, ArrowRight, Check, CheckCircle2, Loader2, LockKeyhole, Send, Sparkles } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, CheckCircle2, Loader2, LockKeyhole, Send, BadgeCheck } from 'lucide-react';
 import { leadService } from '../lib/leadService';
 import { useCMS } from '../lib/CMSProvider';
 import {
@@ -269,7 +269,7 @@ export default function QualifiedContactForm() {
       <div className="absolute right-0 top-0 h-36 w-36 translate-x-1/3 -translate-y-1/3 rounded-full bg-[var(--brand-primary)]/[0.05] blur-2xl" />
       <div className="relative">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="pf-eyebrow inline-flex items-center gap-2 text-[var(--brand-primary)]"><Sparkles className="h-4 w-4" />{config.experience.eyebrow}</div>
+          <div className="pf-eyebrow inline-flex items-center gap-2 text-[var(--brand-primary)]"><BadgeCheck className="h-4 w-4" />{config.experience.eyebrow}</div>
           <div className="text-xs font-semibold text-slate-400">{config.experience.estimatedTime}</div>
         </div>
         <h2 className="mt-2.5 text-2xl font-semibold tracking-[-0.04em] text-slate-950 sm:text-3xl">{config.experience.title}</h2>

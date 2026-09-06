@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { DynamicSection } from '../types';
 import VisualEditable from './admin/VisualEditable';
-import { Quote, Sparkles, CheckCircle2, ChevronDown, MessageSquare, Award, ArrowUpRight, Play, Users, DollarSign, Image as ImageIcon, Zap, Check } from 'lucide-react';
+import { Quote, BadgeCheck, CheckCircle2, ChevronDown, MessageSquare, Award, ArrowUpRight, Play, Users, DollarSign, Image as ImageIcon, Zap, Check } from 'lucide-react';
 
 export interface DynamicSectionRendererProps {
   key?: React.Key;
@@ -157,7 +157,7 @@ export default function DynamicSectionRenderer({ section, isLiveEditing }: Dynam
             {section.items.map((item, idx) => (
               <div key={item.id || idx} className="bg-white p-8 rounded-2xl border border-slate-200/80 space-y-4 shadow-sm">
                 <div className="w-12 h-12 bg-slate-50 text-[#000080] rounded-xl flex items-center justify-center">
-                  <Sparkles className="w-6 h-6" />
+                  <BadgeCheck className="w-6 h-6" />
                 </div>
                 <h3 className="font-bold text-slate-900 text-xl">{item.title}</h3>
                 <p className="text-slate-600 text-sm leading-relaxed">{item.description}</p>

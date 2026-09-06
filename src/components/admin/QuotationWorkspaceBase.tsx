@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Check, ChevronDown, ChevronUp, Clock3, Copy, FilePlus2, GripVertical, Info, Loader2, Mail, PackagePlus, Plus, Printer, Save, Search, Send, Settings2, Sparkles, Trash2, X } from 'lucide-react';
+import { ArrowLeft, Check, ChevronDown, ChevronUp, Clock3, Copy, FilePlus2, GripVertical, Info, Loader2, Mail, PackagePlus, Plus, Printer, Save, Search, Send, Settings2, Trash2, X } from 'lucide-react';
 import { format } from 'date-fns';
 import { useAuth } from '../../lib/AuthContext';
 import { crmService } from '../../lib/crmService';
@@ -596,7 +596,7 @@ export default function QuotationWorkspace() {
             <table className="w-full min-w-[1160px] text-left text-xs">
               <thead className="bg-slate-50 text-slate-500"><tr><th className="w-10 p-3"></th><th className="p-3">Product / Service</th><th className="w-20 p-3">Qty</th><th className="w-28 p-3">Unit Price</th><th className="w-36 p-3">Discount</th><th className="w-28 p-3 text-right">Amount</th><th className="w-56 p-3">Timeline</th><th className="w-24 p-3">Optional</th><th className="w-32 p-3"></th></tr></thead>
               <tbody>
-                {lines.length === 0 && <tr><td colSpan={9} className="p-12 text-center text-slate-400"><Sparkles className="mx-auto mb-3 h-7 w-7" />Add a package or service from the existing Sales Catalog.</td></tr>}
+                {lines.length === 0 && <tr><td colSpan={9} className="p-12 text-center text-slate-400"><FilePlus2 className="mx-auto mb-3 h-7 w-7" />Add a package or service from the existing Sales Catalog.</td></tr>}
                 {lines.map((line, index) => <tr key={line.id || `${line.lineType}-${index}`} draggable={!locked} onDragStart={() => { draggedIndex.current = index; }} onDragOver={e => e.preventDefault()} onDrop={() => dropLine(index)} className={`${line.lineType === 'section' ? 'bg-slate-100' : line.lineType === 'note' ? 'bg-amber-50/60' : 'border-t border-slate-100'} align-top`}>
                   <td className="p-3 text-slate-400"><GripVertical className="h-4 w-4" /></td>
                   <td className="p-3"><input disabled={locked || line.lineType === 'product'} value={line.productNameSnapshot} onChange={e => updateLine(index, { productNameSnapshot: e.target.value })} className="w-full bg-transparent font-bold outline-none" />{line.lineType !== 'section' && <textarea disabled={locked} rows={2} value={line.descriptionSnapshot || ''} onChange={e => updateLine(index, { descriptionSnapshot: e.target.value })} className="mt-1 w-full resize-none bg-transparent text-[11px] leading-4 text-slate-500 outline-none" />}{line.managerApprovalRequired && <p className="mt-1 text-[10px] font-bold text-amber-700">Manager-controlled catalog item</p>}</td>

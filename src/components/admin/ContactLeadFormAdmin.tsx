@@ -13,7 +13,7 @@ import {
   Save,
   Settings2,
   ShieldCheck,
-  Sparkles,
+  Contact,
   Trash2,
   UserRoundCog,
   UsersRound,
@@ -155,7 +155,7 @@ export default function ContactLeadFormAdmin() {
     <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
       <div className="border-b border-slate-100 bg-gradient-to-r from-blue-50 via-white to-emerald-50 px-5 py-6 sm:px-7">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div className="max-w-3xl"><div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[.18em] text-[#000080]"><Sparkles className="h-4 w-4" />Lead acquisition</div><h2 className="mt-2 text-xl font-black tracking-tight text-slate-950">Contact form & lead routing customizer</h2><p className="mt-2 text-xs leading-5 text-slate-600">Control the public qualification experience without editing code, then decide whether new website leads stay in the management pool or are distributed equally to eligible Sales Representatives.</p></div>
+          <div className="max-w-3xl"><div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[.18em] text-[#000080]"><Contact className="h-4 w-4" />Lead acquisition</div><h2 className="mt-2 text-xl font-black tracking-tight text-slate-950">Contact form & lead routing customizer</h2><p className="mt-2 text-xs leading-5 text-slate-600">Control the public qualification experience without editing code, then decide whether new website leads stay in the management pool or are distributed equally to eligible Sales Representatives.</p></div>
           <button type="button" onClick={() => void save()} disabled={saving} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#000080] px-5 text-xs font-black text-white shadow-lg shadow-blue-950/10 disabled:opacity-50">{saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}Save form & routing</button>
         </div>
       </div>

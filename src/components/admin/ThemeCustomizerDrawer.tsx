@@ -4,23 +4,22 @@ import React, { useState } from 'react';
 import { useCMS } from '../../lib/CMSProvider';
 import { defaultTheme, defaultDynamicSections, navItems as defaultNavItems, services as defaultServices, featuredCaseStudies, recentSuccess, articles as defaultArticles } from '../../data';
 import { ThemeConfig, DynamicSection, DynamicSectionItem, NavItem } from '../../types';
-import { 
-  Palette, 
-  Type, 
-  Layout, 
-  Layers, 
-  Plus, 
-  Trash2, 
-  Eye, 
-  EyeOff, 
-  Sliders, 
-  X, 
-  Check, 
-  Sparkles, 
-  ArrowUp, 
-  ArrowDown, 
+import {
+  Palette,
+  Type,
+  Layout,
+  Layers,
+  Plus,
+  Trash2,
+  Eye,
+  EyeOff,
+  Sliders,
+  X,
+  Check,
+  ArrowUp,
+  ArrowDown,
   Menu,
-  Briefcase, 
+  Briefcase,
   Image as ImageIcon,
   MessageSquare,
   HelpCircle,
@@ -31,7 +30,7 @@ import {
   Grid,
   Play,
   Download,
-  Footprints
+  Footprints,
 } from 'lucide-react';
 
 import CustomMenuManager from './CustomMenuManager';
@@ -262,7 +261,7 @@ export default function ThemeCustomizerDrawer({ isOpen, onClose, isLiveEditing, 
       <div className="p-4 bg-[#000080]/10 border-b border-[#000080]/20 flex items-center justify-between">
         <div className="space-y-0.5">
           <span className="text-xs font-bold text-[#000080] flex items-center gap-1">
-            <Sparkles className="w-3.5 h-3.5" /> 1-Click Front-End Hover Edit
+            <Palette className="w-3.5 h-3.5" /> 1-Click Front-End Hover Edit
           </span>
           <p className="text-[10px] text-slate-700">Hover over any text or image to edit</p>
         </div>
@@ -437,7 +436,7 @@ export default function ThemeCustomizerDrawer({ isOpen, onClose, isLiveEditing, 
           <div className="space-y-4">
             <div className="p-3 bg-[#000080]/10 border border-[#000080]/20 rounded-xl space-y-1">
               <span className="text-xs font-bold text-[#000080] flex items-center gap-1">
-                <Sparkles className="w-3.5 h-3.5" /> Themify Ultra Skins Demo Import
+                <Palette className="w-3.5 h-3.5" /> Themify Ultra Skins Demo Import
               </span>
               <p className="text-[11px] text-slate-700">
                 Instantly re-skin the entire site with preset typography, button radius, and palette styles.
@@ -473,7 +472,7 @@ export default function ThemeCustomizerDrawer({ isOpen, onClose, isLiveEditing, 
             <div className="space-y-2">
               <label className="text-xs font-bold uppercase text-slate-500 tracking-wider flex items-center justify-between">
                 <span>Add Dynamic Section</span>
-                <Sparkles className="w-3.5 h-3.5 text-[#000080]" />
+                <Palette className="w-3.5 h-3.5 text-[#000080]" />
               </label>
 
               <div className="grid grid-cols-2 gap-2">

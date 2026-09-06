@@ -14,7 +14,7 @@ import {
   Settings2,
   ShieldCheck,
   Sliders,
-  Sparkles,
+  CircleDollarSign,
   UserRoundCheck,
   WalletCards,
 } from 'lucide-react';
@@ -385,7 +385,7 @@ export default function AdminCommissionManager() {
                       <td className="px-4 py-4"><div className="font-semibold">{entry.salespersonName}</div><div className="text-xs text-slate-500">{entry.salespersonEmail || '—'}</div></td>
                       <td className="px-4 py-4"><div className="font-semibold">{entry.clientName}</div><div className="text-xs text-slate-500">{entry.packageName}</div></td>
                       <td className="px-4 py-4 text-right font-bold">{money(entry.verifiedPaymentAmount, entry.currency)}</td>
-                      <td className="px-4 py-4 text-center"><div className="font-black text-[#000080]">{entry.effectiveCommissionRate}%</div><div className="mt-1 flex flex-wrap justify-center gap-1 text-[10px] text-slate-500"><span>Base {entry.baseCommissionRate}%</span>{entry.selfGeneratedBonusRate > 0 && <span className="text-emerald-700"><Sparkles className="inline h-3 w-3" /> +{entry.selfGeneratedBonusRate}%</span>}{entry.performanceBonusRate > 0 && <span className="text-purple-700">+{entry.performanceBonusRate}%</span>}</div></td>
+                      <td className="px-4 py-4 text-center"><div className="font-black text-[#000080]">{entry.effectiveCommissionRate}%</div><div className="mt-1 flex flex-wrap justify-center gap-1 text-[10px] text-slate-500"><span>Base {entry.baseCommissionRate}%</span>{entry.selfGeneratedBonusRate > 0 && <span className="text-emerald-700"><CircleDollarSign className="inline h-3 w-3" /> +{entry.selfGeneratedBonusRate}%</span>}{entry.performanceBonusRate > 0 && <span className="text-purple-700">+{entry.performanceBonusRate}%</span>}</div></td>
                       <td className="px-4 py-4 text-right font-black text-[#000080]">{money(entry.commissionAmount, entry.currency)}</td>
                       <td className="px-4 py-4 text-center"><StatusBadge status={entry.status} /></td>
                       <td className="px-4 py-4"><div className="flex flex-wrap justify-end gap-1.5">

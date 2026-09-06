@@ -1,19 +1,18 @@
 import React, { useState } from 'react';
 import { useCMS } from '../../lib/CMSProvider';
-import { 
-  Plus, 
-  Trash2, 
-  Eye, 
-  EyeOff, 
-  Save, 
-  Trophy, 
-  Sparkles, 
-  Monitor, 
-  Layout, 
+import {
+  Plus,
+  Trash2,
+  Eye,
+  EyeOff,
+  Save,
+  Trophy,
+  Monitor,
+  Layout,
   CheckCircle,
   HelpCircle,
   Loader2,
-  Undo
+  Undo,
 } from 'lucide-react';
 import ImageUploader from './ImageUploader';
 

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useLocation } from 'react-router-dom';
-import { CalendarDays, FileText, Mail, Phone, MapPin, Send, MessageSquare, Sparkles } from 'lucide-react';
+import { CalendarDays, FileText, Mail, Phone, MapPin, Send, MessageSquare, MessageCircle } from 'lucide-react';
 import { useCMS } from '../lib/CMSProvider';
 import HeroReviewProof from '../components/HeroReviewProof';
 import QualifiedContactForm from '../components/QualifiedContactForm';
@@ -158,7 +158,7 @@ export default function ContactUsDetailView({ page }: { page?: any }) {
 
       {trustedBy.showSlider && (
         <section className="overflow-hidden border-t border-slate-100 bg-slate-50 py-24">
-          <div className="mx-auto mb-12 max-w-[1400px] space-y-3 px-6 text-center"><div className="pf-eyebrow inline-flex items-center gap-2 text-[var(--brand-primary)]"><Sparkles className="h-4 w-4" /><span>Industry Leaders</span></div><h2 className="pf-section-title text-slate-950">{trustedBy.title}</h2><p className="mx-auto max-w-xl text-sm leading-6 text-slate-500">{trustedBy.subtitle}</p></div>
+          <div className="mx-auto mb-12 max-w-[1400px] space-y-3 px-6 text-center"><div className="pf-eyebrow inline-flex items-center gap-2 text-[var(--brand-primary)]"><MessageCircle className="h-4 w-4" /><span>Industry Leaders</span></div><h2 className="pf-section-title text-slate-950">{trustedBy.title}</h2><p className="mx-auto max-w-xl text-sm leading-6 text-slate-500">{trustedBy.subtitle}</p></div>
           <div className="relative flex w-full items-center overflow-hidden" style={{ maskImage: 'linear-gradient(to right, transparent 0%, #000 15%, #000 85%, transparent 100%)', WebkitMaskImage: 'linear-gradient(to right, transparent 0%, #000 15%, #000 85%, transparent 100%)' }}>
             <div className="flex w-full flex-shrink-0 items-center justify-around gap-16 px-4 animate-scroll-logos">{trustedLogos.map((item: any, idx: number) => <React.Fragment key={idx}>{renderLogo(item)}</React.Fragment>)}</div>
             <div className="flex w-full flex-shrink-0 items-center justify-around gap-16 px-4 animate-scroll-logos">{trustedLogos.map((item: any, idx: number) => <React.Fragment key={`clone-${idx}`}>{renderLogo(item)}</React.Fragment>)}</div>

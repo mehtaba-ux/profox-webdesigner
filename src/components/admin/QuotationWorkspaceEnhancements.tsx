@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Check, Clock3, History, Loader2, Mail, Plus, Sparkles, X } from 'lucide-react';
+import { Check, Clock3, History, Loader2, Mail, Plus, BadgeCheck, X } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '../../lib/AuthContext';
 import { quotationCpqService } from '../../lib/quotationCpqService';
@@ -214,7 +214,7 @@ export default function QuotationWorkspaceEnhancements() {
     </button>}
     {resendNotice && <div className="fixed bottom-36 right-6 z-50 max-w-sm rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs font-bold text-emerald-800 shadow-xl max-sm:left-4 max-sm:right-4"><Check className="mr-1.5 inline h-4 w-4"/>{resendNotice}</div>}
     <button onClick={() => setOpen(true)} className="fixed bottom-6 right-6 z-40 inline-flex items-center gap-2 rounded-2xl bg-[#000080] px-4 py-3 text-xs font-black text-white shadow-xl shadow-slate-900/20 hover:bg-[#000067] max-sm:right-4" title="Quotation productivity tools">
-      <Sparkles className="h-4 w-4"/>CPQ Assist
+      <BadgeCheck className="h-4 w-4"/>CPQ Assist
     </button>
 
     {resendOpen && <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/60 p-4" onMouseDown={event => { if (event.target === event.currentTarget && !resendLoading) setResendOpen(false); }}>
@@ -249,7 +249,7 @@ export default function QuotationWorkspaceEnhancements() {
           {message && <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs font-semibold text-emerald-700"><Check className="mr-1 inline h-3.5 w-3.5"/>{message}</div>}
 
           <section className="rounded-2xl border border-slate-200 p-4">
-            <div className="flex items-center gap-2"><Sparkles className="h-4 w-4 text-[#000080]"/><h3 className="text-sm font-black">Suggested Add-ons</h3></div>
+            <div className="flex items-center gap-2"><BadgeCheck className="h-4 w-4 text-[#000080]"/><h3 className="text-sm font-black">Suggested Add-ons</h3></div>
             <p className="mt-1 text-[11px] leading-4 text-slate-500">Suggestions come from Admin-configured product relationships and reference the existing Sales Catalog.</p>
             <div className="mt-3 space-y-2">{suggestedProducts.length ? suggestedProducts.map((product: any) => <div key={product.id} className="rounded-xl bg-slate-50 p-3"><div className="flex items-start justify-between gap-3"><div><p className="text-xs font-black text-slate-900">{product.name}</p><p className="mt-0.5 text-[10px] text-slate-500">{product.code} · {product.productType?.replace('_',' ')}</p></div><p className="text-xs font-black text-[#000080]">{money(product.basePrice, product.currency || workspace?.quotation?.currency || 'USD')}</p></div>{draftEditable && <button disabled={saving} onClick={() => void addSuggested(product.id)} className="mt-2 inline-flex items-center gap-1 rounded-lg border border-[#000080]/20 bg-white px-2.5 py-1.5 text-[10px] font-black text-[#000080] disabled:opacity-50"><Plus className="h-3 w-3"/>Add as Optional</button>}</div>) : <p className="rounded-xl bg-slate-50 p-3 text-[11px] text-slate-500">No additional relationship-based suggestions are configured for the current saved products.</p>}</div>
           </section>

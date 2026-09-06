@@ -10,7 +10,6 @@ import {
   Clock3,
   Handshake,
   ShieldCheck,
-  Sparkles,
   TrendingUp,
   UsersRound,
   WalletCards,
@@ -263,7 +262,7 @@ export default function TalentPartnerProgramView() {
         <div className="mx-auto grid max-w-7xl gap-12 px-6 pb-16 pt-14 lg:grid-cols-[1.08fr_.92fr] lg:items-center lg:px-8 lg:pb-24 lg:pt-16">
           <div>
             <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-4 py-2 text-[11px] font-black uppercase tracking-[0.2em] text-sky-200 backdrop-blur">
-              <Sparkles className="h-3.5 w-3.5" /> {hero.subheading || 'PROFOX TALENT PARTNER PROGRAM'}
+              <Handshake className="h-3.5 w-3.5" /> {hero.subheading || 'PROFOX TALENT PARTNER PROGRAM'}
             </div>
             <h1 className="mt-7 max-w-4xl text-4xl font-black leading-[1.03] tracking-[-0.045em] sm:text-5xl lg:text-7xl">
               {hero.title || page.heroTitle || page.title}

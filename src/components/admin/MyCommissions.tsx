@@ -10,7 +10,7 @@ import {
   RefreshCw,
   Search,
   ShieldCheck,
-  Sparkles
+  CircleDollarSign,
 } from 'lucide-react';
 import { commissionService, DEFAULT_COMMISSION_SETTINGS } from '../../lib/commissionService';
 import {
@@ -227,7 +227,7 @@ export default function MyCommissions() {
                       <div className="mt-1 flex justify-center flex-wrap gap-1 text-[10px]">
                         <span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">Base {entry.baseCommissionRate}%</span>
                         {entry.selfGeneratedBonusRate > 0 && (
-                          <span className="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 font-bold"><Sparkles className="inline w-3 h-3" /> +{entry.selfGeneratedBonusRate}% self-gen</span>
+                          <span className="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 font-bold"><CircleDollarSign className="inline w-3 h-3" /> +{entry.selfGeneratedBonusRate}% self-gen</span>
                         )}
                         {entry.performanceBonusRate > 0 && (
                           <span className="px-1.5 py-0.5 rounded bg-purple-50 text-purple-700 font-bold">+{entry.performanceBonusRate}% sale #{entry.performanceSaleRank}</span>

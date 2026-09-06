@@ -3,13 +3,60 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useCMS } from '../lib/CMSProvider';
 import { formatR2ImageUrl } from '../lib/r2Media';
 import { motion } from 'motion/react';
-import { 
-  ArrowLeft, ArrowUpRight, Building2, Share2, Check, Palette, Layout, Monitor, 
-  Sparkles, Maximize2, ExternalLink, Type, X, Cpu, Code2, Globe, ShoppingBag, 
-  ShoppingCart, Store, LayoutTemplate, Workflow, Target, FileCode2, Atom, 
-  Terminal, Code, FileCode, RefreshCw, Server, Zap, Boxes, Network, Link as LinkIcon, 
-  Radio, CreditCard, Database, HardDrive, Flame, Cloud, CloudLightning, Box, Search, PenTool, Layers,
-  ChevronLeft, ChevronRight, Download, FileText, Info, FolderPlus, AlertTriangle, AlertCircle, ShieldAlert
+import {
+  ArrowLeft,
+  ArrowUpRight,
+  Building2,
+  Share2,
+  Check,
+  Palette,
+  Layout,
+  Monitor,
+  Images,
+  Maximize2,
+  ExternalLink,
+  Type,
+  X,
+  Cpu,
+  Code2,
+  Globe,
+  ShoppingBag,
+  ShoppingCart,
+  Store,
+  LayoutTemplate,
+  Workflow,
+  Target,
+  FileCode2,
+  Atom,
+  Terminal,
+  Code,
+  FileCode,
+  RefreshCw,
+  Server,
+  Zap,
+  Boxes,
+  Network,
+  Link as LinkIcon,
+  Radio,
+  CreditCard,
+  Database,
+  HardDrive,
+  Flame,
+  Cloud,
+  CloudLightning,
+  Box,
+  Search,
+  PenTool,
+  Layers,
+  ChevronLeft,
+  ChevronRight,
+  Download,
+  FileText,
+  Info,
+  FolderPlus,
+  AlertTriangle,
+  AlertCircle,
+  ShieldAlert,
 } from 'lucide-react';
 import CTA from '../components/CTA';
 import { defaultPortfolioItems } from '../data';
@@ -463,7 +510,7 @@ export default function PortfolioDetailView() {
       case 'Link': return <LinkIcon {...props} />;
       case 'Radio': return <Radio {...props} />;
       case 'CreditCard': return <CreditCard {...props} />;
-      case 'Sparkles': return <Sparkles {...props} />;
+      case 'Images': return <Images {...props} />;
       case 'Database': return <Database {...props} />;
       case 'HardDrive': return <HardDrive {...props} />;
       case 'Flame': return <Flame {...props} />;

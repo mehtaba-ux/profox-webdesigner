@@ -1,18 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Users, 
-  CheckCircle, 
-  Clock, 
-  AlertCircle, 
-  Search, 
-  Eye, 
-  Check, 
-  X, 
-  FileText, 
-  UserCheck, 
-  ArrowRight, 
-  Loader2, 
-  RefreshCw, 
+import {
+  Users,
+  CheckCircle,
+  Clock,
+  AlertCircle,
+  Search,
+  Eye,
+  Check,
+  X,
+  FileText,
+  UserCheck,
+  ArrowRight,
+  Loader2,
+  RefreshCw,
   Award,
   ExternalLink,
   Video,
@@ -24,8 +24,7 @@ import {
   Trash2,
   Settings,
   Layers,
-  Sparkles,
-  HelpCircle
+  HelpCircle,
 } from 'lucide-react';
 import { trainingService, UserProgress, TrainingModule, TrainingLesson } from '../../lib/trainingService';
 import { profileService } from '../../lib/profileService';

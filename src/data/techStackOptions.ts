@@ -38,7 +38,7 @@ export const PREDEFINED_TECH_STACK: TechStackOption[] = [
   { id: 'rest-api', name: 'RESTful Web APIs', category: 'Backend & APIs', badgeColor: 'bg-teal-50 text-teal-800 border-teal-200', iconName: 'Link' },
   { id: 'websockets', name: 'WebSockets & Realtime', category: 'Backend & APIs', badgeColor: 'bg-violet-50 text-violet-800 border-violet-200', iconName: 'Radio' },
   { id: 'stripe', name: 'Stripe Payment Gateway', category: 'Backend & APIs', badgeColor: 'bg-indigo-50 text-indigo-700 border-indigo-200', iconName: 'CreditCard' },
-  { id: 'gemini-ai', name: 'Gemini AI Integration', category: 'Backend & APIs', badgeColor: 'bg-sky-50 text-sky-800 border-sky-300', iconName: 'Sparkles' },
+  { id: 'gemini-ai', name: 'Gemini AI Integration', category: 'Backend & APIs', badgeColor: 'bg-sky-50 text-sky-800 border-sky-300', iconName: 'Cpu' },
 
   // Database & Cloud
   { id: 'postgresql', name: 'PostgreSQL', category: 'Database & Cloud', badgeColor: 'bg-blue-50 text-blue-800 border-blue-200', iconName: 'Database' },

@@ -10,7 +10,7 @@ import {
   Globe2,
   GraduationCap,
   ShieldCheck,
-  Sparkles,
+  Palette,
   WalletCards,
   Workflow,
 } from 'lucide-react';
@@ -210,7 +210,7 @@ export default function UIUXDesignerJobView({ job }: { job: CareerJob }) {
               <InfoCard title="No fixed salary initially">This starts as project-based contract work—not a guaranteed monthly salary or guaranteed paid hours.</InfoCard>
               <div className="sm:col-span-2 rounded-lg bg-[#202126] p-6 text-white">
                 <div className="flex items-start gap-3">
-                  <Sparkles className="mt-0.5 h-5 w-5 shrink-0 text-emerald-400" />
+                  <Palette className="mt-0.5 h-5 w-5 shrink-0 text-emerald-400" />
                   <div>
                     <h3 className="text-base font-semibold">Future salary opportunity</h3>
                     <p className="mt-2 text-xs leading-6 text-slate-300">
