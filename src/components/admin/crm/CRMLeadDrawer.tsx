@@ -7,7 +7,7 @@ import CRMLeadDrawerBase, { type LeadDrawerTab } from './CRMLeadDrawerBase';
 
 export type { LeadDrawerTab };
 
-type Props = Omit<React.ComponentProps<typeof CRMLeadDrawerBase>, 'onOpenConversation'>;
+type Props = Omit<React.ComponentProps<typeof CRMLeadDrawerBase>, 'onOpenConversation' | 'headerSummary' | 'overviewSidebarExtra'>;
 
 type OnboardingHandoff = {
   exists?: boolean;
@@ -57,11 +57,12 @@ export default function CRMLeadDrawer(props: Props) {
 
   return (
     <>
-      <CRMLeadDrawerBase {...props} onOpenConversation={() => setConversationOpen(true)} />
-      <div className="fixed right-4 top-4 z-[131] w-[calc(100%-2rem)] max-w-sm sm:right-5 sm:top-5">
-        <SellerCustomerLifecycleSummary leadId={props.lead.id} compact />
-      </div>
-      <SellerOnboardingHandoff leadId={props.lead.id} onChanged={props.onChanged} />
+      <CRMLeadDrawerBase
+        {...props}
+        onOpenConversation={() => setConversationOpen(true)}
+        headerSummary={<SellerCustomerLifecycleSummary leadId={props.lead.id} compact />}
+        overviewSidebarExtra={<SellerOnboardingHandoff leadId={props.lead.id} onChanged={props.onChanged} />}
+      />
       {conversationOpen && <CustomerCommunicationDrawer leadId={props.lead.id} customerLabel={customerLabel} onClose={() => setConversationOpen(false)} />}
     </>
   );
@@ -127,27 +128,28 @@ function SellerOnboardingHandoff({ leadId, onChanged }: { leadId: string; onChan
 
   if (loading) {
     return (
-      <div className="fixed bottom-5 right-5 z-[130] flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-xs font-bold text-slate-500 shadow-xl">
-        <Loader2 className="h-4 w-4 animate-spin text-[#000080]" /> Checking client onboarding…
-      </div>
+      <section className="flex w-full items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-xs font-bold text-slate-500 shadow-sm">
+        <Loader2 className="h-4 w-4 shrink-0 animate-spin text-[#000080]" />
+        <span className="break-words">Checking client onboarding…</span>
+      </section>
     );
   }
 
   if (!handoff?.exists && !error) return null;
 
   return (
-    <section className="fixed bottom-4 right-4 z-[130] w-[calc(100%-2rem)] max-w-sm overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl sm:bottom-5 sm:right-5">
+    <section className="w-full min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
       <div className="flex items-start justify-between gap-3 border-b border-slate-100 bg-slate-50 px-4 py-3">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.14em] text-[#000080]"><ShieldCheck className="h-4 w-4" />Client Onboarding</div>
-          {handoff?.exists && <div className="mt-1 truncate text-xs font-black text-slate-900">{handoff.projectNumber || 'Paid project'} · {handoff.projectName || 'ProFox project'}</div>}
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.14em] text-[#000080]"><ShieldCheck className="h-4 w-4 shrink-0" />Client Onboarding</div>
+          {handoff?.exists && <div className="mt-1 break-words text-xs font-black leading-5 text-slate-900">{handoff.projectNumber || 'Paid project'} · {handoff.projectName || 'ProFox project'}</div>}
         </div>
-        <button type="button" onClick={() => void load()} disabled={loading || busy} className="rounded-lg border border-slate-200 bg-white p-2 text-slate-500 disabled:opacity-50" aria-label="Refresh client onboarding"><RefreshCw className="h-3.5 w-3.5" /></button>
+        <button type="button" onClick={() => void load()} disabled={loading || busy} className="shrink-0 rounded-lg border border-slate-200 bg-white p-2 text-slate-500 disabled:opacity-50" aria-label="Refresh client onboarding"><RefreshCw className="h-3.5 w-3.5" /></button>
       </div>
 
       <div className="space-y-3 p-4">
-        {error && <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-[11px] font-semibold leading-5 text-rose-700">{error}</div>}
-        {notice && <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-[11px] font-semibold leading-5 text-emerald-700">{notice}</div>}
+        {error && <div className="break-words rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-[11px] font-semibold leading-5 text-rose-700">{error}</div>}
+        {notice && <div className="break-words rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-[11px] font-semibold leading-5 text-emerald-700">{notice}</div>}
 
         {handoff?.exists && (
           <>
@@ -156,22 +158,22 @@ function SellerOnboardingHandoff({ leadId, onChanged }: { leadId: string; onChan
               <span className="text-[10px] font-semibold text-slate-400">Invites: {Number(handoff.inviteCount || 0)}</span>
             </div>
 
-            <div className="grid gap-1 text-[10px] leading-5 text-slate-500">
+            <div className="grid gap-1 break-words text-[10px] leading-5 text-slate-500">
               <div>Last invite: {formatDate(handoff.inviteLastSentAt)}</div>
               {complete && <div>Completed: {formatDate(handoff.completedAt)}</div>}
             </div>
 
             {complete ? (
-              <div className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-[11px] font-black text-emerald-700"><CheckCircle2 className="h-4 w-4" />Customer onboarding is complete. Seller follow-up reminders are stopped.</div>
+              <div className="flex items-start gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-[11px] font-black leading-5 text-emerald-700"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" /><span className="break-words">Customer onboarding is complete. Seller follow-up reminders are stopped.</span></div>
             ) : (
               <>
-                {!onboardingUrl && <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[10px] font-semibold leading-5 text-amber-800">No reusable onboarding link is available. Resend once to issue a fresh secure link.</div>}
-                <div className="grid grid-cols-2 gap-2">
+                {!onboardingUrl && <div className="break-words rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[10px] font-semibold leading-5 text-amber-800">No reusable onboarding link is available. Resend once to issue a fresh secure link.</div>}
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
                   {onboardingUrl && <button type="button" onClick={() => window.open(onboardingUrl, '_blank', 'noopener,noreferrer')} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-[#000080] px-3 text-[10px] font-black text-white"><ExternalLink className="h-3.5 w-3.5" />Open form</button>}
                   {onboardingUrl && <button type="button" onClick={() => void copyLink()} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-[10px] font-black text-slate-700"><Clipboard className="h-3.5 w-3.5" />Copy link</button>}
-                  {handoff.canResend && <button type="button" disabled={busy} onClick={() => void resend()} className="col-span-2 inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-[#000080]/20 bg-blue-50 px-3 text-[10px] font-black text-[#000080] disabled:opacity-50">{busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}Resend onboarding invite</button>}
+                  {handoff.canResend && <button type="button" disabled={busy} onClick={() => void resend()} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-[#000080]/20 bg-blue-50 px-3 text-[10px] font-black text-[#000080] disabled:opacity-50 sm:col-span-2 lg:col-span-1 xl:col-span-2">{busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}Resend onboarding invite</button>}
                 </div>
-                <p className="text-[9px] leading-4 text-slate-400">This uses the existing paid-project onboarding record. Resends are rate-limited server-side and do not create duplicate onboarding records.</p>
+                <p className="break-words text-[9px] leading-4 text-slate-400">This uses the existing paid-project onboarding record. Resends are rate-limited server-side and do not create duplicate onboarding records.</p>
               </>
             )}
           </>
