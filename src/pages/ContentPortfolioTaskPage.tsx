@@ -130,7 +130,7 @@ export default function ContentPortfolioTaskPage() {
     try {
       const { data, error: rpcError } = await supabase.rpc('public_open_recruitment_task', { p_token: token });
       if (rpcError) throw rpcError;
-      if (!data || data.taskKey !== 'content_writer_portfolio_v2') throw new Error('This secure link is not a Content Creator portfolio task.');
+      if (!data || data.taskKey !== 'content_writer_portfolio_v2') throw new Error('This secure link is not a Content Writer portfolio task.');
       const requiredItems = Math.max(3, Number(data.requiredItems || 3));
       const normalized: PublicTask = {
         ...data,
@@ -206,7 +206,7 @@ export default function ContentPortfolioTaskPage() {
   const readOnly = !task.canEdit;
 
   return <div className="min-h-screen bg-[#f5f6fb] text-slate-900">
-    <header className="border-b border-slate-200 bg-white px-5 py-5"><div className="mx-auto flex max-w-6xl items-center justify-between gap-4"><div><div className="text-xs font-black uppercase tracking-[.16em] text-[#000080]">ProFox Recruitment</div><div className="mt-1 text-sm font-semibold text-slate-500">Secure Content Creator portfolio portal</div></div><a href="https://www.profoxwebdesigner.com/" target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-sm font-black text-[#000080]">ProFox Web Designer <ExternalLink className="h-4 w-4"/></a></div></header>
+    <header className="border-b border-slate-200 bg-white px-5 py-5"><div className="mx-auto flex max-w-6xl items-center justify-between gap-4"><div><div className="text-xs font-black uppercase tracking-[.16em] text-[#000080]">ProFox Recruitment</div><div className="mt-1 text-sm font-semibold text-slate-500">Secure Content Writer portfolio portal</div></div><a href="https://www.profoxwebdesigner.com/" target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-sm font-black text-[#000080]">ProFox Web Designer <ExternalLink className="h-4 w-4"/></a></div></header>
     <main className="mx-auto max-w-6xl space-y-5 p-4 sm:p-8">
       <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8"><div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between"><div className="max-w-3xl"><div className="text-xs font-black uppercase tracking-[.14em] text-[#000080]">Portfolio Review · Attempt {task.attemptNo}</div><h1 className="mt-2 text-3xl font-black tracking-tight">{task.title}</h1><p className="mt-3 text-sm leading-7 text-slate-600">{task.description}</p></div><span className={`w-fit rounded-full px-3 py-1.5 text-xs font-black ${submitted?'bg-emerald-100 text-emerald-800':task.expired?'bg-red-100 text-red-800':'bg-blue-100 text-[#000080]'}`}>{task.status}</span></div>
         <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4"><Summary label="Application" value={task.applicationReference || 'ProFox candidate'}/><Summary label="Required cases" value={`${task.requiredItems} case studies`}/><Summary label="Expected time" value={`${task.estimatedMinutes} minutes`}/><Summary label="Deadline" value={formatDate(task.dueAt)}/></div>
