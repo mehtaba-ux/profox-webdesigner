@@ -97,14 +97,14 @@ export default function CRMLeadStagePicker({ lead, busy = false, onStage, fullWi
   };
 
   const chooseStage = (value: LeadStatus) => {
-    if (value === lead.status) {
-      setOpen(false);
-      return;
-    }
     if (value === 'Qualified') {
       setOpen(false);
       setChecks({});
       setQualificationOpen(true);
+      return;
+    }
+    if (value === lead.status) {
+      setOpen(false);
       return;
     }
     setOpen(false);
@@ -232,7 +232,7 @@ export default function CRMLeadStagePicker({ lead, busy = false, onStage, fullWi
               })}
             </div>
             <div className="border-t border-slate-100 bg-slate-50/70 px-4 py-2.5 text-[9px] font-semibold leading-4 text-slate-500">
-              Hover <span className="font-black text-emerald-700">Qualified</span> to see the qualification rule.
+              <span className="font-black text-emerald-700">Qualified</span> opens the qualification checkpoint and moves the lead to Pipeline when confirmed.
             </div>
           </div>
           {!position.mobile && showGuide && (
@@ -255,7 +255,7 @@ export default function CRMLeadStagePicker({ lead, busy = false, onStage, fullWi
             <header className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-slate-100 bg-white/95 px-5 py-4 backdrop-blur sm:px-6">
               <div className="min-w-0">
                 <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[.16em] text-emerald-700"><ShieldCheck className="h-4 w-4" />Qualification checkpoint</div>
-                <h3 className="mt-1 text-lg font-black text-slate-950 sm:text-xl">Is this lead ready to become Qualified?</h3>
+                <h3 className="mt-1 text-lg font-black text-slate-950 sm:text-xl">Ready to qualify this lead and move it to Pipeline?</h3>
                 <p className="mt-1 break-words text-xs leading-5 text-slate-500">{lead.title} · {lead.companyName}</p>
               </div>
               <button type="button" onClick={() => setQualificationOpen(false)} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-200 text-slate-400 hover:bg-slate-50" aria-label="Close qualification checkpoint"><X className="h-4 w-4" /></button>
@@ -267,7 +267,7 @@ export default function CRMLeadStagePicker({ lead, busy = false, onStage, fullWi
                   <div className="text-xs font-black text-slate-900">ProFox qualification standard</div>
                   <span className="rounded-full bg-white px-2.5 py-1 text-[9px] font-black text-[#000080] shadow-sm">4 required + any 2 of 3</span>
                 </div>
-                <p className="mt-2 text-[11px] leading-5 text-slate-600">Qualified means there is enough evidence that this is a real potential customer worth advancing into the opportunity process.</p>
+                <p className="mt-2 text-[11px] leading-5 text-slate-600">Passing this checkpoint moves the canonical lead into Pipeline as one linked opportunity. The lead history remains preserved for attribution and audit.</p>
               </div>
 
               <RuleChecklist
@@ -300,7 +300,7 @@ export default function CRMLeadStagePicker({ lead, busy = false, onStage, fullWi
 
             <footer className="sticky bottom-0 flex flex-col-reverse gap-2 border-t border-slate-100 bg-white/95 px-5 py-4 backdrop-blur sm:flex-row sm:justify-end sm:px-6">
               <button type="button" onClick={() => setQualificationOpen(false)} className="min-h-11 rounded-xl border border-slate-200 bg-white px-4 text-xs font-black text-slate-600 hover:bg-slate-50">Keep current stage</button>
-              <button type="button" disabled={!qualificationReady || busy} onClick={confirmQualification} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#000080] px-5 text-xs font-black text-white shadow-lg shadow-blue-950/10 disabled:cursor-not-allowed disabled:opacity-40"><ShieldCheck className="h-4 w-4" />Mark lead Qualified</button>
+              <button type="button" disabled={!qualificationReady || busy} onClick={confirmQualification} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#000080] px-5 text-xs font-black text-white shadow-lg shadow-blue-950/10 disabled:cursor-not-allowed disabled:opacity-40"><ShieldCheck className="h-4 w-4" />Qualify & move to Pipeline</button>
             </footer>
           </section>
         </div>,
@@ -315,12 +315,12 @@ function QualificationGuide({ compact = false }: { compact?: boolean }) {
     <section className={`overflow-hidden rounded-2xl border border-emerald-200 bg-white shadow-xl shadow-slate-950/10 ${compact ? 'shadow-none' : ''}`}>
       <div className="border-b border-emerald-100 bg-emerald-50/80 px-4 py-3">
         <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[.15em] text-emerald-700"><Sparkles className="h-3.5 w-3.5" />Qualification rule</div>
-        <div className="mt-1 text-sm font-black leading-5 text-slate-950">When can this lead become Qualified?</div>
+        <div className="mt-1 text-sm font-black leading-5 text-slate-950">When can this lead move to Pipeline?</div>
       </div>
       <div className="space-y-4 p-4">
         <GuideGroup title="Required · all 4" rules={ESSENTIAL_RULES} />
         <GuideGroup title="Commercial · any 2 of 3" rules={COMMERCIAL_RULES} />
-        <div className="rounded-xl bg-slate-950 px-3 py-2.5 text-[10px] font-bold leading-4 text-white">Qualified = ready to become a real sales opportunity.</div>
+        <div className="rounded-xl bg-slate-950 px-3 py-2.5 text-[10px] font-bold leading-4 text-white">Qualified = one linked opportunity in Pipeline; the original lead history stays preserved.</div>
       </div>
     </section>
   );
