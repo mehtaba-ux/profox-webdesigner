@@ -20,6 +20,9 @@ jobs:
         with:
           node-version: 22
 
+      - name: Report existing prohibited icon usages
+        run: grep -RniE 'Sparkle|Sparkles|WandSparkles|sparkle|sparkles|wandsparkles|✨' src --include='*.ts' --include='*.tsx' --include='*.js' --include='*.jsx' --include='*.html' --include='*.svg' --include='*.css' || true
+
       - name: Replace prohibited icon family
         run: node scripts/replace-prohibited-sparkle-icons-safe.mjs
 
