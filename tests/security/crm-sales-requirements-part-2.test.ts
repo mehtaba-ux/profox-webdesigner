@@ -61,7 +61,7 @@ const makeRequirement = (patch: Partial<CRMRequirement> = {}): CRMRequirement =>
 });
 
 test('TEST 1 — Requirements tab appears in the existing Lead Drawer', () => {
-  assert.match(drawer, /LeadDrawerTab = 'overview' \| 'requirements' \| 'timeline' \| 'communication' \| 'activities'/);
+  assert.match(drawer, /LeadDrawerTab = 'overview' \| 'requirements' \| 'discovery' \| 'timeline' \| 'communication' \| 'activities'/);
   assert.match(drawer, /id: 'requirements', label: 'Requirements'/);
 });
 
