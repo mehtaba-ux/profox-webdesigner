@@ -118,7 +118,7 @@ test('TEST 12 — Seller can save an ANSWERED response through the existing serv
 test('TEST 13 — ANSWERED cannot be saved with an empty answer', () => {
   assert.equal(hasMeaningfulDiscoveryAnswer(makeResponse({ answer_text: '', structured_value: null })), false);
   assert.match(workspace, /normalized\.state === 'ANSWERED'[\s\S]*An Answered question needs an actual answer/);
-  assert.match(part1, /crm_discovery_responses_check/);
+  assert.match(part1, /question_state <> 'ANSWERED'[\s\S]*answer_text is not null[\s\S]*structured_value is not null/i);
 });
 
 test('TEST 14 — NOT_APPLICABLE resolves cleanly', () => {
@@ -224,7 +224,7 @@ test('TEST 29 — Client Voice can link to a Requirement from the same Lead', ()
 
 test('TEST 30 — cross-Lead Requirement link remains rejected', () => {
   assert.match(part1, /v_requirement_lead_id is distinct from new\.lead_id/);
-  assert.match(hardening, /crm_client_voice_validate_linkage/);
+  assert.match(part1, /crm_client_voice_validate_linkage/);
 });
 
 test('TEST 31 — Discovery displays related Requirement state without duplicating Requirements', () => {
@@ -265,7 +265,7 @@ test('TEST 37 — Opportunity workspace resolves to the same Lead Discovery data
 
 test('TEST 38 — Discovery rows are not copied during Lead→Opportunity conversion', () => {
   assert.doesNotMatch(migration, /insert into public\.crm_discovery_(questions|responses)[\s\S]*crm_opportunities/i);
-  assert.match(docs, /No Discovery copying/i);
+  assert.match(docs, /does not copy Discovery rows during conversion/i);
 });
 
 test('TEST 39 — unauthorized Seller access is denied through existing Lead RLS', () => {
