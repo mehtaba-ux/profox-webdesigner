@@ -71,7 +71,7 @@ test('onboarding deep links remain supported while lead and conversation clicks 
 
   assert.match(drawer, /CustomerCommunicationDrawer/);
   assert.match(drawer, /conversationOpen/);
-  assert.match(drawerBase, /item\.id === 'communication' \? onOpenConversation\(\) : setTab\(item\.id\)/);
+  assert.match(drawerBase, /if \(item\.id === 'communication'\) \{[\s\S]*onOpenConversation\(\);[\s\S]*return;[\s\S]*\}/);
   assert.match(drawerBase, /ConversationHandoff lead=\{lead\} onOpen=\{onOpenConversation\}/);
   assert.doesNotMatch(drawerBase, /tab=inbox&lead=/);
 });

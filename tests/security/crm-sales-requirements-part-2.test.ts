@@ -239,7 +239,7 @@ test('TEST 25 — opportunityId workspace resolves to the same lead and Requirem
 
 test('TEST 26 — conversion continuity does not copy or re-enter Requirements', () => {
   assert.doesNotMatch(migration, /insert into public\.crm_requirements[\s\S]*crm_opportunities/i);
-  assert.doesNotMatch(migration, /copy.*requirement/i);
+  assert.doesNotMatch(migration, /update public\.crm_requirements[\s\S]*crm_opportunities/i);
   assert.match(docs, /No Requirement copying/i);
 });
 
