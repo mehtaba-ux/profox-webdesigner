@@ -1,6 +1,13 @@
 -- ProFox CRM Sales SOP Part 3: canonical Probing & Discovery question catalog.
 -- Reuses crm_discovery_questions from Part 1. No Lead-specific customer data is inserted.
 -- This migration is additive and idempotent: existing standard questions with the same stable key win.
+-- Global standard questions are system configuration, not a Seller-authored CRM record. The Part 1
+-- insert-actor trigger deliberately rejects unauthenticated runtime writes, so this transaction
+-- disables only that trigger while the migration-owned global catalog is inserted. ALTER TABLE
+-- takes the required lock until commit and the trigger is re-enabled before the transaction ends.
+
+alter table public.crm_discovery_questions
+  disable trigger crm_discovery_questions_stamp_insert_actor;
 
 with canonical_questions (
   question_key,
@@ -143,6 +150,9 @@ where not exists (
     and q.is_custom = false
     and q.question_key = c.question_key
 );
+
+alter table public.crm_discovery_questions
+  enable trigger crm_discovery_questions_stamp_insert_actor;
 
 -- Part 3 intentionally does not create/modify Discovery tables, RLS, audit,
 -- conversion, pipeline, quotation, payment, Won, or package-fit behavior.
