@@ -13,6 +13,7 @@ export type CRMPackageFitTrace = {
   questionKey?: string | null;
   certainty?: string | null;
   minimumProductCode?: string | null;
+  productCode?: string | null;
   provisional?: boolean;
 };
 
@@ -42,6 +43,12 @@ export type CRMPackageFitCandidate = CRMPackageFitProduct & {
   mismatchReasons: CRMPackageFitTrace[];
 };
 
+export type CRMPackageFitAddonCandidate = CRMPackageFitProduct & {
+  trigger: CRMPackageFitTrace;
+  reviewRequired: boolean;
+  provisional: boolean;
+};
+
 export type CRMPackageFitAssessment = {
   leadId: string;
   opportunityId: string | null;
@@ -53,6 +60,7 @@ export type CRMPackageFitAssessment = {
   confidence: CRMPackageFitConfidence;
   recommendedProduct: CRMPackageFitProduct | null;
   candidateProducts: CRMPackageFitCandidate[];
+  possibleAddOns: CRMPackageFitAddonCandidate[];
   reasons: CRMPackageFitTrace[];
   complexitySignals: CRMPackageFitTrace[];
   mismatchSignals: CRMPackageFitTrace[];
@@ -66,7 +74,10 @@ export type CRMPackageFitAssessment = {
     unresolvedRequirementCount: number;
     customRequirementCount: number;
     discoverySignalCount: number;
+    totalProductCount: number;
+    activeProductCount: number;
     activePackageCount: number;
+    activeAddonCount: number;
     requirementDefinitionVersion: number | null;
   };
   configurationStatus?: 'OK' | 'REVIEW_REQUIRED';
