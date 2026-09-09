@@ -34,6 +34,11 @@ export interface SalesMeeting {
   timelineNotes: string;
   nextStep: string;
   followUpAt?: string;
+  customerSummary: string;
+  customerNextStep: string;
+  customerNextStepTiming: string;
+  prepReviewedAt?: string;
+  prepReviewedBy?: string;
   createdBy: string;
   completedAt?: string;
   cancelledAt?: string;
@@ -98,8 +103,7 @@ export interface ScheduleMeetingInput {
   attendeeEmail?: string;
 }
 
-export interface FinalizeMeetingInput {
-  status: 'Completed' | 'No Show';
+export interface MeetingCloseoutInput {
   outcome?: string;
   requirementsSummary?: string;
   problemsIdentified?: string;
@@ -108,6 +112,16 @@ export interface FinalizeMeetingInput {
   timelineNotes?: string;
   nextStep?: string;
   followUpAt?: string;
+}
+
+export interface FinalizeMeetingInput extends MeetingCloseoutInput {
+  status: 'Completed' | 'No Show';
+}
+
+export interface CustomerMeetingFollowupInput {
+  customerSummary?: string;
+  customerNextStep?: string;
+  customerNextStepTiming?: string;
 }
 
 export const DEFAULT_MEETING_SETTINGS: MeetingSettings = {
@@ -161,6 +175,11 @@ const mapMeeting = (row: any, meetingUrlOverride?: string | null): SalesMeeting 
   timelineNotes: row.timeline_notes || '',
   nextStep: row.next_step || '',
   followUpAt: row.follow_up_at || undefined,
+  customerSummary: row.customer_summary || '',
+  customerNextStep: row.customer_next_step || '',
+  customerNextStepTiming: row.customer_next_step_timing || '',
+  prepReviewedAt: row.prep_reviewed_at || undefined,
+  prepReviewedBy: row.prep_reviewed_by || undefined,
   createdBy: row.created_by,
   completedAt: row.completed_at || undefined,
   cancelledAt: row.cancelled_at || undefined,
@@ -204,6 +223,16 @@ async function mapStaffMeeting(row: any): Promise<SalesMeeting> {
   return mapMeeting(row, launchUrl);
 }
 
+const CRM_MEETING_SAFE_COLUMNS = [
+  'id', 'request_key', 'lead_id', 'opportunity_id', 'client_id', 'salesperson_id', 'activity_id',
+  'meeting_type', 'title', 'description', 'start_at', 'end_at', 'timezone', 'provider',
+  'attendee_name', 'attendee_email', 'status', 'sync_status', 'outcome', 'requirements_summary',
+  'problems_identified', 'decision_makers', 'commercial_notes', 'timeline_notes', 'next_step',
+  'follow_up_at', 'customer_summary', 'customer_next_step', 'customer_next_step_timing',
+  'prep_reviewed_at', 'prep_reviewed_by', 'completed_at', 'cancelled_at', 'rescheduled_at',
+  'created_by', 'created_at', 'updated_at'
+].join(',');
+
 export const meetingService = {
   async listMeetings(): Promise<SalesMeeting[]> {
     const [{ data, error }, launchUrls] = await Promise.all([
@@ -212,6 +241,16 @@ export const meetingService = {
     ]);
     if (error) throw error;
     return (data || []).map(row => mapMeeting(row, launchUrls.get(String(row.id)) || ''));
+  },
+
+  async listCRMMeetings(reference: { leadId: string; opportunityId?: string | null }): Promise<SalesMeeting[]> {
+    let query = supabase.from('sales_meetings').select(CRM_MEETING_SAFE_COLUMNS).order('start_at', { ascending: true });
+    query = reference.opportunityId
+      ? query.or(`lead_id.eq.${reference.leadId},opportunity_id.eq.${reference.opportunityId}`)
+      : query.eq('lead_id', reference.leadId);
+    const { data, error } = await query;
+    if (error) throw error;
+    return (data || []).map(row => mapMeeting(row, ''));
   },
 
   async getMeeting(id: string): Promise<SalesMeeting | null> {
@@ -262,6 +301,33 @@ export const meetingService = {
     const { data, error } = await supabase.rpc('cancel_sales_meeting', {
       p_meeting_id: id,
       p_reason: reason
+    });
+    if (error) throw error;
+    return mapMeeting(data, '');
+  },
+
+  async saveCloseoutDraft(id: string, input: MeetingCloseoutInput): Promise<SalesMeeting> {
+    const { data, error } = await supabase.rpc('save_sales_meeting_closeout_draft', {
+      p_meeting_id: id,
+      p_outcome: input.outcome || '',
+      p_requirements_summary: input.requirementsSummary || '',
+      p_problems_identified: input.problemsIdentified || '',
+      p_decision_makers: input.decisionMakers || '',
+      p_commercial_notes: input.commercialNotes || '',
+      p_timeline_notes: input.timelineNotes || '',
+      p_next_step: input.nextStep || '',
+      p_follow_up_at: input.followUpAt || null
+    });
+    if (error) throw error;
+    return mapMeeting(data, '');
+  },
+
+  async saveCustomerFollowup(id: string, input: CustomerMeetingFollowupInput): Promise<SalesMeeting> {
+    const { data, error } = await supabase.rpc('save_sales_meeting_customer_followup', {
+      p_meeting_id: id,
+      p_customer_summary: input.customerSummary || '',
+      p_customer_next_step: input.customerNextStep || '',
+      p_customer_next_step_timing: input.customerNextStepTiming || ''
     });
     if (error) throw error;
     return mapMeeting(data, '');
