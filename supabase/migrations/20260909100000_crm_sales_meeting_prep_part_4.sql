@@ -161,7 +161,7 @@ as $function$
 declare
   v_meeting_id uuid;
   v_lead_id uuid;
-  v_invalidated boolean := false;
+  v_invalidated_count integer := 0;
   v_source text := tg_table_name;
 begin
   if tg_table_name = 'crm_meeting_preparations' then
@@ -186,9 +186,9 @@ begin
   where id = v_meeting_id
     and prep_reviewed_at is not null;
 
-  get diagnostics v_invalidated = row_count;
+  get diagnostics v_invalidated_count = row_count;
 
-  if v_invalidated then
+  if v_invalidated_count > 0 then
     v_lead_id := public.crm_sales_discovery_meeting_lead_id(v_meeting_id);
     if v_lead_id is not null then
       perform public.crm_write_lead_event(
