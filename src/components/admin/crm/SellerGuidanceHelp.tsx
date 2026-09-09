@@ -127,7 +127,7 @@ export default function SellerGuidanceHelp({ guidance, label, className = '' }: 
         aria-describedby={quickOpen ? tooltipId : undefined}
         aria-haspopup={hasDetails ? 'dialog' : undefined}
         aria-expanded={hasDetails ? detailOpen : undefined}
-        className={`inline-flex min-h-10 min-w-10 shrink-0 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-[#000080] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#000080] ${className}`}
+        className={`inline-flex min-h-10 min-w-10 shrink-0 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-[#000080] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#000080] ${className}`}
       >
         <CircleHelp className="h-4 w-4" aria-hidden="true" />
       </button>
