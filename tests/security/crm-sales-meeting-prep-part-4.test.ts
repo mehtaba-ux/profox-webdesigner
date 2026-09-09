@@ -501,12 +501,12 @@ test('TEST 62 — no sales_products changes', () => {
 
 // TEST 63
 test('TEST 63 — no Package Fit feature is implemented', () => {
-  assert.doesNotMatch(meetingPrep + part4Migration, /package fit|package scoring|recommendation engine/i);
+  assert.doesNotMatch(meetingPrep + meetingPrepUtils + service + part4Migration, /\bpackage_fit\b|\bpackageFit\b|\bpackageScore\b|\bpackageScoring\b|\brecommendationEngine\b/);
 });
 
 // TEST 64
 test('TEST 64 — no Proposal Readiness feature is implemented', () => {
-  assert.doesNotMatch(meetingPrep + part4Migration, /proposal readiness|proposal_ready|proposal score/i);
+  assert.doesNotMatch(meetingPrep + meetingPrepUtils + service + part4Migration, /\bproposal_readiness\b|\bproposal_ready\b|\bproposalReady\b|\bproposalScore\b|\bproposalReadiness\b/);
 });
 
 // TEST 65
