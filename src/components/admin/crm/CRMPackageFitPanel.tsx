@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, ArrowDownRight, CheckCircle2, Info, Loader2, Package, RefreshCw, ShieldCheck } from 'lucide-react';
+import { AlertTriangle, ArrowDownRight, CheckCircle2, Info, Loader2, Package, PlusCircle, RefreshCw, ShieldCheck } from 'lucide-react';
 import {
+  CRMPackageFitAddonCandidate,
   CRMPackageFitAssessment,
   CRMPackageFitCandidate,
   CRMPackageFitProduct,
@@ -15,6 +16,7 @@ export type CRMPackageFitPanelProps = {
   leadId?: string;
   opportunityId?: string;
   refreshKey?: string;
+  onViewDiscovery?: () => void;
 };
 
 const STATUS_TONE: Record<CRMPackageFitStatus, string> = {
@@ -50,7 +52,7 @@ const duration = (product: CRMPackageFitProduct) => {
   return `${product.deliveryDurationMin ?? product.deliveryDurationMax} ${unit}`;
 };
 
-export default function CRMPackageFitPanel({ leadId, opportunityId, refreshKey }: CRMPackageFitPanelProps) {
+export default function CRMPackageFitPanel({ leadId, opportunityId, refreshKey, onViewDiscovery }: CRMPackageFitPanelProps) {
   const [assessment, setAssessment] = useState<CRMPackageFitAssessment | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -131,19 +133,20 @@ export default function CRMPackageFitPanel({ leadId, opportunityId, refreshKey }
 
         {assessment.reasons.length > 0 && <TraceSection title="Why this fits" guidanceKey="section.package_fit_reasons" items={assessment.reasons} icon={<CheckCircle2 className="h-4 w-4 text-emerald-600" />} />}
         {assessment.complexitySignals.length > 0 && <TraceSection title="Mismatch / complexity signals" guidanceKey="section.package_fit_mismatch" items={assessment.complexitySignals} icon={<ArrowDownRight className="h-4 w-4 text-rose-600" />} />}
-        {assessment.missingInformation.length > 0 && <TraceSection title="Need clarification" guidanceKey="section.package_fit_missing_information" items={assessment.missingInformation} icon={<Info className="h-4 w-4 text-[#000080]" />} actionLabel="Review Requirements" onAction={scrollToRequirements} />}
+        {assessment.missingInformation.length > 0 && <TraceSection title="Need clarification" guidanceKey="section.package_fit_missing_information" items={assessment.missingInformation} icon={<Info className="h-4 w-4 text-[#000080]" />} actions={[{ label: 'Open Requirements', onClick: scrollToRequirements }, ...(onViewDiscovery ? [{ label: 'Open Discovery', onClick: onViewDiscovery }] : [])]} />}
         {assessment.validationSignals.length > 0 && <TraceSection title="Validation needed" guidanceKey="section.package_fit_validation" items={assessment.validationSignals} icon={<ShieldCheck className="h-4 w-4 text-amber-700" />} />}
 
+        <AddonGuidance addOns={assessment.possibleAddOns || []} />
         <CandidateComparison candidates={assessment.candidateProducts} />
 
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
           <Metric label="Active Requirements" value={assessment.sourceSummary.activeRequirementCount} />
           <Metric label="Client confirmed" value={assessment.sourceSummary.confirmedRequirementCount} />
-          <Metric label="Unresolved" value={assessment.sourceSummary.unresolvedRequirementCount} />
           <Metric label="Active packages" value={assessment.sourceSummary.activePackageCount} />
+          <Metric label="Active add-ons" value={assessment.sourceSummary.activeAddonCount} />
         </div>
 
-        <div className="rounded-xl border border-blue-100 bg-blue-50 p-3 text-[10px] leading-4 text-slate-600"><strong>Current-data rule:</strong> this assessment is recalculated from current CRM truth and current <code>sales_products</code>. An accepted quotation remains the customer-specific historical commercial agreement and is not rewritten by Package Fit.</div>
+        <div className="rounded-xl border border-blue-100 bg-blue-50 p-3 text-[10px] leading-4 text-slate-600"><strong>Current-data rule:</strong> this assessment is recalculated from current CRM truth and current <code>sales_products</code>. Possible add-ons are guidance only and are never added to a quotation here. An accepted quotation remains the customer-specific historical commercial agreement and is not rewritten by Package Fit.</div>
       </div>
     </section>
   );
@@ -164,9 +167,18 @@ function CatalogCard({ product }: { product: CRMPackageFitProduct }) {
   </div>;
 }
 
-function TraceSection({ title, guidanceKey, items, icon, actionLabel, onAction }: { title: string; guidanceKey: string; items: CRMPackageFitTrace[]; icon: React.ReactNode; actionLabel?: string; onAction?: () => void }) {
+function AddonGuidance({ addOns }: { addOns: CRMPackageFitAddonCandidate[] }) {
+  if (!addOns.length) return null;
+  return <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+    <div className="flex items-center gap-2 text-xs font-black text-slate-800"><PlusCircle className="h-4 w-4 text-[#000080]" />Possible current catalog add-ons</div>
+    <p className="mt-1 text-[10px] leading-4 text-slate-500">Stable Requirement-to-code mappings only. These are current catalog options, not approved scope and not quotation items.</p>
+    <div className="mt-3 grid gap-2 md:grid-cols-2">{addOns.map(addOn => <div key={`${addOn.code}-${addOn.trigger.requirementId || addOn.trigger.requirementKey}`} className="rounded-xl border border-slate-200 bg-white p-3"><div className="flex items-start justify-between gap-2"><div><div className="text-xs font-black text-slate-900">{addOn.name}</div><div className="mt-0.5 text-[9px] font-bold text-slate-400">{addOn.code} · {formatPrice(addOn)}</div></div>{addOn.reviewRequired && <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-1 text-[8px] font-black text-amber-800">Review needed</span>}</div><p className="mt-2 text-[9px] leading-4 text-slate-600">{addOn.trigger.message}</p></div>)}</div>
+  </div>;
+}
+
+function TraceSection({ title, guidanceKey, items, icon, actions = [] }: { title: string; guidanceKey: string; items: CRMPackageFitTrace[]; icon: React.ReactNode; actions?: Array<{ label: string; onClick: () => void }> }) {
   return <div className="rounded-xl border border-slate-200 bg-white p-4">
-    <div className="flex flex-wrap items-center justify-between gap-2"><div className="flex items-center gap-2 text-xs font-black text-slate-800">{icon}{title}<SellerGuidanceHelp guidance={getPackageFitGuidance(guidanceKey)} /></div>{actionLabel && onAction && <button type="button" onClick={onAction} className="min-h-9 rounded-lg border border-slate-200 bg-slate-50 px-3 text-[9px] font-black text-[#000080]">{actionLabel}</button>}</div>
+    <div className="flex flex-wrap items-center justify-between gap-2"><div className="flex items-center gap-2 text-xs font-black text-slate-800">{icon}{title}<SellerGuidanceHelp guidance={getPackageFitGuidance(guidanceKey)} /></div>{actions.length > 0 && <div className="flex flex-wrap gap-2">{actions.map(action => <button key={action.label} type="button" onClick={action.onClick} className="min-h-9 rounded-lg border border-slate-200 bg-slate-50 px-3 text-[9px] font-black text-[#000080]">{action.label}</button>)}</div>}</div>
     <ul className="mt-3 space-y-2">{items.map((item, index) => <li key={`${item.code}-${item.requirementId || item.questionId || index}`} className="rounded-lg bg-slate-50 p-3"><p className="break-words text-[11px] font-bold leading-5 text-slate-700">{item.message}</p><div className="mt-1 flex flex-wrap gap-1.5 text-[8px] font-black uppercase tracking-wide text-slate-400">{item.requirementKey && <span>{item.requirementKey}</span>}{item.questionKey && <span>{item.questionKey}</span>}{item.certainty && <span>{item.certainty.replaceAll('_', ' ')}</span>}{item.provisional && <span>Provisional</span>}</div></li>)}</ul>
   </div>;
 }
