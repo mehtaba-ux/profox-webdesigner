@@ -37,8 +37,9 @@ import {
 import CRMLeadStagePicker from './CRMLeadStagePicker';
 import CRMRequirementsWorkspace from './CRMRequirementsWorkspace';
 import CRMDiscoveryWorkspace from './CRMDiscoveryWorkspace';
+import CRMMeetingPrepWorkspace from './CRMMeetingPrepWorkspace';
 
-export type LeadDrawerTab = 'overview' | 'requirements' | 'discovery' | 'timeline' | 'communication' | 'activities';
+export type LeadDrawerTab = 'overview' | 'requirements' | 'discovery' | 'meeting-prep' | 'timeline' | 'communication' | 'activities';
 
 type CRMLeadDrawerBaseProps = {
   lead: CRMLead;
@@ -65,6 +66,7 @@ const tabs: Array<{ id: LeadDrawerTab; label: string; icon: React.ReactNode }> =
   { id: 'overview', label: 'Overview', icon: <Building2 className="h-4 w-4" /> },
   { id: 'requirements', label: 'Requirements', icon: <ClipboardList className="h-4 w-4" /> },
   { id: 'discovery', label: 'Probing & Discovery', icon: <MessageSquareText className="h-4 w-4" /> },
+  { id: 'meeting-prep', label: 'Meeting Prep', icon: <CalendarDays className="h-4 w-4" /> },
   { id: 'timeline', label: 'Complete log', icon: <History className="h-4 w-4" /> },
   { id: 'communication', label: 'Conversation', icon: <MessageCircle className="h-4 w-4" /> },
   { id: 'activities', label: 'Follow-ups', icon: <Activity className="h-4 w-4" /> },
@@ -106,6 +108,7 @@ export default function CRMLeadDrawerBase({
   const [tab, setTab] = useState<LeadDrawerTab>(initialTab);
   const [requirementsVisited, setRequirementsVisited] = useState(initialTab === 'requirements');
   const [discoveryVisited, setDiscoveryVisited] = useState(initialTab === 'discovery');
+  const [meetingPrepVisited, setMeetingPrepVisited] = useState(initialTab === 'meeting-prep');
   const [detail, setDetail] = useState<CRMLeadDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState('');
@@ -129,6 +132,7 @@ export default function CRMLeadDrawerBase({
     setTab(initialTab);
     setRequirementsVisited(initialTab === 'requirements');
     setDiscoveryVisited(initialTab === 'discovery');
+    setMeetingPrepVisited(initialTab === 'meeting-prep');
     void loadDetail();
   }, [lead.id, initialTab]);
 
@@ -236,6 +240,7 @@ export default function CRMLeadDrawerBase({
                   }
                   if (item.id === 'requirements') setRequirementsVisited(true);
                   if (item.id === 'discovery') setDiscoveryVisited(true);
+                  if (item.id === 'meeting-prep') setMeetingPrepVisited(true);
                   setTab(item.id);
                 }}
                 className={`inline-flex min-h-10 shrink-0 items-center gap-2 rounded-lg px-3 text-[11px] font-black ${tab === item.id ? 'bg-white text-[#000080] shadow-sm' : 'text-slate-500'}`}
@@ -287,6 +292,24 @@ export default function CRMLeadDrawerBase({
                     onViewRequirements={() => {
                       setRequirementsVisited(true);
                       setTab('requirements');
+                    }}
+                  />
+                </div>
+              )}
+              {meetingPrepVisited && (
+                <div className={tab === 'meeting-prep' ? 'block' : 'hidden'} aria-hidden={tab !== 'meeting-prep'}>
+                  <CRMMeetingPrepWorkspace
+                    lead={lead}
+                    refreshKey={lead.updatedAt}
+                    onChanged={onChanged}
+                    onScheduleMeeting={onOpenMeeting}
+                    onViewRequirements={() => {
+                      setRequirementsVisited(true);
+                      setTab('requirements');
+                    }}
+                    onViewDiscovery={() => {
+                      setDiscoveryVisited(true);
+                      setTab('discovery');
                     }}
                   />
                 </div>
