@@ -19,6 +19,7 @@ import {
 } from '../../../lib/crmSellerGuidance';
 import SellerGuidanceHelp from './SellerGuidanceHelp';
 import CRMPackageFitPanel from './CRMPackageFitPanel';
+import CRMSalesValidationPanel from './CRMSalesValidationPanel';
 
 export type CRMRequirementsWorkspaceProps = {
   leadId?: string;
@@ -193,6 +194,7 @@ export default function CRMRequirementsWorkspace({ leadId, opportunityId, refres
   const awaiting = activeRequirements.filter(item => item.information_certainty === 'AWAITING_CLIENT').length;
   const validation = activeRequirements.filter(item => item.information_certainty === 'SELLER_HYPOTHESIS' || item.information_certainty === 'NEEDS_SPECIALIST_VALIDATION').length;
   const categoryGroups = (group: Category['group']) => CATEGORIES.filter(category => category.group === group).filter(category => visibleStandard.some(item => item.category === category.key) || visibleCustom.some(item => item.category === category.key));
+  const resolvedLeadId = workspace?.leadId || leadId;
 
   return <div className="space-y-5">
     <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -204,7 +206,14 @@ export default function CRMRequirementsWorkspace({ leadId, opportunityId, refres
       {coverage.missingCore.length > 0 && <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3"><div className="flex items-center gap-2 text-xs font-black text-amber-900"><AlertTriangle className="h-4 w-4" />{coverage.missingCore.length} Core items still need attention</div><div className="mt-2 flex flex-wrap gap-1.5">{coverage.missingCore.slice(0, 6).map(item => <span key={item.requirementKey} className="rounded-lg border border-amber-200 bg-white/70 px-2 py-1 text-[10px] font-bold text-amber-800">{item.title}</span>)}{coverage.missingCore.length > 6 && <span className="px-2 py-1 text-[10px] font-bold text-amber-700">+{coverage.missingCore.length - 6} more</span>}</div></div>}
     </section>
 
-    <CRMPackageFitPanel leadId={workspace?.leadId || leadId} opportunityId={workspace?.opportunityId || opportunityId} refreshKey={packageFitRefreshKey} />
+    {resolvedLeadId && <CRMSalesValidationPanel
+      leadId={resolvedLeadId}
+      opportunityId={workspace?.opportunityId || opportunityId || null}
+      refreshKey={packageFitRefreshKey}
+      onChanged={async () => { await load('refresh'); await onChanged?.('Sales validation updated.'); }}
+    />}
+
+    <CRMPackageFitPanel leadId={resolvedLeadId} opportunityId={workspace?.opportunityId || opportunityId} refreshKey={packageFitRefreshKey} />
 
     {actionError && <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs font-bold text-rose-700" role="alert">{actionError}</div>}
     <div id="crm-requirements-list" className="flex gap-2 overflow-x-auto pb-1" aria-label="Requirement filters">{FILTERS.map(item => <button key={item.id} type="button" onClick={() => setFilter(item.id)} aria-pressed={filter === item.id} className={`min-h-10 shrink-0 rounded-xl border px-3 text-[10px] font-black focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#000080] ${filter === item.id ? 'border-[#000080] bg-[#000080] text-white' : 'border-slate-200 bg-white text-slate-600'}`}>{item.label}</button>)}</div>
@@ -248,7 +257,7 @@ function CustomRow({ requirement, editing, draft, setDraft, busy, onEdit, onCanc
 function Display({ requirement }: { requirement?: CRMRequirement }) {
   if (!requirement) return <div className="mt-3 rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-4 text-xs font-bold text-slate-400">Not captured yet</div>;
   const certainty = CERTAINTY[requirement.information_certainty];
-  return <div className="mt-3 space-y-3"><div className="flex flex-wrap items-center gap-2"><span className={`rounded-full border px-2.5 py-1 text-[9px] font-black ${certainty.tone}`}>{certainty.label}</span><SellerGuidanceHelp guidance={getCertaintyGuidance(requirement.information_certainty)} /><span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[9px] font-black text-slate-500">{sourceLabel(requirement.source_type)}</span><SellerGuidanceHelp guidance={getSellerGuidance('field.requirement_source')} /></div>{requirement.information_certainty === 'NEEDS_SPECIALIST_VALIDATION' && <div className="flex items-start gap-2 rounded-lg border border-rose-200 bg-rose-50 p-2.5 text-[10px] font-bold leading-4 text-rose-700"><AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />Specialist validation required. No review workflow has been started.</div>}{requirement.content?.trim() ? <p className="whitespace-pre-wrap break-words text-sm leading-6 text-slate-700">{requirement.content}</p> : requirement.information_certainty === 'NOT_APPLICABLE' ? <p className="text-xs font-bold text-slate-500">Resolved as not applicable.</p> : hasMeaningfulRequirementValue(requirement) ? <p className="text-xs font-bold text-slate-500">Structured Requirement details are recorded and will be preserved.</p> : <p className="text-xs font-bold text-slate-400">No written detail captured yet.</p>}<div className="text-[9px] font-semibold text-slate-400">Updated {fmt(requirement.updated_at)} · {sourceLabel(requirement.source_type)}{requirement.source_recorded_at ? ` · Source recorded ${fmt(requirement.source_recorded_at)}` : ''}</div></div>;
+  return <div className="mt-3 space-y-3"><div className="flex flex-wrap items-center gap-2"><span className={`rounded-full border px-2.5 py-1 text-[9px] font-black ${certainty.tone}`}>{certainty.label}</span><SellerGuidanceHelp guidance={getCertaintyGuidance(requirement.information_certainty)} /><span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[9px] font-black text-slate-500">{sourceLabel(requirement.source_type)}</span><SellerGuidanceHelp guidance={getSellerGuidance('field.requirement_source')} /></div>{requirement.information_certainty === 'NEEDS_SPECIALIST_VALIDATION' && <div className="flex items-start gap-2 rounded-lg border border-rose-200 bg-rose-50 p-2.5 text-[10px] font-bold leading-4 text-rose-700"><AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />Specialist validation required. Current review status and Request Review actions are shown in Sales Validation above.</div>}{requirement.content?.trim() ? <p className="whitespace-pre-wrap break-words text-sm leading-6 text-slate-700">{requirement.content}</p> : requirement.information_certainty === 'NOT_APPLICABLE' ? <p className="text-xs font-bold text-slate-500">Resolved as not applicable.</p> : hasMeaningfulRequirementValue(requirement) ? <p className="text-xs font-bold text-slate-500">Structured Requirement details are recorded and will be preserved.</p> : <p className="text-xs font-bold text-slate-400">No written detail captured yet.</p>}<div className="text-[9px] font-semibold text-slate-400">Updated {fmt(requirement.updated_at)} · {sourceLabel(requirement.source_type)}{requirement.source_recorded_at ? ` · Source recorded ${fmt(requirement.source_recorded_at)}` : ''}</div></div>;
 }
 function Editor({ draft, setDraft, custom = false, guidance }: { draft: RequirementDraft; setDraft: (next: RequirementDraft) => void; custom?: boolean; guidance?: SellerGuidanceEntry }) {
   const update = (patch: Partial<RequirementDraft>) => setDraft({ ...draft, ...patch });
