@@ -18,6 +18,7 @@ import {
   getSellerGuidance,
 } from '../../../lib/crmSellerGuidance';
 import SellerGuidanceHelp from './SellerGuidanceHelp';
+import CRMPackageFitPanel from './CRMPackageFitPanel';
 
 export type CRMRequirementsWorkspaceProps = {
   leadId?: string;
@@ -106,6 +107,7 @@ export default function CRMRequirementsWorkspace({ leadId, opportunityId, refres
 
   const definitions = useMemo(() => (workspace?.requirementDefinitions || []).filter(item => item.active), [workspace]);
   const activeRequirements = useMemo(() => (workspace?.requirements || []).filter(item => item.record_state === 'ACTIVE'), [workspace]);
+  const packageFitRefreshKey = useMemo(() => activeRequirements.map(item => `${item.id}:${item.updated_at}:${item.record_state}:${item.information_certainty}`).join('|'), [activeRequirements]);
   const standardByKey = useMemo(() => new Map(activeRequirements.filter(item => !item.is_custom).map(item => [item.requirement_key, item])), [activeRequirements]);
   const customRequirements = useMemo(() => activeRequirements.filter(item => item.is_custom), [activeRequirements]);
   const coverage = useMemo(() => calculateRequirementCoverage(definitions, activeRequirements), [definitions, activeRequirements]);
@@ -202,8 +204,10 @@ export default function CRMRequirementsWorkspace({ leadId, opportunityId, refres
       {coverage.missingCore.length > 0 && <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3"><div className="flex items-center gap-2 text-xs font-black text-amber-900"><AlertTriangle className="h-4 w-4" />{coverage.missingCore.length} Core items still need attention</div><div className="mt-2 flex flex-wrap gap-1.5">{coverage.missingCore.slice(0, 6).map(item => <span key={item.requirementKey} className="rounded-lg border border-amber-200 bg-white/70 px-2 py-1 text-[10px] font-bold text-amber-800">{item.title}</span>)}{coverage.missingCore.length > 6 && <span className="px-2 py-1 text-[10px] font-bold text-amber-700">+{coverage.missingCore.length - 6} more</span>}</div></div>}
     </section>
 
+    <CRMPackageFitPanel leadId={workspace?.leadId || leadId} opportunityId={workspace?.opportunityId || opportunityId} refreshKey={packageFitRefreshKey} />
+
     {actionError && <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs font-bold text-rose-700" role="alert">{actionError}</div>}
-    <div className="flex gap-2 overflow-x-auto pb-1" aria-label="Requirement filters">{FILTERS.map(item => <button key={item.id} type="button" onClick={() => setFilter(item.id)} aria-pressed={filter === item.id} className={`min-h-10 shrink-0 rounded-xl border px-3 text-[10px] font-black focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#000080] ${filter === item.id ? 'border-[#000080] bg-[#000080] text-white' : 'border-slate-200 bg-white text-slate-600'}`}>{item.label}</button>)}</div>
+    <div id="crm-requirements-list" className="flex gap-2 overflow-x-auto pb-1" aria-label="Requirement filters">{FILTERS.map(item => <button key={item.id} type="button" onClick={() => setFilter(item.id)} aria-pressed={filter === item.id} className={`min-h-10 shrink-0 rounded-xl border px-3 text-[10px] font-black focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#000080] ${filter === item.id ? 'border-[#000080] bg-[#000080] text-white' : 'border-slate-200 bg-white text-slate-600'}`}>{item.label}</button>)}</div>
 
     <RequirementGroup title="Core discovery" subtitle="Visible by default. Capture facts without turning requests into promises." categories={categoryGroups('core')} openCategories={openCategories} toggle={toggleCategory} definitions={visibleStandard} standardByKey={standardByKey} customRequirements={visibleCustom} editingKey={editingKey} draft={draft} setDraft={setDraft} busyKey={busyKey} onEditStandard={definition => { setActionError(''); setEditingKey(definition.requirementKey); setDraft(standardDraft(definition, standardByKey.get(definition.requirementKey))); }} onSaveStandard={saveStandard} onEditCustom={requirement => { setActionError(''); setEditingKey(requirement.requirement_key); setDraft(customDraft(requirement)); }} onSaveCustom={saveCustom} onCancel={() => { setEditingKey(null); setDraft(null); setActionError(''); }} onArchive={archiveCustom} />
     <RequirementGroup title="Additional / conditional areas" subtitle="Collapsed by default. Expand only when relevant to this client need." categories={categoryGroups('additional')} openCategories={openCategories} toggle={toggleCategory} definitions={visibleStandard} standardByKey={standardByKey} customRequirements={visibleCustom} editingKey={editingKey} draft={draft} setDraft={setDraft} busyKey={busyKey} onEditStandard={definition => { setActionError(''); setEditingKey(definition.requirementKey); setDraft(standardDraft(definition, standardByKey.get(definition.requirementKey))); }} onSaveStandard={saveStandard} onEditCustom={requirement => { setActionError(''); setEditingKey(requirement.requirement_key); setDraft(customDraft(requirement)); }} onSaveCustom={saveCustom} onCancel={() => { setEditingKey(null); setDraft(null); setActionError(''); }} onArchive={archiveCustom} />
