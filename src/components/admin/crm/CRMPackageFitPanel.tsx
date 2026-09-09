@@ -11,6 +11,7 @@ import {
 } from '../../../lib/crmPackageFitService';
 import { getPackageFitGuidance } from '../../../lib/crmPackageFitGuidance';
 import SellerGuidanceHelp from './SellerGuidanceHelp';
+import CRMPackageFitValidationReviews from './CRMPackageFitValidationReviews';
 
 export type CRMPackageFitPanelProps = {
   leadId?: string;
@@ -135,6 +136,13 @@ export default function CRMPackageFitPanel({ leadId, opportunityId, refreshKey, 
         {assessment.complexitySignals.length > 0 && <TraceSection title="Mismatch / complexity signals" guidanceKey="section.package_fit_mismatch" items={assessment.complexitySignals} icon={<ArrowDownRight className="h-4 w-4 text-rose-600" />} />}
         {assessment.missingInformation.length > 0 && <TraceSection title="Need clarification" guidanceKey="section.package_fit_missing_information" items={assessment.missingInformation} icon={<Info className="h-4 w-4 text-[#000080]" />} actions={[{ label: 'Open Requirements', onClick: scrollToRequirements }, ...(onViewDiscovery ? [{ label: 'Open Discovery', onClick: onViewDiscovery }] : [])]} />}
         {assessment.validationSignals.length > 0 && <TraceSection title="Validation needed" guidanceKey="section.package_fit_validation" items={assessment.validationSignals} icon={<ShieldCheck className="h-4 w-4 text-amber-700" />} />}
+
+        <CRMPackageFitValidationReviews
+          leadId={assessment.leadId}
+          opportunityId={assessment.opportunityId}
+          assessment={assessment}
+          onChanged={() => void load('refresh')}
+        />
 
         <AddonGuidance addOns={assessment.possibleAddOns || []} />
         <CandidateComparison candidates={assessment.candidateProducts} />
