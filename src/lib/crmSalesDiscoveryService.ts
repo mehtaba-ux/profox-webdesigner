@@ -143,6 +143,7 @@ export interface CRMMeetingPreparationWorkspaceItem {
   title: string;
   scheduledAt: string;
   status: string;
+  meetingType: string | null;
   preparationState: CRMMeetingPreparationState;
   preparedBy: string | null;
   preparedAt: string | null;
@@ -354,17 +355,41 @@ export const crmSalesDiscoveryService = {
   },
 
   async saveMeetingPreparation(input: SaveMeetingPreparationInput): Promise<CRMMeetingPreparation> {
-    const payload = {
-      meeting_id: input.meetingId,
-      meeting_objective: input.meetingObjective ?? null,
-      intended_advance: input.intendedAdvance ?? null,
-      hypotheses: input.hypotheses ?? [],
-      seller_notes: input.sellerNotes ?? null,
-    };
+    const { data: existing, error: loadError } = await supabase
+      .from('crm_meeting_preparations')
+      .select('*')
+      .eq('meeting_id', input.meetingId)
+      .maybeSingle();
+    if (loadError) throw actionError('load Meeting Prep before saving');
+
+    if (existing) {
+      const patch: Record<string, CRMJsonValue | CRMJsonValue[] | null> = {};
+      if (input.meetingObjective !== undefined) patch.meeting_objective = input.meetingObjective;
+      if (input.intendedAdvance !== undefined) patch.intended_advance = input.intendedAdvance;
+      if (input.hypotheses !== undefined) patch.hypotheses = input.hypotheses;
+      if (input.sellerNotes !== undefined) patch.seller_notes = input.sellerNotes;
+
+      if (Object.keys(patch).length === 0) return existing as CRMMeetingPreparation;
+
+      const { data, error } = await supabase
+        .from('crm_meeting_preparations')
+        .update(patch)
+        .eq('meeting_id', input.meetingId)
+        .select('*')
+        .single();
+      if (error || !data) throw actionError('save Meeting Prep');
+      return data as CRMMeetingPreparation;
+    }
 
     const { data, error } = await supabase
       .from('crm_meeting_preparations')
-      .upsert(payload, { onConflict: 'meeting_id' })
+      .insert({
+        meeting_id: input.meetingId,
+        meeting_objective: input.meetingObjective ?? null,
+        intended_advance: input.intendedAdvance ?? null,
+        hypotheses: input.hypotheses ?? [],
+        seller_notes: input.sellerNotes ?? null,
+      })
       .select('*')
       .single();
     if (error || !data) throw actionError('save Meeting Prep');
