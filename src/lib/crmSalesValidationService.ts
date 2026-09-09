@@ -182,7 +182,7 @@ export const crmSalesValidationService = {
       p_source_type: input.sourceType,
       p_source_key: input.sourceKey ?? null,
     });
-    if (error || !data) throw safeError(error?.message || 'The review request could not be created.');
+    if (error || !data) throw safeError('The review request could not be created. Review the current CRM information and try again.');
     return data as CRMSalesValidation;
   },
 
@@ -197,7 +197,7 @@ export const crmSalesValidationService = {
       p_rejection_reason: input.rejectionReason ?? null,
       p_cancel_reason: input.cancelReason ?? null,
     });
-    if (error || !data) throw safeError(error?.message || 'The review action could not be completed.');
+    if (error || !data) throw safeError('The review action could not be completed. Refresh the current review and try again.');
     return data as CRMSalesValidation;
   },
 
