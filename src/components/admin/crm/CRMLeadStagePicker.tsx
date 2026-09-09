@@ -11,6 +11,8 @@ import {
   X,
 } from 'lucide-react';
 import { CRMLead, LEAD_STATUSES, LeadStatus } from '../../../types';
+import { getLeadStatusGuidance, getSellerGuidance } from '../../../lib/crmSellerGuidance';
+import SellerGuidanceHelp from './SellerGuidanceHelp';
 
 type Props = {
   lead: CRMLead;
@@ -176,7 +178,7 @@ export default function CRMLeadStagePicker({ lead, busy = false, onStage, fullWi
             onClick={event => event.stopPropagation()}
           >
             <div className="border-b border-slate-100 px-4 py-3">
-              <div className="text-[9px] font-black uppercase tracking-[.16em] text-slate-400">Lead stage</div>
+              <div className="flex items-center gap-1 text-[9px] font-black uppercase tracking-[.16em] text-slate-400">Lead stage<SellerGuidanceHelp guidance={getLeadStatusGuidance(lead.status)} label={`${lead.status} lead status guidance`} /></div>
               <div className="mt-0.5 text-xs font-black text-slate-900">Choose the next stage</div>
             </div>
             <div className="p-2">
@@ -198,6 +200,7 @@ export default function CRMLeadStagePicker({ lead, busy = false, onStage, fullWi
                           <span className="min-w-0 flex-1">{value}</span>
                           {selected && <Check className="h-4 w-4 shrink-0 text-emerald-600" />}
                         </button>
+                        <SellerGuidanceHelp guidance={getLeadStatusGuidance(value)} label={`${value} lead status guidance`} className="mr-0.5" />
                         <button
                           type="button"
                           onClick={event => { event.stopPropagation(); setShowGuide(current => !current); }}
@@ -213,20 +216,22 @@ export default function CRMLeadStagePicker({ lead, busy = false, onStage, fullWi
                   );
                 }
                 return (
-                  <button
-                    key={value}
-                    type="button"
-                    role="option"
-                    aria-selected={selected}
-                    onMouseEnter={() => setShowGuide(false)}
-                    onFocus={() => setShowGuide(false)}
-                    onClick={() => chooseStage(value)}
-                    className="flex min-h-10 w-full items-center gap-2.5 rounded-xl px-3 text-left text-xs font-bold text-slate-700 hover:bg-slate-50 focus:bg-slate-50 focus:outline-none"
-                  >
-                    <span className={`h-2 w-2 shrink-0 rounded-full ${stageDot[value]}`} />
-                    <span className="min-w-0 flex-1">{value}</span>
-                    {selected && <Check className="h-4 w-4 shrink-0 text-[#000080]" />}
-                  </button>
+                  <div key={value} className="flex items-center rounded-xl hover:bg-slate-50 focus-within:bg-slate-50">
+                    <button
+                      type="button"
+                      role="option"
+                      aria-selected={selected}
+                      onMouseEnter={() => setShowGuide(false)}
+                      onFocus={() => setShowGuide(false)}
+                      onClick={() => chooseStage(value)}
+                      className="flex min-h-10 min-w-0 flex-1 items-center gap-2.5 rounded-xl px-3 text-left text-xs font-bold text-slate-700 focus:outline-none"
+                    >
+                      <span className={`h-2 w-2 shrink-0 rounded-full ${stageDot[value]}`} />
+                      <span className="min-w-0 flex-1">{value}</span>
+                      {selected && <Check className="h-4 w-4 shrink-0 text-[#000080]" />}
+                    </button>
+                    <SellerGuidanceHelp guidance={getLeadStatusGuidance(value)} label={`${value} lead status guidance`} className="mr-1" />
+                  </div>
                 );
               })}
             </div>
@@ -253,7 +258,7 @@ export default function CRMLeadStagePicker({ lead, busy = false, onStage, fullWi
           <section className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-[1.75rem] border border-white/40 bg-white shadow-2xl">
             <header className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-slate-100 bg-white/95 px-5 py-4 backdrop-blur sm:px-6">
               <div className="min-w-0">
-                <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[.16em] text-emerald-700"><ShieldCheck className="h-4 w-4" />Qualification checkpoint</div>
+                <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[.16em] text-emerald-700"><ShieldCheck className="h-4 w-4" />Qualification checkpoint<SellerGuidanceHelp guidance={getSellerGuidance('action.qualify_lead')} /></div>
                 <h3 className="mt-1 text-lg font-black text-slate-950 sm:text-xl">Ready to qualify this lead and move it to Pipeline?</h3>
                 <p className="mt-1 break-words text-xs leading-5 text-slate-500">{lead.title} · {lead.companyName}</p>
               </div>
