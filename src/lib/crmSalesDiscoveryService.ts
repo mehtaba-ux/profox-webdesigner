@@ -143,8 +143,11 @@ export interface CRMMeetingPreparationWorkspaceItem {
   title: string;
   scheduledAt: string;
   status: string;
+  meetingType: string;
+  timezone: string;
   preparationState: CRMMeetingPreparationState;
   preparedBy: string | null;
+  preparedByName: string | null;
   preparedAt: string | null;
   preparation: CRMMeetingPreparation | null;
   selectedQuestionIds: string[];
@@ -354,13 +357,11 @@ export const crmSalesDiscoveryService = {
   },
 
   async saveMeetingPreparation(input: SaveMeetingPreparationInput): Promise<CRMMeetingPreparation> {
-    const payload = {
-      meeting_id: input.meetingId,
-      meeting_objective: input.meetingObjective ?? null,
-      intended_advance: input.intendedAdvance ?? null,
-      hypotheses: input.hypotheses ?? [],
-      seller_notes: input.sellerNotes ?? null,
-    };
+    const payload: Record<string, CRMJsonValue | undefined> = { meeting_id: input.meetingId };
+    if (input.meetingObjective !== undefined) payload.meeting_objective = input.meetingObjective;
+    if (input.intendedAdvance !== undefined) payload.intended_advance = input.intendedAdvance;
+    if (input.hypotheses !== undefined) payload.hypotheses = input.hypotheses;
+    if (input.sellerNotes !== undefined) payload.seller_notes = input.sellerNotes;
 
     const { data, error } = await supabase
       .from('crm_meeting_preparations')
