@@ -2,40 +2,34 @@
 
 ## Objective
 
-Part 6 adds a deterministic, explainable Package Fit assessment to the existing CRM Sales workflow. It compares current structured Sales Requirements and relevant unresolved Discovery information with the current ProFox Sales Catalog without creating parallel business truth.
+Part 6 adds deterministic, explainable Package Fit guidance inside the existing CRM Requirements workflow. It evaluates current structured Requirements and relevant unresolved Discovery against the current ProFox Sales Catalog without creating parallel commercial or client business truth.
 
-Package Fit is guidance. It does not approve technical feasibility, commercial exceptions, timeline commitments, manager approvals, proposals, quotations, Pipeline stages, payment, Won, or Sales-to-Delivery handoff.
+Package Fit is guidance only. It does not approve technical feasibility, commercial exceptions, timeline commitments, manager approval, proposals, quotations, Pipeline stages, payment, Won, or Sales-to-Delivery handoff.
 
 ## Reuse audit
 
-Part 6 was implemented only after auditing current production and repository architecture.
+Part 6 reuses:
 
-Reused canonical systems:
+- `sales_products` as the only current commercial package/add-on source of truth;
+- `system_configuration` as the existing versioned configuration architecture;
+- `crm_requirement_definitions_v1` as canonical Requirement Definitions;
+- `crm_requirements` as current deal-specific structured Requirements;
+- `crm_discovery_questions` and `crm_discovery_responses` as canonical Discovery truth;
+- `crm_leads` and `crm_opportunities` for lifecycle identity and lineage;
+- `crm_can_access_lead(...)` for Seller/Admin access;
+- the existing Supabase browser client;
+- the existing Requirements workspace;
+- the existing `SellerGuidanceHelp` component.
 
-- `sales_products` — current commercial/package source of truth.
-- `system_configuration` — versioned policy/configuration architecture.
-- `crm_requirement_definitions_v1` — canonical Requirement Definitions.
-- `crm_requirements` — deal-specific structured Requirements.
-- `crm_discovery_questions` — canonical Discovery question/applicability definitions.
-- `crm_discovery_responses` — captured Discovery responses and certainty.
-- `crm_leads` / `crm_opportunities` — canonical lifecycle and lineage.
-- `crm_can_access_lead(...)` — canonical Seller/Admin Lead access decision.
-- existing Supabase client in `src/lib/supabase.ts`.
-- existing Requirements workspace.
-- existing `SellerGuidanceHelp` component.
+No canonical Package Fit implementation or Package Fit configuration existed before Part 6.
 
-No existing Package Fit/recommendation implementation or Package Fit configuration key existed before Part 6.
+## Production catalog audit
 
-## Live Sales Catalog audit
+The production catalog was re-queried before implementation.
 
-Production was re-queried before implementation.
-
-Current counts at implementation time:
-
-| Catalog group | Count |
+| Catalog group | Current count |
 | --- | ---: |
-| Total `sales_products` | 45 |
-| Active products | 45 |
+| Total active `sales_products` | 45 |
 | Active packages | 4 |
 | Active add-ons | 37 |
 | Active care plans | 3 |
@@ -48,41 +42,20 @@ Current active package codes:
 3. `PF-WEB-SCALE`
 4. `PF-CUSTOM`
 
-Current commercial values are never duplicated into the Package Fit policy. The evaluator reads live `sales_products` fields, including current:
+Current package/add-on commercial values are read live from `sales_products`, including only fields needed by the UI such as `id`, `code`, `name`, `product_type`, `price_mode`, `base_price`, `currency`, `billing_period`, `scope`, `technology`, `manager_approval_required`, `timeline_impact`, delivery-duration fields, `service_family`, `active`, `sort_order`, and `updated_at`.
 
-- `id`
-- `code`
-- `name`
-- `product_type`
-- `price_mode`
-- `base_price`
-- `currency`
-- `billing_period`
-- `scope`
-- `technology`
-- `manager_approval_required`
-- `active`
-- `sort_order`
-- `timeline_impact`
-- `delivery_duration_min`
-- `delivery_duration_max`
-- `delivery_duration_unit`
-- `delivery_duration_note`
-- `service_family`
-- `updated_at`
+Package Fit policy does not duplicate package name, price, scope, payment terms, payment schedule, active state, technology, timeline, delivery duration, manager approval, or client-expectation values.
 
-Payment terms, payment schedule and other catalog fields remain in `sales_products` and are not copied into Package Fit policy.
+## Requirement and Discovery applicability audit
 
-## Requirement Definition audit
-
-Canonical Requirement Definitions remain in:
+Canonical Requirement Definitions remain at:
 
 `system_configuration.config_key = crm_requirement_definitions_v1`
 
-Current version: **1**  
-Current active definitions: **105**
+Current definition version: **1**  
+Current active Requirement Definitions: **105**
 
-Existing applicability conditions found and reused:
+Existing Requirement applicability conditions found:
 
 - `booking`
 - `complex_decision`
@@ -90,132 +63,150 @@ Existing applicability conditions found and reused:
 - `ecommerce`
 - `integration`
 
-Part 6 does not create another Requirement Definition catalog.
-
-## Discovery applicability audit
-
 Current active Discovery questions: **99**.
 
-Existing Discovery applicability already links questions to canonical Requirement keys through `applicability.relatedRequirementKeys` and classifies relevant sections including:
+Discovery already connects relevant questions to canonical Requirement keys through `applicability.relatedRequirementKeys`. Part 6 reuses those links only for Package Fit-relevant unresolved information and validation signals. Requirements remain the primary structured scope input.
 
-- PROJECT
-- INTEGRATIONS
-- ECOMMERCE
-- BOOKING
-- TECHNICAL
-- CUSTOM_APP
-- COMPLEX
-- COMMERCIAL
-- DECISION
-- ANALYTICS
-- SEO
-- RISKS
+## One canonical policy
 
-Part 6 uses those existing links only for Package Fit-relevant unresolved Discovery signals. It does not recreate the full Discovery gap engine.
+Part 6 uses exactly one policy configuration:
 
-## Policy architecture
+- policy location: `system_configuration`
+- policy key: `crm_package_fit_policy_v1`
+- policy version: **1**
 
-Part 6 adds exactly one policy configuration:
+The repository contains an initial Part 6 migration plus a final hardening migration. The hardening migration updates the same policy key and replaces the same evaluator RPC; it does not create a second policy source.
 
-`system_configuration.config_key = crm_package_fit_policy_v1`
+The policy contains only deterministic fit concepts:
 
-Policy key: `crm_package_fit_policy_v1`  
-Policy version: **1**
+- stable package-code order;
+- Package Fit-relevant core Requirement keys;
+- base-package rules;
+- stable Requirement-to-add-on mappings where mapping is defensible;
+- review-required flags for ambiguous/validation-sensitive treatment;
+- explainable reasons.
 
-This architecture was chosen because `system_configuration` is already the repository’s canonical home for versioned Sales SOP configuration such as Requirement Definitions. A new Package Fit policy table would duplicate configuration architecture without adding business value.
+Commercial values continue to come from `sales_products`.
 
-The policy stores only deterministic fit policy concepts:
+## Final base-package rules
 
-- stable package-code order,
-- Package Fit-relevant core Requirement keys,
-- unique rule keys,
-- rule type,
-- rule severity,
-- canonical Requirement key,
-- minimum package code,
-- explainable policy reason.
+The final policy deliberately separates **base-package classification** from **possible add-on guidance**.
 
-The policy intentionally does **not** store:
+### Launch
 
-- package names,
-- prices,
-- payment terms,
-- payment schedule,
-- package scope,
-- technology guidance,
-- delivery duration,
-- timeline guidance,
-- manager approval values,
-- client expectations,
-- active state.
+Launch remains the first plausible base package when the core Package Fit inputs are meaningfully captured and no client-confirmed higher-package rule is triggered.
 
-Those remain live catalog truth in `sales_products`.
-
-## Policy rules and why they exist
-
-The policy maps only canonical structured Requirement signals that are supported by current Requirement Definitions and current package scope.
-
-Examples:
+Page count is not the primary classifier. `required_pages` is only one core completeness input.
 
 ### Growth minimum signals
 
-- conversion copywriting,
-- SEO priority,
-- conversion tracking,
-- CRM integration,
-- third-party integration.
+Current client-confirmed structured signals that can raise the minimum base package to Growth:
 
-These are supported by current Growth catalog scope such as conversion copywriting, SEO planning, tracking and standard integrations.
+- `copywriting_requirement`
+- `seo_priority`
+- `conversion_tracking`
+
+These are supported by the current Growth catalog scope for conversion copywriting, SEO planning and conversion tracking.
 
 ### Scale minimum signals
 
-- explicit accessibility requirements,
-- economic-buyer complexity,
-- procurement process,
-- stakeholder map,
-- internal champion.
+Current client-confirmed structured signals that can raise the minimum base package to Scale:
 
-These align with the current Scale catalog’s deeper stakeholder discovery, advanced UX/QA and enterprise-complexity positioning.
+- `accessibility_requirements`
+- `performance_requirements`
+- `security_requirements` as an advanced signal that also requires review/validation before treatment is considered reliable
+
+These align with the current Scale catalog’s enhanced accessibility/performance and advanced implementation/QA scope.
 
 ### Custom minimum signals
 
-- authentication/login,
-- user roles/permissions,
-- portal/dashboard,
-- custom data/database behavior,
-- API requirements,
-- recurring subscriptions,
-- customer accounts,
-- custom business workflows,
-- application user types/permissions/reporting/admin operations/scale,
-- application acceptance criteria.
+Current client-confirmed structured signals that can raise the minimum base package to Custom include:
 
-These align with current `PF-CUSTOM` scope for portals, dashboards, authentication, role-based permissions, custom databases/backends, subscriptions, complex APIs and application workflows.
+- authentication/login;
+- role-based access/permissions;
+- portal/dashboard;
+- custom data/database behavior;
+- custom business workflows;
+- application user types;
+- application permissions;
+- application notifications;
+- custom reporting;
+- admin operations;
+- application usage/scale;
+- acceptance criteria;
+- application-specific training/handover.
 
-Page count is deliberately not used as the primary classification rule. `required_pages` is used only as a core completeness input for confidence.
+These align with the current Custom package scope for portals, dashboards, authentication, permissions, custom data/backend, application workflows, reporting, QA/UAT/documentation/training.
 
-If future package semantics change, policy configuration can be changed independently from commercial catalog values. If product names/prices/scope/timelines change without changing fit semantics, Package Fit automatically reads the updated current catalog values without code changes.
+## Buying-process complexity correction
 
-## Policy validation / fail-closed behavior
+`economic_buyer`, `procurement_process`, `stakeholder_map`, and `internal_champion` remain important Discovery/Requirements context, but the final Part 6 policy does **not** automatically raise the delivery package merely because the buying process is complex.
 
-The evaluator validates the policy and catalog before recommending a package.
+This prevents decision complexity from being misrepresented as delivery-scope complexity.
 
-It detects or rejects conditions such as:
+## Add-on handling
 
-- missing policy,
-- unsupported policy version,
-- malformed package order/rules,
-- duplicate package codes,
-- duplicate/missing rule keys,
-- unsupported rule type,
-- unsupported severity,
-- unknown Requirement key,
-- unknown minimum package reference,
-- package code not resolving to exactly one catalog record,
-- inactive/non-package catalog record,
-- active package catalog drift not represented by policy.
+The live catalog contains 37 active add-ons. Part 6 therefore audits whether a Requirement should raise the base package or could instead have a current catalog add-on.
 
-Configuration/catalog problems produce `REVIEW_REQUIRED` / LOW-confidence behavior rather than a stale commercial recommendation.
+Stable final mappings include:
+
+| Requirement | Current catalog add-on | Treatment |
+| --- | --- | --- |
+| `crm_integration` | `PF-ADD-CRM` | possible add-on guidance |
+| `booking_required` | `PF-ADD-BOOKING` | possible add-on guidance |
+| `api_requirements` | `PF-ADD-API` | possible add-on + review required |
+| `subscription_requirement` | `PF-ADD-SUBSCRIPTION` | possible add-on + review required |
+| `automation_requirements` | `PF-ADD-BPA` | possible add-on + review required |
+| `seo_redirect_migration` | `PF-ADD-SEOMIGRATION` | possible add-on + review required |
+| `ecommerce_required` | `PF-ADD-COMMERCE25` | possible starter add-on + commerce review required |
+| `payment_gateway` | `PF-ADD-PAYMENT` | possible add-on + validation required |
+
+The evaluator validates every mapped code against the current active `sales_products` add-on catalog.
+
+A generic `third_party_integrations` Requirement is intentionally **not** mapped automatically because the catalog contains multiple integration products and the canonical Requirement alone does not reliably distinguish simple versus advanced treatment. Part 6 defers rather than guesses.
+
+Possible add-ons:
+
+- are returned separately from the base package recommendation;
+- never modify base-package rank by themselves;
+- are shown only from stable policy mappings;
+- use current live catalog records;
+- never become quote items automatically;
+- never imply approved scope or commercial approval.
+
+## Certainty handling
+
+### `CLIENT_CONFIRMED`
+
+May drive normal deterministic base-package rules. A client-confirmed stable add-on mapping may surface a possible current catalog add-on.
+
+### `SELLER_OBSERVATION`
+
+May contribute provisional context and reduce confidence. It does not hard-classify the base package or confirm an add-on.
+
+### `SELLER_HYPOTHESIS`
+
+Creates clarification/missing-information behavior. It cannot force a package or confirm an add-on.
+
+### `AWAITING_CLIENT`
+
+Remains unresolved and is shown as missing information. No package/add-on answer is assumed.
+
+### `NEEDS_SPECIALIST_VALIDATION`
+
+Produces validation-needed/review-required behavior. Part 6 creates no review record.
+
+### `NOT_APPLICABLE`
+
+Does not increase complexity and does not trigger package or add-on guidance.
+
+Archived Requirements do not drive current Package Fit.
+
+## Custom Requirements
+
+Meaningful active custom Requirements are never silently ignored and are never interpreted by AI as authoritative package rules.
+
+An unmapped custom Requirement returns review-required behavior and lowers confidence. The actual specialist workflow remains deferred.
 
 ## Server evaluator
 
@@ -223,165 +214,64 @@ Canonical evaluator:
 
 `crm_get_package_fit_assessment(p_lead_id uuid, p_opportunity_id uuid)`
 
-Properties:
+The final evaluator is:
 
-- deterministic,
-- read-only,
-- server-side,
-- `SECURITY DEFINER`,
-- pinned empty `search_path`,
-- requires `auth.uid()`,
-- uses `crm_can_access_lead(...)`,
-- validates Lead/Opportunity lineage,
-- anonymous execution revoked,
-- authenticated execution only,
-- does not weaken `sales_products` RLS.
+- deterministic;
+- read-only for client business data;
+- server-side;
+- `SECURITY DEFINER`;
+- pinned to an empty `search_path` with schema-qualified application objects;
+- authentication-required;
+- protected by `crm_can_access_lead(...)`;
+- Lead/Opportunity-lineage aware;
+- anonymous execution revoked;
+- authenticated execution granted;
+- independent of service-role browser exposure.
 
-The function returns typed concepts including:
-
-- canonical `leadId` / `opportunityId`,
-- `policyKey` / `policyVersion`,
-- evaluation/catalog timestamps,
-- status,
-- confidence,
-- current recommended product when safe,
-- current candidates,
-- explainable reasons,
-- complexity/mismatch signals,
-- missing information,
-- validation signals,
-- manager-approval indicator,
-- timeline-assessment indicator,
-- source summary.
+It validates policy keys, rule keys, Requirement keys, package codes, add-on codes, active states/types and current active package-set drift. Configuration/catalog problems fail closed into `REVIEW_REQUIRED` rather than returning a stale recommendation.
 
 ## Lead / Opportunity continuity
 
-When called with an Opportunity, the evaluator resolves `crm_opportunities.lead_id` and uses that Lead’s existing Requirements and Discovery.
+Calling by Lead ID uses that Lead’s current Requirements/Discovery and resolves the latest connected Opportunity when present.
 
-When called with a Lead, it uses the same Lead truth and reports the latest linked Opportunity where one exists.
+Calling by Opportunity ID resolves the canonical `lead_id` and evaluates the same Lead truth.
 
-If both IDs are provided and do not belong to the same lifecycle, the server rejects the request.
+If both IDs are supplied but do not belong to the same lifecycle, the request is rejected.
 
-No Requirements or Package Fit records are copied to the Opportunity.
+No Requirements are copied into the Opportunity and no Opportunity-owned Package Fit dataset is created.
 
-## Certainty handling
+## Status and confidence
 
-### CLIENT_CONFIRMED
+Statuses:
 
-May drive deterministic minimum-package rules because the client explicitly confirmed the Requirement.
+- `FIT`
+- `POSSIBLE_FIT`
+- `MISMATCH`
+- `REVIEW_REQUIRED`
 
-### SELLER_OBSERVATION
+Confidence:
 
-May appear as a provisional complexity/missing-context signal and lowers confidence. It does **not** elevate the minimum package as though the client confirmed it.
+- `HIGH`
+- `MEDIUM`
+- `LOW`
 
-### SELLER_HYPOTHESIS
+Confidence is deterministic and coarse, not fake numeric precision.
 
-Produces clarification/missing-information behavior. It cannot force a package recommendation.
+Review/configuration/validation conditions produce LOW confidence. Missing or provisional information can reduce confidence to MEDIUM/LOW. LOW confidence does not produce an aggressive package recommendation.
 
-### AWAITING_CLIENT
+## Traceability and mismatch behavior
 
-Remains unresolved and appears as missing information. The evaluator never assumes the answer.
+Important reasons/signals preserve traceability such as Requirement ID/key, Discovery question ID/key, certainty, source type, policy code and package/add-on code where relevant.
 
-### NEEDS_SPECIALIST_VALIDATION
-
-Creates a validation-needed signal and causes review-required behavior. It does not approve feasibility.
-
-### NOT_APPLICABLE
-
-Does not increase complexity and does not drive a Package Fit rule.
-
-Archived Requirement records do not drive current Package Fit.
-
-## Custom Requirement handling
-
-A meaningful active custom Requirement that is not mapped to a canonical policy rule is never silently ignored and is never interpreted by AI.
-
-It produces a custom-Requirement review signal and lowers the result to review-required behavior until the scope can be safely mapped/validated in a later workflow.
-
-Part 6 does not create that specialist workflow.
-
-## Complexity classification
-
-Confirmed canonical Requirements can elevate the minimum candidate package according to the versioned policy.
-
-Examples:
-
-- a simple project with no confirmed higher-complexity signals can remain Launch-like,
-- confirmed Growth signals elevate the minimum candidate to Growth,
-- confirmed Scale signals elevate the minimum candidate to Scale,
-- confirmed custom-application signals elevate the minimum candidate to Custom.
-
-A five-page project with authentication, a portal/dashboard, user roles or custom API requirements cannot remain a basic recommendation merely because page count is small.
-
-## Package mismatch behavior
-
-Candidates below the confirmed minimum package rank return `MISMATCH` when the assessment is otherwise determinable. They include source-traceable mismatch reasons.
-
-When the result requires review, candidate cards retain mismatch reasons where known while clearly showing that final recommendation is unresolved.
-
-Package Fit never says merely “not suitable” without explanation.
-
-## Missing information
-
-Part 6 surfaces only Package Fit-relevant missing information, including:
-
-- missing core scope inputs (`project_type`, `required_functionality`, `required_pages`),
-- Awaiting Client scope,
-- Seller hypotheses,
-- provisional Seller observations where confirmation matters,
-- relevant unresolved Discovery responses whose canonical Requirement information is not already captured.
-
-The evaluator does not reproduce all Discovery gaps.
-
-## Validation signals
-
-`NEEDS_SPECIALIST_VALIDATION` produces a validation signal with source traceability.
-
-The UI explicitly says Package Fit does not perform the review and that the review workflow is deferred.
-
-No technical/commercial/timeline/compliance review records are created by Part 6.
-
-## Confidence
-
-Confidence is deterministic and intentionally coarse:
-
-- **HIGH** — reliable client-confirmed fit inputs with no Package Fit-relevant unresolved/review conditions.
-- **MEDIUM** — a plausible fit exists but missing/provisional information remains.
-- **LOW** — insufficient confirmed fit information or review/configuration/validation conditions prevent reliable recommendation.
-
-There is no fake percentage or mathematical precision.
-
-LOW confidence does not produce aggressive “sell this package” language.
+Candidates below a confirmed base-package minimum return `MISMATCH` and concrete source-backed reasons. Provisional observations/hypotheses do not become hard mismatch reasons.
 
 ## Current catalog sourcing
 
-Recommended and candidate product objects are built from current `sales_products` at evaluation time.
+Recommended packages, candidates and possible add-ons are assembled from current `sales_products` at evaluation time.
 
-The UI displays only current catalog information needed by the Seller, including:
+The UI therefore reflects current catalog name, code, price mode/base price, scope, technology, manager-approval flag, timeline-impact flag and delivery guidance without redeploying commercial values.
 
-- current name/code,
-- price mode/current base price,
-- current scope guidance,
-- current technology guidance,
-- manager-approval flag,
-- timeline-impact flag,
-- current delivery-duration fields.
-
-No React constant stores these commercial values.
-
-## Manager approval and timeline
-
-`managerApprovalRequired` is sourced directly from `sales_products.manager_approval_required`.
-
-`timelineAssessmentRequired` is derived directly from the recommended product’s current `sales_products.timeline_impact = assessment_required`.
-
-Part 6 does not create either approval workflow.
-
-## Historical quotation protection
-
-Package Fit does not update quotations or quotation item snapshots.
-
-Current catalog changes affect the current Package Fit assessment only. Historical accepted/issued quotation snapshots remain historical client commercial truth.
+Historical accepted/issued quotation snapshots are not modified.
 
 ## UI
 
@@ -389,39 +279,30 @@ Reusable component:
 
 `src/components/admin/crm/CRMPackageFitPanel.tsx`
 
-Location:
+It is embedded inside the existing Requirements workspace. No new top-level Lead Drawer Package Fit tab was introduced.
 
-embedded inside the existing Requirements workspace.
+The panel provides:
 
-No additional top-level Lead Drawer tab was added.
+- status and confidence;
+- policy/evaluation indicator;
+- current likely fit when safe;
+- current catalog guidance;
+- manager/timeline indicators;
+- explainable fit reasons;
+- mismatch/complexity signals;
+- missing-information items;
+- validation-needed signals;
+- current package candidates;
+- possible current catalog add-ons;
+- source-summary metrics;
+- retry/refresh/error states;
+- `SellerGuidanceHelp`.
 
-The panel includes:
-
-- Package Fit header,
-- status,
-- confidence,
-- policy version/evaluation indicator,
-- current likely fit when safe,
-- current catalog guidance,
-- manager/timeline indicators,
-- why-this-fits reasons,
-- mismatch/complexity signals,
-- clarification items,
-- validation-needed items,
-- current candidate comparison,
-- source summary,
-- explicit guidance-vs-approval warning,
-- manual refresh.
-
-The panel is read-only. Refreshing only re-evaluates the server RPC.
-
-Relevant Requirement changes refresh the assessment because the Requirements workspace feeds a Requirement update fingerprint as the panel refresh key.
+Requirement updates refresh the assessment through the Requirements workspace fingerprint. Manual refresh always re-runs the server evaluator against current data.
 
 ## Seller Guidance
 
-Part 6 reuses the existing `SellerGuidanceHelp` UI component.
-
-Canonical Part 6 guidance keys:
+Part 6 reuses the existing `SellerGuidanceHelp` component and adds canonical Part 6 guidance for:
 
 - `section.package_fit`
 - `field.package_fit_status`
@@ -434,104 +315,96 @@ Canonical Part 6 guidance keys:
 - `field.manager_approval_required`
 - `field.timeline_assessment_required`
 
-No second help/tooltip component was created.
+No second tooltip/help system was created.
 
-## Read-only / no-write guarantee
+## Read-only client behavior
 
-Opening or refreshing Package Fit does not:
+Opening/refreshing Package Fit does not create/update/archive:
 
-- create/update/archive a Requirement,
-- create a Discovery response,
-- create Client Voice,
-- create an activity,
-- create an escalation/review,
-- select a package,
-- create a quotation,
-- change a Lead,
-- change an Opportunity,
-- transition Pipeline,
-- modify payment,
-- mark Won,
-- modify a handoff,
-- emit audit spam.
+- Requirements;
+- Discovery responses;
+- Client Voice;
+- activities;
+- review/escalation records;
+- selected package fields;
+- quote or quote items;
+- Lead/Opportunity/Pipeline state;
+- payment/Won state;
+- handoff state.
 
-The only Part 6 data write is deployment-time insertion of the versioned policy configuration.
+The only Part 6 writes are deployment-time policy configuration/migration changes.
 
-## Security / RLS
+## Security and RLS
 
-- Package Fit RPC requires authentication.
-- Lead access reuses `crm_can_access_lead`.
-- Cross-Lead Lead/Opportunity mismatch is rejected.
-- RPC uses an empty pinned `search_path` with schema-qualified application objects.
-- Anonymous execute is revoked.
-- `sales_products` remains RLS-enabled.
-- Existing `sales_products` policies remain unchanged.
-- No service-role secret is added to frontend code.
+- authentication is required;
+- cross-Lead access is denied through canonical Lead access/lineage rules;
+- anonymous RPC execution is revoked;
+- `sales_products` RLS remains enabled;
+- existing catalog RLS policies are not broadened;
+- no service-role key is introduced into frontend code.
 
-## Tests
+## Automated tests
 
-Focused suite:
+Required Part 6 suite:
 
 `tests/security/crm-sales-package-fit-part-6.test.ts`
 
-It contains the **98 required Part 6 acceptance/security cases**, covering:
+Contains the **98 required Part 6 acceptance/security cases**.
 
-- source-of-truth reuse,
-- policy uniqueness/versioning/validation,
-- catalog code validation,
-- Requirement/Discovery reuse,
-- Lead/Opportunity lineage,
-- all six certainty states,
-- custom Requirement safety,
-- page-count prohibition,
-- Launch/Growth/Scale/Custom rule scenarios,
-- candidate mismatch traceability,
-- deterministic confidence,
-- live catalog sourcing,
-- historical quotation protection,
-- no-write-on-view rules,
-- Seller Guidance reuse,
-- Lead Drawer/Requirements integration,
-- anonymous/cross-Lead security,
-- RLS/service-role protections,
-- deferred-scope protections,
-- Parts 1–5 regression-suite continuity,
-- repository validation command presence.
+Final hardening suite:
 
-Execution results must be reported truthfully. Where GitHub runner infrastructure does not execute a job, it must not be reported as a code failure or a pass.
+`tests/security/crm-sales-package-fit-part-6-hardening.test.ts`
+
+Adds **25 focused regression cases** for:
+
+- one canonical policy key;
+- no Package Fit business table;
+- buying-process/base-package separation;
+- base-package/add-on separation;
+- stable add-on mappings;
+- no arbitrary third-party-integration guessing;
+- add-on catalog validation;
+- certainty-safe add-on behavior;
+- review-sensitive add-on handling;
+- hard-confirmed mismatch behavior;
+- current catalog sourcing;
+- no quote/Pipeline/payment/Won effects;
+- auth-only evaluator execution.
+
+Total Part 6 focused acceptance/hardening cases: **123**.
+
+Repository CI/build/migration/browser results must be reported truthfully in the final implementation report. A GitHub Actions job that receives no runner and executes zero steps is infrastructure evidence, not a successful or failed code test execution.
+
+## Migrations
+
+Part 6 repository migrations:
+
+1. `20260909160000_crm_sales_package_fit_part_6.sql` — initial one-policy/one-evaluator implementation.
+2. `20260909162000_crm_sales_package_fit_part_6_policy_hardening.sql` — final correction of the same policy/evaluator, separating base-package classification from safe add-on guidance.
+
+Final database architecture still contains:
+
+- one Package Fit policy key;
+- one canonical Package Fit evaluator RPC;
+- **zero Package Fit client business tables**.
 
 ## Production verification safety
 
-Production verification for Part 6 is read-only except for applying the approved configuration/RPC migration.
-
-Do not create fake Leads, Requirements, Discovery answers, Package selections, quotations, reviews, Pipeline transitions, payment changes or Won records to test Package Fit.
-
-Verification should inspect:
-
-- migration presence,
-- policy presence/version,
-- function definition/count/grants,
-- current catalog counts/codes,
-- RLS state/policies,
-- absence of duplicate Package Fit business tables,
-- before/after production CRM data counts/timestamps where practical.
+Production verification is read-only except for applying the approved Part 6 migrations/configuration. No fake Leads, Requirements, Discovery responses, package selections, quotations, review records, Pipeline transitions, payment changes or Won records should be created to prove Package Fit behavior.
 
 ## Deferred scope
 
 Part 6 intentionally does not implement:
 
-- Technical Escalation,
-- Commercial Escalation,
-- Timeline Escalation,
-- Compliance/Risk Escalation,
-- specialist review assignment,
-- manager exception approval workflow,
-- Requirements Confirmed server gate,
-- Proposal Readiness,
-- quotation send gating,
-- Promise Register,
-- Assumptions / Exclusions / Dependencies engine,
-- payment/Won changes,
-- Sales-to-Delivery Handoff changes.
+- Technical/Commercial/Timeline/Compliance escalation workflows;
+- specialist review assignment;
+- manager exception approval workflow;
+- Requirements Confirmed server gate;
+- Proposal Readiness;
+- quotation-send gating;
+- Promise Register;
+- Assumptions/Exclusions/Dependencies engine;
+- payment/Won changes;
+- Sales-to-Delivery handoff changes.
 
-Those belong to later controlled phases.
+Those remain later controlled phases.
