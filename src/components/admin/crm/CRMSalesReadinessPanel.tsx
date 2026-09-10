@@ -2,8 +2,10 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, BadgeCheck, CheckCircle2, ChevronDown, ChevronRight, CircleHelp, Loader2, RefreshCw, ShieldCheck } from 'lucide-react';
 import { crmSalesReadinessService, CRMSalesGateAssessment, CRMReadinessAction, CRMReadinessIssue } from '../../../lib/crmSalesReadinessService';
 import '../../../lib/crmSalesReadinessGuidance';
+import '../../../lib/crmSalesScopeCommitmentGuidance';
 import SellerGuidanceHelp from './SellerGuidanceHelp';
 import { getSellerGuidance } from '../../../lib/crmSellerGuidance';
+import CRMSalesScopeCommitmentWorkspace from './CRMSalesScopeCommitmentWorkspace';
 
 type Props = { leadId?: string; opportunityId?: string; refreshKey?: string };
 
@@ -17,6 +19,8 @@ const localTargetId: Record<string, string> = {
   requirements: 'crm-requirements-list',
   'package-fit': 'crm-package-fit',
   validation: 'crm-sales-validation',
+  'scope-conditions': 'crm-scope-conditions',
+  'promise-register': 'crm-promise-register',
 };
 const drawerTabLabel: Record<string, string> = {
   discovery: 'Probing & Discovery',
@@ -82,7 +86,7 @@ function AssessmentCard({ title, subtitle, assessment, guidanceKey, proposal }: 
       <IssueList title="Warnings" issues={assessment.warnings} />
       {assessment.resolvedValidations.length > 0 && <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-3">
         <div className="flex items-center gap-2 text-xs font-black text-emerald-800"><BadgeCheck className="h-4 w-4" />Current approved specialist reviews</div>
-        <ul className="mt-2 flex flex-wrap gap-1.5">{assessment.resolvedValidations.map(item => <li key={`${item.validationId}-${item.validationType}`} className="rounded-lg border border-emerald-200 bg-white px-2 py-1 text-[10px] font-black text-emerald-700">{item.validationType.replaceAll('_', ' ')} · APPROVED</li>)}</ul>
+        <ul className="mt-2 flex flex-wrap gap-1.5">{assessment.resolvedValidations.map(item => <li key={`${String(item.validationId)}-${String(item.validationType)}`} className="rounded-lg border border-emerald-200 bg-white px-2 py-1 text-[10px] font-black text-emerald-700">{String(item.validationType).replaceAll('_', ' ')} · APPROVED</li>)}</ul>
       </div>}
       {assessment.approvedConstraints.length > 0 && <div className="rounded-xl border border-blue-200 bg-blue-50/50 p-3">
         <div className="text-xs font-black text-[#000080]">Approved specialist constraints</div>
@@ -92,9 +96,9 @@ function AssessmentCard({ title, subtitle, assessment, guidanceKey, proposal }: 
         {assessment.dimensions.map(item => <div key={item.key} className="rounded-xl border border-slate-200 bg-slate-50 p-3"><div className="text-[10px] font-black uppercase tracking-wide text-slate-500">{item.label}</div><div className="mt-1 text-xs font-black text-slate-900">{item.status}</div>{item.required != null && <div className="mt-1 text-[11px] text-slate-500">{item.resolved || 0} of {item.required} resolved</div>}</div>)}
       </div>
       {proposal && <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-        <div className="flex items-center gap-1 text-xs font-black text-slate-900">Future workflow coverage<SellerGuidanceHelp guidance={getSellerGuidance('field.future_readiness_dimension')} /></div>
-        <p className="mt-1 text-[11px] leading-5 text-slate-600">This is a pre-quotation assessment. The final quotation-send gate is not active in Part 8, and this panel never means “ready to send”.</p>
-        <ul className="mt-2 space-y-1 text-[11px] text-slate-600">{assessment.futureDimensions.map(item => <li key={item.key}>{item.key.replaceAll('_', ' ')} — <span className="font-black">{item.status}</span> · FUTURE WORKFLOW</li>)}</ul>
+        <div className="flex items-center gap-1 text-xs font-black text-slate-900">Future workflow coverage<SellerGuidanceHelp guidance={getSellerGuidance('field.future_quote_coverage') || getSellerGuidance('field.future_readiness_dimension')} /></div>
+        <p className="mt-1 text-[11px] leading-5 text-slate-600">This remains a pre-quotation assessment. Part 9 records current Scope Conditions and Promises, but the final quotation-send gate is still inactive; Part 10 must compare these records against the actual quotation snapshot.</p>
+        <ul className="mt-2 space-y-1 text-[11px] text-slate-600">{assessment.futureDimensions.map(item => <li key={item.key}>{item.key.replaceAll('_', ' ')} — <span className="font-black">{item.status}</span> · FUTURE QUOTATION RECONCILIATION</li>)}</ul>
       </div>}
       {assessment.blockers.length === 0 && assessment.warnings.length === 0 && <div className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs font-bold text-emerald-700"><CheckCircle2 className="h-4 w-4" />No current blocker is reported for this assessment.</div>}
     </div>}
@@ -133,7 +137,8 @@ export default function CRMSalesReadinessPanel({ leadId, opportunityId, refreshK
 
   return <div className="space-y-3" data-crm-sales-readiness>
     <div className="flex items-center justify-end gap-2 text-[10px] text-slate-400">{evaluated && <span>Current assessment · {new Date(evaluated).toLocaleString()}</span>}<button type="button" onClick={() => void load(true)} disabled={refreshing} className="inline-flex min-h-9 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 font-black text-[#000080] disabled:opacity-50"><RefreshCw className={`h-3.5 w-3.5 ${refreshing ? 'animate-spin' : ''}`} />Refresh</button></div>
-    {requirements && <AssessmentCard title="Requirements Confirmed" subtitle="Structured server-side readiness for entering Requirements Confirmed. A written summary alone cannot satisfy this gate." assessment={requirements} guidanceKey="section.requirements_confirmed_readiness" />}
-    {proposal && <AssessmentCard title="Proposal Readiness" subtitle="Pre-quotation assessment of current discovery, scope, Package Fit, specialist review and next-action readiness." assessment={proposal} guidanceKey="section.proposal_readiness" proposal />}
+    {requirements && <AssessmentCard title="Requirements Confirmed" subtitle="Structured server-side readiness for entering Requirements Confirmed. Part 9 does not retroactively change this gate." assessment={requirements} guidanceKey="section.requirements_confirmed_readiness" />}
+    {proposal && <AssessmentCard title="Proposal Readiness" subtitle="Pre-quotation assessment of current discovery, scope, Package Fit, specialist review, next action, Scope Conditions and Promise integrity." assessment={proposal} guidanceKey="section.proposal_readiness" proposal />}
+    {leadId && <CRMSalesScopeCommitmentWorkspace leadId={leadId} opportunityId={resolvedOpportunityId} refreshKey={refreshKey} onChanged={async () => { await load(true); }} />}
   </div>;
 }
