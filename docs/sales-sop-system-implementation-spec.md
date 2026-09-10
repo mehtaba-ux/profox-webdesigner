@@ -1459,3 +1459,68 @@ Production Part 9 was applied through Supabase's native migration ledger using:
 The applied native SQL is preserved under `supabase/migrations/native-history/`. This subfolder is intentionally non-executed by the repository's legacy flat-file `scripts/migrate-production.mjs` runner so those already-applied native migrations are reviewable in source control without being re-applied.
 
 Detailed Part 9 implementation and verification notes are maintained in `docs/crm-sales-scope-conditions-promise-register-part-9.md`.
+
+---
+
+## 37. Implemented Part 10A — Quotation Sales Reconciliation Foundation
+
+Part 10A is implemented as the **non-blocking quotation-context reconciliation layer** between the current Parts 1–9 Sales truth and the existing quotation system. It does not create a second quotation editor, a duplicate proposal record, a duplicate validation authority, or a replacement CPQ approval path.
+
+### Canonical quotation reuse
+
+The existing `quotations` and `quotation_items` records remain the client-specific quotation authority. `sales_products` remains current commercial/catalog truth. Existing CPQ approval and quotation transition functions remain authoritative for commercial approval, send state, customer decision history, payment progression, and downstream lifecycle behavior.
+
+Part 10A maps active Scope Conditions and active Promises to existing customer-visible quotation destinations such as `scope_summary`, `exclusions`, `client_responsibilities`, `delivery_assumptions`, `handover_support`, `terms_and_conditions`, `payment_terms`, `duration_snapshot_text`, and eligible customer-visible quotation-item content. Internal/customer note fields are not generic coverage substitutes.
+
+### Coverage relation and review history
+
+Part 10A introduces exactly one normalized relationship table for this missing domain relation:
+
+- `quotation_sales_coverage`
+
+Each current mapping belongs to one quotation and exactly one current Scope Condition or Promise version. The server derives and stores the target fingerprint, reviewer identity, and review time. Re-review creates history through `supersedes_coverage_id` rather than silently rewriting prior evidence. Read-only reconciliation does not create coverage rows.
+
+### Deterministic reconciliation and staleness
+
+`crm_get_quotation_sales_reconciliation` combines the existing Proposal Readiness, Package Fit, Part 9 Scope Condition/Promise integrity, validation constraints, current quotation content, and reviewed coverage mappings. It reports explicit blockers/warnings and the quotation-dependent dimensions:
+
+- `PROMISE_COVERAGE`
+- `FINAL_SCOPE_RECONCILIATION`
+- `QUOTATION_SNAPSHOT_COVERAGE`
+
+A stored `COVERED` mapping is not trusted forever. If the mapped quotation field/item changes, is removed, or no longer contains the reviewed customer-visible content, the server-derived fingerprint no longer matches and coverage becomes `STALE`. Historical delivered quotations are not fabricated/backfilled; missing old Part 10 coverage is represented as legacy/not captured.
+
+### Snapshot preview foundation
+
+`crm_build_quotation_sales_scope_snapshot` builds a deterministic read-only preview containing the quotation revision, Proposal Readiness, Package Fit, quoted products, exact active Scope Condition wording, exact active Promise wording, reviewed coverage mappings, approved constraints, reconciliation status, and quotation-dimension state.
+
+The Part 10A snapshot is deliberately returned with `persisted = false`. Part 10A does not choose or activate the final immutable send-time persistence point.
+
+### Security and authority
+
+`quotation_sales_coverage` has RLS enabled and does not grant direct anonymous or authenticated table mutation/read authority. Trusted Part 10A RPCs use fixed safe `search_path`, derive the actor from `auth.uid()`, enforce quotation ownership/admin authority and quotation → opportunity → Lead lineage, and reject cross-Lead/cross-quotation evidence. The internal target-evidence helper is not exposed as a browser RPC.
+
+Coverage means the current Sales truth is represented in an eligible customer-visible quotation destination. It does **not** grant technical approval, commercial approval, client acceptance, or AI authority. Part 7 validations and existing quotation/CPQ approvals remain canonical.
+
+### UI placement
+
+The reusable **Sales Reconciliation** panel is mounted in the existing `QuotationWorkspace` around the canonical `QuotationWorkspaceBase`; it does not add a Lead Drawer tab or create a competing quotation editor. The panel surfaces Proposal Readiness, quoted-package alignment, Scope Condition coverage, Promise coverage, approved constraints, exact blockers/warnings, eligible targets, stale coverage, and snapshot readiness.
+
+### Non-blocking send boundary
+
+Part 10A intentionally keeps:
+
+`finalQuotationSendGateActive = false`
+
+It does not modify `send_quotation_professional`, `update_quotation_atomic` Sent behavior, `protect_quotation_transition`, or `get_quotation_cpq_summary.readiness.readyToSend` to enforce Sales reconciliation. Final send enforcement and the minimal immutable persisted Sales-scope snapshot belong to Part 10B after authenticated production acceptance.
+
+### Migration lineage and verification record
+
+Production Part 10A was applied through Supabase's native migration ledger using:
+
+- `20260910124932_crm_sales_quotation_reconciliation_part10a`
+- `20260910125143_crm_sales_quotation_reconciliation_assessment_part10a`
+
+The applied native SQL is preserved under `supabase/migrations/native-history/`. The dedicated Part 10A acceptance/security suite contains exactly 169 checks and is wired into both `npm test` and the normal production build path.
+
+Detailed implementation, production verification, release SHAs, security findings, deployment evidence, and the explicit Part 10B prerequisite are maintained in `docs/crm-sales-quotation-reconciliation-part-10a.md`.
