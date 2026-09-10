@@ -20,6 +20,7 @@ import {
 import SellerGuidanceHelp from './SellerGuidanceHelp';
 import CRMPackageFitPanel from './CRMPackageFitPanel';
 import CRMSalesValidationPanel from './CRMSalesValidationPanel';
+import CRMSalesReadinessPanel from './CRMSalesReadinessPanel';
 
 export type CRMRequirementsWorkspaceProps = {
   leadId?: string;
@@ -199,21 +200,27 @@ export default function CRMRequirementsWorkspace({ leadId, opportunityId, refres
   return <div className="space-y-5">
     <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-        <div><div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[.14em] text-[#000080]"><ClipboardList className="h-4 w-4" />Requirements coverage<SellerGuidanceHelp guidance={getSellerGuidance('section.requirements')} /></div><div className="mt-2 text-lg font-black text-slate-950">{coverage.capturedCore} of {coverage.totalCore} Core items captured</div><p className="mt-1 text-xs leading-5 text-slate-500">Informational discovery coverage only. It does not block conversion, pipeline stages, quotations, payment, or Won.</p></div>
+        <div><div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[.14em] text-[#000080]"><ClipboardList className="h-4 w-4" />Requirements coverage<SellerGuidanceHelp guidance={getSellerGuidance('section.requirements')} /></div><div className="mt-2 text-lg font-black text-slate-950">{coverage.capturedCore} of {coverage.totalCore} Core items captured</div><p className="mt-1 text-xs leading-5 text-slate-500">Coverage is informational on its own. Entering Requirements Confirmed is enforced separately by the structured Sales readiness gate below; quotations, payment, and Won keep their existing authorities.</p></div>
         <button type="button" disabled={refreshing} onClick={() => void load('refresh')} className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 text-[11px] font-black text-slate-600 disabled:opacity-50"><RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />Refresh</button>
       </div>
       <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4"><Metric label="Captured Core" value={coverage.capturedCore} /><Metric label="Client confirmed" value={confirmed} /><Metric label="Awaiting client" value={awaiting} /><Metric label="Needs validation" value={validation} /></div>
       {coverage.missingCore.length > 0 && <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3"><div className="flex items-center gap-2 text-xs font-black text-amber-900"><AlertTriangle className="h-4 w-4" />{coverage.missingCore.length} Core items still need attention</div><div className="mt-2 flex flex-wrap gap-1.5">{coverage.missingCore.slice(0, 6).map(item => <span key={item.requirementKey} className="rounded-lg border border-amber-200 bg-white/70 px-2 py-1 text-[10px] font-bold text-amber-800">{item.title}</span>)}{coverage.missingCore.length > 6 && <span className="px-2 py-1 text-[10px] font-bold text-amber-700">+{coverage.missingCore.length - 6} more</span>}</div></div>}
     </section>
 
-    {resolvedLeadId && <CRMSalesValidationPanel
+    {resolvedLeadId && <div id="crm-sales-validation"><CRMSalesValidationPanel
       leadId={resolvedLeadId}
       opportunityId={workspace?.opportunityId || opportunityId || null}
       refreshKey={packageFitRefreshKey}
       onChanged={async () => { await load('refresh'); await onChanged?.('Sales validation updated.'); }}
-    />}
+    /></div>}
 
-    <CRMPackageFitPanel leadId={resolvedLeadId} opportunityId={workspace?.opportunityId || opportunityId} refreshKey={packageFitRefreshKey} />
+    <div id="crm-package-fit"><CRMPackageFitPanel leadId={resolvedLeadId} opportunityId={workspace?.opportunityId || opportunityId} refreshKey={packageFitRefreshKey} /></div>
+
+    {resolvedLeadId && <CRMSalesReadinessPanel
+      leadId={resolvedLeadId}
+      opportunityId={workspace?.opportunityId || opportunityId}
+      refreshKey={packageFitRefreshKey}
+    />}
 
     {actionError && <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs font-bold text-rose-700" role="alert">{actionError}</div>}
     <div id="crm-requirements-list" className="flex gap-2 overflow-x-auto pb-1" aria-label="Requirement filters">{FILTERS.map(item => <button key={item.id} type="button" onClick={() => setFilter(item.id)} aria-pressed={filter === item.id} className={`min-h-10 shrink-0 rounded-xl border px-3 text-[10px] font-black focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#000080] ${filter === item.id ? 'border-[#000080] bg-[#000080] text-white' : 'border-slate-200 bg-white text-slate-600'}`}>{item.label}</button>)}</div>

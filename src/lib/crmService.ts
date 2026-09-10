@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { crmSalesReadinessService } from './crmSalesReadinessService';
 import {
   CRMLead,
   CRMOpportunity,
@@ -249,6 +250,15 @@ export const crmService = {
   },
 
   async transitionOpportunity(id: string, targetStage: OpportunityStage | string) {
+    if (targetStage === 'Requirements Confirmed') {
+      const assessment = await crmSalesReadinessService.assess(id, 'REQUIREMENTS_CONFIRMED');
+      if (assessment.status === 'BLOCKED') {
+        throw new Error(crmSalesReadinessService.blockerMessage(assessment));
+      }
+    }
+
+    // The precheck is advisory UX only. The canonical server RPC always runs and re-evaluates the gate
+    // at the exact transition point, so a stale frontend PASS cannot bypass server authority.
     const { data, error } = await supabase.rpc('crm_transition_opportunity', {
       p_opportunity_id: id,
       p_target_stage: targetStage,
