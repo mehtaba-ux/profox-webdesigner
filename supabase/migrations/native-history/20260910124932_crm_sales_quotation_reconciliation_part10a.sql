@@ -311,4 +311,4 @@ end;
 $function$;
 
 revoke all on function public.crm_review_quotation_sales_coverage(uuid,text,uuid,text,text,text,uuid,text) from public, anon;
-grant execute on function public.crm_review_quotation_sales_coverage(uuid,text,uuid,text,text,uuid,text) to authenticated;
+grant execute on function public.crm_review_quotation_sales_coverage(uuid,text,uuid,text,text,text,uuid,text) to authenticated;
