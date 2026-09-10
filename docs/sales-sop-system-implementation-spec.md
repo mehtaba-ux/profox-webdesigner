@@ -860,9 +860,9 @@ Each promise should record:
 - seller,
 - timestamp,
 - delivery/technical validation where applicable,
-- quotation coverage,
-- approval state,
-- blocker state.
+- quotation inclusion state,
+- approved by where needed,
+- blocker status.
 
 If a material promise is not represented in the accepted scope or explicitly approved, it must create a warning/blocker before handoff.
 
@@ -1384,3 +1384,78 @@ A successful implementation should make the following statement true:
 > A trained ProFox salesperson can work normally inside the CRM and follow the complete approved Sales SOP without having to remember hidden steps. The application progressively guides the seller, preserves uncertainty honestly, detects missing information, prevents unsafe progression, routes specialist/manager review, uses the live Sales Catalog, preserves historical agreements, requires verified payment for Won, and gives Delivery a complete auditable handoff.
 
 If a developer's implementation makes the process easier to bypass, creates a competing source of truth, or hides unresolved risk, it does not satisfy this specification.
+
+---
+
+## 36. Implemented Part 9 — Scope Conditions + Promise Register
+
+Part 9 is implemented as a pre-quotation integrity layer inside the existing Requirements → Proposal Readiness experience. It extends Parts 1–8 without creating a second Requirements, Package Fit, Sales Validation, Proposal Readiness, quotation, payment, or handoff authority.
+
+### Canonical sources and new business records
+
+Discovery and Requirements truth remains `crm_requirements`. Current package/commercial truth remains `sales_products`. Specialist review authority remains `crm_sales_validations`. Proposal Readiness remains `crm_get_sales_gate_assessment`. Client-specific quotation truth remains the existing `quotations` and `quotation_items` snapshot architecture.
+
+Part 9 introduces exactly two canonical Sales business tables:
+
+- `crm_sales_scope_conditions`
+- `crm_sales_promises`
+
+No separate assumption, exclusion, dependency, client-responsibility, technical-promise, timeline-promise, or commercial-promise table is introduced.
+
+### Scope Conditions
+
+`crm_sales_scope_conditions` supports `ASSUMPTION`, `EXCLUSION`, `DEPENDENCY`, `CLIENT_RESPONSIBILITY`, and `SCOPE_BOUNDARY` with lifecycle states `DRAFT`, `ACTIVE`, `STALE`, `RESOLVED`, `SUPERSEDED`, and `WITHDRAWN`.
+
+A Draft may be edited in place. Material wording changes to an Active or Stale condition use a history-safe revision. Requirement-source changes mark linked Active conditions Stale and clear proposal reconciliation so outdated wording cannot silently remain current. Scope Conditions reconcile material discovery into proposal boundaries; they do not replace the source Requirement.
+
+### Promise Register
+
+`crm_sales_promises` supports `SCOPE`, `TECHNICAL`, `TIMELINE`, `COMMERCIAL`, `SUPPORT`, `COMPLIANCE`, `PERFORMANCE_RESULT`, and `OTHER`, with business lifecycle states `DRAFT`, `ACTIVE`, `SUPERSEDED`, and `WITHDRAWN`.
+
+A Draft is internal preparation only. Active means ProFox actually communicated the material commitment to the client. A client request, Seller hypothesis, Package Fit recommendation, internal goal, or unspoken assumption does not automatically become a Promise. A real but unapproved Promise may be recorded truthfully and remains visible as an integrity blocker/review requirement rather than being hidden.
+
+Active Promise attribution and audit chronology are server-controlled. `promised_by`, `promised_at`, `recorded_by`, and `recorded_at` are not trusted from browser input. Active wording is not silently rewritten; changed commitments use superseding revisions and withdrawals preserve historical wording and reason.
+
+### Validation and quotation boundaries
+
+Part 7 `crm_sales_validations` remains the specialist-review authority. No Promise-specific approval table exists. Part 9 surfaces current validation status, approved constraints, stale/rejected/superseded decisions, and explicit alignment conflicts without changing Requirement certainty.
+
+Quotation-specific pricing, discount, payment-term, and other commercial approvals remain in the existing quotation-approval workflow. Part 9 does not create quotations and does not write quotation scope fields or quotation item snapshots.
+
+### Readiness integration
+
+The existing Part 8 `crm_get_sales_gate_assessment` remains the canonical evaluator. Proposal Readiness adds the current dimensions:
+
+- `SCOPE_CONDITIONS_REGISTER`
+- `PROMISE_REGISTER_INTEGRITY`
+
+The quotation-dependent dimensions remain deferred and must not be falsely passed:
+
+- `PROMISE_COVERAGE` → `NOT_YET_EVALUATED`
+- `FINAL_SCOPE_RECONCILIATION` → `NOT_YET_EVALUATED`
+- `QUOTATION_SNAPSHOT_COVERAGE` → `NOT_YET_EVALUATED`
+
+`finalQuotationSendGateActive` remains `false`. Final quotation reconciliation/snapshot coverage and final send enforcement belong to Part 10.
+
+### Trusted APIs and security
+
+The Seller UI reads the bounded domain through `crm_get_sales_scope_commitment_workspace` and uses trusted Part 9 RPCs for Scope Condition and Promise draft/revision/lifecycle mutations and Requirement reconciliation. Both Part 9 business tables have RLS enabled. Direct authenticated table access is read-only and constrained by `crm_can_access_lead`; anonymous access is denied. Cross-Lead Opportunity, Requirement, Validation, and Meeting references are rejected server-side. Hard deletion is blocked in favor of lifecycle-preserving history. Material changes reuse `crm_write_lead_event` rather than introducing a second audit system.
+
+### UI placement and guidance
+
+The reusable `CRMScopeConditionsPanel` and `CRMPromiseRegisterPanel` are mounted through `CRMScopeCommitmentsWorkspace` inside the existing `CRMSalesReadinessPanel`. No new Lead Drawer tab is added. Consequential activation, revision, resolve, and withdrawal actions are explicit; Promise activation asks, “Did ProFox actually communicate this commitment to the client?” and the interface displays the safety warning: “Record what ProFox actually committed. Do not turn a client's request, your assumption, or a proposed idea into a Promise.”
+
+Part 9 reuses `SellerGuidanceHelp` with canonical guidance for Scope Condition types/states/sources/actions, Promise types/states/sources/actions, promised-by/promised-at, unapproved/validation-required commitments, stale conditions, and future quote coverage.
+
+### Migration lineage
+
+Production Part 9 was applied through Supabase's native migration ledger using:
+
+- `20260910042939_crm_sales_scope_conditions_promise_register_part_9`
+- `20260910043137_crm_sales_scope_commitment_mutations_part_9`
+- `20260910043416_crm_sales_scope_commitment_workspace_part_9`
+- `20260910043453_crm_sales_scope_commitment_readiness_part_9`
+
+The applied native SQL is preserved under `supabase/migrations/native-history/`. This subfolder is intentionally non-executed by the repository's legacy flat-file `scripts/migrate-production.mjs` runner so those already-applied native migrations are reviewable in source control without being re-applied.
+
+Detailed Part 9 implementation and verification notes are maintained in `docs/crm-sales-scope-conditions-promise-register-part-9.md`.
