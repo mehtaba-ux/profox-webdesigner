@@ -860,9 +860,9 @@ Each promise should record:
 - seller,
 - timestamp,
 - delivery/technical validation where applicable,
-- quotation inclusion state,
-- approved by where needed,
-- blocker status.
+- quotation coverage,
+- approval state,
+- blocker state.
 
 If a material promise is not represented in the accepted scope or explicitly approved, it must create a warning/blocker before handoff.
 
