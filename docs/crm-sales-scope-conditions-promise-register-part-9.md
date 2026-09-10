@@ -22,7 +22,7 @@ Part 9 backend objects were already deployed to the production Supabase project 
 | `20260910043416` | `crm_sales_scope_commitment_workspace_part_9` | 25,806 | `594b237bb2509cab12a7be3d950ba1b9` |
 | `20260910043453` | `crm_sales_scope_commitment_readiness_part_9` | 5,507 | `4d9e50f676a428e888f28c7ab93f444c` |
 
-These native migrations are **not copied into the legacy repository migration runner**. `scripts/migrate-production.mjs` uses a separate `profox_migrations.applied_migrations` ledger. Later CRM parts, including Parts 4–8, are deployed outside that older ledger. Adding already-applied native Part 9 SQL to `supabase/migrations` would make the legacy runner treat it as pending and create unnecessary re-execution risk. The authoritative Part 9 database lineage is therefore the native `supabase_migrations.schema_migrations` history above.
+The production SQL source is preserved in GitHub under `supabase/migrations/native-history/`. That subfolder is intentionally **non-executed** by `scripts/migrate-production.mjs`, whose legacy `profox_migrations.applied_migrations` runner scans only flat `.sql` files directly under `supabase/migrations`. This keeps the actual native migration history reviewable in the repository without making the legacy runner treat already-applied Part 9 SQL as pending or re-execute it.
 
 ## Canonical tables
 
@@ -141,8 +141,8 @@ The panel exposes:
 - specialist constraint alignment
 - Draft editing
 - deliberate activation
-- history-safe revision
-- resolve / withdraw actions
+- history-safe revision with explicit confirmation
+- resolve / withdraw actions with explicit consequential confirmation
 - collapsed historical records
 - creator and timestamp visibility
 - navigation back to Sales Validation
@@ -151,7 +151,7 @@ The panel exposes:
 
 The panel exposes:
 
-- a visible warning that internal preparation is not a Promise
+- the visible safety warning: “Record what ProFox actually committed. Do not turn a client's request, your assumption, or a proposed idea into a Promise.”
 - Draft and Active counts
 - unapproved/validation issue counts
 - exact Promise wording
@@ -159,10 +159,10 @@ The panel exposes:
 - linked Requirement / Validation
 - promised-by and promised-at information for active commitments
 - approved specialist constraints
-- deliberate Record Promise confirmation
+- deliberate Record Promise confirmation using the exact communication question
 - prominent UNAPPROVED COMMITMENT blockers
-- history-safe revision
-- withdrawal with reason
+- history-safe revision with explicit confirmation
+- withdrawal with reason and confirmation
 - collapsed historical records
 - future quotation coverage shown explicitly as not yet evaluated
 
@@ -217,7 +217,7 @@ Production verification for Part 9 must check:
 
 `tests/security/crm-sales-scope-conditions-promise-register-part-9.test.ts` provides the Part 9 repository acceptance suite. It is included automatically by the existing `test:security` wildcard and therefore by `npm test` and CI.
 
-The suite covers the Part 9 service contract, lifecycle semantics, truth distinctions, Requirement reconciliation, Sales Validation reuse, source traceability, seller UX, confirmation/withdrawal safeguards, Proposal Readiness placement/integration, Part 10 boundary, no quotation mutation surface, accessibility markers, mobile-safe UI patterns, documentation lineage, and Parts 1–8 non-regression markers.
+The suite contains all **137 required Part 9 acceptance checks**, plus focused checks for the canonical SellerGuidanceHelp key set and the documented migration/Part 10 boundary. It covers architecture reuse, lifecycle semantics, truth distinctions, Requirement reconciliation, Sales Validation reuse, source traceability, Seller UX, consequential confirmation/withdrawal safeguards, Proposal Readiness placement/integration, quotation boundaries, security/audit, accessibility/mobile markers, and Parts 1–8 non-regression markers.
 
 ## Production data rule
 
