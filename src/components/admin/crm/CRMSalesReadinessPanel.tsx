@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, BadgeCheck, CheckCircle2, ChevronDown, ChevronRight, CircleHelp, Loader2, RefreshCw, ShieldCheck } from 'lucide-react';
 import { crmSalesReadinessService, CRMSalesGateAssessment, CRMReadinessAction, CRMReadinessIssue } from '../../../lib/crmSalesReadinessService';
+import '../../../lib/crmSalesReadinessGuidance';
 import SellerGuidanceHelp from './SellerGuidanceHelp';
 import { getSellerGuidance } from '../../../lib/crmSellerGuidance';
 
