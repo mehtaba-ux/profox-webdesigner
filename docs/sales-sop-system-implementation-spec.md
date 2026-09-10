@@ -476,11 +476,11 @@ Each material promise should support:
 - promise text,
 - source/evidence,
 - seller,
-- date,
-- delivery validation state,
+- timestamp,
+- delivery/technical validation where applicable,
 - quotation inclusion state,
 - approved by where needed,
-- blocker status.
+- blocker state.
 
 #### Assumptions, exclusions, dependencies
 
@@ -858,7 +858,7 @@ Each promise should record:
 - opportunity,
 - source/evidence,
 - seller,
-- date,
+- timestamp,
 - delivery/technical validation where applicable,
 - quotation coverage,
 - approval state,
