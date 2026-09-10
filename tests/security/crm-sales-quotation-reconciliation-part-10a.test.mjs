@@ -5,8 +5,8 @@ import { resolve } from 'node:path';
 
 const read = path => readFileSync(resolve(process.cwd(), path), 'utf8');
 
-const migration1 = read('supabase/migrations/20260910124932_crm_sales_quotation_reconciliation_part10a.sql');
-const migration2 = read('supabase/migrations/20260910125143_crm_sales_quotation_reconciliation_assessment_part10a.sql');
+const migration1 = read('supabase/migrations/native-history/20260910124932_crm_sales_quotation_reconciliation_part10a.sql');
+const migration2 = read('supabase/migrations/native-history/20260910125143_crm_sales_quotation_reconciliation_assessment_part10a.sql');
 const service = read('src/lib/quotationSalesReconciliationService.ts');
 const panel = read('src/components/admin/QuotationSalesReconciliationPanel.tsx');
 const wrapper = read('src/components/admin/QuotationWorkspace.tsx');
