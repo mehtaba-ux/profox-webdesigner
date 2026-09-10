@@ -858,7 +858,7 @@ Each promise should record:
 - opportunity,
 - source/evidence,
 - seller,
-- timestamp,
+- date,
 - delivery/technical validation where applicable,
 - quotation coverage,
 - approval state,
@@ -1384,3 +1384,32 @@ A successful implementation should make the following statement true:
 > A trained ProFox salesperson can work normally inside the CRM and follow the complete approved Sales SOP without having to remember hidden steps. The application progressively guides the seller, preserves uncertainty honestly, detects missing information, prevents unsafe progression, routes specialist/manager review, uses the live Sales Catalog, preserves historical agreements, requires verified payment for Won, and gives Delivery a complete auditable handoff.
 
 If a developer's implementation makes the process easier to bypass, creates a competing source of truth, or hides unresolved risk, it does not satisfy this specification.
+
+---
+
+## 36. Implemented Part 9 facts — Scope Conditions + Promise Register
+
+Part 9 implements the pre-quotation Scope Conditions and Promise integrity layer without changing the downstream quotation, payment/Won, or Sales-to-Delivery business systems.
+
+Implemented authoritative facts:
+
+- `crm_requirements` remains the canonical structured discovery/Requirements system. Part 9 adds proposal-reconciliation metadata to those existing records rather than creating another Requirements store.
+- `crm_sales_scope_conditions` is the single canonical pre-quotation Scope Conditions Register for assumptions, exclusions, dependencies, client responsibilities, and scope boundaries.
+- `crm_sales_promises` is the single canonical internal Promise Register for material commitments ProFox actually communicated to a client.
+- `crm_sales_validations` remains the Part 7 specialist-review authority and approved-constraints source.
+- `sales_products` remains current catalog/commercial truth.
+- `crm_get_sales_gate_assessment` remains the canonical Requirements Confirmed / Proposal Readiness evaluator; Part 9 extends it additively instead of creating a second readiness engine.
+- Scope Condition and Promise writes are routed through trusted SECURITY DEFINER RPCs with explicit CRM Lead access/lineage checks, server-controlled actor/timestamp fields, RLS, and no direct authenticated table mutation privileges.
+- Active/history-safe lifecycle behavior preserves prior wording through Draft revisions, supersession, resolution, withdrawal, and no-delete guards.
+- A client request, Seller hypothesis, Package Fit recommendation, or internal draft does not automatically become an Active Promise. Promise activation requires explicit confirmation that ProFox actually communicated the commitment and preserves its source/evidence.
+- A real communicated commitment may be recorded even if specialist approval is missing; Proposal Readiness surfaces the missing/stale/conflicting validation as an explicit blocker rather than hiding the commitment.
+- Material Requirement sources are explicitly reconciled to a Scope Condition or marked Not Material for Proposal. If a source Requirement changes, linked active conditions become Stale and require human reconciliation.
+- Proposal Readiness gains `SCOPE_CONDITIONS_REGISTER` and `PROMISE_REGISTER_INTEGRITY` dimensions. Requirements Confirmed remains on its existing structured-requirements contract.
+- `PROMISE_COVERAGE`, `FINAL_SCOPE_RECONCILIATION`, and `QUOTATION_SNAPSHOT_COVERAGE` remain `NOT_YET_EVALUATED` until an actual quotation snapshot is reconciled.
+- `finalQuotationSendGateActive` remains false in Part 9.
+- Part 9 does not insert, update, delete, or rewrite `quotations`, quotation items, quotation scope/exclusion/client-responsibility/delivery-assumption fields, commercial/payment/duration snapshots, pipeline stage, payments, Won state, or Sales-to-Delivery handoff records.
+- The implemented seller UI is embedded in the existing Sales Readiness context and exposes Scope Conditions, Promise evidence/history, specialist validation/constraints, blocker explanations, and explicit safe lifecycle actions without forcing a parallel full-page workflow.
+- The focused implementation reference is `docs/crm-sales-scope-conditions-promise-register-part-9.md`.
+- The focused Part 9 acceptance/security suite is `tests/security/crm-sales-scope-conditions-promise-register-part-9.test.ts` and defines the required 137 cases.
+
+Part 10 remains responsible for actual quotation-snapshot comparison and the final client-facing quotation-send gate.
