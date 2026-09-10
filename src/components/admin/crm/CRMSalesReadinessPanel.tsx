@@ -4,6 +4,7 @@ import { crmSalesReadinessService, CRMSalesGateAssessment, CRMReadinessAction, C
 import '../../../lib/crmSalesReadinessGuidance';
 import SellerGuidanceHelp from './SellerGuidanceHelp';
 import { getSellerGuidance } from '../../../lib/crmSellerGuidance';
+import CRMScopeCommitmentsWorkspace from './CRMScopeCommitmentsWorkspace';
 
 type Props = { leadId?: string; opportunityId?: string; refreshKey?: string };
 
@@ -17,6 +18,8 @@ const localTargetId: Record<string, string> = {
   requirements: 'crm-requirements-list',
   'package-fit': 'crm-package-fit',
   validation: 'crm-sales-validation',
+  'scope-conditions': 'crm-scope-conditions',
+  'promise-register': 'crm-promise-register',
 };
 const drawerTabLabel: Record<string, string> = {
   discovery: 'Probing & Discovery',
@@ -93,7 +96,7 @@ function AssessmentCard({ title, subtitle, assessment, guidanceKey, proposal }: 
       </div>
       {proposal && <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
         <div className="flex items-center gap-1 text-xs font-black text-slate-900">Future workflow coverage<SellerGuidanceHelp guidance={getSellerGuidance('field.future_readiness_dimension')} /></div>
-        <p className="mt-1 text-[11px] leading-5 text-slate-600">This is a pre-quotation assessment. The final quotation-send gate is not active in Part 8, and this panel never means “ready to send”.</p>
+        <p className="mt-1 text-[11px] leading-5 text-slate-600">This remains a pre-quotation assessment. Part 9 adds Scope Conditions and Promise integrity, but the final quotation-send gate remains inactive and this panel never means “ready to send”.</p>
         <ul className="mt-2 space-y-1 text-[11px] text-slate-600">{assessment.futureDimensions.map(item => <li key={item.key}>{item.key.replaceAll('_', ' ')} — <span className="font-black">{item.status}</span> · FUTURE WORKFLOW</li>)}</ul>
       </div>}
       {assessment.blockers.length === 0 && assessment.warnings.length === 0 && <div className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs font-bold text-emerald-700"><CheckCircle2 className="h-4 w-4" />No current blocker is reported for this assessment.</div>}
@@ -108,6 +111,7 @@ export default function CRMSalesReadinessPanel({ leadId, opportunityId, refreshK
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
+  const [scopeRefreshKey, setScopeRefreshKey] = useState(0);
 
   const load = useCallback(async (refresh = false) => {
     refresh ? setRefreshing(true) : setLoading(true); setError('');
@@ -134,6 +138,7 @@ export default function CRMSalesReadinessPanel({ leadId, opportunityId, refreshK
   return <div className="space-y-3" data-crm-sales-readiness>
     <div className="flex items-center justify-end gap-2 text-[10px] text-slate-400">{evaluated && <span>Current assessment · {new Date(evaluated).toLocaleString()}</span>}<button type="button" onClick={() => void load(true)} disabled={refreshing} className="inline-flex min-h-9 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 font-black text-[#000080] disabled:opacity-50"><RefreshCw className={`h-3.5 w-3.5 ${refreshing ? 'animate-spin' : ''}`} />Refresh</button></div>
     {requirements && <AssessmentCard title="Requirements Confirmed" subtitle="Structured server-side readiness for entering Requirements Confirmed. A written summary alone cannot satisfy this gate." assessment={requirements} guidanceKey="section.requirements_confirmed_readiness" />}
-    {proposal && <AssessmentCard title="Proposal Readiness" subtitle="Pre-quotation assessment of current discovery, scope, Package Fit, specialist review and next-action readiness." assessment={proposal} guidanceKey="section.proposal_readiness" proposal />}
+    {proposal && <AssessmentCard title="Proposal Readiness" subtitle="Pre-quotation assessment of current discovery, scope, Package Fit, specialist review, Scope Conditions, Promise integrity and next-action readiness." assessment={proposal} guidanceKey="section.proposal_readiness" proposal />}
+    {leadId && <CRMScopeCommitmentsWorkspace leadId={leadId} opportunityId={resolvedOpportunityId} refreshKey={`${refreshKey || ''}:${scopeRefreshKey}`} onChanged={async () => { setScopeRefreshKey(value => value + 1); await load(true); }} />}
   </div>;
 }
