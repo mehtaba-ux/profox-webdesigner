@@ -161,9 +161,9 @@ const cases: AcceptanceCase[] = [
 
   // 110–121 REGRESSION / EXECUTABLE CHECKS
   ['110 Part 1 regression suite remains present', () => { assert.ok(existsSync('tests/security/crm-sales-discovery-foundation-part-1.test.ts')); }],
-  ['111 Part 2 regression suite remains present', () => { assert.ok(existsSync('tests/security/crm-sales-requirements-tab-part-2.test.ts')); }],
+  ['111 Part 2 regression suite remains present', () => { assert.ok(existsSync('tests/security/crm-sales-requirements-part-2.test.ts')); }],
   ['112 Part 3 regression suite remains present', () => { assert.ok(existsSync('tests/security/crm-sales-probing-discovery-part-3.test.ts')); }],
-  ['113 Part 3.5 regression suite remains present', () => { assert.ok(existsSync('tests/security/crm-seller-guidance-tooltips-part-3-5.test.ts')); }],
+  ['113 Part 3.5 regression suite remains present', () => { assert.ok(existsSync('tests/security/crm-seller-guidance-part-3-5.test.ts')); }],
   ['114 Part 4 regression suite remains present', () => { assert.ok(existsSync('tests/security/crm-sales-meeting-prep-part-4.test.ts')); }],
   ['115 Part 5 regression suite remains present', () => { assert.ok(existsSync('tests/security/crm-sales-meeting-management-closeout-part-5.test.ts')); }],
   ['116 Part 6 regression suite remains present', () => { assert.ok(existsSync('tests/security/crm-sales-package-fit-part-6.test.ts')); }],
