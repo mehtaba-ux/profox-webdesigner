@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
+import { ShieldCheck, X } from 'lucide-react';
 import { useParams } from 'react-router-dom';
 import { useAuth } from '../../lib/AuthContext';
 import { quotationCpqService } from '../../lib/quotationCpqService';
 import QuotationWorkspaceBase from './QuotationWorkspaceBase';
+import QuotationSalesReconciliationPanel from './QuotationSalesReconciliationPanel';
 
 function money(value: unknown, currency = 'USD') {
   const amount = Number(value || 0);
@@ -17,29 +19,34 @@ function money(value: unknown, currency = 'USD') {
  * Access-scope wrapper for the quotation workspace.
  *
  * The original workspace remains unchanged in QuotationWorkspaceBase so the
- * established quotation, timeline and margin calculation flows are not
- * duplicated. Full profitability is rendered only for Admin. Non-admin users
- * receive a server-redacted summary and, when they are the quotation seller,
- * a compact self-only margin badge.
+ * established quotation, timeline, approval, send and margin calculation flows
+ * are not duplicated. Part 10A Sales Reconciliation is mounted additively on
+ * this same quotation route and does not alter the existing final send gate.
  */
 export default function QuotationWorkspace() {
   const { quotationId } = useParams<{ quotationId: string }>();
   const { isAdmin } = useAuth();
   const [myAllocation, setMyAllocation] = useState<any>(null);
+  const [reconciliationOpen, setReconciliationOpen] = useState(false);
+  const savedQuotationId = quotationId && quotationId !== 'new' ? quotationId : null;
+
+  useEffect(() => {
+    setReconciliationOpen(false);
+  }, [quotationId]);
 
   useEffect(() => {
     let cancelled = false;
-    if (isAdmin || !quotationId || quotationId === 'new') {
+    if (isAdmin || !savedQuotationId) {
       setMyAllocation(null);
       return () => { cancelled = true; };
     }
 
-    void quotationCpqService.getSummary(quotationId).then(({ data, error }) => {
+    void quotationCpqService.getSummary(savedQuotationId).then(({ data, error }) => {
       if (!cancelled && !error) setMyAllocation(data?.myRevenueAllocation || null);
     });
 
     return () => { cancelled = true; };
-  }, [isAdmin, quotationId]);
+  }, [isAdmin, savedQuotationId]);
 
   return (
     <div data-profitability-scope={isAdmin ? 'admin' : 'restricted'}>
@@ -66,6 +73,37 @@ export default function QuotationWorkspace() {
       )}
 
       <QuotationWorkspaceBase />
+
+      {savedQuotationId && !reconciliationOpen && (
+        <button
+          type="button"
+          onClick={() => setReconciliationOpen(true)}
+          className="fixed bottom-6 left-6 z-[72] inline-flex min-h-11 items-center gap-2 rounded-2xl border border-[#000080]/20 bg-white px-4 py-3 text-xs font-black text-[#000080] shadow-xl shadow-slate-900/15 hover:bg-slate-50 max-sm:left-4"
+          title="Review Scope Conditions and client Promises against this quotation"
+        >
+          <ShieldCheck className="h-4 w-4" />Sales Reconciliation
+        </button>
+      )}
+
+      {savedQuotationId && reconciliationOpen && (
+        <div
+          className="fixed inset-0 z-[90] overflow-y-auto bg-slate-950/60 p-3 backdrop-blur-[1px] sm:p-6"
+          onMouseDown={event => { if (event.target === event.currentTarget) setReconciliationOpen(false); }}
+        >
+          <div className="mx-auto w-full max-w-6xl rounded-[1.75rem] bg-slate-50 p-4 shadow-2xl sm:p-6">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.14em] text-[#000080]">Quotation workspace</p>
+                <p className="mt-1 text-xs text-slate-500">Part 10A reconciliation stays on this exact quotation revision.</p>
+              </div>
+              <button type="button" onClick={() => setReconciliationOpen(false)} aria-label="Close Sales reconciliation" className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 hover:bg-slate-50">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <QuotationSalesReconciliationPanel quotationId={savedQuotationId} onClose={() => setReconciliationOpen(false)} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
