@@ -133,4 +133,25 @@ Part 10B must not begin until the exact production frontend SHA containing Parts
 
 ## Verification record
 
-Final branch, PR, feature/merge SHA, migration version(s), test results, Supabase security checks, GitHub CI, Cloudflare deployment, and authenticated production-browser status are recorded in the final implementation update once those facts exist.
+Part 10A implementation is **COMPLETE as the non-blocking reconciliation foundation**. The following facts were rechecked after merge on September 10, 2026:
+
+- Starting `main`: `46ccd22a63b71d50a6d2b98b84e50ccf02efb3ca`.
+- Implementation PR: `#106` — `feat(crm): Part 10A quotation reconciliation foundation`.
+- Final feature head: `22c613f90a46207020fcbe13b9c68207c53b87ba`.
+- Runtime implementation merge on `main`: `2ee3e78bca39fdcadcc4948aac54ae62804c6e55`.
+- Production native migrations: `20260910124932_crm_sales_quotation_reconciliation_part10a` and `20260910125143_crm_sales_quotation_reconciliation_assessment_part10a`.
+- Production object count is singular and canonical: one `quotation_sales_coverage` relation, one reconciliation assessment RPC, one coverage-review RPC, and one Sales-scope snapshot-preview RPC.
+- Production safety counts remained zero during implementation verification: `crm_sales_scope_conditions = 0`, `crm_sales_promises = 0`, and `quotation_sales_coverage = 0`. No fake client data was created.
+- `quotation_sales_coverage` has RLS enabled and no direct `anon` or `authenticated` table privileges. Part 10A RPCs are not anonymously executable. Reviewer identity/time and target fingerprints remain server-controlled.
+- The checked-in coverage-review migration was corrected before merge so the authenticated `GRANT EXECUTE` signature exactly matches the production eight-argument RPC: `(uuid,text,uuid,text,text,text,uuid,text)`.
+- The reconciliation evaluator and snapshot builder are read-only with respect to quotation rows. Production verification confirmed no quotation-write path was added by either function.
+- `finalQuotationSendGateActive = false` remains authoritative in production. Part 10A does not activate the final quotation-send gate.
+- The dedicated acceptance/security suite contains exactly **169 checks** and is wired into both `npm test` and the normal production `npm run build` path.
+- Cloudflare successfully built/deployed the final feature head and subsequently reported a successful Workers build/deployment for merged `main` runtime SHA `2ee3e78bca39fdcadcc4948aac54ae62804c6e55`.
+- GitHub Actions `ProFox CRM CI` did not execute repository steps because the hosted runner failed before step allocation. A single controlled retry behaved the same. This is recorded as an external CI-runner infrastructure failure, **not** as a passing test run and **not** as an application test failure.
+- Supabase's security advisor reported no Part 10A-specific missing-RLS-policy or anonymous-SECURITY-DEFINER exposure for the new coverage surface. Existing unrelated project-wide advisor findings remain outside this Part 10A change boundary.
+- Authenticated Seller/Admin production-browser acceptance has **not** been fabricated or marked complete. It remains the explicit operational prerequisite before Part 10B can activate final send enforcement.
+
+### Release boundary after verification
+
+Part 10A is complete and production-deployed as a **non-blocking** reconciliation/readiness layer. Part 10B remains intentionally deferred. No Part 10B send blocker, immutable final Sales-scope persistence point, Pipeline/payment/Won behavior, onboarding behavior, or Sales-to-Delivery handoff enforcement is activated by this release.
