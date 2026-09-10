@@ -52,14 +52,14 @@ BEGIN
   v_def:=pg_get_functiondef(v_oid);
 
   IF position('v_evaluator_version is distinct from 2' in lower(v_def))=0
-     OR position("jsonb_array_length(v_policy->'proposalDimensions')<>18" in v_def)=0
+     OR position('jsonb_array_length(v_policy->''proposalDimensions'')<>18' in v_def)=0
      OR position('100.0*v_pass_dimension_count/18.0' in v_def)=0
-     OR position("'finalQuotationSendGateActive',false" in v_def)=0 THEN
+     OR position('''finalQuotationSendGateActive'',false' in v_def)=0 THEN
     RAISE EXCEPTION 'Part 8 evaluator drift detected; refusing unsafe Part 9 patch.';
   END IF;
 
   v_def:=replace(v_def,'v_evaluator_version is distinct from 2','v_evaluator_version is distinct from 3');
-  v_def:=replace(v_def,"jsonb_array_length(v_policy->'proposalDimensions')<>18","jsonb_array_length(v_policy->'proposalDimensions')<>20");
+  v_def:=replace(v_def,'jsonb_array_length(v_policy->''proposalDimensions'')<>18','jsonb_array_length(v_policy->''proposalDimensions'')<>20');
 
   v_old := E'  select count(*) into v_pass_dimension_count\n  from jsonb_array_elements(v_dimensions) d\n  where d->>\'status\'=\'PASS\';\n  v_score:=least(100,greatest(0,round(100.0*v_pass_dimension_count/18.0)::integer));';
   v_new := E'  if v_gate_key=\'PROPOSAL_READINESS\' then\n    v_scope_commitment := public.crm_get_sales_scope_commitment_assessment(v_opp.id);\n    v_dimensions := v_dimensions || jsonb_build_array(\n      jsonb_build_object(\'key\',\'SCOPE_CONDITIONS_REGISTER\',\'label\',\'Scope Conditions Register\',\'status\',\n        case\n          when jsonb_array_length(coalesce(v_scope_commitment#>\'{scopeConditions,blockers}\',\'[]\'::jsonb))>0 then \'BLOCKED\'\n          when jsonb_array_length(coalesce(v_scope_commitment#>\'{scopeConditions,warnings}\',\'[]\'::jsonb))>0 then \'WARNING\'\n          else \'PASS\'\n        end,\n        \'sourceStatus\',v_scope_commitment#>>\'{scopeConditions,status}\'\n      ),\n      jsonb_build_object(\'key\',\'PROMISE_REGISTER_INTEGRITY\',\'label\',\'Promise Register Integrity\',\'status\',\n        case\n          when jsonb_array_length(coalesce(v_scope_commitment#>\'{promises,blockers}\',\'[]\'::jsonb))>0 then \'BLOCKED\'\n          when jsonb_array_length(coalesce(v_scope_commitment#>\'{promises,warnings}\',\'[]\'::jsonb))>0 then \'WARNING\'\n          else \'PASS\'\n        end,\n        \'sourceStatus\',v_scope_commitment#>>\'{promises,status}\'\n      )\n    );\n    v_blockers := v_blockers || coalesce(v_scope_commitment->\'blockers\',\'[]\'::jsonb);\n    v_warnings := v_warnings || coalesce(v_scope_commitment->\'warnings\',\'[]\'::jsonb);\n  end if;\n\n  select count(*) into v_pass_dimension_count\n  from jsonb_array_elements(v_dimensions) d\n  where d->>\'status\'=\'PASS\';\n  v_score:=least(100,greatest(0,round(100.0*v_pass_dimension_count/(case when v_gate_key=\'PROPOSAL_READINESS\' then 20.0 else 18.0 end))::integer));';
@@ -72,7 +72,7 @@ BEGIN
   IF position(v_old in v_def)=0 THEN RAISE EXCEPTION 'Part 8 declaration marker drift detected; refusing unsafe Part 9 patch.'; END IF;
   v_def:=replace(v_def,v_old,v_new);
 
-  v_def:=replace(v_def,"'finalQuotationSendGateActive',false","'scopeCommitment',case when v_gate_key='PROPOSAL_READINESS' then v_scope_commitment else null end,\n    'finalQuotationSendGateActive',false");
+  v_def:=replace(v_def,'''finalQuotationSendGateActive'',false','''scopeCommitment'',case when v_gate_key=''PROPOSAL_READINESS'' then v_scope_commitment else null end,'||E'\n    '||'''finalQuotationSendGateActive'',false');
   EXECUTE v_def;
 END
 $$;
