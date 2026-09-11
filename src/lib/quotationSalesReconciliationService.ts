@@ -33,6 +33,30 @@ export interface QuotationSalesValidationContext {
   approvedConstraints?: string | null;
 }
 
+export interface QuotationTimelineComparison {
+  parsed?: boolean;
+  minDays?: number;
+  maxDays?: number;
+  unit?: string;
+  quotationMinDays?: number | null;
+  quotationMaxDays?: number | null;
+  quotationUnit?: string | null;
+  quotationText?: string | null;
+  status?: 'ALIGNED' | 'CONFLICT' | 'NOT_EVALUATED' | string;
+  reason?: string | null;
+}
+
+export interface QuotationCommercialApprovalContext {
+  required?: boolean;
+  satisfied?: boolean;
+  status?: 'APPROVED' | 'NOT_REQUIRED' | 'APPROVAL_REQUIRED' | string;
+  quotationStatus?: string | null;
+  approvalDecision?: string | null;
+  approvalRequestedAt?: string | null;
+  approvalDecidedAt?: string | null;
+  reasons?: string[];
+}
+
 export interface QuotationScopeCoverageRow {
   conditionId: string;
   conditionType: string;
@@ -62,7 +86,9 @@ export interface QuotationPromiseCoverageRow {
   promiseId: string;
   promiseType: string;
   promiseText: string;
+  recordState?: string;
   promisedBy?: string | null;
+  promisedByName?: string | null;
   promisedAt?: string | null;
   sourceType?: string | null;
   sourceSummary?: string | null;
@@ -72,6 +98,8 @@ export interface QuotationPromiseCoverageRow {
   validation?: QuotationSalesValidationContext | null;
   promiseIntegrityStatus?: 'PASS' | 'BLOCKED' | string;
   futureSendBlockerStatus?: 'PASS' | 'BLOCKED' | string;
+  timelineComparison?: QuotationTimelineComparison | null;
+  commercialApproval?: QuotationCommercialApprovalContext | null;
   coverageId?: string | null;
   storedCoverageStatus?: string | null;
   coverageStatus: QuotationSalesCoverageStatus;
@@ -85,12 +113,27 @@ export interface QuotationPromiseCoverageRow {
   eligibleTargets: string[];
 }
 
+export interface QuotationDraftPromiseRow {
+  promiseId: string;
+  promiseType: string;
+  promiseText: string;
+  recordState: 'DRAFT' | string;
+  displayStatus?: string;
+  sourceType?: string | null;
+  sourceSummary?: string | null;
+  recordedBy?: string | null;
+  recordedByName?: string | null;
+  recordedAt?: string | null;
+  updatedAt?: string | null;
+}
+
 export interface QuotationSalesDimension {
   key: 'PROMISE_COVERAGE' | 'FINAL_SCOPE_RECONCILIATION' | 'QUOTATION_SNAPSHOT_COVERAGE' | string;
   status: string;
   coverageState?: string;
   activeCount?: number;
   coveredCount?: number;
+  draftCount?: number;
 }
 
 export interface QuotationSalesIssue {
@@ -116,6 +159,7 @@ export interface QuotationSalesReconciliationAssessment {
   packageFit?: Record<string, unknown> | null;
   scopeConditionCoverage: QuotationScopeCoverageRow[];
   promiseCoverage: QuotationPromiseCoverageRow[];
+  draftPromises?: QuotationDraftPromiseRow[];
   validationConflicts?: QuotationSalesIssue[];
   staleCoverage?: Array<QuotationScopeCoverageRow | QuotationPromiseCoverageRow>;
   missingCoverage?: Array<QuotationScopeCoverageRow | QuotationPromiseCoverageRow>;
