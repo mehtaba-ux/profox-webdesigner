@@ -1,9 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   AlertTriangle,
+  ArrowUpRight,
   BadgeCheck,
   CheckCircle2,
   FileCheck2,
+  FileEdit,
   Loader2,
   RefreshCw,
   ShieldAlert,
@@ -29,6 +31,7 @@ type SourceKind = 'SCOPE_CONDITION' | 'PROMISE';
 type Props = {
   quotationId: string;
   onClose?: () => void;
+  onOpenTarget?: (target: QuotationSalesTargetEvidence) => void;
 };
 
 const FIELD_LABELS: Record<string, string> = {
@@ -44,19 +47,14 @@ const FIELD_LABELS: Record<string, string> = {
 
 function statusTone(status?: string) {
   const value = String(status || '').toUpperCase();
-  if (['PASS', 'READY', 'COVERED', 'READY_TO_SNAPSHOT'].includes(value)) return 'border-emerald-200 bg-emerald-50 text-emerald-700';
-  if (['WARNING', 'PARTIAL', 'LEGACY', 'LEGACY_NOT_CAPTURED', 'HISTORICAL'].includes(value)) return 'border-amber-200 bg-amber-50 text-amber-800';
-  if (['BLOCKED', 'CONFLICT', 'STALE', 'UNMAPPED'].includes(value)) return 'border-red-200 bg-red-50 text-red-700';
+  if (['PASS', 'READY', 'COVERED', 'READY_TO_SNAPSHOT', 'ALIGNED', 'APPROVED', 'NOT_REQUIRED'].includes(value)) return 'border-emerald-200 bg-emerald-50 text-emerald-700';
+  if (['WARNING', 'PARTIAL', 'LEGACY', 'LEGACY_NOT_CAPTURED', 'HISTORICAL', 'NOT_EVALUATED', 'INTERNAL_DRAFT_NOT_CLIENT_COMMITMENT'].includes(value)) return 'border-amber-200 bg-amber-50 text-amber-800';
+  if (['BLOCKED', 'CONFLICT', 'STALE', 'UNMAPPED', 'APPROVAL_REQUIRED'].includes(value)) return 'border-red-200 bg-red-50 text-red-700';
   return 'border-slate-200 bg-slate-50 text-slate-600';
 }
 
 function StatusBadge({ status, label }: { status?: string; label?: string }) {
   return <span className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-wide ${statusTone(status)}`}>{label || String(status || 'Unknown').replaceAll('_', ' ')}</span>;
-}
-
-function TargetOptionLabel({ target }: { target: QuotationSalesTargetEvidence }) {
-  if (target.targetType === 'QUOTATION_ITEM') return <>{target.label || 'Quotation item'}{target.productCode ? ` · ${target.productCode}` : ''}</>;
-  return <>{target.label || FIELD_LABELS[target.fieldKey || ''] || target.fieldKey || 'Quotation field'}</>;
 }
 
 function sourceId(kind: SourceKind, row: SourceRow) {
@@ -69,6 +67,17 @@ function currentTargetToken(row: SourceRow) {
   return '';
 }
 
+function targetToken(target: QuotationSalesTargetEvidence) {
+  if (target.targetType === 'QUOTATION_ITEM' && target.itemId) return `QUOTATION_ITEM:${target.itemId}`;
+  if (target.targetType === 'QUOTATION_FIELD' && target.fieldKey) return `QUOTATION_FIELD:${target.fieldKey}`;
+  return '';
+}
+
+function targetLabel(target?: QuotationSalesTargetEvidence | null) {
+  if (!target) return 'Quotation target';
+  return target.label || FIELD_LABELS[target.fieldKey || ''] || target.productCode || 'Quotation target';
+}
+
 function CoverageEditor({
   quotationId,
   kind,
@@ -76,6 +85,7 @@ function CoverageEditor({
   targets,
   readOnly,
   onSaved,
+  onOpenTarget,
 }: {
   quotationId: string;
   kind: SourceKind;
@@ -83,6 +93,7 @@ function CoverageEditor({
   targets: QuotationSalesTargetEvidence[];
   readOnly: boolean;
   onSaved: () => Promise<void>;
+  onOpenTarget?: (target: QuotationSalesTargetEvidence) => void;
 }) {
   const eligible = useMemo(() => {
     const allowed = new Set(row.eligibleTargets || []);
@@ -92,29 +103,27 @@ function CoverageEditor({
       return Boolean(target.fieldKey && allowed.has(target.fieldKey));
     });
   }, [row.eligibleTargets, targets]);
+
   const existingToken = currentTargetToken(row);
-  const [targetToken, setTargetToken] = useState(existingToken || (() => {
-    const first = eligible[0];
-    return first?.targetType === 'QUOTATION_ITEM' ? `QUOTATION_ITEM:${first.itemId}` : first?.fieldKey ? `QUOTATION_FIELD:${first.fieldKey}` : '';
-  })());
+  const defaultToken = existingToken || targetToken(eligible[0]);
+  const [selectedToken, setSelectedToken] = useState(defaultToken);
   const [status, setStatus] = useState<QuotationSalesCoverageReviewStatus>(row.coverageStatus === 'PARTIAL' || row.coverageStatus === 'CONFLICT' ? row.coverageStatus : 'COVERED');
   const [note, setNote] = useState(row.coverageNote || '');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    setTargetToken(existingToken || (() => {
-      const first = eligible[0];
-      return first?.targetType === 'QUOTATION_ITEM' ? `QUOTATION_ITEM:${first.itemId}` : first?.fieldKey ? `QUOTATION_FIELD:${first.fieldKey}` : '';
-    })());
+    setSelectedToken(existingToken || targetToken(eligible[0]));
     setStatus(row.coverageStatus === 'PARTIAL' || row.coverageStatus === 'CONFLICT' ? row.coverageStatus : 'COVERED');
     setNote(row.coverageNote || '');
     setError('');
   }, [existingToken, row.coverageStatus, row.coverageNote, eligible]);
 
+  const selectedTarget = eligible.find(target => targetToken(target) === selectedToken) || null;
+
   const save = async () => {
     setError('');
-    if (!targetToken) {
+    if (!selectedToken) {
       setError('Choose a meaningful customer-visible quotation target first.');
       return;
     }
@@ -122,7 +131,7 @@ function CoverageEditor({
       setError('Partial or Conflict needs a brief explanation.');
       return;
     }
-    const [targetType, targetId] = targetToken.split(':', 2) as [QuotationSalesCoverageTargetType, string];
+    const [targetType, targetId] = selectedToken.split(':', 2) as [QuotationSalesCoverageTargetType, string];
     setSaving(true);
     const result = await quotationSalesReconciliationService.reviewCoverage({
       quotationId,
@@ -147,26 +156,37 @@ function CoverageEditor({
       Coverage review
       <SellerGuidanceHelp guidance={getQuotationSalesReconciliationGuidance('field.coverage_status')} />
     </div>
-    {eligible.length ? <div className="mt-3 grid gap-3 lg:grid-cols-[minmax(0,1fr)_150px]">
-      <label className="block">
-        <span className="mb-1 flex items-center gap-1 text-[11px] font-bold text-slate-600">Customer-visible target <SellerGuidanceHelp guidance={getQuotationSalesReconciliationGuidance('field.coverage_target')} /></span>
-        <select disabled={readOnly || saving} value={targetToken} onChange={event => setTargetToken(event.target.value)} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs disabled:bg-slate-100">
-          <option value="">Choose target</option>
-          {eligible.map(target => {
-            const value = target.targetType === 'QUOTATION_ITEM' ? `QUOTATION_ITEM:${target.itemId}` : `QUOTATION_FIELD:${target.fieldKey}`;
-            return <option key={value} value={value}>{target.label || FIELD_LABELS[target.fieldKey || ''] || target.productCode || 'Quotation target'}</option>;
-          })}
-        </select>
-      </label>
-      <label className="block">
-        <span className="mb-1 block text-[11px] font-bold text-slate-600">Decision</span>
-        <select disabled={readOnly || saving} value={status} onChange={event => setStatus(event.target.value as QuotationSalesCoverageReviewStatus)} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-bold disabled:bg-slate-100">
-          <option value="COVERED">Covered</option>
-          <option value="PARTIAL">Partial</option>
-          <option value="CONFLICT">Conflict</option>
-        </select>
-      </label>
-    </div> : <div className="mt-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs font-semibold leading-5 text-amber-900">No eligible target currently contains meaningful customer-visible content. Update the normal quotation field or committed line item, save the quotation, then refresh this panel.</div>}
+    {eligible.length ? <>
+      <div className="mt-3 grid gap-3 lg:grid-cols-[minmax(0,1fr)_150px]">
+        <label className="block">
+          <span className="mb-1 flex items-center gap-1 text-[11px] font-bold text-slate-600">Customer-visible target <SellerGuidanceHelp guidance={getQuotationSalesReconciliationGuidance('field.coverage_target')} /></span>
+          <select disabled={readOnly || saving} value={selectedToken} onChange={event => setSelectedToken(event.target.value)} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs disabled:bg-slate-100">
+            <option value="">Choose target</option>
+            {eligible.map(target => {
+              const value = targetToken(target);
+              return <option key={value} value={value}>{targetLabel(target)}</option>;
+            })}
+          </select>
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-[11px] font-bold text-slate-600">Decision</span>
+          <select disabled={readOnly || saving} value={status} onChange={event => setStatus(event.target.value as QuotationSalesCoverageReviewStatus)} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-bold disabled:bg-slate-100">
+            <option value="COVERED">Covered</option>
+            <option value="PARTIAL">Partial</option>
+            <option value="CONFLICT">Conflict</option>
+          </select>
+        </label>
+      </div>
+      {selectedTarget && <div className="mt-3 rounded-xl border border-blue-100 bg-blue-50/70 p-3">
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <div className="min-w-0 flex-1">
+            <p className="text-[10px] font-black uppercase tracking-wide text-blue-700">Current customer-visible quotation text · {targetLabel(selectedTarget)}</p>
+            <p className="mt-1.5 whitespace-pre-wrap text-[11px] leading-5 text-blue-950">{selectedTarget.excerpt || 'No customer-visible text is currently present.'}</p>
+          </div>
+          {onOpenTarget && <button type="button" onClick={() => onOpenTarget(selectedTarget)} className="inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-lg border border-blue-200 bg-white px-3 py-2 text-[10px] font-black text-[#000080] hover:bg-blue-50"><FileEdit className="h-3.5 w-3.5" />Open / Edit target</button>}
+        </div>
+      </div>}
+    </> : <div className="mt-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs font-semibold leading-5 text-amber-900">No eligible target currently contains meaningful customer-visible content. Update the normal quotation field or committed line item, save the quotation, then refresh this panel.</div>}
     <label className="mt-3 block">
       <span className="mb-1 block text-[11px] font-bold text-slate-600">Review note {status === 'COVERED' ? <span className="font-normal text-slate-400">(optional)</span> : <span className="text-red-600">(required)</span>}</span>
       <textarea disabled={readOnly || saving} rows={2} maxLength={2000} value={note} onChange={event => setNote(event.target.value)} placeholder={status === 'COVERED' ? 'Optional context for this reviewed mapping' : 'Explain what is partial or conflicting'} className="w-full resize-none rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs leading-5 disabled:bg-slate-100" />
@@ -181,20 +201,14 @@ function CoverageEditor({
   </div>;
 }
 
-function SourceCard({
-  quotationId,
-  kind,
-  row,
-  targets,
-  readOnly,
-  onSaved,
-}: {
+function SourceCard({ quotationId, kind, row, targets, readOnly, onSaved, onOpenTarget }: {
   quotationId: string;
   kind: SourceKind;
   row: SourceRow;
   targets: QuotationSalesTargetEvidence[];
   readOnly: boolean;
   onSaved: () => Promise<void>;
+  onOpenTarget?: (target: QuotationSalesTargetEvidence) => void;
 }) {
   const condition = kind === 'SCOPE_CONDITION' ? row as QuotationScopeCoverageRow : null;
   const promise = kind === 'PROMISE' ? row as QuotationPromiseCoverageRow : null;
@@ -202,14 +216,16 @@ function SourceCard({
   const wording = condition?.conditionText || promise?.promiseText || '';
   const isStale = row.coverageStatus === 'STALE';
   const integrityBlocked = Boolean(promise && promise.promiseIntegrityStatus === 'BLOCKED');
+  const futureBlocked = Boolean(promise && promise.futureSendBlockerStatus === 'BLOCKED');
 
-  return <article className={`rounded-2xl border bg-white p-4 shadow-sm ${isStale || integrityBlocked ? 'border-red-200' : 'border-slate-200'}`}>
+  return <article className={`rounded-2xl border bg-white p-4 shadow-sm ${isStale || integrityBlocked || futureBlocked ? 'border-red-200' : 'border-slate-200'}`}>
     <div className="flex flex-wrap items-start justify-between gap-3">
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-[10px] font-black uppercase tracking-[0.12em] text-[#000080]">{kind === 'SCOPE_CONDITION' ? 'Scope Condition' : 'Client Promise'}</span>
           <StatusBadge status={row.coverageStatus} />
           {integrityBlocked && <StatusBadge status="BLOCKED" label="Promise integrity blocked" />}
+          {futureBlocked && !integrityBlocked && <StatusBadge status="BLOCKED" label="Future send blocker" />}
         </div>
         <h4 className="mt-2 text-sm font-black text-slate-950">{title}</h4>
         <p className="mt-1.5 whitespace-pre-wrap text-xs leading-5 text-slate-700">{wording}</p>
@@ -218,19 +234,39 @@ function SourceCard({
       {integrityBlocked && <SellerGuidanceHelp guidance={getQuotationSalesReconciliationGuidance('status.promise_integrity')} />}
     </div>
 
-    <div className="mt-3 grid gap-2 text-[10px] text-slate-500 sm:grid-cols-2">
+    {promise && <div className="mt-3 grid gap-2 text-[10px] text-slate-500 sm:grid-cols-2">
+      <div className="rounded-xl border border-slate-100 bg-slate-50 p-2.5"><b className="text-slate-700">Promised by:</b> {promise.promisedByName || promise.promisedBy || 'Unknown'}</div>
+      <div className="rounded-xl border border-slate-100 bg-slate-50 p-2.5"><b className="text-slate-700">Promised at:</b> {promise.promisedAt ? new Date(promise.promisedAt).toLocaleString() : 'Unknown'}</div>
+    </div>}
+
+    <div className="mt-2 grid gap-2 text-[10px] text-slate-500 sm:grid-cols-2">
       <div className="rounded-xl border border-slate-100 bg-slate-50 p-2.5"><b className="text-slate-700">Source:</b> {condition?.sourceType || promise?.sourceType || '—'}{(condition?.sourceSummary || promise?.sourceSummary) ? ` · ${condition?.sourceSummary || promise?.sourceSummary}` : ''}</div>
       <div className="rounded-xl border border-slate-100 bg-slate-50 p-2.5"><b className="text-slate-700">Validation:</b> {row.validation?.validationType || 'Not linked'}{row.validation?.status ? ` · ${row.validation.status.replaceAll('_', ' ')}` : ''}{row.validationAlignmentStatus ? ` · ${row.validationAlignmentStatus.replaceAll('_', ' ')}` : ''}</div>
     </div>
+
     {row.validation?.approvedConstraints && <div className="mt-2 rounded-xl border border-blue-100 bg-blue-50 p-3 text-[11px] leading-5 text-blue-900"><b>Approved constraints:</b> {row.validation.approvedConstraints}</div>}
+
+    {promise?.timelineComparison && <div className={`mt-2 rounded-xl border p-3 text-[11px] leading-5 ${statusTone(promise.timelineComparison.status)}`}>
+      <div className="flex flex-wrap items-center justify-between gap-2"><b>Timeline Promise vs quotation</b><StatusBadge status={promise.timelineComparison.status} /></div>
+      {promise.timelineComparison.parsed && <p className="mt-1">Promise: {promise.timelineComparison.minDays === promise.timelineComparison.maxDays ? `${promise.timelineComparison.minDays}` : `${promise.timelineComparison.minDays}–${promise.timelineComparison.maxDays}`} business days. Quotation: {promise.timelineComparison.quotationMinDays != null && promise.timelineComparison.quotationMaxDays != null ? `${promise.timelineComparison.quotationMinDays}–${promise.timelineComparison.quotationMaxDays} business days` : promise.timelineComparison.quotationText || 'not yet resolved'}.</p>}
+      {promise.timelineComparison.reason && <p className="mt-1">{promise.timelineComparison.reason}</p>}
+      {promise.timelineComparison.status === 'CONFLICT' && <p className="mt-1 font-bold">Neither the Promise nor quotation was changed automatically.</p>}
+    </div>}
+
+    {promise?.commercialApproval && <div className={`mt-2 rounded-xl border p-3 text-[11px] leading-5 ${statusTone(promise.commercialApproval.status)}`}>
+      <div className="flex flex-wrap items-center justify-between gap-2"><b>Existing quotation approval dependency</b><StatusBadge status={promise.commercialApproval.status} /></div>
+      <p className="mt-1">{promise.commercialApproval.satisfied ? 'The canonical quotation approval requirement is satisfied or not required.' : 'Coverage does not bypass approval. Complete the existing quotation approval workflow before future send enforcement can pass.'}</p>
+      {!promise.commercialApproval.satisfied && promise.commercialApproval.reasons?.length ? <div className="mt-1">{promise.commercialApproval.reasons.slice(0, 4).map((reason, index) => <p key={index}>• {reason}</p>)}</div> : null}
+    </div>}
+
     {row.targetExcerpt && <div className="mt-2 rounded-xl border border-emerald-100 bg-emerald-50/60 p-3 text-[11px] leading-5 text-emerald-900"><b>Current mapped quotation evidence:</b> {row.targetExcerpt}</div>}
     {row.reviewedAt && <p className="mt-2 text-[10px] text-slate-400">Last reviewed {new Date(row.reviewedAt).toLocaleString()}</p>}
 
-    {!readOnly && <CoverageEditor quotationId={quotationId} kind={kind} row={row} targets={targets} readOnly={readOnly} onSaved={onSaved} />}
+    {!readOnly && <CoverageEditor quotationId={quotationId} kind={kind} row={row} targets={targets} readOnly={readOnly} onSaved={onSaved} onOpenTarget={onOpenTarget} />}
   </article>;
 }
 
-export default function QuotationSalesReconciliationPanel({ quotationId, onClose }: Props) {
+export default function QuotationSalesReconciliationPanel({ quotationId, onClose, onOpenTarget }: Props) {
   const [assessment, setAssessment] = useState<QuotationSalesReconciliationAssessment | null>(null);
   const [snapshot, setSnapshot] = useState<QuotationSalesScopeSnapshotPreview | null>(null);
   const [loading, setLoading] = useState(true);
@@ -272,15 +308,13 @@ export default function QuotationSalesReconciliationPanel({ quotationId, onClose
   const reviewableStatus = ['Draft', 'Ready for Approval', 'Approved'].includes(String(assessment.quotationStatus || ''));
   const readOnly = historical || !reviewableStatus;
   const dimensions = assessment.quotationDimensions || [];
+  const draftPromises = assessment.draftPromises || [];
 
   return <section id="quotation-sales-reconciliation" className="space-y-5" aria-label="Quotation Sales reconciliation">
     <header className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.15em] text-[#000080]">
-            Part 10A · Quotation integrity
-            <SellerGuidanceHelp guidance={getQuotationSalesReconciliationGuidance('section.quotation_sales_reconciliation')} />
-          </div>
+          <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.15em] text-[#000080]">Part 10A · Quotation integrity <SellerGuidanceHelp guidance={getQuotationSalesReconciliationGuidance('section.quotation_sales_reconciliation')} /></div>
           <h2 className="mt-1 text-xl font-black text-slate-950">Sales Reconciliation</h2>
           <p className="mt-1 max-w-3xl text-xs leading-5 text-slate-500">Verify that current Scope Conditions and real client Promises are represented in this exact quotation revision. This panel compares canonical truth; it never rewrites the quotation automatically.</p>
         </div>
@@ -289,54 +323,31 @@ export default function QuotationSalesReconciliationPanel({ quotationId, onClose
           {onClose && <button type="button" onClick={onClose} aria-label="Close Sales reconciliation" className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-xl border border-slate-200 text-slate-500 hover:bg-slate-50"><XCircle className="h-4 w-4" /></button>}
         </div>
       </div>
-
-      <div className="mt-4 flex flex-wrap items-center gap-2">
-        <StatusBadge status={assessment.status} />
-        <span className="text-[10px] font-semibold text-slate-400">Quotation revision {assessment.quotationRevision || 1} · {assessment.quotationStatus || 'Unknown status'}</span>
-      </div>
-
-      <div className="mt-4 rounded-2xl border border-blue-200 bg-blue-50 p-4 text-xs leading-5 text-blue-900">
-        <div className="flex items-start gap-3"><ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-[#000080]" /><div><div className="flex items-center gap-1 font-black">Final Send Gate: NOT YET ACTIVE <SellerGuidanceHelp guidance={getQuotationSalesReconciliationGuidance('status.final_send_gate')} /></div><p className="mt-1">Part 10A is a non-blocking readiness preview. Existing quotation approval and Send Quotation behavior remain unchanged until a later explicitly activated phase.</p></div></div>
-      </div>
-
-      <div className="mt-4 grid gap-3 sm:grid-cols-3">
-        {dimensions.map(dimension => <div key={dimension.key} className="rounded-2xl border border-slate-200 p-3.5"><div className="flex items-start justify-between gap-2"><p className="text-[10px] font-black uppercase tracking-wide text-slate-500">{dimension.key.replaceAll('_', ' ')}</p><StatusBadge status={dimension.status} /></div><p className="mt-2 text-xs font-bold text-slate-800">{String(dimension.coverageState || 'Not evaluated').replaceAll('_', ' ')}</p>{dimension.activeCount != null && <p className="mt-1 text-[10px] text-slate-500">{dimension.coveredCount || 0} covered / {dimension.activeCount} active</p>}</div>)}
-      </div>
+      <div className="mt-4 flex flex-wrap items-center gap-2"><StatusBadge status={assessment.status} /><span className="text-[10px] font-semibold text-slate-400">Quotation revision {assessment.quotationRevision || 1} · {assessment.quotationStatus || 'Unknown status'}</span></div>
+      <div className="mt-4 rounded-2xl border border-blue-200 bg-blue-50 p-4 text-xs leading-5 text-blue-900"><div className="flex items-start gap-3"><ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-[#000080]" /><div><div className="flex items-center gap-1 font-black">Final Send Gate: NOT YET ACTIVE <SellerGuidanceHelp guidance={getQuotationSalesReconciliationGuidance('status.final_send_gate')} /></div><p className="mt-1">Part 10A is a non-blocking readiness preview. Existing quotation approval and Send Quotation behavior remain unchanged until a later explicitly activated phase.</p></div></div></div>
+      <div className="mt-4 grid gap-3 sm:grid-cols-3">{dimensions.map(dimension => <div key={dimension.key} className="rounded-2xl border border-slate-200 p-3.5"><div className="flex items-start justify-between gap-2"><p className="text-[10px] font-black uppercase tracking-wide text-slate-500">{dimension.key.replaceAll('_', ' ')}</p><StatusBadge status={dimension.status} /></div><p className="mt-2 text-xs font-bold text-slate-800">{String(dimension.coverageState || 'Not evaluated').replaceAll('_', ' ')}</p>{dimension.activeCount != null && <p className="mt-1 text-[10px] text-slate-500">{dimension.coveredCount || 0} covered / {dimension.activeCount} active{dimension.draftCount ? ` · ${dimension.draftCount} internal draft` : ''}</p>}</div>)}</div>
     </header>
 
     {historical && <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-xs leading-5 text-amber-900"><div className="flex items-start gap-2"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /><div><div className="flex items-center gap-1 font-black">Historical quotation · {assessment.legacyCoverageNotCaptured ? 'Legacy coverage not captured' : 'Read-only reconciliation history'} <SellerGuidanceHelp guidance={getQuotationSalesReconciliationGuidance('status.legacy_coverage')} /></div><p className="mt-1">Part 10A does not fabricate or backfill coverage for delivered quotation history.</p></div></div></div>}
-
     {error && <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-xs font-semibold text-red-700">{error}</div>}
 
     <div className="grid gap-4 lg:grid-cols-2">
-      <div className={`rounded-2xl border p-4 ${statusTone(assessment.quotedProductAlignment?.status)}`}>
-        <div className="flex items-center justify-between gap-3"><div><p className="text-[10px] font-black uppercase tracking-wide">Quoted package alignment</p><p className="mt-1 text-sm font-black">{assessment.quotedProductAlignment?.status || 'Not evaluated'}</p></div><SellerGuidanceHelp guidance={getQuotationSalesReconciliationGuidance('status.package_alignment')} /></div>
-        <p className="mt-2 text-xs leading-5">Current Package Fit: {assessment.quotedProductAlignment?.currentPackageFitStatus || 'Not evaluated'}. Reconciliation never adds, removes, upgrades, or downgrades quotation products automatically.</p>
-      </div>
-      <div className={`rounded-2xl border p-4 ${statusTone(assessment.snapshotCoverageState)}`}>
-        <div className="flex items-center justify-between gap-3"><div><p className="text-[10px] font-black uppercase tracking-wide">Snapshot foundation</p><p className="mt-1 text-sm font-black">{assessment.snapshotCoverageState.replaceAll('_', ' ')}</p></div><SellerGuidanceHelp guidance={getQuotationSalesReconciliationGuidance('status.snapshot_preview')} /></div>
-        <p className="mt-2 text-xs leading-5">{assessment.readyForSnapshot ? 'The deterministic read-only builder is eligible to produce the current preview.' : 'Resolve current reconciliation blockers before the builder can be treated as ready.'} Nothing is frozen or persisted in Part 10A.</p>
-        <button type="button" disabled={snapshotLoading} onClick={() => void buildPreview()} className="mt-3 inline-flex min-h-10 items-center gap-2 rounded-xl border border-current/20 bg-white/70 px-3 py-2 text-xs font-black disabled:opacity-50">{snapshotLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileCheck2 className="h-4 w-4" />}Build read-only preview</button>
-      </div>
+      <div className={`rounded-2xl border p-4 ${statusTone(assessment.quotedProductAlignment?.status)}`}><div className="flex items-center justify-between gap-3"><div><p className="text-[10px] font-black uppercase tracking-wide">Quoted package alignment</p><p className="mt-1 text-sm font-black">{assessment.quotedProductAlignment?.status || 'Not evaluated'}</p></div><SellerGuidanceHelp guidance={getQuotationSalesReconciliationGuidance('status.package_alignment')} /></div><p className="mt-2 text-xs leading-5">Current Package Fit: {assessment.quotedProductAlignment?.currentPackageFitStatus || 'Not evaluated'}. Reconciliation never adds, removes, upgrades, or downgrades quotation products automatically.</p></div>
+      <div className={`rounded-2xl border p-4 ${statusTone(assessment.snapshotCoverageState)}`}><div className="flex items-center justify-between gap-3"><div><p className="text-[10px] font-black uppercase tracking-wide">Snapshot foundation</p><p className="mt-1 text-sm font-black">{assessment.snapshotCoverageState.replaceAll('_', ' ')}</p></div><SellerGuidanceHelp guidance={getQuotationSalesReconciliationGuidance('status.snapshot_preview')} /></div><p className="mt-2 text-xs leading-5">{assessment.readyForSnapshot ? 'The deterministic read-only builder is eligible to produce the current preview.' : 'Resolve current reconciliation blockers before the builder can be treated as ready.'} Nothing is frozen or persisted in Part 10A.</p><button type="button" disabled={snapshotLoading} onClick={() => void buildPreview()} className="mt-3 inline-flex min-h-10 items-center gap-2 rounded-xl border border-current/20 bg-white/70 px-3 py-2 text-xs font-black disabled:opacity-50">{snapshotLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileCheck2 className="h-4 w-4" />}Build read-only preview</button></div>
     </div>
 
     {snapshot && <div className="rounded-2xl border border-slate-200 bg-white p-4 text-xs shadow-sm"><div className="flex flex-wrap items-center justify-between gap-2"><div><p className="font-black text-slate-900">Snapshot preview built</p><p className="mt-1 text-slate-500">Schema v{snapshot.snapshotSchemaVersion} · reconciliation {snapshot.finalReconciliationStatus || 'unknown'}</p></div><StatusBadge status={snapshot.persisted ? 'PASS' : 'WARNING'} label={snapshot.persisted ? 'Persisted' : 'Not persisted'} /></div><div className="mt-3 grid gap-2 sm:grid-cols-3"><div className="rounded-xl bg-slate-50 p-3"><b>{snapshot.activeScopeConditions?.length || 0}</b><span className="ml-1 text-slate-500">active conditions</span></div><div className="rounded-xl bg-slate-50 p-3"><b>{snapshot.activePromises?.length || 0}</b><span className="ml-1 text-slate-500">active promises</span></div><div className="rounded-xl bg-slate-50 p-3"><b>{snapshot.quotedProducts?.length || 0}</b><span className="ml-1 text-slate-500">quoted lines</span></div></div></div>}
 
-    {(assessment.exactBlockers?.length > 0 || assessment.warnings?.length > 0) && <div className="grid gap-4 lg:grid-cols-2">
-      <div className="rounded-2xl border border-red-200 bg-white p-4 shadow-sm"><div className="flex items-center gap-2 text-sm font-black text-red-700"><ShieldAlert className="h-4 w-4" />Future send blockers ({assessment.exactBlockers?.length || 0})</div><div className="mt-3 space-y-2">{(assessment.exactBlockers || []).slice(0, 12).map((issue, index) => <div key={`${issue.code || 'blocker'}-${index}`} className="rounded-xl bg-red-50 p-3 text-xs leading-5 text-red-800"><b>{issue.code?.replaceAll('_', ' ') || 'Blocker'}:</b> {issue.message || 'Current reconciliation is blocked.'}</div>)}</div></div>
-      <div className="rounded-2xl border border-amber-200 bg-white p-4 shadow-sm"><div className="flex items-center gap-2 text-sm font-black text-amber-800"><AlertTriangle className="h-4 w-4" />Warnings ({assessment.warnings?.length || 0})</div><div className="mt-3 space-y-2">{(assessment.warnings || []).slice(0, 12).map((issue, index) => <div key={`${issue.code || 'warning'}-${index}`} className="rounded-xl bg-amber-50 p-3 text-xs leading-5 text-amber-900"><b>{issue.code?.replaceAll('_', ' ') || 'Warning'}:</b> {issue.message || 'Review this item.'}</div>)}</div></div>
-    </div>}
+    {(assessment.exactBlockers?.length > 0 || assessment.warnings?.length > 0) && <div className="grid gap-4 lg:grid-cols-2"><div className="rounded-2xl border border-red-200 bg-white p-4 shadow-sm"><div className="flex items-center gap-2 text-sm font-black text-red-700"><ShieldAlert className="h-4 w-4" />Future send blockers ({assessment.exactBlockers?.length || 0})</div><div className="mt-3 space-y-2">{(assessment.exactBlockers || []).slice(0, 12).map((issue, index) => <div key={`${issue.code || 'blocker'}-${index}`} className="rounded-xl bg-red-50 p-3 text-xs leading-5 text-red-800"><b>{issue.code?.replaceAll('_', ' ') || 'Blocker'}:</b> {issue.message || 'Current reconciliation is blocked.'}</div>)}</div></div><div className="rounded-2xl border border-amber-200 bg-white p-4 shadow-sm"><div className="flex items-center gap-2 text-sm font-black text-amber-800"><AlertTriangle className="h-4 w-4" />Warnings ({assessment.warnings?.length || 0})</div><div className="mt-3 space-y-2">{(assessment.warnings || []).slice(0, 12).map((issue, index) => <div key={`${issue.code || 'warning'}-${index}`} className="rounded-xl bg-amber-50 p-3 text-xs leading-5 text-amber-900"><b>{issue.code?.replaceAll('_', ' ') || 'Warning'}:</b> {issue.message || 'Review this item.'}</div>)}</div></div></div>}
 
-    <section>
-      <div className="mb-3 flex flex-wrap items-end justify-between gap-2"><div><p className="text-[10px] font-black uppercase tracking-[0.14em] text-[#000080]">Current proposal boundaries</p><h3 className="mt-1 text-base font-black text-slate-950">Scope Conditions</h3></div><span className="text-xs font-semibold text-slate-500">{assessment.scopeConditionCoverage.length} active</span></div>
-      <div className="space-y-3">{assessment.scopeConditionCoverage.length ? assessment.scopeConditionCoverage.map(row => <SourceCard key={row.conditionId} quotationId={quotationId} kind="SCOPE_CONDITION" row={row} targets={targets} readOnly={readOnly} onSaved={load} />) : <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-xs font-semibold text-emerald-800"><CheckCircle2 className="mr-2 inline h-4 w-4" />No Active Scope Conditions require quotation coverage.</div>}</div>
-    </section>
+    <section><div className="mb-3 flex flex-wrap items-end justify-between gap-2"><div><p className="text-[10px] font-black uppercase tracking-[0.14em] text-[#000080]">Current proposal boundaries</p><h3 className="mt-1 text-base font-black text-slate-950">Scope Conditions</h3></div><span className="text-xs font-semibold text-slate-500">{assessment.scopeConditionCoverage.length} active</span></div><div className="space-y-3">{assessment.scopeConditionCoverage.length ? assessment.scopeConditionCoverage.map(row => <SourceCard key={row.conditionId} quotationId={quotationId} kind="SCOPE_CONDITION" row={row} targets={targets} readOnly={readOnly} onSaved={load} onOpenTarget={onOpenTarget} />) : <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-xs font-semibold text-emerald-800"><CheckCircle2 className="mr-2 inline h-4 w-4" />No Active Scope Conditions require quotation coverage.</div>}</div></section>
 
-    <section>
-      <div className="mb-3 flex flex-wrap items-end justify-between gap-2"><div><p className="text-[10px] font-black uppercase tracking-[0.14em] text-[#000080]">Actually communicated commitments</p><h3 className="mt-1 text-base font-black text-slate-950">Promise Coverage</h3></div><span className="text-xs font-semibold text-slate-500">{assessment.promiseCoverage.length} active</span></div>
-      <div className="space-y-3">{assessment.promiseCoverage.length ? assessment.promiseCoverage.map(row => <SourceCard key={row.promiseId} quotationId={quotationId} kind="PROMISE" row={row} targets={targets} readOnly={readOnly} onSaved={load} />) : <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-xs font-semibold text-emerald-800"><BadgeCheck className="mr-2 inline h-4 w-4" />No material Active Promises are registered. Zero Promises is a valid state.</div>}</div>
-    </section>
+    {draftPromises.length > 0 && <section className="rounded-2xl border border-amber-200 bg-amber-50/60 p-4"><div className="flex flex-wrap items-end justify-between gap-2"><div><p className="text-[10px] font-black uppercase tracking-[0.14em] text-amber-700">Internal preparation only</p><h3 className="mt-1 text-base font-black text-slate-950">Draft Promises</h3></div><StatusBadge status="INTERNAL_DRAFT_NOT_CLIENT_COMMITMENT" label="Internal draft / not client commitment" /></div><p className="mt-2 text-xs leading-5 text-amber-900">Draft Promises are visible for context but require no quotation coverage and do not count as client commitments.</p><div className="mt-3 space-y-2">{draftPromises.map(draft => <article key={draft.promiseId} className="rounded-xl border border-amber-100 bg-white p-3"><div className="flex flex-wrap items-center justify-between gap-2"><p className="text-[10px] font-black uppercase tracking-wide text-amber-700">{draft.promiseType.replaceAll('_', ' ')} · Draft</p>{draft.recordedAt && <span className="text-[10px] text-slate-400">Recorded {new Date(draft.recordedAt).toLocaleString()}</span>}</div><p className="mt-1.5 whitespace-pre-wrap text-xs leading-5 text-slate-700">{draft.promiseText}</p>{(draft.sourceType || draft.recordedByName) && <p className="mt-2 text-[10px] text-slate-500">{draft.recordedByName ? `Recorded by ${draft.recordedByName}` : ''}{draft.recordedByName && draft.sourceType ? ' · ' : ''}{draft.sourceType ? `Source: ${draft.sourceType.replaceAll('_', ' ')}` : ''}</p>}</article>)}</div></section>}
+
+    <section><div className="mb-3 flex flex-wrap items-end justify-between gap-2"><div><p className="text-[10px] font-black uppercase tracking-[0.14em] text-[#000080]">Actually communicated commitments</p><h3 className="mt-1 text-base font-black text-slate-950">Promise Coverage</h3></div><span className="text-xs font-semibold text-slate-500">{assessment.promiseCoverage.length} active</span></div><div className="space-y-3">{assessment.promiseCoverage.length ? assessment.promiseCoverage.map(row => <SourceCard key={row.promiseId} quotationId={quotationId} kind="PROMISE" row={row} targets={targets} readOnly={readOnly} onSaved={load} onOpenTarget={onOpenTarget} />) : <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-xs font-semibold text-emerald-800"><BadgeCheck className="mr-2 inline h-4 w-4" />No material Active Promises are registered. Zero Promises is a valid state.</div>}</div></section>
 
     {assessment.approvedConstraints && assessment.approvedConstraints.length > 0 && <section className="rounded-2xl border border-blue-100 bg-blue-50/60 p-4"><div className="flex items-center gap-2 text-sm font-black text-blue-900"><ShieldCheck className="h-4 w-4" />Current approved specialist constraints</div><div className="mt-3 space-y-2">{assessment.approvedConstraints.map((constraint, index) => <div key={String(constraint.validationId || index)} className="rounded-xl bg-white p-3 text-xs leading-5 text-blue-900">{String(constraint.constraints || constraint.approvedConstraints || 'Approved specialist constraint')}</div>)}</div></section>}
+
+    <div className="rounded-2xl border border-slate-200 bg-white p-4 text-[11px] leading-5 text-slate-500"><ArrowUpRight className="mr-1 inline h-3.5 w-3.5" />Open / Edit target always returns to the existing canonical quotation editor. Reconciliation never edits customer-facing quotation content on your behalf.</div>
   </section>;
 }
