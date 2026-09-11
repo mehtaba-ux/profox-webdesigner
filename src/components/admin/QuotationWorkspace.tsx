@@ -3,6 +3,7 @@ import { ShieldCheck, X } from 'lucide-react';
 import { useParams } from 'react-router-dom';
 import { useAuth } from '../../lib/AuthContext';
 import { quotationCpqService } from '../../lib/quotationCpqService';
+import type { QuotationSalesTargetEvidence } from '../../lib/quotationSalesReconciliationService';
 import QuotationWorkspaceBase from './QuotationWorkspaceBase';
 import QuotationSalesReconciliationPanel from './QuotationSalesReconciliationPanel';
 
@@ -14,6 +15,17 @@ function money(value: unknown, currency = 'USD') {
     return `${currency} ${amount.toFixed(2)}`;
   }
 }
+
+const FIELD_LABELS: Record<string, string> = {
+  scope_summary: 'Scope Summary',
+  exclusions: 'Exclusions',
+  client_responsibilities: 'Client Responsibilities',
+  delivery_assumptions: 'Delivery Assumptions',
+  handover_support: 'Handover / Support',
+  terms_and_conditions: 'Terms & Conditions',
+  payment_terms: 'Payment Terms',
+  duration_snapshot_text: 'Estimated Overall Delivery',
+};
 
 /**
  * Access-scope wrapper for the quotation workspace.
@@ -47,6 +59,39 @@ export default function QuotationWorkspace() {
 
     return () => { cancelled = true; };
   }, [isAdmin, savedQuotationId]);
+
+  const openCanonicalTarget = (target: QuotationSalesTargetEvidence) => {
+    setReconciliationOpen(false);
+    window.setTimeout(() => {
+      const fieldKey = target.fieldKey || '';
+      const panelLabel = target.targetType === 'QUOTATION_ITEM'
+        ? 'Scope & Pricing'
+        : ['payment_terms', 'duration_snapshot_text'].includes(fieldKey)
+          ? 'Payment & Delivery'
+          : 'Proposal Content';
+      const panelButton = Array.from(document.querySelectorAll<HTMLButtonElement>('button'))
+        .find(button => button.textContent?.trim() === panelLabel);
+      panelButton?.click();
+
+      window.setTimeout(() => {
+        let destination: HTMLElement | null = null;
+        if (target.targetType === 'QUOTATION_ITEM') {
+          const needle = (target.label || target.productCode || '').trim().toLowerCase();
+          destination = Array.from(document.querySelectorAll<HTMLElement>('tbody tr'))
+            .find(row => needle && row.textContent?.toLowerCase().includes(needle)) || null;
+          destination ||= Array.from(document.querySelectorAll<HTMLElement>('section'))
+            .find(section => section.textContent?.includes('Products & Services')) || null;
+        } else {
+          const labelText = FIELD_LABELS[fieldKey] || target.label || '';
+          destination = Array.from(document.querySelectorAll<HTMLElement>('label, section, div'))
+            .find(element => labelText && element.textContent?.trim().startsWith(labelText)) || null;
+        }
+        destination?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        const editable = destination?.querySelector<HTMLElement>('textarea:not([disabled]), input:not([disabled]), select:not([disabled])');
+        editable?.focus({ preventScroll: true });
+      }, 80);
+    }, 0);
+  };
 
   return (
     <div data-profitability-scope={isAdmin ? 'admin' : 'restricted'}>
@@ -100,7 +145,11 @@ export default function QuotationWorkspace() {
                 <X className="h-4 w-4" />
               </button>
             </div>
-            <QuotationSalesReconciliationPanel quotationId={savedQuotationId} onClose={() => setReconciliationOpen(false)} />
+            <QuotationSalesReconciliationPanel
+              quotationId={savedQuotationId}
+              onClose={() => setReconciliationOpen(false)}
+              onOpenTarget={openCanonicalTarget}
+            />
           </div>
         </div>
       )}
