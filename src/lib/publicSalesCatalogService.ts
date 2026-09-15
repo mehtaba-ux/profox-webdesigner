@@ -1,6 +1,7 @@
 import { supabase } from './supabase';
 
 export type PublicPriceMode = 'fixed' | 'starting_at' | 'custom';
+export type PublicTimelineImpact = 'base' | 'additive' | 'parallel' | 'assessment_required';
 
 export interface PublicCatalogMilestone {
   milestoneNumber: number;
@@ -45,11 +46,16 @@ export interface PublicSalesCatalogItem {
   managerApprovalRequired: boolean;
   sortOrder: number;
   publicDetails: PublicCatalogDetails;
+  deliveryDurationMin: number | null;
+  deliveryDurationMax: number | null;
+  deliveryDurationUnit: 'business_days';
+  timelineImpact: PublicTimelineImpact;
+  deliveryDurationNote?: string | null;
+  catalogVersion?: number | null;
+  effectiveFrom?: string | null;
   updatedAt?: string;
 }
 
-// Kept for compatibility with existing internal consumers. Public Pricing itself is
-// intentionally type-driven and does not depend on this fixed list.
 export const PUBLIC_CORE_PRODUCT_CODES = [
   'PF-WEB-LAUNCH',
   'PF-WEB-GROWTH',
@@ -67,11 +73,8 @@ function normalizePublicDetails(value: any): PublicCatalogDetails {
   const source = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
   const technologies = Array.isArray(source.technologies)
     ? source.technologies
-        .filter((item: any) => item && typeof item === 'object' && String(item.name || '').trim())
-        .map((item: any) => ({
-          name: String(item.name).trim(),
-          logoUrl: item.logoUrl ? String(item.logoUrl) : null
-        }))
+      .filter((item: any) => item && typeof item === 'object' && String(item.name || '').trim())
+      .map((item: any) => ({ name: String(item.name).trim(), logoUrl: item.logoUrl ? String(item.logoUrl) : null }))
     : [];
 
   const comparison: Record<string, string> = {};
@@ -120,6 +123,13 @@ function normalizeItem(row: any): PublicSalesCatalogItem {
     managerApprovalRequired: row?.managerApprovalRequired === true,
     sortOrder: Number(row?.sortOrder || 0),
     publicDetails: normalizePublicDetails(row?.publicDetails),
+    deliveryDurationMin: row?.deliveryDurationMin == null ? null : Number(row.deliveryDurationMin),
+    deliveryDurationMax: row?.deliveryDurationMax == null ? null : Number(row.deliveryDurationMax),
+    deliveryDurationUnit: 'business_days',
+    timelineImpact: (row?.timelineImpact || 'assessment_required') as PublicTimelineImpact,
+    deliveryDurationNote: row?.deliveryDurationNote || null,
+    catalogVersion: row?.catalogVersion == null ? null : Number(row.catalogVersion),
+    effectiveFrom: row?.effectiveFrom || null,
     updatedAt: row?.updatedAt || undefined
   };
 }
@@ -135,8 +145,7 @@ export function catalogByCode(items: PublicSalesCatalogItem[]) {
 }
 
 export function publicCatalogByType(items: PublicSalesCatalogItem[], productType: string) {
-  return items
-    .filter(item => item.productType === productType)
+  return items.filter(item => item.productType === productType)
     .sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name));
 }
 
@@ -164,3 +173,20 @@ export function formatBillingPeriod(period?: string | null) {
   if (period === 'year') return '/year';
   return `/${period}`;
 }
+
+export function formatPublicDelivery(item: Pick<PublicSalesCatalogItem, 'productType' | 'deliveryDurationMin' | 'deliveryDurationMax' | 'timelineImpact'>) {
+  const min = item.deliveryDurationMin;
+  const max = item.deliveryDurationMax;
+  if (min == null || max == null) {
+    if (item.productType === 'care_plan') return 'Ongoing after onboarding';
+    return item.timelineImpact === 'assessment_required' ? 'Confirmed in your approved quotation' : 'Confirmed after scope review';
+  }
+  const range = min === max ? `${min} business days` : `${min}–${max} business days`;
+  if (item.productType === 'care_plan') return `${range} onboarding, then ongoing monthly`;
+  if (item.timelineImpact === 'additive') return `Typically adds ${range} to the relevant project path`;
+  if (item.timelineImpact === 'parallel') return `${range}, usually completed in parallel`;
+  if (item.timelineImpact === 'assessment_required') return `Typically ${range}; final schedule is confirmed in the approved quotation`;
+  return `Typically ${range} from Project Ready Date`;
+}
+
+export const PROJECT_READY_DATE_NOTE = 'Project Ready Date means the required payment, onboarding information, content/assets and technical access needed for the agreed scope have been received.';
