@@ -6,9 +6,11 @@ import { defaultPricingTemplateData } from '../data/pricingTemplate';
 import { useCMS } from '../lib/CMSProvider';
 import type { CustomPage } from '../types';
 import {
+  PROJECT_READY_DATE_NOTE,
   PublicSalesCatalogItem,
   formatBillingPeriod,
   formatCatalogPrice,
+  formatPublicDelivery,
   getPublicSalesCatalog,
   publicCatalogByType
 } from '../lib/publicSalesCatalogService';
@@ -21,15 +23,15 @@ const pricingPageFallback: Partial<CustomPage> = {
   status: 'published',
   heroTitle: defaultPricingTemplateData.hero.quote,
   heroSubtitle: defaultPricingTemplateData.hero.reviewLabel,
-  bodyContent: 'Compare current ProFox website packages, inclusions, technology, payment structure, and custom digital experience options.',
+  bodyContent: 'Compare current ProFox website packages, inclusions, technology, payment structure, and typical delivery planning.',
   serviceDetailData: defaultPricingTemplateData,
   seo: {
     metaTitle: 'Website Design & Development Pricing | ProFox Web Designer',
-    metaDescription: 'Compare current ProFox website design and development packages, inclusions, technology, payment structure, and custom digital experience options.',
+    metaDescription: 'Compare current ProFox website design and development packages, inclusions, typical delivery, technology, and payment structure.',
     focusKeyword: 'website design and development pricing',
     canonicalUrl: 'https://www.profoxwebdesigner.com/pricing',
     ogTitle: 'Website Design & Development Pricing | ProFox Web Designer',
-    ogDescription: 'Clear ProFox website packages built around strategy, design, technology, integrations, and measurable business growth.',
+    ogDescription: 'Clear ProFox website packages built around defined scope, realistic delivery planning, technology, integrations, and business needs.',
     noIndex: false,
     schemaType: 'Service'
   }
@@ -38,7 +40,7 @@ const pricingPageFallback: Partial<CustomPage> = {
 function milestoneText(item: PublicSalesCatalogItem) {
   if (item.paymentSchedule.length === 0) {
     return item.priceMode === 'custom'
-      ? ['Milestones follow the approved scope and delivery phases']
+      ? ['Payment milestones are defined in the approved quotation for the agreed system scope']
       : [];
   }
   return item.paymentSchedule.map(
@@ -51,8 +53,15 @@ function safeSlug(item: PublicSalesCatalogItem) {
     || item.code.toLowerCase().replace(/^pf-/, '').replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 }
 
+function priceBasisText(item: PublicSalesCatalogItem) {
+  if (item.priceMode === 'custom') return 'Final investment is based on the exact modules, workflows, integrations, acceptance criteria and delivery plan approved in your quotation.';
+  if (item.priceMode === 'starting_at') return 'Starting price applies to the baseline scope shown here. Extra pages, systems, integrations or complexity are separately scoped before approval.';
+  return 'Fixed price applies to the stated catalog scope and limits. Changes outside that scope are quoted separately.';
+}
+
 function packageCard(item: PublicSalesCatalogItem) {
   const details = item.publicDetails;
+  const delivery = formatPublicDelivery(item);
   return {
     id: safeSlug(item),
     productCode: item.code,
@@ -64,9 +73,12 @@ function packageCard(item: PublicSalesCatalogItem) {
         ? 'Starting at'
         : 'Fixed price',
     badge: details.badge || 'Website package',
-    summary: details.summary || item.fullDescription || item.shortDescription || '',
+    summary: `${details.summary || item.fullDescription || item.shortDescription || ''}${details.summary || item.fullDescription || item.shortDescription ? ' ' : ''}Typical delivery: ${delivery}.`,
     bestFor: details.bestFor || item.shortDescription || 'Businesses whose requirements match this approved scope.',
-    features: item.scope,
+    features: [
+      ...item.scope,
+      `Pricing basis: ${priceBasisText(item)}`
+    ],
     technologies: details.technologies,
     quote: details.quote || `We need the ${item.name} scope for our project.`,
     ctaText: details.ctaText || `Choose ${item.name}`,
@@ -74,12 +86,15 @@ function packageCard(item: PublicSalesCatalogItem) {
     featured: details.featured,
     standardPaymentTerms: item.standardPaymentTerms,
     paymentSchedule: item.paymentSchedule,
-    managerApprovalRequired: item.managerApprovalRequired
+    managerApprovalRequired: item.managerApprovalRequired,
+    delivery,
+    deliveryNote: item.deliveryDurationNote
   };
 }
 
 function carePlanCard(item: PublicSalesCatalogItem) {
   const details = item.publicDetails;
+  const delivery = formatPublicDelivery(item);
   return {
     id: safeSlug(item),
     productCode: item.code,
@@ -87,11 +102,13 @@ function carePlanCard(item: PublicSalesCatalogItem) {
     price: formatCatalogPrice(item, false),
     period: formatBillingPeriod(item.billingPeriod),
     badge: details.badge || 'Website care',
-    description: details.summary || item.fullDescription || item.shortDescription || '',
+    description: `${details.summary || item.fullDescription || item.shortDescription || ''}${details.summary || item.fullDescription || item.shortDescription ? ' ' : ''}Setup: ${delivery}.`,
     features: item.scope,
     ctaText: details.ctaText || `Choose ${item.name}`,
     ctaUrl: details.ctaUrl || '/contact-us',
-    featured: details.featured
+    featured: details.featured,
+    delivery,
+    deliveryNote: item.deliveryDurationNote
   };
 }
 
@@ -112,25 +129,37 @@ function buildCommercialData(page: Partial<CustomPage> | undefined, catalog: Pub
   const careItems = publicCatalogByType(catalog, 'care_plan');
   const plans = packageItems.map(packageCard);
 
-  // Categories/row labels are presentation copy owned by the Pricing template.
-  // Every value inside the package columns is owned by the canonical Sales Catalog.
   const comparison = { ...defaultPricingTemplateData.comparison, ...(source.comparison || {}) } as any;
-  const comparisonCategories = (comparison.categories || []).map((category: any) => ({
+  const canonicalComparisonCategories = (comparison.categories || []).map((category: any) => ({
     ...category,
     rows: (category.rows || []).map((row: any) => ({
       ...row,
       values: packageItems.map(item => comparisonValue(String(row.label || ''), item))
     }))
   }));
+  const deliveryCategory = {
+    name: 'Delivery & planning',
+    rows: [
+      {
+        label: 'Typical delivery',
+        values: packageItems.map(item => formatPublicDelivery(item))
+      },
+      {
+        label: 'Timeline starts',
+        values: packageItems.map(item => item.timelineImpact === 'assessment_required' ? 'Per approved quotation / Project Ready Date' : 'Project Ready Date')
+      },
+      {
+        label: 'Pricing basis',
+        values: packageItems.map(item => item.priceMode === 'custom' ? 'Approved custom scope' : item.priceMode === 'starting_at' ? 'Baseline scope shown' : 'Stated fixed scope')
+      }
+    ]
+  };
 
   const scopeAndPayment = {
     ...defaultPricingTemplateData.scopeAndPayment,
     ...(source.scopeAndPayment || {})
   } as any;
-  const paymentPlans = packageItems.map(item => ({
-    name: item.name,
-    milestones: milestoneText(item)
-  }));
+  const paymentPlans = packageItems.map(item => ({ name: item.name, milestones: milestoneText(item) }));
 
   const carePlans = {
     ...defaultPricingTemplateData.carePlans,
@@ -138,11 +167,9 @@ function buildCommercialData(page: Partial<CustomPage> | undefined, catalog: Pub
     plans: careItems.map(carePlanCard)
   };
 
-  const pricedPackages = packageItems
-    .filter(item => item.priceMode !== 'custom')
-    .sort((a, b) => a.basePrice - b.basePrice);
+  const pricedPackages = packageItems.filter(item => item.priceMode !== 'custom').sort((a, b) => a.basePrice - b.basePrice);
   const heroHighlight = pricedPackages[0]
-    ? `Starting at ${formatCatalogPrice(pricedPackages[0], false)}.`
+    ? `Starting at ${formatCatalogPrice(pricedPackages[0], false)}. Scope, delivery and payment terms are confirmed before approval.`
     : source.hero?.highlight;
 
   return {
@@ -150,8 +177,16 @@ function buildCommercialData(page: Partial<CustomPage> | undefined, catalog: Pub
     hero: { ...defaultPricingTemplateData.hero, ...(source.hero || {}), highlight: heroHighlight },
     plansEyebrow: `${plans.length} clear starting point${plans.length === 1 ? '' : 's'}`,
     plans,
-    comparison: { ...comparison, categories: comparisonCategories },
-    scopeAndPayment: { ...scopeAndPayment, paymentPlans },
+    comparison: {
+      ...comparison,
+      note: `${comparison.note || ''}${comparison.note ? ' ' : ''}${PROJECT_READY_DATE_NOTE}`,
+      categories: [deliveryCategory, ...canonicalComparisonCategories]
+    },
+    scopeAndPayment: {
+      ...scopeAndPayment,
+      description: `${scopeAndPayment.description || ''}${scopeAndPayment.description ? ' ' : ''}${PROJECT_READY_DATE_NOTE}`,
+      paymentPlans
+    },
     carePlans
   };
 }
@@ -174,9 +209,7 @@ export default function PricingCatalogPage() {
 
   const page = useMemo(() => {
     const stored = Array.isArray(content.customPages) ? content.customPages : [];
-    return stored.find(
-      (item: any) => item.slug === 'pricing' || item.id === 'plans-pricing' || item.template === 'plans-pricing'
-    ) || pricingPageFallback;
+    return stored.find((item: any) => item.slug === 'pricing' || item.id === 'plans-pricing' || item.template === 'plans-pricing') || pricingPageFallback;
   }, [content.customPages]);
 
   useEffect(() => {
@@ -194,10 +227,7 @@ export default function PricingCatalogPage() {
     if (!page) return;
     const businessName = content.siteSettings?.businessName || 'ProFox Web Designer';
     document.title = page.seo?.metaTitle || `${page.title || 'Pricing'} | ${businessName}`;
-    ensureMeta(
-      'description',
-      page.seo?.metaDescription || page.heroSubtitle || 'Website design and development pricing from ProFox Web Designer.'
-    );
+    ensureMeta('description', page.seo?.metaDescription || page.heroSubtitle || 'Website design and development pricing from ProFox Web Designer.');
     let canonical = document.querySelector('link[rel="canonical"]');
     if (!canonical) {
       canonical = document.createElement('link');
@@ -213,7 +243,7 @@ export default function PricingCatalogPage() {
 
   const publicPackages = publicPackageOffers(catalog);
   if (catalogError || publicPackages.length === 0) {
-    return <div className="min-h-[70vh] bg-white px-6 py-40 text-slate-950"><div className="mx-auto max-w-2xl rounded-3xl border border-slate-200 bg-slate-50 p-8 text-center sm:p-12"><div className="text-xs font-black uppercase tracking-[0.16em] text-[#000080]">Pricing update in progress</div><h1 className="mt-4 text-3xl font-semibold tracking-[-0.04em]">We are refreshing the latest package information.</h1><p className="mt-4 text-base leading-7 text-slate-600">To avoid showing an outdated price, inclusion or payment schedule, the pricing cards are temporarily hidden. You can still contact ProFox for the current approved scope and investment.</p><Link to="/contact-us" className="mt-7 inline-flex items-center gap-2 rounded-xl bg-[#000080] px-5 py-3 text-sm font-bold text-white">Contact ProFox <ArrowRight className="h-4 w-4" /></Link></div></div>;
+    return <div className="min-h-[70vh] bg-white px-6 py-40 text-slate-950"><div className="mx-auto max-w-2xl rounded-3xl border border-slate-200 bg-slate-50 p-8 text-center sm:p-12"><div className="text-xs font-black uppercase tracking-[0.16em] text-[#000080]">Pricing update in progress</div><h1 className="mt-4 text-3xl font-semibold tracking-[-0.04em]">We are refreshing the latest package information.</h1><p className="mt-4 text-base leading-7 text-slate-600">To avoid showing outdated price, scope, delivery or payment information, pricing cards are temporarily hidden. You can still contact ProFox for the current approved scope and investment.</p><Link to="/contact-us" className="mt-7 inline-flex items-center gap-2 rounded-xl bg-[#000080] px-5 py-3 text-sm font-bold text-white">Contact ProFox <ArrowRight className="h-4 w-4" /></Link></div></div>;
   }
 
   const commercialData = buildCommercialData(page, catalog);
