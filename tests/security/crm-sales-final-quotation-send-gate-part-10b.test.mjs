@@ -6,6 +6,7 @@ import { resolve } from 'node:path';
 const read = path => readFileSync(resolve(process.cwd(), path), 'utf8');
 const migration = read('supabase/migrations/20260916121000_crm_sales_final_quotation_send_gate_part10b_foundation.sql');
 const hardening = read('supabase/migrations/20260916123500_crm_sales_final_send_snapshot_forge_hardening.sql');
+const privilegeHardening = read('supabase/migrations/20260916124500_crm_sales_final_send_assertion_privilege_hardening.sql');
 const service = read('src/lib/quotationSalesReconciliationService.ts');
 const panel = read('src/components/admin/QuotationSalesReconciliationPanel.tsx');
 const wrapper = read('src/components/admin/QuotationWorkspace.tsx');
@@ -80,6 +81,9 @@ const checks = [
   ['hardening retains server capture after incoming check', hardening, 'new.sales_scope_snapshot:=v_snapshot'],
   ['hardening retains Admin invariant ordering', hardening, 'if public.is_admin() then return new; end if'],
   ['hardening retains atomic invariant ordering', hardening, "if v_atomic='1' then return new; end if"],
+  ['shared assertion is internal server primitive', privilegeHardening, 'internal server primitive'],
+  ['authenticated cannot execute shared assertion directly', privilegeHardening, 'from public, anon, authenticated'],
+  ['shared assertion service-role execution retained', privilegeHardening, 'grant execute on function public.crm_assert_quotation_send_ready(uuid) to service_role'],
   ['service gate flag is dynamic boolean', service, 'finalQuotationSendGateActive: boolean'],
   ['service exposes snapshot metadata', service, 'QuotationSalesScopeSnapshotMetadata'],
   ['service snapshot persisted state is dynamic', service, 'persisted: boolean'],
@@ -156,7 +160,7 @@ test('boundary · commercial_snapshot is not overloaded', () => {
 });
 
 test('boundary · no fake Scope, Promise or coverage business rows are inserted', () => {
-  const sql = `${migration}\n${hardening}`;
+  const sql = `${migration}\n${hardening}\n${privilegeHardening}`;
   assert.equal(/insert\s+into\s+public\.crm_sales_scope_conditions/i.test(sql), false);
   assert.equal(/insert\s+into\s+public\.crm_sales_promises/i.test(sql), false);
   assert.equal(/insert\s+into\s+public\.quotation_sales_coverage/i.test(sql), false);
@@ -177,5 +181,5 @@ test('rollout · foundation policy update keeps production gate false', () => {
 });
 
 test('coverage · Part 10B suite has broad contract coverage', () => {
-  assert.ok(checks.length >= 95, `Expected at least 95 Part 10B contract checks; found ${checks.length}.`);
+  assert.ok(checks.length >= 98, `Expected at least 98 Part 10B contract checks; found ${checks.length}.`);
 });
