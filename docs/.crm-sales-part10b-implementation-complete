@@ -26,13 +26,17 @@ Part 10B repository implementation completed:
 Part 10B.1 release actions completed:
 - PR #110 re-audited against unchanged main
 - PR #110 safely merged with expected head guard
-- final PR head: adc7bb92ba1f6ff8138e5d39b0028eab18130aaa
+- final PR #110 head: adc7bb92ba1f6ff8138e5d39b0028eab18130aaa
 - Part 10B merge SHA: 4037df16b328259863b3b9666c5cffaf5c4aaa01
+- release-record PR #111 merged
+- migration-ledger safety PR #112 merged with expected-head guard
+- PR #112 head: 108048bdde9042b3e0c4a8bbeb6325dbb4a7f212
+- PR #112 merge/current-main SHA before final documentation PR: fb2257e031555a601a5640f007c06f540621f887
 - production database foundation reverified after merge
 - production gate confirmed still false
 - production business-row counts confirmed unchanged
-- GitHub CI retried and verified as zero-step runner-allocation failure
-- Cloudflare merged-main build result recorded truthfully
+- GitHub CI repeatedly verified as zero-step runner-allocation failure
+- latest Cloudflare merged-main build result recorded truthfully
 - activation withheld because compatible production deploy/authenticated QA are not verified
 - rollback procedure documented
 - post-release migration-integrity audit found the split between the custom profox_migrations ledger and Supabase native migration history
@@ -40,6 +44,8 @@ Part 10B.1 release actions completed:
 - reconciliation records the actual repository checksum transactionally only after exact native version + logical-name verification
 - applied migration history now rejects same-version migration renames as well as checksum changes
 - migration reconciliation regression coverage is wired into migrations:check and the full test chain
+- focused migration reconciliation suite executed independently: 8/8 passed
+- merged migration runner Node syntax check passed
 - no migration SQL file or production business row was changed by the ledger-safety patch
 
 Release record:
@@ -57,10 +63,10 @@ finalQuotationSendGateActive=false
 GitHub Actions truth:
 GITHUB ACTIONS DID NOT EXECUTE REPOSITORY CODE.
 
-Cloudflare merged-main build:
+Latest Cloudflare merged-main build before final documentation PR:
 - service: profox-web-production
-- build id: 40376c23-07fd-4c40-9a09-d6674568c75d
-- merged Part 10B SHA: 4037df16b328259863b3b9666c5cffaf5c4aaa01
+- build id: 923c6a94-8cae-4949-8439-9f63505fa378
+- main SHA: fb2257e031555a601a5640f007c06f540621f887
 - result: FAILED / compatible production deployment not verified
 
 Authenticated canonical production Seller/Admin QA: NOT VERIFIED
