@@ -2,24 +2,31 @@
 
 ## Status
 
-Part 10B-compatible database and frontend foundation is implemented. Production activation is intentionally **blocked** because an authenticated production browser session was not available to independently verify that Seller/Admin users can reach and resolve Part 9 Scope Conditions, Part 9 Promise Register and Part 10A/10B Sales Reconciliation blockers.
+**IMPLEMENTATION COMPLETE / PRODUCTION ACTIVATION STAGED.**
+
+The Part 10B database, security, immutable snapshot, universal Sent-transition protection, CPQ integration, Seller UI, guidance, tests and repository documentation are implemented on PR #110.
+
+Production activation is intentionally **not** marked complete because the source specification requires authenticated production browser verification of the blocker-resolution UI before `finalQuotationSendGateActive` may be changed to `true`. That authenticated browser verification is not available from this execution environment.
 
 **PART 10B ACTIVATION BLOCKED — PRODUCTION RESOLUTION UI NOT VERIFIED.**
 
-The canonical production policy remains `crm_quotation_sales_reconciliation_policy_v1`, policy version `2`, with `finalQuotationSendGateActive=false`.
+The canonical production policy remains `crm_quotation_sales_reconciliation_policy_v1`, policy version `2`, snapshot schema version `2`, with `finalQuotationSendGateActive=false`.
 
 ## Verified base and preservation
 
 - Repository: `mehtaba-ux/profox-webdesigner`
 - Audited base/main SHA: `16ef1d5047df2300035b76e21b9719029345be3d`
+- Feature branch: `codex/part-10b-final-send-gate`
+- Pull request: `#110`
 - Part 10A hardening ancestor: `c14cbfbbe9b58008f119c5d0ae67d592f0041c3b`
 - Newer Sales Catalog / quotation-item snapshot work merged after Part 10A was preserved.
 - `quotation_items.catalog_snapshot` and `quotation_items.catalog_version_snapshot` remain the canonical item-level Catalog snapshot fields.
 - Part 10B does not copy Seller-private `seller_guidance` or internal catalog playbook material into the quotation Sales-scope snapshot.
+- An accidental branch-only removal of `@dnd-kit/utilities` was detected during the duplication/regression audit and restored before merge consideration.
 
 ## Production precondition result
 
-The repository, database schema, canonical quotation editor, approval path, reconciliation panel and Send UI were auditable. Authenticated production browser verification was not available in this execution environment. Per the rollout invariant, production gate activation was not performed.
+The repository, live database schema, canonical quotation editor, approval path, reconciliation panel and Send UI were audited. Authenticated production browser verification was not available in this execution environment. Per the rollout invariant, production gate activation was not performed.
 
 This avoids a backend dead-end where the database could block Send before a Seller can reach the resolution UI.
 
@@ -30,10 +37,10 @@ The live database and current frontend confirm these legitimate paths into `Sent
 1. `send_quotation_professional(...)` — canonical customer-send RPC. It keeps authorization, Approved status requirement, recipient validation, existing CPQ readiness, send metadata and established customer communication behavior.
 2. `update_quotation_atomic(...)` — contains an Approved → Sent path and uses the existing `profox.quotation_atomic_rpc` context.
 3. Permitted direct `UPDATE` to `quotations.status='Sent'` — protected by `protect_quotation_transition()`.
-4. Admin updates — historically returned early from `protect_quotation_transition()`.
-5. Direct INSERT already marked Sent — remains rejected for ordinary runtime by `reject_direct_sent_quotation_insert()`; Part 10B does not weaken or replace that protection.
+4. Admin updates — historically returned early from `protect_quotation_transition()`; Part 10B moves the Sent invariant before that bypass.
+5. Direct INSERT already marked Sent — remains rejected by `trg_reject_direct_sent_quotation_insert` / `reject_direct_sent_quotation_insert()`.
 
-`resend_quotation_professional(...)` is not a new transition to Sent and is intentionally not used to rebuild or overwrite a snapshot.
+`resend_quotation_professional(...)` is not a new transition to Sent. It requires an already-Sent, non-superseded quotation and intentionally does not rebuild or overwrite the immutable Sales snapshot.
 
 ## Shared universal invariant
 
@@ -50,17 +57,20 @@ It consumes existing authorities rather than reimplementing them:
 
 There is no `force`, `adminBypass`, `skipSalesGate`, `ignoreReconciliation`, score override or manager exception shortcut.
 
+The assertion is now an internal server primitive: direct execution is revoked from `public`, `anon` and `authenticated`; `service_role` retains execution. Seller/Admin browser clients receive readiness and exact blockers through the existing CPQ/reconciliation contract instead of invoking the invariant directly.
+
 ## Admin / atomic bypass closure
 
 `protect_quotation_transition()` now evaluates an `OLD.status <> 'Sent' AND NEW.status='Sent'` transition **before** the established Admin and `profox.quotation_atomic_rpc` early returns.
 
 When the policy is active, the trigger:
 
-1. rejects material quotation content changes in the same statement as Send;
-2. invokes the shared assertion;
-3. builds the send-time Sales snapshot server-side;
-4. writes the snapshot, server timestamp and schema version onto the exact quotation row;
-5. only then allows the Sent transition to continue.
+1. rejects any caller-authored snapshot mutation;
+2. rejects material quotation content changes in the same statement as Send;
+3. invokes the shared assertion;
+4. builds the send-time Sales snapshot server-side;
+5. writes the snapshot, server timestamp and schema version onto the exact quotation row;
+6. only then allows the Sent transition to continue.
 
 Existing Admin/atomic maintenance behavior outside this Sent invariant remains preserved.
 
@@ -108,11 +118,13 @@ Snapshot authorization/capture is executed from the existing BEFORE UPDATE trans
 
 No payment, Won, onboarding or Sales-to-Delivery handoff behavior was added.
 
-## Snapshot immutability
+## Snapshot immutability and forge protection
 
-Normal runtime attempts to set, clear or rewrite `sales_scope_snapshot`, `sales_scope_snapshot_at` or `sales_scope_snapshot_schema_version` are rejected. The correction path remains `create_quotation_revision(...)`.
+Normal runtime attempts to set, clear or rewrite `sales_scope_snapshot`, `sales_scope_snapshot_at` or `sales_scope_snapshot_schema_version` are rejected before any Sent-transition handling, including Admin and atomic-RPC callers.
 
-A historical sent quotation is never fake-backfilled from current CRM state. A legacy quotation without Part 10B capture remains `Legacy / Sales-scope snapshot not captured`.
+The trigger itself may populate those fields only after an active-gate Send has passed the incoming-row tamper check and the shared assertion. The correction path remains `create_quotation_revision(...)`.
+
+A historical Sent quotation is never fake-backfilled from current CRM state. A legacy quotation without Part 10B capture remains `Legacy / Sales-scope snapshot not captured`.
 
 Resending an existing Sent quotation does not rebuild historical Sales evidence.
 
@@ -177,15 +189,31 @@ The existing `SellerGuidanceHelp` framework is reused. Part 10B adds guidance fo
 
 No second help framework was created.
 
+## Production migrations applied
+
+Production Supabase has the following additive Part 10B migrations recorded:
+
+- `20260916063249 crm_sales_final_quotation_send_gate_part10b_foundation`
+- `20260916070047 crm_sales_final_send_snapshot_forge_hardening`
+- `20260916070455 crm_sales_final_send_assertion_privilege_hardening`
+
+Repository migration files are:
+
+- `supabase/migrations/20260916121000_crm_sales_final_quotation_send_gate_part10b_foundation.sql`
+- `supabase/migrations/20260916123500_crm_sales_final_send_snapshot_forge_hardening.sql`
+- `supabase/migrations/20260916124500_crm_sales_final_send_assertion_privilege_hardening.sql`
+
 ## Security
 
-- New/modified trusted functions use a fixed empty `search_path`.
+- New/modified trusted Part 10B functions use a fixed empty `search_path`.
 - Anonymous/public execution is denied.
 - Snapshot capture authority is not exposed to authenticated browser clients.
+- The final send assertion is also no longer directly executable by authenticated browser clients.
 - Browser callers cannot submit snapshot JSON, timestamp, schema version, review actor or send-authorized result.
 - Existing coverage RLS/table denial remains intact.
 - No service-role secret was introduced in frontend code.
-- The assertion revalidates quotation ownership/Admin authority and existing CRM lineage checks continue through canonical reconciliation.
+- The internal assertion still validates the JWT actor (`auth.uid()`), quotation ownership/Admin authority and current quotation state when executed within the protected Send workflow.
+- Existing project-wide Supabase advisor findings outside Part 10B remain separate pre-existing backlog; Part 10B did not introduce a public snapshot-capture primitive.
 
 ## Production data safety verification
 
@@ -197,40 +225,55 @@ Read-only baseline immediately before foundation deployment:
 - quotations: 6
 - quotation_items: 18
 
-Read-only verification after foundation deployment:
+Read-only verification after all Part 10B migrations:
 
 - Scope Conditions: 0
 - Promises: 0
 - quotation Sales coverage rows: 0
 - captured Part 10B Sales snapshots: 0
+- pre-existing legacy Sent quotations without Part 10B snapshot: 2
+- authenticated role can execute send assertion: false
+- authenticated role can execute snapshot capture: false
+- service role can execute send assertion: true
+- service role can execute snapshot capture: true
 
 No real customer quotation was sent, approved, edited, revised or populated with fake reconciliation data for testing.
 
-## Tests
+## Tests and build wiring
 
-A dedicated `crm-sales-final-quotation-send-gate-part-10b.test.mjs` contract suite is wired into both `npm test` and `npm run build`. It verifies the foundation across storage, policy reuse, evaluator evolution, CPQ integration, one shared assertion, universal transition ordering, snapshot capture/immutability, no bypass parameters, Catalog boundary, UI/guidance and no fake business data.
+A dedicated `crm-sales-final-quotation-send-gate-part-10b.test.mjs` contract/security suite is wired into both `npm test` and `npm run build`. It covers storage, policy reuse, evaluator evolution, CPQ integration, one shared assertion, universal transition ordering, snapshot capture/immutability, snapshot-forge rejection, helper privileges, no bypass parameters, Catalog boundary, UI/guidance and no fake business data.
 
 The Part 10A suites remain in the build. Only their UI boundary expectations were evolved from the intentionally inactive Part 10A label to the Part 10B dynamic ACTIVE/STAGED presentation; Part 10A database/security assertions remain intact.
+
+The canonical CI workflow is valid and defines checkout, Node 22, `npm ci`, TypeScript, migration integrity, full tests, Playwright launch-readiness, dependency audit and production build. During this rollout, GitHub Actions job attempts failed before the runner executed any step (`steps=null`/empty logs), including an explicit retry. This is recorded as CI runner infrastructure failure, not a green test result and not an application-test failure.
+
+The connected Cloudflare Workers check also returned failure without application build output available through the connected tools. Therefore production frontend deployment and authenticated browser QA are not claimed as verified.
 
 ## Deployment ordering
 
 Completed safely:
 
-1. Production-compatible database foundation deployed with gate false.
-2. Feature-branch frontend/server contract changes prepared.
+1. Audited current main and all known legitimate `Sent` paths.
+2. Deployed the production-compatible database foundation with gate false.
+3. Applied snapshot-forge hardening.
+4. Applied server-assertion privilege hardening.
+5. Implemented the compatible frontend/server contract and Seller Guidance on the feature branch.
+6. Added Part 10B contract/security tests and build wiring.
+7. Opened PR #110 and performed changed-file/duplication review.
+8. Re-ran production read-only migration, policy, trigger, ACL and data-safety verification.
 
-Still required before activation:
+Still required before production activation:
 
-3. Merge/deploy the compatible frontend.
-4. Verify authenticated canonical production UI and runtime health.
-5. Only then apply a separate activation update setting `finalQuotationSendGateActive=true`.
-6. Read-only verify policy/functions/permissions.
-7. Exercise blocked/pass behavior only with an approved isolated non-customer fixture.
+9. Obtain a successful application build/deployment of the compatible frontend.
+10. Verify authenticated canonical production UI and runtime health.
+11. Only then apply a separate activation update setting `finalQuotationSendGateActive=true`.
+12. Read-only verify active policy/functions/permissions.
+13. Exercise blocked/pass behavior only with an approved isolated non-customer fixture or non-production branch.
 
-Do not activate the backend gate before step 4.
+Do not activate the backend gate before steps 9–10.
 
 ## Remaining limitation
 
-Authenticated production browser QA is unavailable from this tool environment. Therefore production activation cannot truthfully be marked complete, and no activation migration is included in this branch.
+The implementation work is complete, but the source document's production activation precondition is not satisfied because the CI/deployment runners did not execute successfully and authenticated production browser QA is unavailable from this tool environment. Therefore the system remains deliberately staged rather than creating a backend dead-end.
 
 The next SOP phases (negotiation/follow-up expansion, payment/Won, onboarding, Sales-to-Delivery handoff, Manager Exception Center, performance metrics, Academy/certification and AI workflow automation) are intentionally not started.
