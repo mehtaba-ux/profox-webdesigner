@@ -311,3 +311,31 @@ The Part 10B.1 source instruction explicitly defines this state as **ACTIVATION 
 Do not begin Part 11, payment/Won changes, onboarding, handoff, manager exception workspace, performance metrics, Academy or AI automation as part of this release.
 
 **PART 10B IMPLEMENTATION REMAINS COMPLETE, BUT PRODUCTION ACTIVATION IS BLOCKED. PART 11 MUST NOT BEGIN UNTIL THE RELEASE PRECONDITION IS RESOLVED.**
+
+---
+
+## Part 10B.2 production release recovery — 2026-09-16
+
+Part 10B.2 started from exact main `97734d94d96169ad5861090e11b4ec635d54c102`. No intervening application commit was present before recovery work.
+
+Recovery rechecked current code, workflows, package scripts, the PR #112 migration runner, live production Part 10B schema/functions/ACLs and the canonical quotation UI. No executable defect was proven that justified changing Sales business logic or CI YAML.
+
+Current-main ProFox CRM CI #794 (`35093197927`) again failed before repository execution. Original `verify` job `104784173511` and an explicit retry `104799758952` both reproduced the zero-runner/zero-step condition. The current `.github/workflows/ci.yml` still correctly uses `ubuntu-latest` and contains the intended verification chain. GitHub public status did not support an active GitHub-wide Actions outage during this recovery. The exact account/billing/policy restriction is not exposed to this repository connector; owner remediation is documented in `docs/crm-sales-final-quotation-send-gate-part-10b2-recovery.md`.
+
+Full current-main `npm ci`, lint, `migrations:check`, `npm test`, Part 10A/10B suites, TEST 1–159 runtime execution and `npm run build` therefore remain unexecuted and are not falsely claimed as passed or failed.
+
+Trusted `migrations:apply` also did not run. The PR #112 fail-closed native/custom reconciliation remains intact, but the custom ledger remains at `20260908100000` with zero post-Part-3 reconciled aliases. No manual backfill, guessed checksum or SQL replay was performed.
+
+For current-main `97734d94d96169ad5861090e11b4ec635d54c102`, Cloudflare Worker build/check `e12f17c6-b931-45e6-ba18-09442ee1b1d4` failed. GitHub Cloudflare production deploy run `35097919953` / job `104799792355` was skipped because CI did not succeed. Exact compatible deployed SHA/version and `/api/health` for that version remain unverified.
+
+Authenticated Seller/Admin production QA remains unavailable and is not fabricated. Repository wiring remains present for Requirements, Discovery, Meeting Prep/Management, Package Fit, Sales Validation, Proposal Readiness, Scope Conditions, Promise Register, quotation editor/approval, Sales Reconciliation, Open/Edit quotation targeting and Seller Guidance.
+
+Read-only production verification reconfirmed gate `false`, policy `2`, snapshot schema `2`, all three snapshot columns, exactly one assertion/capture/reconciliation/snapshot-builder function, anon/authenticated assertion/capture denied, service role allowed, and live `protect_quotation_transition()` active-gate handling before Admin/atomic early returns. Business counts remained Scope `0`, Promises `0`, Coverage `0`, captured snapshots `0`, legacy Sent without snapshot `2`.
+
+No fake production data was created and no real client quotation was sent. No activation PR/migration was created because the Part 10B.2 prerequisites are blocked.
+
+The complete Part 10B.2 59-item recovery/activation report is preserved in:
+
+`docs/crm-sales-final-quotation-send-gate-part-10b2-recovery.md`
+
+**PART 10B IMPLEMENTATION IS COMPLETE, BUT PRODUCTION ACTIVATION REMAINS BLOCKED. PART 11 MUST NOT BEGIN.**
