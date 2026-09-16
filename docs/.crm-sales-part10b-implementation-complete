@@ -1,77 +1,76 @@
 PART 10B IMPLEMENTATION: COMPLETE
-PART 10B.1 RELEASE / ACTIVATION: BLOCKED
+PART 10B.2 PRODUCTION RELEASE / ACTIVATION: BLOCKED
 
 Scope: Immutable Send-Time Sales Snapshot + Universal Quotation Send Gate
-Release closure date: 2026-09-16
+Recovery audit date: 2026-09-16
 
-Part 10B repository implementation completed:
-- canonical send-path audit
-- universal server-side Sent invariant foundation
-- immutable quotation Sales-scope snapshot storage/capture
+Authoritative implementation history:
+- Part 10B PR #110 merge: 4037df16b328259863b3b9666c5cffaf5c4aaa01
+- migration-ledger safety PR #112 merge: fb2257e031555a601a5640f007c06f540621f887
+- Part 10B.1 release-documentation PR #113 merge / Part 10B.2 starting main: 97734d94d96169ad5861090e11b4ec635d54c102
+
+Part 10B implementation remains complete:
+- one shared final Sales Send assertion
+- universal server-side Sent-transition protection
+- immutable Send-time Sales scope/commitment snapshot
 - Admin and atomic-RPC bypass closure
-- snapshot forge protection
+- snapshot forge/mutation protection
 - internal-only assertion/capture privileges
 - CPQ readiness integration
-- existing reconciliation UI evolution
-- Seller Guidance additions
-- original Part 10B contract/security suite
-- explicit source-spec TEST 1–159 acceptance matrix
-- Part 1–10A regression-suite preservation
-- Part 10B test/build wiring
-- production database migrations and read-only verification
-- production trigger-order/ACL/data-safety verification
-- Supabase security/performance advisor review scoped to Part 10B
-- no fake production client data / no historical backfill
+- existing canonical quotation editor/approval reuse
+- Part 10A reconciliation reuse
+- Scope Conditions / Promise Register / Package Fit / Sales Validation / Proposal Readiness reuse
+- Seller Guidance integration
+- explicit TEST 1–159 source matrix
+- no duplicate quotation system, business table, workflow or Supabase client
 
-Part 10B.1 release actions completed:
-- PR #110 re-audited against unchanged main
-- PR #110 safely merged with expected head guard
-- final PR #110 head: adc7bb92ba1f6ff8138e5d39b0028eab18130aaa
-- Part 10B merge SHA: 4037df16b328259863b3b9666c5cffaf5c4aaa01
-- release-record PR #111 merged
-- migration-ledger safety PR #112 merged with expected-head guard
-- PR #112 head: 108048bdde9042b3e0c4a8bbeb6325dbb4a7f212
-- PR #112 merge/current-main SHA before final documentation PR: fb2257e031555a601a5640f007c06f540621f887
-- production database foundation reverified after merge
-- production gate confirmed still false
-- production business-row counts confirmed unchanged
-- GitHub CI repeatedly verified as zero-step runner-allocation failure
-- latest Cloudflare merged-main build result recorded truthfully
-- activation withheld because compatible production deploy/authenticated QA are not verified
-- rollback procedure documented
-- post-release migration-integrity audit found the split between the custom profox_migrations ledger and Supabase native migration history
-- production migration runner now has an explicit audited 30-migration native-to-repository reconciliation map that prevents already-applied SQL from being replayed
-- reconciliation records the actual repository checksum transactionally only after exact native version + logical-name verification
-- applied migration history now rejects same-version migration renames as well as checksum changes
-- migration reconciliation regression coverage is wired into migrations:check and the full test chain
-- focused migration reconciliation suite executed independently: 8/8 passed
-- merged migration runner Node syntax check passed
-- no migration SQL file or production business row was changed by the ledger-safety patch
+Part 10B.2 recovery checks completed:
+- current main fetched and matched 97734d94d96169ad5861090e11b4ec635d54c102 before recovery work
+- no intervening legitimate commit required preservation/rebase
+- required governing docs, current code, package scripts, CI/deploy workflows and migration runner re-audited
+- ProFox CRM CI #794 run 35093197927 rechecked
+- original verify job 104784173511 failed before repository-step execution
+- explicit retry verify job 104799758952 reproduced the same zero-runner / zero-step failure
+- GITHUB ACTIONS DID NOT EXECUTE REPOSITORY CODE
+- current ci.yml remains on ubuntu-latest with intended verification steps; no CI weakening/change made
+- current GitHub public status did not support an ongoing GitHub-wide Actions outage
+- exact account-side runner/billing/policy restriction is outside the repository connector's administrative visibility; owner remediation is documented in the canonical release record
+- full current-main npm verification was NOT executed and is not claimed as passed/failed
+- TEST 1–159 runtime execution remains unavailable; source matrix remains present/wired
+- PR #112 fail-closed native/custom migration reconciliation remains present
+- trusted migrations:apply was NOT executed
+- custom ledger remains max version 20260908100000 with 0 post-Part-3 reconciled aliases
+- no manual custom-ledger backfill, guessed checksum or SQL replay performed
+- current-main Cloudflare Worker build/check e12f17c6-b931-45e6-ba18-09442ee1b1d4 failed
+- GitHub Cloudflare production deploy run 35097919953 / job 104799792355 was skipped because CI did not succeed
+- exact compatible current-main deployed SHA/version NOT VERIFIED
+- exact /api/health for current-main deployment NOT VERIFIED
+- authenticated Seller/Admin canonical-production QA NOT VERIFIED
+- canonical quotation workspace still mounts existing Sales Reconciliation additively; no duplicate editor/send path introduced
+- Part 10B UI still renders STAGED / NOT ACTIVE while gate=false
+- existing Send UX still consumes CPQ readiness; server remains authority
+- live protect_quotation_transition definition rechecked: active-gate capture executes before Admin/atomic early returns
+- production gate reverified false
+- policy version reverified 2
+- snapshot schema version reverified 2
+- snapshot columns 3/3 present
+- canonical assertion/capture/reconciliation/snapshot-builder functions each present exactly once
+- anon/authenticated assertion/capture execution remains denied; service_role remains allowed
+- production business counts unchanged: Scope 0, Promises 0, Coverage 0, Captured Snapshots 0, Legacy Sent without Snapshot 2
+- no fake production CRM data created
+- no real client quotation sent for QA
+- activation PR/migration NOT CREATED because prerequisites are blocked
+- rollback plan remains controlled policy true→false through repository/migration history only
 
-Release record:
+Production activation state:
+- finalQuotationSendGateActive=false
+- policyVersion=2
+- snapshotSchemaVersion=2
+
+PART 11: BLOCKED
+
+Canonical release record:
 docs/crm-sales-final-quotation-send-gate-part-10b-release.md
 
-Migration-ledger reconciliation record:
-docs/production-migration-ledger-reconciliation.md
-
-Implementation closure audit:
-docs/crm-sales-final-quotation-send-gate-part-10b-final-audit.md
-
-Production activation: STAGED / NOT ACTIVE
-finalQuotationSendGateActive=false
-
-GitHub Actions truth:
-GITHUB ACTIONS DID NOT EXECUTE REPOSITORY CODE.
-
-Latest Cloudflare merged-main build before final documentation PR:
-- service: profox-web-production
-- build id: 923c6a94-8cae-4949-8439-9f63505fa378
-- main SHA: fb2257e031555a601a5640f007c06f540621f887
-- result: FAILED / compatible production deployment not verified
-
-Authenticated canonical production Seller/Admin QA: NOT VERIFIED
-Activation migration: NOT CREATED / NOT APPLIED
-Part 11: BLOCKED
-
-Required release status:
-PART 10B IMPLEMENTATION REMAINS COMPLETE, BUT PRODUCTION ACTIVATION IS BLOCKED. PART 11 MUST NOT BEGIN UNTIL THE RELEASE PRECONDITION IS RESOLVED.
+Required status:
+PART 10B IMPLEMENTATION IS COMPLETE, BUT PRODUCTION ACTIVATION REMAINS BLOCKED. PART 11 MUST NOT BEGIN.
