@@ -9,6 +9,10 @@ The existing generic production verifier treated the database migration state as
 
 The release recovery also relied on manual read-only checks for the Part 10B policy, snapshot columns, canonical functions, internal ACLs and universal Sent-transition ordering. Those checks are now encoded in the existing production verification chain so future trusted deployments fail closed if they drift.
 
+A later read-only production evidence audit found an additional migration-safety issue: the 30-entry historical alias map did not have exact native-ledger evidence for all 30 entries in the current production database. Only the three Part 10B aliases had the exact expected `nativeVersion + logicalName` pair; 27 expected native-version rows were absent. The runner previously treated an alias with no native row as genuinely pending, which could have allowed historical SQL replay when hosted runners returned.
+
+That behavior is now hardened to fail closed.
+
 ## Implementation
 
 - Added `scripts/migration-manifest.mjs` as the single reusable source for migration-file discovery, ordering, normalized SHA-256 calculation and applied-ledger integrity auditing.
@@ -26,10 +30,12 @@ The release recovery also relied on manual read-only checks for the Part 10B pol
   - current final Send-gate state is reported explicitly;
   - production Scope Condition, Promise, coverage, captured-snapshot and legacy-Sent inventory is reported read-only.
 - Added `tests/security/production-migration-ledger-audit.test.mjs` and wired it into the existing `test:migration-reconciliation` command.
+- Hardened `scripts/native-migration-reconciliation.mjs` so an alias-listed historical migration with missing exact native evidence is **not** placed on the normal pending/apply path. It now fails closed and refuses to execute the historical alias SQL.
+- Preserved the normal transactional apply path only for genuinely new migrations that are not listed in the historical alias map.
 
 ## Focused validation
 
-Independent exact-source validation completed before merge:
+Independent exact-source validation completed before the first readiness-hardening merge:
 
 - existing native migration reconciliation tests: **8/8 passed**;
 - new migration manifest/ledger tests: **10/10 passed**;
@@ -38,7 +44,14 @@ Independent exact-source validation completed before merge:
 - `node --check scripts/migrate-production.mjs`: passed;
 - `node --check scripts/verify-part10b-release-readiness.mjs`: passed.
 
-The new Part 10B SQL checks were also executed read-only against production. They confirmed:
+The later missing-native-evidence fail-closed patch was also validated independently from its exact branch source:
+
+- `node --check scripts/native-migration-reconciliation.mjs`: passed;
+- focused native reconciliation suite: **8/8 passed**;
+- regression specifically verifies that a historical alias with no exact native evidence throws instead of becoming pending;
+- unlisted future migrations still remain eligible for the normal apply path.
+
+The Part 10B SQL checks were executed read-only against production. They confirmed:
 
 - `finalQuotationSendGateActive=false`;
 - policy version `2`;
@@ -50,19 +63,27 @@ The new Part 10B SQL checks were also executed read-only against production. The
 - service-role assertion/capture `true/true`;
 - active-gate snapshot capture occurs before both Admin and atomic-RPC early returns.
 
+The migration-evidence audit also confirmed:
+
+- historical alias entries: `30`;
+- exact expected native version + logical-name matches: `3`;
+- expected native-version rows absent: `27`;
+- native version/name mismatches at the expected versions: `0`.
+
 No production row, migration ledger row, SQL migration, quotation, Scope Condition, Promise or snapshot was changed by these validations.
 
 ## Release boundary
 
-This hardening closes a repository-side verification gap; it does **not** satisfy the external Part 10B.2 activation prerequisites by itself.
+This hardening closes repository-side safety gaps; it does **not** satisfy the external Part 10B.2 activation prerequisites by itself.
 
 The production Send gate must remain OFF until all of the following are genuinely proven through a trusted execution/deployment environment:
 
-1. full repository CI/test/build execution succeeds;
-2. trusted `migrations:apply` runs and reconciles the custom ledger using real repository checksums;
-3. compatible current frontend is successfully deployed to canonical production;
-4. exact production health is verified;
-5. authenticated Seller/Admin production resolution-path QA succeeds.
+1. GitHub-hosted runner execution is restored and the full repository CI/test/build chain succeeds;
+2. the 27 historical aliases without exact native-ledger evidence receive authoritative, repository-reviewed reconciliation evidence without SQL replay;
+3. trusted `migrations:apply` runs and leaves the custom ledger in exact current-repository parity;
+4. compatible current frontend is successfully deployed to canonical production;
+5. exact production health for that deployed SHA is verified;
+6. authenticated Seller/Admin production resolution-path QA succeeds.
 
 No activation migration is created by this hardening.
 
