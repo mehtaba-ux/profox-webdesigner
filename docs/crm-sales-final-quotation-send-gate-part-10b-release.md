@@ -1,47 +1,74 @@
-# CRM Sales SOP Part 10B.1 — Merge, Deploy, Production QA & Final Send-Gate Activation
+# CRM Sales SOP Part 10B / 10B.1 / 10B.2 — Production Release Record
 
-**Release date:** 2026-09-16  
+**Release/recovery date:** 2026-09-16  
 **Repository:** `mehtaba-ux/profox-webdesigner`  
-**Part 10B PR:** #110  
-**Starting main SHA:** `16ef1d5047df2300035b76e21b9719029345be3d`  
-**Final Part 10B PR head:** `adc7bb92ba1f6ff8138e5d39b0028eab18130aaa`  
+**Part 10B implementation PR:** #110  
 **Part 10B merge SHA:** `4037df16b328259863b3b9666c5cffaf5c4aaa01`  
-**Release-record PR:** #111  
 **Migration-ledger safety PR:** #112  
-**PR #112 head:** `108048bdde9042b3e0c4a8bbeb6325dbb4a7f212`  
-**Main after PR #112 / before this final documentation PR:** `fb2257e031555a601a5640f007c06f540621f887`
+**PR #112 merge SHA:** `fb2257e031555a601a5640f007c06f540621f887`  
+**Part 10B.1 final release-documentation PR:** #113  
+**PR #113 merge / Part 10B.2 starting main:** `97734d94d96169ad5861090e11b4ec635d54c102`
 
-## Release status
+## Current release status
 
 **PART 10B IMPLEMENTATION: COMPLETE.**  
-**PART 10B.1 RELEASE/ACTIVATION: BLOCKED.**
+**PART 10B.2 PRODUCTION RELEASE / ACTIVATION: BLOCKED.**
 
-PR #110 was re-audited, confirmed open/mergeable with the expected head and unchanged base, and merged into `main` with an expected-head guard. The merge did not activate the production Send gate.
+The Part 10B server, snapshot, reconciliation, CPQ, security and Seller-facing blocker/remediation implementation remains complete. Part 10B.2 was a production-release recovery attempt only; it did not redesign Sales business logic, create another workflow, weaken CI, create fake CRM records or activate the final quotation Send gate.
 
-A later release-safety audit identified a split between the repository's custom `profox_migrations` ledger and the Supabase native migration history. That gap was fixed in PR #112 and merged with an expected-head guard. No business migration SQL was replayed or rewritten by that fix.
-
-Production remains intentionally configured with:
+Production intentionally remains:
 
 - policy key `crm_quotation_sales_reconciliation_policy_v1`
 - policy version `2`
 - snapshot schema version `2`
 - `finalQuotationSendGateActive=false`
 
-This is the required safe state because the compatible merged frontend has not been successfully verified in canonical production and authenticated Seller/Admin production QA has not been completed.
+This is the required fail-safe state because trusted full-repository execution, compatible current-main production deployment, exact production health for that version, and authenticated Seller/Admin production QA are not all verified.
 
-## PR and diff audit
+## Part 10B.2 current-main audit
 
-The final Part 10B PR diff contained the intended 16 files only: the three Part 10B migrations, reconciliation service/guidance/UI integration, package test/build wiring, Part 10A expectation evolution, Part 10B contract tests, explicit TEST 1–159 matrix, and implementation documentation.
+The recovery started from the exact instructed main SHA:
 
-The release audit found no accidental dependency-version drift, Sales Catalog rollback, parallel quotation architecture, RLS weakening, quotation-approval bypass, Pipeline change, payment/Won change, onboarding change or Sales-to-Delivery handoff change.
+`97734d94d96169ad5861090e11b4ec635d54c102`
 
-PR #112 changed only migration-runner safety code, focused regression coverage, package test wiring and documentation. It did not modify any Supabase SQL migration file, dependency version, Sales business data, quotation state, final Send-gate policy value or snapshot data.
+No newer legitimate commit was present before recovery work began. Parts 1–10B and the existing canonical quotation/reconciliation architecture remained present. Main was not reset.
 
-## Trusted executable verification truth
+The required source-of-truth documents, current workflows, `package.json`, production migration runner, Part 9/10A/10B implementation records and actual quotation/CRM code were re-read. No executable evidence justified changing Part 10B Sales business logic.
 
-No trusted command-execution environment capable of checking out the complete private repository and running the full npm command set was available during this release closure.
+## CI recovery diagnosis
 
-Therefore the following complete-repository commands are **not claimed as passed or failed** by direct execution in this release session:
+Current-main ProFox CRM CI #794 was rechecked:
+
+- workflow run: `35093197927`
+- original `verify` job: `104784173511`
+- retry `verify` job: `104799758952`
+- both jobs completed before repository-step execution
+- no usable repository command logs existed
+- the retry reproduced the same zero-runner behavior
+
+The truthful CI statement remains:
+
+**GITHUB ACTIONS DID NOT EXECUTE REPOSITORY CODE.**
+
+The current `.github/workflows/ci.yml` remains correctly targeted at `ubuntu-latest` and still contains the intended verification chain. No workflow-definition defect was proven, so `ci.yml` was not changed.
+
+GitHub's public service status reported Actions operational with no September 16 incident at the time of this recovery. Therefore there is no evidence that this repeated zero-runner failure is a current GitHub-wide Actions outage.
+
+The exact account-side reason is not exposed by the installed repository connector because account billing/allowance and repository administration controls are outside its accessible scope. The remaining owner-side categories are hosted-runner usage/allowance or budget/payment state, repository Actions enablement/allowed-actions policy, an organization/enterprise override, or an account/repository restriction.
+
+### Repository-owner remediation required before retrying release
+
+1. Open the repository in GitHub → **Settings → Actions → General**. Confirm Actions are enabled and the allowed-actions policy permits the workflow's required GitHub/Marketplace actions.
+2. Open the owning account/organization **Billing & licensing / usage / budgets** area. Confirm GitHub-hosted Actions usage is available, the relevant Actions budget/spending limit is not exhausted, and any required payment method is valid.
+3. If the repository belongs to an organization/enterprise, inspect organization/enterprise Actions policy for an override that blocks GitHub-hosted runners.
+4. Open ProFox CRM CI #794 and its failed `verify` job/annotation in the GitHub UI. The connector can see that GitHub attached an annotation but cannot retrieve any account-only billing/administrative message behind it.
+5. If GitHub reports Actions as disabled/restricted at the account level and the normal settings cannot restore it, contact GitHub Support rather than changing repository CI to bypass the restriction.
+
+No new CI workflow or deployment workflow was created.
+
+## Trusted full repository verification
+
+Because GitHub still did not allocate a runner and no other complete trusted private-repository execution environment was available, the following current-main command set was **not executed** during Part 10B.2 and is not claimed as passed or failed:
 
 - `npm ci`
 - `npm run lint`
@@ -50,264 +77,174 @@ Therefore the following complete-repository commands are **not claimed as passed
 - `npm run test:crm-part10a`
 - `npm run test:crm-part10b`
 - `npm run build`
-- package-defined production verification scripts
+- package-defined production verification commands
 
-Repository wiring was re-audited. The Part 10B matrix explicitly maps TEST IDs 1 through 159 without gaps or duplicates and contains an integrity assertion for the exact sequence. Parts 1 through 10A regression suites remain present and wired.
+The previous focused PR #112 migration-reconciliation suite result (8/8) and migration-runner Node syntax check remain historical evidence for that focused patch only. They are not substituted for the required full current-main verification.
 
-For the migration-ledger safety patch, a focused pure Node reconciliation suite was executed independently from the exact branch source: **8/8 tests passed**. The merged production migration runner also passed a direct Node syntax check. These focused results are recorded only for the new reconciliation code and are not presented as a substitute for the unavailable full-repository npm verification.
+The Part 10B TEST 1–159 source matrix remains present and wired, but Part 10B.2 does **not** claim runtime passage of TEST 1–159 because the full test process never executed.
 
-## GitHub Actions truth
+## Custom migration ledger recovery state
 
-GitHub Actions did not execute repository code.
+PR #112's fail-closed native/custom migration reconciliation remains present in `scripts/migrate-production.mjs`:
 
-The Part 10B merged-main CI and the later PR #112 / merged-main CI all exhibited the same infrastructure signature: the `verify` job completed with `steps=[]`, `runner_id=0`, empty runner name and no repository step execution.
+- exact native migration version + logical-name matching
+- real SHA-256 calculation from the repository migration file
+- transactional custom-ledger recording
+- no execution of SQL for an exact already-applied alias
+- normal transactional SQL execution only for genuinely pending migrations
+- fail closed on applied-name drift or unexpected native version
 
-For PR #112 specifically:
+However, `migrations:apply` was not run during Part 10B.2 because the trusted verification/deployment environment remained blocked.
 
-- workflow run: `35090801520`
-- verify job: `104776375579`
-- result: failure before runner allocation
+Read-only production verification therefore still shows:
 
-For merged main `fb2257e031555a601a5640f007c06f540621f887`:
+- custom ledger max version: `20260908100000`
+- reconciled post-Part-3 rows: `0`
 
-- workflow run: `35090850919`
-- verify job: `104776526481`
-- result: failure before runner allocation
+No manual ledger backfill was performed. No checksum was guessed. No already-applied migration SQL was replayed during this recovery.
 
-This is recorded as:
+## Current-main deployment status
 
-**GITHUB ACTIONS DID NOT EXECUTE REPOSITORY CODE.**
+The existing approved deployment architecture remains the only deployment path. Automatic production deployment is correctly gated on successful ProFox CRM CI; the existing manual `workflow_dispatch` path was not used to bypass unresolved full-repository verification.
 
-It is not recorded as a TypeScript failure, test failure, migration-check failure or application-build failure.
-
-## Production deployment truth
-
-The repository's existing Cloudflare production architecture remains canonical. The production deployment target configured by the repository is `https://www.profoxwebdesigner.com` and the deployment workflow expects `/api/health` for health verification.
-
-For merged Part 10B SHA `4037df16b328259863b3b9666c5cffaf5c4aaa01`:
+For current-main SHA `97734d94d96169ad5861090e11b4ec635d54c102`:
 
 - Cloudflare Workers service: `profox-web-production`
-- Cloudflare build ID: `40376c23-07fd-4c40-9a09-d6674568c75d`
-- result: **failure**
-- usable application build log through the connected integration: **not available**
+- Cloudflare Workers build/check ID: `e12f17c6-b931-45e6-ba18-09442ee1b1d4`
+- Cloudflare result: **failure**
+- GitHub `Cloudflare production deploy` job/check: `104799792355`
+- GitHub deploy workflow run: `35097919953`
+- GitHub production deployment result: **skipped** because CI did not succeed
+- exact current-main deployed SHA/version: **not verified**
 
-For later main SHA `fb2257e031555a601a5640f007c06f540621f887` after the migration-ledger safety merge:
-
-- Cloudflare Workers service: `profox-web-production`
-- Cloudflare build ID: `923c6a94-8cae-4949-8439-9f63505fa378`
-- result: **failure**
-- GitHub production-deploy workflow: **skipped**, because its existing guard requires successful CI
-- exact compatible deployed SHA/version: **not verified**
-
-The public canonical site being reachable is not accepted as proof that the merged compatible SHA was deployed. The `/api/health` endpoint for the exact compatible version could not be independently verified from the available execution environment, so production health for the merged Part 10B version is not claimed.
-
-No deployment workflow, credential exposure or protection weakening was introduced to manufacture a green result.
+The canonical hostname remains `https://www.profoxwebdesigner.com`; site reachability alone is not accepted as proof that this current main was deployed. The repository-required `/api/health` result for this exact compatible current-main deployment is **not verified**.
 
 ## Authenticated production QA
 
-Authenticated Seller/Admin production browser QA is **not verified**. No authorized authenticated production browser session is available through the connected execution environment.
+No authorized Seller/Admin production browser session is available through the connected execution environment. Therefore authenticated canonical-production runtime QA was not fabricated.
 
-Therefore none of the following is fabricated as passed:
+Repository wiring/code presence was verified for Lead Drawer, Requirements, Discovery, Meeting Prep, Meeting Management, Package Fit, Sales Validation, Proposal Readiness, Scope Conditions, Promise Register, quotation editor, quotation approval, Sales Reconciliation, Open/Edit quotation targeting and Seller Guidance. This source-level verification does not substitute for the runbook's mandatory authenticated production QA.
 
-- Requirements resolution path
-- Package Fit path
-- Sales Validation path
-- Scope Conditions path
-- Promise Register path
-- Sales Reconciliation path
-- canonical quotation editor runtime
-- existing quotation approval runtime
-- Open/Edit quotation target runtime
-- final blocker resolution behavior
-- Seller Guidance runtime
-- desktop/mobile/tablet/keyboard/focus runtime behavior
+The current quotation UI still mounts Part 10B additively on the existing canonical quotation route. `QuotationSalesReconciliationPanel` renders `FINAL SEND GATE — STAGED / NOT ACTIVE` while the policy is false and provides canonical blocker-resolution actions. The existing Send modal consumes the existing CPQ `readiness.readyToSend` response and leaves the server as authority.
 
-Repository-level presence/wiring of these paths remains verified, but that is not substituted for authenticated canonical-production QA.
+## Read-only production backend verification
 
-## Post-merge production database verification
+Part 10B.2 read-only production verification confirmed:
 
-Read-only production verification after the release-safety merge reconfirmed:
-
+- `finalQuotationSendGateActive=false`
 - policy version `2`
 - snapshot schema version `2`
-- `finalQuotationSendGateActive=false`
-- all three quotation snapshot columns are present
-- exactly one `crm_assert_quotation_send_ready(uuid)` exists
-- exactly one `crm_capture_quotation_sales_scope_snapshot(uuid)` exists
-- exactly one `crm_get_quotation_sales_reconciliation(uuid)` exists
-- exactly one `crm_build_quotation_sales_scope_snapshot(uuid)` exists
-- no suspicious Part 10B `*_v2` parallel architecture exists
-- `authenticated` cannot execute the internal Send assertion
-- `authenticated` cannot execute snapshot capture
-- `service_role` retains internal assertion/capture execution
+- snapshot columns present: `3/3`
+- `crm_assert_quotation_send_ready`: exactly `1`
+- `crm_capture_quotation_sales_scope_snapshot`: exactly `1`
+- `crm_get_quotation_sales_reconciliation`: exactly `1`
+- `crm_build_quotation_sales_scope_snapshot`: exactly `1`
+- `authenticated` can execute assertion: `false`
+- `authenticated` can execute capture: `false`
+- `anon` can execute assertion: `false`
+- `anon` can execute capture: `false`
+- `service_role` can execute assertion: `true`
+- `service_role` can execute capture: `true`
 
-The three previously applied native Part 10B migrations remain recorded in production:
+The live `protect_quotation_transition()` definition was also inspected. When a quotation enters `Sent`, the active-gate snapshot/capture path occurs before the later Admin and atomic-RPC early-return checks. Caller-written snapshot changes are rejected. This preserves the universal server invariant design, while active transactional Send behavior remains unexecuted because production activation is still false.
 
-1. `20260916063249 crm_sales_final_quotation_send_gate_part10b_foundation`
-2. `20260916070047 crm_sales_final_send_snapshot_forge_hardening`
-3. `20260916070455 crm_sales_final_send_assertion_privilege_hardening`
+## Production business-data safety
 
-No native Part 10B migration was blindly reapplied after merge.
+Before and after Part 10B.2 recovery verification:
 
-## Migration-ledger reconciliation closure
+- Scope Conditions: `0 → 0`
+- Promises: `0 → 0`
+- quotation Sales coverage rows: `0 → 0`
+- captured Part 10B snapshots: `0 → 0`
+- legacy Sent quotations without Part 10B snapshot: `2 → 2`
 
-The release audit found that the custom production runner tracks repository migration versions/checksums in `profox_migrations.applied_migrations`, while 30 later repository migrations had already been applied through Supabase native migration history using different native timestamp versions. Without a guard, a future successful custom migration run could have mistaken those repository wrappers for pending work and attempted to replay already-applied SQL.
+No fake Lead, Opportunity, Requirement, Discovery response, Meeting, Scope Condition, Promise, Validation, coverage mapping, Quotation, quotation revision, Payment or Client was created.
 
-PR #112 closed this release-safety gap by:
-
-- adding an explicit audited 30-entry repository-version → logical-name → native-version reconciliation map;
-- requiring an exact native `version + logical name` match before reconciliation;
-- failing closed if an audited logical name appears under an unexpected native version;
-- failing closed if an audited repository migration's logical name drifts;
-- recording the actual repository SHA-256 checksum transactionally without replaying the SQL body;
-- preserving the normal transactional apply path for genuinely new/future migrations;
-- rejecting same-version renames in already-recorded custom migration history in addition to checksum mutation;
-- adding eight focused regression tests and wiring them into `migrations:check` and the full test chain.
-
-The production custom ledger was deliberately **not manually backfilled from chat**. Final read-only verification showed:
-
-- custom ledger max version: `20260908100000`
-- custom reconciled post-Part-3 rows: `0`
-
-On the next trusted successful `migrations:apply`, the merged runner will calculate checksums from the real repository files and reconcile only exact audited native-history matches transactionally, without replaying the already-applied SQL.
-
-## Production data-safety baseline and after-state
-
-Before Part 10B.1 release actions:
-
-- Scope Conditions: `0`
-- Promises: `0`
-- quotation Sales coverage rows: `0`
-- captured Part 10B snapshots: `0`
-- legacy Sent quotations without Part 10B snapshot: `2`
-
-After all merge, release, migration-safety and documentation verification performed before this final documentation PR:
-
-- Scope Conditions: `0`
-- Promises: `0`
-- quotation Sales coverage rows: `0`
-- captured Part 10B snapshots: `0`
-- legacy Sent quotations without Part 10B snapshot: `2`
-
-No fake Requirement, Validation, Scope Condition, Promise, coverage row, quotation, quotation revision, Payment, Meeting, Lead or Opportunity was created for release QA.
-
-## Send/snapshot verification boundary
-
-Because activation prerequisites are not satisfied and no approved isolated production QA quotation exists, no real or fake production quotation was sent.
-
-Accordingly:
-
-- blocked-Send transactional QA: **not executed on production data**
-- successful-Send transactional QA: **not executed on production data**
-- snapshot post-Send mutation attempt: **not executed on production data**
-- production resend test: **not executed on production data**
-
-The already-deployed server foundation was re-verified read-only: the central Sent transition invokes the shared assertion/capture path before Admin and atomic-RPC bypasses when the policy is active; caller-authored snapshot mutation remains rejected; snapshot assertion/capture privileges remain internal; correction remains `create_quotation_revision(...)`; resend does not create a fake historical Part 10B snapshot.
-
-## Security and performance recheck
-
-The current Supabase security advisor and performance advisor were reviewed after merge.
-
-They contain broader pre-existing project findings. No Part 10B-specific finding was identified that requires weakening security, changing the Send invariant, or adding speculative indexes during this release closure. The internal Part 10B assertion/capture functions remain unavailable to authenticated browser callers by direct ACL verification.
-
-No unrelated advisor backlog was mixed into Part 10B.1.
+No real client quotation was sent. No blocked-Send or successful-Send transactional production QA was performed without an approved isolated safe fixture.
 
 ## Activation decision
 
-Activation prerequisites are **BLOCKED** because all of the following have not been proven:
+**BLOCKED.**
 
-- successful compatible Part 10B frontend deployment to canonical production
-- production health for that exact deployed version
-- authenticated Seller/Admin production QA
-- resolution-path runtime verification
+A dedicated activation PR/migration was intentionally **not** created because the runbook requires all release prerequisites to pass first. At least these prerequisites remain unresolved:
 
-Therefore no activation migration was created or applied, and production remains:
+- GitHub-hosted runner allocation / full trusted repository verification
+- trusted `migrations:apply` and 30-alias custom-ledger reconciliation
+- successful compatible current-main production deployment
+- exact deployed SHA/version verification
+- production `/api/health` verification for that deployment
+- authenticated Seller/Admin canonical-production QA and blocker-resolution runtime verification
 
-`finalQuotationSendGateActive=false`
-
-This is intentional safety behavior, not unfinished Part 10B implementation.
+Production therefore remains `finalQuotationSendGateActive=false`.
 
 ## Rollback plan
 
-No rollback was executed because the final gate was never activated.
+No rollback is needed because activation never occurred. If a future successfully verified activation causes an operational emergency, rollback is only a controlled repository migration/config change from `finalQuotationSendGateActive=true` back to `false`. It must not remove snapshot fields/data, Part 10B assertion/capture functions, security hardening, Scope Conditions, Promises, coverage data, Part 10A/10B UI or migration history.
 
-If a future activation causes an operational emergency, rollback is a controlled server-policy migration/config change that sets only `finalQuotationSendGateActive=false`.
+## Part 10B.2 required final report — items 1–59
 
-Rollback must **not** remove or rewrite:
+1. **Starting main SHA:** `97734d94d96169ad5861090e11b4ec635d54c102` — VERIFIED.
+2. **Final current main SHA:** the application/recovery audit remained based on `97734d94d96169ad5861090e11b4ec635d54c102`; the later documentation-only recovery PR merge is recorded by GitHub history and does not alter application/release prerequisites.
+3. **New commits/PRs discovered before work:** none; starting main matched the instructed SHA exactly.
+4. **GitHub CI run:** ProFox CRM CI #794, run `35093197927`.
+5. **Runner allocation:** BLOCKED; original job `104784173511` and retry `104799758952` both failed before repository steps executed.
+6. **Root cause of zero-runner issue:** exact account-side cause is not exposed through the repository connector; current GitHub-wide outage is not supported, and no CI-YAML defect is proven. Remaining scope is account/repository hosted-runner eligibility/allowance, billing/budget, policy or restriction.
+7. **Account/billing/settings remediation:** repository Settings → Actions → General; account/org Billing & licensing/usage/budgets/payment; organization/enterprise Actions policy; inspect CI #794 annotation; contact GitHub Support if account-level disabled/restricted state cannot be resolved in settings.
+8. **`npm ci`:** NOT EXECUTED; no pass/fail claim.
+9. **Lint/TypeScript:** NOT EXECUTED; no pass/fail claim.
+10. **`migrations:check`:** NOT EXECUTED in the required full environment; no pass/fail claim.
+11. **`npm test`:** NOT EXECUTED; no pass/fail claim.
+12. **Part 10A:** suite/source wiring preserved; runtime full-suite result NOT EXECUTED.
+13. **Part 10B:** suite/source wiring preserved; runtime full-suite result NOT EXECUTED.
+14. **TEST 1–159:** exact matrix remains present; runtime matrix execution NOT EXECUTED.
+15. **Production build:** current-main Cloudflare Worker build reported FAILURE, but GitHub repository build commands never ran; do not interpret this as a proven `npm run build` failure without usable build output.
+16. **`migrations:apply`:** NOT EXECUTED.
+17. **Custom-ledger aliases reconciled:** `0` during Part 10B.2; trusted apply never ran.
+18. **Already-applied SQL replay:** no replay occurred during Part 10B.2 because migration apply did not execute; PR #112 no-replay mechanism remains present but was not runtime-exercised in this recovery.
+19. **Custom ledger after reconciliation:** no reconciliation occurred; max remains `20260908100000`, post-Part-3 reconciled rows `0`.
+20. **Frontend deployment method:** existing GitHub Actions → Cloudflare Workers production architecture only.
+21. **Deployment workflow/build ID:** GitHub deploy run `35097919953`, job/check `104799792355` skipped; external Worker build/check ID `e12f17c6-b931-45e6-ba18-09442ee1b1d4` failed.
+22. **Deployed SHA:** current-main `97734d94...` NOT VERIFIED as deployed.
+23. **Cloudflare version/deployment ID:** `e12f17c6-b931-45e6-ba18-09442ee1b1d4` — build failed, not accepted as successful deployment.
+24. **Production health:** `/api/health` for exact compatible current-main deployment NOT VERIFIED.
+25. **Authenticated production QA:** NOT VERIFIED / BLOCKED; no authorized Seller/Admin browser session available.
+26. **Requirements path:** source/wiring VERIFIED; authenticated production runtime NOT VERIFIED.
+27. **Package Fit path:** source/wiring VERIFIED; authenticated production runtime NOT VERIFIED.
+28. **Sales Validation path:** source/wiring VERIFIED; authenticated production runtime NOT VERIFIED.
+29. **Scope Conditions path:** source/wiring VERIFIED; authenticated production runtime NOT VERIFIED.
+30. **Promise Register path:** source/wiring VERIFIED; authenticated production runtime NOT VERIFIED.
+31. **Sales Reconciliation path:** source/wiring VERIFIED; authenticated production runtime NOT VERIFIED.
+32. **Quotation editor path:** canonical existing editor preserved; authenticated production runtime NOT VERIFIED.
+33. **Quotation approval path:** existing workflow preserved; authenticated production runtime NOT VERIFIED.
+34. **Pre-activation gate value:** `false` — VERIFIED read-only.
+35. **Activation prerequisites:** BLOCKED.
+36. **Activation PR:** NOT CREATED, as required while prerequisites are blocked.
+37. **Activation migration:** NOT CREATED / NOT APPLIED.
+38. **Activation merge SHA:** N/A.
+39. **Post-activation gate value:** N/A; current production value remains `false`.
+40. **Policy version:** `2` — VERIFIED.
+41. **Snapshot schema version:** `2` — VERIFIED.
+42. **Shared assertion count/status:** exactly `1`; internal execution privileges hardened; active Send transaction not exercised.
+43. **Snapshot capture count/status:** exactly `1`; internal execution privileges hardened; active Send transaction not exercised.
+44. **Admin bypass closure:** live trigger definition places active-gate capture before Admin early return — VERIFIED structurally; no active production Send transaction performed.
+45. **Atomic-RPC bypass closure:** live trigger definition places active-gate capture before atomic early return — VERIFIED structurally; no active production Send transaction performed.
+46. **Anonymous/authenticated privilege check:** anon assertion/capture `false/false`; authenticated `false/false`; service role `true/true` — VERIFIED.
+47. **Scope Conditions before/after:** `0 → 0`.
+48. **Promises before/after:** `0 → 0`.
+49. **Coverage before/after:** `0 → 0`.
+50. **Captured snapshots before/after:** `0 → 0`.
+51. **Legacy Sent-without-snapshot before/after:** `2 → 2`.
+52. **Blocked-Send QA:** NOT PERFORMED; no approved isolated safe quotation/session was available and no fake production fixture was created.
+53. **Successful-Send QA:** NOT PERFORMED; no real client quotation was sent and no fake production fixture was created.
+54. **Snapshot immutability:** server-side immutable/write-protection foundation VERIFIED read-only; post-Send mutation QA NOT PERFORMED without isolated successful-Send fixture.
+55. **Resend behavior:** historical resend design remains preserved; production resend QA NOT PERFORMED.
+56. **No fake production data:** CONFIRMED; audited business counts remained unchanged.
+57. **Rollback plan:** documented; controlled repository/migration policy change `true → false` only if a future activation requires emergency deactivation; do not destroy Part 10 foundations/history.
+58. **Remaining risks:** GitHub-hosted runner/account restriction unresolved; full npm/test/build verification unavailable; trusted `migrations:apply` has not reconciled 30 aliases; current-main compatible deployment unverified; exact production health unverified; authenticated Seller/Admin production QA unavailable.
+59. **PART 11 STATUS:** **BLOCKED**.
 
-- snapshot columns or captured snapshot data
-- Part 10B assertion/capture functions
-- Part 10B security hardening
-- Part 10A/10B reconciliation UI
-- migration history
-- quotation Sales coverage data
+## Stop condition
 
-## Required final report — items 1–53
+Do not start Part 11 Negotiation/Decision Pending, payment/Won changes, Client Onboarding, Sales-to-Delivery Handoff, Manager Exception Workspace, Performance/Audit scoring, Academy or AI automation as part of this recovery.
 
-1. **Starting main SHA:** `16ef1d5047df2300035b76e21b9719029345be3d`.
-2. **PR #110 final head SHA:** `adc7bb92ba1f6ff8138e5d39b0028eab18130aaa`.
-3. **PR mergeability before merge:** mergeable; head/base rechecked immediately before expected-head merge.
-4. **PR diff audit:** passed for intended Part 10B scope; no accidental dependency/catalog/RLS/approval/Pipeline/payment/Won/onboarding/handoff drift found.
-5. **Trusted executable test environment used:** no complete private-repository checkout environment was available; only focused exact-source Node verification for the later migration-ledger patch was executable.
-6. **`npm ci`:** not executed in a trusted complete-repository environment; no pass/fail claim.
-7. **TypeScript/lint:** not executed in a trusted complete-repository environment; no pass/fail claim.
-8. **Migration-integrity:** full `npm run migrations:check` not executed; migration-ledger reconciliation suite passed 8/8 and merged runner Node syntax check passed; native/custom ledger replay risk fixed in PR #112.
-9. **`npm test`:** not executed in a trusted complete-repository environment; no pass/fail claim.
-10. **Part 10A result:** regression suite remains present/wired; direct full-suite execution unavailable.
-11. **Part 10B TEST 1–159 matrix:** exact IDs 1–159 represented with no missing/duplicate IDs and an integrity assertion; direct full-suite execution unavailable.
-12. **Production build:** Cloudflare checks reported failure; no usable application build log was available, so repository application build execution is not inferred.
-13. **GitHub CI:** infrastructure failure before runner allocation.
-14. **Did GitHub execute repository steps?:** no; `steps=[]`, `runner_id=0`.
-15. **Merge decision:** PR #110 merged after audit because no actual application-code failure was known and gate remained off; PR #112 later merged to close migration safety.
-16. **Part 10B merge SHA:** `4037df16b328259863b3b9666c5cffaf5c4aaa01`.
-17. **Resulting main SHA:** after Part 10B merge `4037df16b328259863b3b9666c5cffaf5c4aaa01`; after migration-ledger safety PR #112 `fb2257e031555a601a5640f007c06f540621f887` before this final documentation PR.
-18. **Production deployment method:** existing approved Cloudflare Workers/GitHub production architecture; no alternate workflow created.
-19. **Deployment build/workflow ID:** Part 10B build `40376c23-07fd-4c40-9a09-d6674568c75d`; later main build `923c6a94-8cae-4949-8439-9f63505fa378`.
-20. **Deployment result:** failed/unverified compatible deployment.
-21. **Exact deployed SHA/version:** not verified.
-22. **Production health:** not independently verified for the exact compatible merged version.
-23. **Authenticated Seller/Admin QA:** not verified; no authorized browser session available.
-24. **Requirements resolution path:** repository wiring present; authenticated canonical-production runtime not verified.
-25. **Package Fit path:** repository wiring present; authenticated canonical-production runtime not verified.
-26. **Sales Validation path:** repository wiring present; authenticated canonical-production runtime not verified.
-27. **Scope Conditions path:** repository wiring present; authenticated canonical-production runtime not verified.
-28. **Promise Register path:** repository wiring present; authenticated canonical-production runtime not verified.
-29. **Sales Reconciliation path:** repository wiring present; authenticated canonical-production runtime not verified.
-30. **Quotation editor:** existing integration preserved; authenticated canonical-production runtime not verified.
-31. **Quotation approval:** existing workflow preserved; authenticated canonical-production runtime not verified.
-32. **Pre-activation policy value:** `finalQuotationSendGateActive=false`.
-33. **Activation prerequisite:** **BLOCKED**.
-34. **Activation migration:** not created/not applied because prerequisites are not satisfied.
-35. **Post-activation policy value:** not applicable; current value remains `false`.
-36. **Shared Send assertion:** exactly one `crm_assert_quotation_send_ready(uuid)` verified read-only; active production Send behavior not exercised.
-37. **Admin bypass:** central protection remains in code/database foundation; no active production Send test was performed.
-38. **Atomic-RPC bypass:** central protection remains in code/database foundation; no active production Send test was performed.
-39. **Snapshot privilege:** authenticated direct assertion/capture denied; service role allowed.
-40. **RLS/security:** Part 10B-specific ACL/security checks reverified; no Part 10B-specific advisor issue requiring a change found; post-activation security recheck is not applicable because activation did not occur.
-41. **Scope Condition rows before/after:** `0 → 0`.
-42. **Promise rows before/after:** `0 → 0`.
-43. **Coverage rows before/after:** `0 → 0`.
-44. **Captured snapshot rows before/after:** `0 → 0`.
-45. **Legacy Sent quotations without snapshot before/after:** `2 → 2`.
-46. **No fake production data:** confirmed.
-47. **Blocked-Send QA:** not safely executable on production; not fabricated.
-48. **Successful-Send QA:** not safely executable on production; not fabricated.
-49. **Snapshot immutability:** server-side mutation/forge protection and privileges verified; no production post-Send mutation test was fabricated.
-50. **Resend behavior:** implementation preserves historical resend semantics; no real production resend test was performed.
-51. **Rollback plan:** documented as controlled policy deactivation only; no destructive rollback.
-52. **Remaining risk:** compatible canonical-production frontend deployment and authenticated Seller/Admin runtime QA remain unavailable; GitHub runner allocation remains broken.
-53. **NEXT SOP STATUS:** **PART 11 BLOCKED**.
-
-## Remaining blocker
-
-The external release blocker is the failed/unverified compatible frontend deployment plus unavailable authenticated canonical-production QA. Until those are resolved, activating the final Send gate would violate the Part 10B.1 release invariant and could create a backend dead-end for Sellers.
-
-The Part 10B.1 source instruction explicitly defines this state as **ACTIVATION BLOCKED**, not fully complete. No safe repository or database action remaining in this release can substitute for a successful compatible canonical deployment plus authenticated production QA.
-
-## Next SOP status
-
-**PART 11 BLOCKED.**
-
-Do not begin Part 11, payment/Won changes, onboarding, handoff, manager exception workspace, performance metrics, Academy or AI automation as part of this release.
-
-**PART 10B IMPLEMENTATION REMAINS COMPLETE, BUT PRODUCTION ACTIVATION IS BLOCKED. PART 11 MUST NOT BEGIN UNTIL THE RELEASE PRECONDITION IS RESOLVED.**
+**PART 10B IMPLEMENTATION IS COMPLETE, BUT PRODUCTION ACTIVATION REMAINS BLOCKED. PART 11 MUST NOT BEGIN.**
