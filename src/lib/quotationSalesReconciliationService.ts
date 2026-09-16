@@ -143,7 +143,21 @@ export interface QuotationSalesIssue {
   futureSendBlocker?: boolean;
   conditionId?: string;
   promiseId?: string;
+  quotationItemId?: string;
+  quotationFieldKey?: string;
   coverageStatus?: string;
+}
+
+export interface QuotationSalesScopeSnapshotMetadata {
+  captured?: boolean;
+  status?: string;
+  capturedAt?: string | null;
+  schemaVersion?: number | null;
+  quotationRevision?: number | null;
+  immutable?: boolean;
+  finalReconciliationStatus?: string | null;
+  promiseCoverageStatus?: string | null;
+  finalScopeReconciliationStatus?: string | null;
 }
 
 export interface QuotationSalesReconciliationAssessment {
@@ -155,8 +169,8 @@ export interface QuotationSalesReconciliationAssessment {
   policyKey: string;
   policyVersion: number;
   evaluatedAt?: string;
-  proposalReadiness?: Record<string, unknown> | null;
-  packageFit?: Record<string, unknown> | null;
+  proposalReadiness?: Record<string, any> | null;
+  packageFit?: Record<string, any> | null;
   scopeConditionCoverage: QuotationScopeCoverageRow[];
   promiseCoverage: QuotationPromiseCoverageRow[];
   draftPromises?: QuotationDraftPromiseRow[];
@@ -170,7 +184,7 @@ export interface QuotationSalesReconciliationAssessment {
     currentPackageFitStatus?: string;
     recommendedProduct?: Record<string, unknown> | null;
   } | null;
-  approvedConstraints?: Array<Record<string, unknown>>;
+  approvedConstraints?: Array<Record<string, any>>;
   exactBlockers: QuotationSalesIssue[];
   warnings: QuotationSalesIssue[];
   status: string;
@@ -184,33 +198,48 @@ export interface QuotationSalesReconciliationAssessment {
   sourceAssessment?: Record<string, unknown> | null;
   historicalQuotation?: boolean;
   legacyCoverageNotCaptured?: boolean;
-  finalQuotationSendGateActive: false;
-  writesQuotation: false;
-  writesCoverageOnRead: false;
+  salesScopeSnapshot?: QuotationSalesScopeSnapshotMetadata | null;
+  finalQuotationSendGateActive: boolean;
+  writesQuotation: boolean;
+  writesCoverageOnRead: boolean;
 }
 
 export interface QuotationSalesScopeSnapshotPreview {
   snapshotSchemaVersion: number;
-  policyKey: string;
-  policyVersion: number;
+  policyKey?: string;
+  policyVersion?: number;
+  reconciliationPolicy?: {
+    policyKey?: string;
+    policyVersion?: number;
+  };
   quotationId: string;
   quotationRevision?: number | null;
+  quotationStatusAtEvaluation?: string | null;
   opportunityId?: string | null;
   leadId?: string | null;
   evaluationTimestamp?: string;
+  capturedAt?: string;
+  sendTimeTimestamp?: string;
   proposalReadiness?: Record<string, unknown>;
   packageFit?: Record<string, unknown>;
   quotedProducts?: Array<Record<string, unknown>>;
   activeScopeConditions?: Array<Record<string, unknown>>;
   activePromises?: Array<Record<string, unknown>>;
-  coverageMappings?: Record<string, unknown>;
+  coverageMappings?: Record<string, unknown> | Array<Record<string, unknown>>;
   approvedConstraints?: Array<Record<string, unknown>>;
+  currentApprovedSpecialistConstraints?: Array<Record<string, unknown>>;
+  relevantValidations?: Array<Record<string, unknown>>;
+  promiseCoverageResult?: QuotationSalesDimension | Record<string, unknown>;
+  finalScopeReconciliationResult?: QuotationSalesDimension | Record<string, unknown>;
+  quotationSnapshotCoverageResult?: QuotationSalesDimension | Record<string, unknown>;
   finalReconciliationStatus?: string;
   quotationDimensions?: QuotationSalesDimension[];
   snapshotCoverageState?: string;
   readyForSnapshot?: boolean;
-  persisted: false;
-  finalQuotationSendGateActive: false;
+  blockers?: QuotationSalesIssue[];
+  warnings?: QuotationSalesIssue[];
+  persisted: boolean;
+  finalQuotationSendGateActive: boolean;
 }
 
 export interface ReviewQuotationSalesCoverageInput {
