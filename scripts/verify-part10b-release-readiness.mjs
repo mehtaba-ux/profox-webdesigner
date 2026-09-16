@@ -65,18 +65,10 @@ try {
       (select count(*)::int from information_schema.columns
        where table_schema='public' and table_name='quotations'
          and column_name in ('sales_scope_snapshot','sales_scope_snapshot_at','sales_scope_snapshot_schema_version')) as snapshot_columns,
-      (select count(*)::int from pg_proc p join pg_namespace n on n.oid=p.pronamespace
-       where n.nspname='public' and p.proname='crm_assert_quotation_send_ready'
-         and pg_get_function_identity_arguments(p.oid)='uuid') as assert_count,
-      (select count(*)::int from pg_proc p join pg_namespace n on n.oid=p.pronamespace
-       where n.nspname='public' and p.proname='crm_capture_quotation_sales_scope_snapshot'
-         and pg_get_function_identity_arguments(p.oid)='uuid') as capture_count,
-      (select count(*)::int from pg_proc p join pg_namespace n on n.oid=p.pronamespace
-       where n.nspname='public' and p.proname='crm_get_quotation_sales_reconciliation'
-         and pg_get_function_identity_arguments(p.oid)='uuid') as reconciliation_count,
-      (select count(*)::int from pg_proc p join pg_namespace n on n.oid=p.pronamespace
-       where n.nspname='public' and p.proname='crm_build_quotation_sales_scope_snapshot'
-         and pg_get_function_identity_arguments(p.oid)='uuid') as snapshot_builder_count,
+      (select count(*)::int from pg_proc where oid=to_regprocedure('public.crm_assert_quotation_send_ready(uuid)')) as assert_count,
+      (select count(*)::int from pg_proc where oid=to_regprocedure('public.crm_capture_quotation_sales_scope_snapshot(uuid)')) as capture_count,
+      (select count(*)::int from pg_proc where oid=to_regprocedure('public.crm_get_quotation_sales_reconciliation(uuid)')) as reconciliation_count,
+      (select count(*)::int from pg_proc where oid=to_regprocedure('public.crm_build_quotation_sales_scope_snapshot(uuid)')) as snapshot_builder_count,
       coalesce(has_function_privilege('anon',to_regprocedure('public.crm_assert_quotation_send_ready(uuid)'),'EXECUTE'),false) as anon_can_assert,
       coalesce(has_function_privilege('anon',to_regprocedure('public.crm_capture_quotation_sales_scope_snapshot(uuid)'),'EXECUTE'),false) as anon_can_capture,
       coalesce(has_function_privilege('authenticated',to_regprocedure('public.crm_assert_quotation_send_ready(uuid)'),'EXECUTE'),false) as authenticated_can_assert,
