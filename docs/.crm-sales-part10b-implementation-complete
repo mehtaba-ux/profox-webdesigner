@@ -1,9 +1,10 @@
 PART 10B IMPLEMENTATION: COMPLETE
+PART 10B.1 RELEASE / ACTIVATION: BLOCKED
 
 Scope: Immutable Send-Time Sales Snapshot + Universal Quotation Send Gate
-Date: 2026-09-16
+Release closure date: 2026-09-16
 
-Completed:
+Part 10B repository implementation completed:
 - canonical send-path audit
 - universal server-side Sent invariant foundation
 - immutable quotation Sales-scope snapshot storage/capture
@@ -18,20 +19,44 @@ Completed:
 - Part 1–10A regression-suite preservation
 - Part 10B test/build wiring
 - production database migrations and read-only verification
-- final production trigger-order/ACL/data-safety re-verification
-- current Supabase security-advisor review for Part 10B exposure
+- production trigger-order/ACL/data-safety verification
+- Supabase security/performance advisor review scoped to Part 10B
 - no fake production client data / no historical backfill
-- implementation documentation, final closure audit and PR #110
 
-Final closure audit:
+Part 10B.1 release actions completed:
+- PR #110 re-audited against unchanged main
+- PR #110 safely merged with expected head guard
+- final PR head: adc7bb92ba1f6ff8138e5d39b0028eab18130aaa
+- Part 10B merge SHA: 4037df16b328259863b3b9666c5cffaf5c4aaa01
+- production database foundation reverified after merge
+- production gate confirmed still false
+- production business-row counts confirmed unchanged
+- GitHub CI retried and verified as zero-step runner-allocation failure
+- Cloudflare merged-main build result recorded truthfully
+- activation withheld because compatible production deploy/authenticated QA are not verified
+- rollback procedure documented
+
+Release record:
+docs/crm-sales-final-quotation-send-gate-part-10b-release.md
+
+Implementation closure audit:
 docs/crm-sales-final-quotation-send-gate-part-10b-final-audit.md
 
 Production activation: STAGED / NOT ACTIVE
 finalQuotationSendGateActive=false
 
-Required source-spec status:
-PART 10B ACTIVATION BLOCKED — PRODUCTION RESOLUTION UI NOT VERIFIED.
+GitHub Actions truth:
+GITHUB ACTIONS DID NOT EXECUTE REPOSITORY CODE.
 
-Reason: GitHub Actions jobs failed before executing repository steps (steps=null) and the connected Cloudflare build check failed without usable application build output. Authenticated production browser verification of the compatible blocker-resolution UI is therefore not proven. The source specification explicitly requires the backend gate to remain false in this state.
+Cloudflare merged-main build:
+- service: profox-web-production
+- build id: 40376c23-07fd-4c40-9a09-d6674568c75d
+- merged Part 10B SHA: 4037df16b328259863b3b9666c5cffaf5c4aaa01
+- result: FAILED / compatible production deployment not verified
 
-This blocked activation is a mandatory release prerequisite, not unfinished Part 10B implementation.
+Authenticated canonical production Seller/Admin QA: NOT VERIFIED
+Activation migration: NOT CREATED / NOT APPLIED
+Part 11: BLOCKED
+
+Required release status:
+PART 10B IMPLEMENTATION REMAINS COMPLETE, BUT PRODUCTION ACTIVATION IS BLOCKED. PART 11 MUST NOT BEGIN UNTIL THE RELEASE PRECONDITION IS RESOLVED.
