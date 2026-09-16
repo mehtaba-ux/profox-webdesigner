@@ -4,6 +4,7 @@ import { readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
 import pg from 'pg';
+import { planNativeMigrationReconciliation } from './native-migration-reconciliation.mjs';
 
 dotenv.config({ path: '.env.local', quiet: true });
 
@@ -103,6 +104,9 @@ async function verifyAndApply(client, migrations, authoritativeBaseline) {
   for (const row of result.rows) {
     const local = localByVersion.get(row.version);
     if (!local) throw new Error(`Applied migration ${row.version}_${row.name} is missing locally.`);
+    if (local.name !== row.name) {
+      throw new Error(`Applied migration was renamed: expected ${row.version}_${row.name}.sql, found ${local.file}. Add a new migration instead.`);
+    }
     if (local.checksum !== row.checksum) {
       throw new Error(`Applied migration was modified: ${local.file}. Add a new migration instead.`);
     }
@@ -114,9 +118,42 @@ async function verifyAndApply(client, migrations, authoritativeBaseline) {
     throw new Error(`Historical migrations were inserted before the baseline: ${untrackedHistorical.map(item => item.file).join(', ')}`);
   }
 
-  const pending = migrations.filter(migration =>
-    migration.version > authoritativeBaseline && !appliedByVersion.has(migration.version)
-  );
+  // Some audited production migrations were originally applied through Supabase's
+  // native migration ledger before the repository runner existed. Reconcile only
+  // the explicit aliases in native-migration-reconciliation.mjs. Exact native
+  // version+name matches are recorded in the custom ledger without replaying SQL.
+  const nativeHistory = await client.query(`
+    select version,name
+    from supabase_migrations.schema_migrations
+    order by version
+  `);
+  const { reconciled, pending } = planNativeMigrationReconciliation({
+    migrations,
+    appliedByVersion,
+    authoritativeBaseline,
+    nativeRows: nativeHistory.rows,
+  });
+
+  if (reconciled.length) {
+    await client.query('begin');
+    try {
+      for (const { migration, alias } of reconciled) {
+        await client.query(
+          `insert into profox_migrations.applied_migrations(version,name,checksum,baseline)
+           values($1,$2,$3,false)`,
+          [migration.version, migration.name, migration.checksum],
+        );
+        console.log(
+          `Reconciled ${migration.file} from native Supabase history ${alias.nativeVersion}_${alias.name}; SQL was not replayed.`,
+        );
+      }
+      await client.query('commit');
+    } catch (error) {
+      await client.query('rollback');
+      throw new Error(`Native migration history reconciliation failed and was rolled back: ${error.message}`);
+    }
+  }
+
   for (const migration of pending) {
     await client.query('begin');
     try {
@@ -133,7 +170,9 @@ async function verifyAndApply(client, migrations, authoritativeBaseline) {
       throw new Error(`Migration ${migration.file} failed and was rolled back: ${error.message}`);
     }
   }
-  console.log(`Migration verification passed: ${migrations.length} local, ${pending.length} newly applied.`);
+  console.log(
+    `Migration verification passed: ${migrations.length} local, ${reconciled.length} reconciled from native history, ${pending.length} newly applied.`,
+  );
 }
 
 const migrations = await loadMigrations();
