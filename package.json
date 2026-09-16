@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --port=3000 --host=0.0.0.0",
-    "build": "npm run test:crm-part10a && vite build && node scripts/verify-supabase-build-config.mjs",
+    "build": "npm run test:crm-part10a && npm run test:crm-part10b && vite build && node scripts/verify-supabase-build-config.mjs",
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit",
@@ -14,10 +14,11 @@
     "migrations:apply": "node scripts/migrate-production.mjs --apply",
     "production:verify": "node scripts/verify-production-readiness.mjs && node scripts/verify-project-chat-readiness.mjs && node scripts/verify-professional-mailbox-readiness.mjs",
     "production:activate-privacy": "node scripts/activate-production-privacy-consent.mjs",
-    "test": "npm run test:talent-partner && npm run test:security && npm run test:crm-part10a",
+    "test": "npm run test:talent-partner && npm run test:security && npm run test:crm-part10a && npm run test:crm-part10b",
     "test:talent-partner": "tsx --test tests/talent-partner/*.test.ts",
     "test:security": "tsx --test tests/security/*.test.ts",
     "test:crm-part10a": "node --test tests/security/crm-sales-quotation-reconciliation-part-10a.test.mjs tests/security/crm-sales-quotation-reconciliation-part-10a-hardening.test.mjs",
+    "test:crm-part10b": "node --test tests/security/crm-sales-final-quotation-send-gate-part-10b.test.mjs tests/security/crm-sales-final-quotation-send-gate-part-10b-spec-matrix.test.mjs",
     "test:e2e": "playwright test",
     "deploy": "npm run build && wrangler deploy",
     "pages:deploy": "npm run build && wrangler pages deploy dist"

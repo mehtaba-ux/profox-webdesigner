@@ -179,14 +179,14 @@ const positiveGroups = [
     'p_quotation_item_id',
     'p_coverage_note',
     'Sales Reconciliation',
-    'Final Send Gate: NOT YET ACTIVE',
-    'Part 10A is a non-blocking readiness preview',
-    'Build read-only preview',
-    'Nothing is frozen or persisted in Part 10A',
+    'FINAL SEND GATE — ACTIVE',
+    'FINAL SEND GATE — STAGED / NOT ACTIVE',
+    'Build server preview',
+    'Opening this workspace never writes the final snapshot',
     'Scope Conditions',
     'Promise Coverage',
     'No material Active Promises are registered',
-    'Quoted package alignment',
+    'Package alignment',
   ]],
 ];
 
@@ -230,8 +230,8 @@ checks.push(
     run: () => assert.equal(service.includes('target_fingerprint'), false),
   },
   {
-    name: 'boundary: UI states final send gate is not active',
-    run: () => assert.ok(panel.includes('Final Send Gate: NOT YET ACTIVE')),
+    name: 'boundary: Part 10B UI can display both staged and active final gate states',
+    run: () => assert.ok(panel.includes('FINAL SEND GATE — ACTIVE') && panel.includes('FINAL SEND GATE — STAGED / NOT ACTIVE')),
   },
   {
     name: 'boundary: evaluator migration never writes quotation rows',

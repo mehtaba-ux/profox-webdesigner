@@ -1524,3 +1524,77 @@ Production Part 10A was applied through Supabase's native migration ledger using
 The applied native SQL is preserved under `supabase/migrations/native-history/`. The dedicated Part 10A acceptance/security suite contains exactly 169 checks and is wired into both `npm test` and the normal production build path.
 
 Detailed implementation, production verification, release SHAs, security findings, deployment evidence, and the explicit Part 10B prerequisite are maintained in `docs/crm-sales-quotation-reconciliation-part-10a.md`.
+
+---
+
+## 38. Implemented Part 10B — Immutable Send-Time Sales Snapshot + Universal Quotation Send Gate
+
+Part 10B implementation is complete as a **production-compatible staged gate**. The existing `quotations` / `quotation_items` system remains canonical, Part 10A remains the authoritative Sales reconciliation engine, and no duplicate quotation, approval, product, Promise, Scope Condition, validation, readiness or handoff system was introduced.
+
+### Universal Send invariant
+
+The shared server assertion is `crm_assert_quotation_send_ready(uuid)`. It consumes existing CPQ readiness and the canonical Part 10A reconciliation result rather than re-coding those rules. The protected `Sent` transition in `protect_quotation_transition()` evaluates the Part 10B invariant before the historical Admin and `profox.quotation_atomic_rpc` early-return paths, so those paths cannot silently bypass the final Sales rule when the gate is active. Direct INSERT already marked Sent remains rejected by the existing direct-Sent insert protection.
+
+`send_quotation_professional(...)` remains the canonical customer-send workflow. `update_quotation_atomic(...)` keeps its established role but its Approved → Sent path is covered by the central transition protection. `resend_quotation_professional(...)` operates only on an already-Sent quotation and does not rebuild the historical snapshot.
+
+### Minimal immutable quotation snapshot
+
+No new Part 10B business table was created. The existing `quotations` record received only:
+
+- `sales_scope_snapshot jsonb`
+- `sales_scope_snapshot_at timestamptz`
+- `sales_scope_snapshot_schema_version integer`
+
+The snapshot is server-built and, once captured, normal runtime callers cannot set, clear or rewrite the snapshot fields. The correction path remains `create_quotation_revision(...)`. Historical Sent quotations are not backfilled from present-day CRM state.
+
+The snapshot schema version is `2`. It contains quotation/revision identity, Lead/opportunity reference, policy/evaluator references, Proposal Readiness, Package Fit, quoted item/catalog snapshot references, current Active Scope Conditions and Promises, coverage mappings/fingerprints, relevant specialist validation/approved-constraint references, final reconciliation dimensions, warnings and send-time evidence. Seller-private `sales_products.seller_guidance` is not copied into the client-specific Sales-scope snapshot; the newer quotation-item `catalog_snapshot` / `catalog_version_snapshot` fields remain the canonical Catalog evidence.
+
+### Atomicity and immutability
+
+When the final gate is active, successful `OLD.status <> 'Sent' AND NEW.status='Sent'` handling rejects caller-authored snapshot mutation and same-statement material quotation changes, asserts current send readiness, builds the snapshot, writes snapshot/time/schema onto `NEW`, and only then permits the transaction to continue. Assertion or snapshot failure aborts the Sent transition, so existing customer-send side effects do not survive a blocked transaction.
+
+### CPQ and UI integration
+
+`get_quotation_cpq_summary(...)` was evolved additively. When the policy is staged, legacy CPQ `readyToSend` behavior is preserved. When active, `readyToSend` requires both existing CPQ readiness and current Sales reconciliation readiness, and exact Sales blockers are appended to the established readiness response.
+
+The existing `QuotationSalesReconciliationPanel` was evolved in place. It shows ACTIVE versus STAGED gate status, exact blockers and remediation, Proposal Readiness, Scope Reconciliation, Promise Coverage, Package alignment, Ready-to-freeze state, and immutable snapshot metadata for delivered quotations. It does not expose raw snapshot JSON or create a second quotation editor. Existing coverage review and Open/Edit target actions remain the resolution path. `SellerGuidanceHelp` is reused for Part 10B explanations/actions.
+
+### Security and production data safety
+
+The assertion/capture primitives are internal server primitives: direct execution is revoked from `public`, `anon` and `authenticated` and retained for `service_role`. Snapshot fields are server-controlled even for Admin/atomic callers. No service-role secret is introduced into browser code.
+
+Production migration verification on 2026-09-16 showed:
+
+- policy key: `crm_quotation_sales_reconciliation_policy_v1`
+- policy version: `2`
+- snapshot schema version: `2`
+- `finalQuotationSendGateActive=false`
+- Scope Conditions: `0`
+- Promises: `0`
+- quotation Sales coverage rows: `0`
+- captured Part 10B snapshots: `0`
+- two pre-existing Sent quotations remain legacy/no-Part10B-snapshot
+- authenticated execution of assertion/capture: `false`
+- service-role execution of assertion/capture: `true`
+
+No fake production client data or historical snapshot backfill was introduced.
+
+### Production migrations
+
+The Part 10B production changes were applied additively through:
+
+- `crm_sales_final_quotation_send_gate_part10b_foundation`
+- `crm_sales_final_send_snapshot_forge_hardening`
+- `crm_sales_final_send_assertion_privilege_hardening`
+
+Repository migration files are maintained under `supabase/migrations/` and the dedicated Part 10B contract/security suite is wired into both `npm test` and `npm run build`.
+
+### Activation boundary
+
+The implementation is intentionally staged in production with `finalQuotationSendGateActive=false`. The Part 10B source instruction requires the compatible frontend to be successfully deployed and the blocker-resolution path to be verified in an authenticated production browser before activation. During the implementation run, GitHub Actions repeatedly failed before executing any repository step (`steps=null`), and the connected Cloudflare build check also failed without usable application build output. Authenticated production browser verification therefore was not proven.
+
+Required current activation status:
+
+**PART 10B ACTIVATION BLOCKED — PRODUCTION RESOLUTION UI NOT VERIFIED.**
+
+Do not flip `finalQuotationSendGateActive=true` until compatible deployment and authenticated production resolution UI verification succeed. Detailed implementation, security, production verification and rollout evidence are maintained in `docs/crm-sales-final-quotation-send-gate-part-10b.md`.

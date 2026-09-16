@@ -28,12 +28,12 @@ const FIELD_LABELS: Record<string, string> = {
 };
 
 /**
- * Access-scope wrapper for the quotation workspace.
+ * Access-scope wrapper for the canonical quotation workspace.
  *
- * The original workspace remains unchanged in QuotationWorkspaceBase so the
- * established quotation, timeline, approval, send and margin calculation flows
- * are not duplicated. Part 10A Sales Reconciliation is mounted additively on
- * this same quotation route and does not alter the existing final send gate.
+ * The established quotation editor, approval, Send and calculation flows remain
+ * in QuotationWorkspaceBase. Part 10A/10B Sales Reconciliation is mounted
+ * additively on this same quotation route; no duplicate quotation editor or
+ * send workflow is introduced.
  */
 export default function QuotationWorkspace() {
   const { quotationId } = useParams<{ quotationId: string }>();
@@ -124,7 +124,7 @@ export default function QuotationWorkspace() {
           type="button"
           onClick={() => setReconciliationOpen(true)}
           className="fixed bottom-6 left-6 z-[72] inline-flex min-h-11 items-center gap-2 rounded-2xl border border-[#000080]/20 bg-white px-4 py-3 text-xs font-black text-[#000080] shadow-xl shadow-slate-900/15 hover:bg-slate-50 max-sm:left-4"
-          title="Review Scope Conditions and client Promises against this quotation"
+          title="Review final Sales, scope and Promise readiness for this quotation"
         >
           <ShieldCheck className="h-4 w-4" />Sales Reconciliation
         </button>
@@ -139,7 +139,7 @@ export default function QuotationWorkspace() {
             <div className="mb-4 flex items-center justify-between gap-3">
               <div>
                 <p className="text-[10px] font-black uppercase tracking-[0.14em] text-[#000080]">Quotation workspace</p>
-                <p className="mt-1 text-xs text-slate-500">Part 10A reconciliation stays on this exact quotation revision.</p>
+                <p className="mt-1 text-xs text-slate-500">Part 10B final readiness stays attached to this exact canonical quotation revision.</p>
               </div>
               <button type="button" onClick={() => setReconciliationOpen(false)} aria-label="Close Sales reconciliation" className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 hover:bg-slate-50">
                 <X className="h-4 w-4" />

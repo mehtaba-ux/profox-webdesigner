@@ -41,7 +41,7 @@ const checks = [
   ['promise dependency participates in status', migration, 'v_any_promise_dependency_blocked'],
   ['future blocker includes approval dependency', migration, "or v_commercial_approval_blocked then 'BLOCKED'"],
   ['dimension reports draft count', migration, "'draftCount',jsonb_array_length(v_draft_promise_rows)"],
-  ['final send gate remains false', migration, "'finalQuotationSendGateActive',false"],
+  ['final send gate remains false in the Part 10A migration', migration, "'finalQuotationSendGateActive',false"],
   ['evaluator still reports no quotation writes', migration, "'writesQuotation',false"],
   ['evaluator still reports no coverage-on-read writes', migration, "'writesCoverageOnRead',false"],
   ['service exposes draft promise type', service, 'QuotationDraftPromiseRow'],
@@ -58,7 +58,7 @@ const checks = [
   ['panel exposes open/edit target', panel, 'Open / Edit target'],
   ['panel shows timeline comparison', panel, 'Timeline Promise vs quotation'],
   ['panel shows commercial approval dependency', panel, 'Existing quotation approval dependency'],
-  ['panel states no automatic timeline mutation', panel, 'Neither the Promise nor quotation was changed automatically'],
+  ['panel states no automatic timeline mutation', panel, 'Neither the Promise nor quotation is changed automatically'],
   ['wrapper routes item target to canonical scope panel', wrapper, "? 'Scope & Pricing'"],
   ['wrapper routes payment and duration to canonical payment panel', wrapper, "['payment_terms', 'duration_snapshot_text']"],
   ['wrapper routes other fields to proposal panel', wrapper, ": 'Proposal Content'"],
@@ -79,10 +79,11 @@ test('boundary · hardening evaluator does not update quotations', () => {
   assert.equal(/update\s+public\.quotations\b/i.test(migration), false);
 });
 
-test('boundary · hardening does not activate or call professional send', () => {
+test('boundary · Part 10B evolves UI without moving Send authority into reconciliation panel', () => {
   assert.equal(migration.includes('send_quotation_professional'), false);
   assert.equal(panel.includes('quotationCpqService.send'), false);
-  assert.ok(panel.includes('Final Send Gate: NOT YET ACTIVE'));
+  assert.ok(panel.includes('FINAL SEND GATE — ACTIVE'));
+  assert.ok(panel.includes('FINAL SEND GATE — STAGED / NOT ACTIVE'));
 });
 
 test('coverage · hardening suite adds meaningful checks beyond original 169', () => {
