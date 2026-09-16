@@ -8,6 +8,7 @@ Authoritative implementation history:
 - Part 10B PR #110 merge: 4037df16b328259863b3b9666c5cffaf5c4aaa01
 - migration-ledger safety PR #112 merge: fb2257e031555a601a5640f007c06f540621f887
 - Part 10B.1 release-documentation PR #113 merge / Part 10B.2 starting main: 97734d94d96169ad5861090e11b4ec635d54c102
+- Part 10B.2 recovery record PR #114 merge: e24a6e03660c0d2b35d8f0f930057e24237ee0fa
 
 Part 10B implementation remains complete:
 - one shared final Sales Send assertion
@@ -31,6 +32,7 @@ Part 10B.2 recovery checks completed:
 - ProFox CRM CI #794 run 35093197927 rechecked
 - original verify job 104784173511 failed before repository-step execution
 - explicit retry verify job 104799758952 reproduced the same zero-runner / zero-step failure
+- final-main CI after PR #114 also reproduced the zero-step failure
 - GITHUB ACTIONS DID NOT EXECUTE REPOSITORY CODE
 - current ci.yml remains on ubuntu-latest with intended verification steps; no CI weakening/change made
 - current GitHub public status did not support an ongoing GitHub-wide Actions outage
@@ -41,8 +43,8 @@ Part 10B.2 recovery checks completed:
 - trusted migrations:apply was NOT executed
 - custom ledger remains max version 20260908100000 with 0 post-Part-3 reconciled aliases
 - no manual custom-ledger backfill, guessed checksum or SQL replay performed
-- current-main Cloudflare Worker build/check e12f17c6-b931-45e6-ba18-09442ee1b1d4 failed
-- GitHub Cloudflare production deploy run 35097919953 / job 104799792355 was skipped because CI did not succeed
+- current-main Cloudflare Worker build/check 8789b81d-df28-4364-88eb-be8144c4a817 failed after PR #114
+- GitHub Cloudflare production deploy remained skipped because CI did not succeed
 - exact compatible current-main deployed SHA/version NOT VERIFIED
 - exact /api/health for current-main deployment NOT VERIFIED
 - authenticated Seller/Admin canonical-production QA NOT VERIFIED
@@ -61,6 +63,19 @@ Part 10B.2 recovery checks completed:
 - no real client quotation sent for QA
 - activation PR/migration NOT CREATED because prerequisites are blocked
 - rollback plan remains controlled policy true→false through repository/migration history only
+
+Post-recovery release-safety hardening completed on branch codex/part10b2-production-readiness-ledger-proof:
+- shared scripts/migration-manifest.mjs now owns migration discovery, ordering, checksum and applied-ledger audit rules
+- scripts/migrate-production.mjs reuses the shared manifest/audit logic instead of maintaining duplicate checksum/name/version verification
+- production:verify now includes production:verify-part10b
+- Part 10B production verification fails closed unless the custom migration ledger exactly matches the current repository migration set after migrations:apply
+- Part 10B production verification also checks policy/schema versions, snapshot columns, canonical function signatures, internal ACLs, universal Sent-transition ordering and read-only production inventory
+- new migration manifest/ledger tests added and wired into test:migration-reconciliation
+- combined focused migration safety suite passed 18/18
+- Node syntax checks passed for migration-manifest, migrate-production and verify-part10b-release-readiness
+- new Part 10B production SQL checks were executed read-only against production and matched the live foundation
+- no SQL migration, business row, custom-ledger row or gate value was changed by this hardening
+- hardening record: docs/crm-sales-part10b2-production-readiness-hardening.md
 
 Production activation state:
 - finalQuotationSendGateActive=false

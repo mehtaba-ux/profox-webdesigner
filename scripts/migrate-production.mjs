@@ -1,45 +1,15 @@
 import dotenv from 'dotenv';
-import { createHash } from 'node:crypto';
-import { readdir, readFile } from 'node:fs/promises';
-import path from 'node:path';
 import process from 'node:process';
 import pg from 'pg';
+import { assertAppliedMigrationLedger, loadMigrationManifest } from './migration-manifest.mjs';
 import { planNativeMigrationReconciliation } from './native-migration-reconciliation.mjs';
 
 dotenv.config({ path: '.env.local', quiet: true });
 
 const { Client } = pg;
-const migrationsDirectory = path.join(process.cwd(), 'supabase', 'migrations');
 const apply = process.argv.includes('--apply');
 const baselineVersion = String(process.env.MIGRATION_BASELINE_VERSION || '').trim();
 const databaseUrl = String(process.env.SUPABASE_DB_URL || '').trim();
-const migrationPattern = /^(\d{14})_(.+)\.sql$/;
-
-function checksum(source) {
-  return createHash('sha256').update(source.replace(/\r\n/g, '\n')).digest('hex');
-}
-
-async function loadMigrations() {
-  const files = (await readdir(migrationsDirectory))
-    .filter(file => migrationPattern.test(file))
-    .sort((a, b) => a.localeCompare(b));
-  const migrations = await Promise.all(files.map(async file => {
-    const [, version, name] = file.match(migrationPattern);
-    const source = await readFile(path.join(migrationsDirectory, file), 'utf8');
-    return { version, name, file, source, checksum: checksum(source) };
-  }));
-  const seen = new Set();
-  const duplicates = migrations.filter(item => seen.has(item.version) || !seen.add(item.version));
-  if (duplicates.length) {
-    throw new Error(`Duplicate migration versions: ${[...new Set(duplicates.map(item => item.version))].join(', ')}`);
-  }
-  for (let index = 1; index < migrations.length; index += 1) {
-    if (migrations[index - 1].version >= migrations[index].version) {
-      throw new Error(`Migration order is not strictly increasing near ${migrations[index].file}.`);
-    }
-  }
-  return migrations;
-}
 
 async function ensureControlSchema(client) {
   await client.query(`
@@ -98,19 +68,12 @@ async function verifyAndApply(client, migrations, authoritativeBaseline) {
     from profox_migrations.applied_migrations
     order by version
   `);
-  const appliedByVersion = new Map(result.rows.map(row => [row.version, row]));
-  const localByVersion = new Map(migrations.map(migration => [migration.version, migration]));
+  const { appliedByVersion } = assertAppliedMigrationLedger({
+    migrations,
+    appliedRows: result.rows,
+    requireAllApplied: false,
+  });
 
-  for (const row of result.rows) {
-    const local = localByVersion.get(row.version);
-    if (!local) throw new Error(`Applied migration ${row.version}_${row.name} is missing locally.`);
-    if (local.name !== row.name) {
-      throw new Error(`Applied migration was renamed: expected ${row.version}_${row.name}.sql, found ${local.file}. Add a new migration instead.`);
-    }
-    if (local.checksum !== row.checksum) {
-      throw new Error(`Applied migration was modified: ${local.file}. Add a new migration instead.`);
-    }
-  }
   const untrackedHistorical = migrations.filter(migration =>
     migration.version <= authoritativeBaseline && !appliedByVersion.has(migration.version)
   );
@@ -175,7 +138,7 @@ async function verifyAndApply(client, migrations, authoritativeBaseline) {
   );
 }
 
-const migrations = await loadMigrations();
+const migrations = await loadMigrationManifest();
 console.log(`Static migration verification passed: ${migrations.length} unique ordered versions.`);
 if (!apply) process.exit(0);
 if (!databaseUrl) throw new Error('SUPABASE_DB_URL is required with --apply.');
