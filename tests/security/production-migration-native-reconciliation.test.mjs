@@ -75,18 +75,17 @@ test('already custom-ledgered migrations are not reconciled twice', () => {
   assert.ok(!plan.reconciled.some(item => item.migration.version === first.localVersion));
 });
 
-test('an audited alias with no native history is treated as genuinely pending', () => {
+test('an audited historical alias with no exact native evidence fails closed', () => {
   const alias = nativeMigrationAliases[0];
-  const migration = migrationFromAlias(alias);
-  const plan = planNativeMigrationReconciliation({
-    migrations: [migration],
-    appliedByVersion: new Map(),
-    authoritativeBaseline: '20260908100000',
-    nativeRows: [],
-  });
-
-  assert.equal(plan.reconciled.length, 0);
-  assert.deepEqual(plan.pending, [migration]);
+  assert.throws(
+    () => planNativeMigrationReconciliation({
+      migrations: [migrationFromAlias(alias)],
+      appliedByVersion: new Map(),
+      authoritativeBaseline: '20260908100000',
+      nativeRows: [],
+    }),
+    /Audited native migration evidence is missing/,
+  );
 });
 
 test('an unlisted future migration remains on the normal apply path', () => {
