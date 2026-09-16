@@ -1,9 +1,13 @@
 import assert from 'node:assert/strict';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import test from 'node:test';
 
 import {
   assertAppliedMigrationLedger,
   auditAppliedMigrationLedger,
+  loadMigrationManifest,
   migrationChecksum,
 } from '../../scripts/migration-manifest.mjs';
 
@@ -95,4 +99,35 @@ test('duplicate applied versions fail closed even if rows otherwise look valid',
 
 test('checksum normalization treats CRLF and LF sources identically', () => {
   assert.equal(migrationChecksum('select 1;\r\n'), migrationChecksum('select 1;\n'));
+});
+
+test('manifest loader sorts migrations, ignores unrelated files, and computes exact checksums', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'profox-migrations-'));
+  try {
+    await writeFile(join(directory, '20260916124500_third.sql'), 'select 3;\r\n');
+    await writeFile(join(directory, 'README.md'), 'not a migration');
+    await writeFile(join(directory, '20260916121000_first.sql'), 'select 1;\n');
+    await writeFile(join(directory, '20260916123500_second.sql'), 'select 2;\n');
+
+    const manifest = await loadMigrationManifest({ migrationsDirectory: directory });
+    assert.deepEqual(manifest.map(item => item.version), ['20260916121000', '20260916123500', '20260916124500']);
+    assert.equal(manifest[2].checksum, migrationChecksum('select 3;\n'));
+    assert.equal(manifest[0].file, '20260916121000_first.sql');
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test('manifest loader rejects duplicate migration versions', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'profox-migrations-'));
+  try {
+    await writeFile(join(directory, '20260916121000_first.sql'), 'select 1;\n');
+    await writeFile(join(directory, '20260916121000_second.sql'), 'select 2;\n');
+    await assert.rejects(
+      () => loadMigrationManifest({ migrationsDirectory: directory }),
+      /Duplicate migration versions: 20260916121000/,
+    );
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
 });
