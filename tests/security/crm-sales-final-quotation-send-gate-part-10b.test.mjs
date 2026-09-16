@@ -5,6 +5,7 @@ import { resolve } from 'node:path';
 
 const read = path => readFileSync(resolve(process.cwd(), path), 'utf8');
 const migration = read('supabase/migrations/20260916121000_crm_sales_final_quotation_send_gate_part10b_foundation.sql');
+const hardening = read('supabase/migrations/20260916123500_crm_sales_final_send_snapshot_forge_hardening.sql');
 const service = read('src/lib/quotationSalesReconciliationService.ts');
 const panel = read('src/components/admin/QuotationSalesReconciliationPanel.tsx');
 const wrapper = read('src/components/admin/QuotationWorkspace.tsx');
@@ -66,13 +67,19 @@ const checks = [
   ['server attaches snapshot to NEW row', migration, 'new.sales_scope_snapshot:=v_snapshot'],
   ['server attaches snapshot time', migration, 'new.sales_scope_snapshot_at:=statement_timestamp()'],
   ['server attaches snapshot schema', migration, 'new.sales_scope_snapshot_schema_version:=2'],
-  ['snapshot mutation rejected', migration, 'Quotation Sales scope snapshot is server-controlled and immutable'],
+  ['foundation snapshot mutation rejected', migration, 'Quotation Sales scope snapshot is server-controlled and immutable'],
   ['revision is correction path in error', migration, 'Create a quotation revision for corrections'],
   ['Admin bypass remains after central invariant', migration, 'if public.is_admin() then return new; end if'],
   ['atomic bypass remains after central invariant', migration, "if v_atomic='1' then return new; end if"],
   ['browser cannot execute capture helper', migration, 'from public, anon, authenticated'],
   ['capture helper only service role', migration, 'grant execute on function public.crm_capture_quotation_sales_scope_snapshot(uuid) to service_role'],
   ['trusted functions use fixed empty search path', migration, "set search_path=''"],
+  ['hardening keeps canonical transition function', hardening, 'create or replace function public.protect_quotation_transition'],
+  ['hardening rejects every incoming snapshot mutation', hardening, 'if v_snapshot_changed then'],
+  ['hardening rejection precedes Sent transition logic', hardening, 'No browser/Admin/ordinary RPC caller may submit, clear or rewrite snapshot authority'],
+  ['hardening retains server capture after incoming check', hardening, 'new.sales_scope_snapshot:=v_snapshot'],
+  ['hardening retains Admin invariant ordering', hardening, 'if public.is_admin() then return new; end if'],
+  ['hardening retains atomic invariant ordering', hardening, "if v_atomic='1' then return new; end if"],
   ['service gate flag is dynamic boolean', service, 'finalQuotationSendGateActive: boolean'],
   ['service exposes snapshot metadata', service, 'QuotationSalesScopeSnapshotMetadata'],
   ['service snapshot persisted state is dynamic', service, 'persisted: boolean'],
@@ -129,11 +136,19 @@ test('architecture · no send workflow v2', () => {
 });
 
 test('security · no ordinary bypass parameter', () => {
-  for (const token of ['force=true', 'adminBypass', 'skipSalesGate', 'ignoreReconciliation']) assert.equal(migration.includes(token), false);
+  for (const token of ['force=true', 'adminBypass', 'skipSalesGate', 'ignoreReconciliation']) {
+    assert.equal(migration.includes(token), false);
+    assert.equal(hardening.includes(token), false);
+  }
+});
+
+test('security · caller snapshot mutation is rejected before server capture', () => {
+  assert.ok(hardening.indexOf('if v_snapshot_changed then') < hardening.indexOf("old.status<>'Sent' and new.status='Sent'"));
 });
 
 test('privacy · seller_guidance is never copied into Part 10B snapshot SQL', () => {
   assert.equal(/seller_guidance/i.test(migration), false);
+  assert.equal(/seller_guidance/i.test(hardening), false);
 });
 
 test('boundary · commercial_snapshot is not overloaded', () => {
@@ -141,24 +156,26 @@ test('boundary · commercial_snapshot is not overloaded', () => {
 });
 
 test('boundary · no fake Scope, Promise or coverage business rows are inserted', () => {
-  assert.equal(/insert\s+into\s+public\.crm_sales_scope_conditions/i.test(migration), false);
-  assert.equal(/insert\s+into\s+public\.crm_sales_promises/i.test(migration), false);
-  assert.equal(/insert\s+into\s+public\.quotation_sales_coverage/i.test(migration), false);
+  const sql = `${migration}\n${hardening}`;
+  assert.equal(/insert\s+into\s+public\.crm_sales_scope_conditions/i.test(sql), false);
+  assert.equal(/insert\s+into\s+public\.crm_sales_promises/i.test(sql), false);
+  assert.equal(/insert\s+into\s+public\.quotation_sales_coverage/i.test(sql), false);
 });
 
 test('ordering · universal Sent invariant appears before Admin bypass', () => {
-  assert.ok(migration.indexOf("old.status<>'Sent' and new.status='Sent'") < migration.indexOf('if public.is_admin() then return new; end if'));
+  assert.ok(hardening.indexOf("old.status<>'Sent' and new.status='Sent'") < hardening.indexOf('if public.is_admin() then return new; end if'));
 });
 
 test('ordering · universal Sent invariant appears before atomic-RPC bypass', () => {
-  assert.ok(migration.indexOf("old.status<>'Sent' and new.status='Sent'") < migration.indexOf("if v_atomic='1' then return new; end if"));
+  assert.ok(hardening.indexOf("old.status<>'Sent' and new.status='Sent'") < hardening.indexOf("if v_atomic='1' then return new; end if"));
 });
 
-test('rollout · foundation never activates production gate', () => {
-  assert.equal(/finalQuotationSendGateActive[^\n]*true/i.test(migration), false);
+test('rollout · foundation policy update keeps production gate false', () => {
+  assert.ok(migration.includes("'{finalQuotationSendGateActive}', 'false'::jsonb"));
   assert.ok(migration.includes('foundation intentionally ends with activation false'));
+  assert.equal(/\{finalQuotationSendGateActive\}',\s*'true'::jsonb/i.test(migration), false);
 });
 
 test('coverage · Part 10B suite has broad contract coverage', () => {
-  assert.ok(checks.length >= 90, `Expected at least 90 Part 10B contract checks; found ${checks.length}.`);
+  assert.ok(checks.length >= 95, `Expected at least 95 Part 10B contract checks; found ${checks.length}.`);
 });
