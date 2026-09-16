@@ -98,9 +98,13 @@ export function planNativeMigrationReconciliation({ migrations, appliedByVersion
       );
     }
 
-    // No native migration with this audited logical name exists. This is a genuinely
-    // pending migration for this database, so the normal transactional apply path remains authoritative.
-    pending.push(migration);
+    // Alias-listed migrations are historical reconciliation candidates, not normal
+    // future migrations. If their exact audited native evidence is absent, replaying
+    // the SQL could duplicate effects that already exist in production through an
+    // untracked path. Fail closed until authoritative production evidence is added.
+    throw new Error(
+      `Audited native migration evidence is missing for ${migration.file}: expected ${alias.nativeVersion}_${alias.name}. Refusing to execute historical alias SQL.`,
+    );
   }
 
   return { reconciled, pending };
