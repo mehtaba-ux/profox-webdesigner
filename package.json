@@ -18,7 +18,7 @@
     "test:talent-partner": "tsx --test tests/talent-partner/*.test.ts",
     "test:security": "tsx --test tests/security/*.test.ts",
     "test:crm-part10a": "node --test tests/security/crm-sales-quotation-reconciliation-part-10a.test.mjs tests/security/crm-sales-quotation-reconciliation-part-10a-hardening.test.mjs",
-    "test:crm-part10b": "node --test tests/security/crm-sales-final-quotation-send-gate-part-10b.test.mjs",
+    "test:crm-part10b": "node --test tests/security/crm-sales-final-quotation-send-gate-part-10b.test.mjs tests/security/crm-sales-final-quotation-send-gate-part-10b-spec-matrix.test.mjs",
     "test:e2e": "playwright test",
     "deploy": "npm run build && wrangler deploy",
     "pages:deploy": "npm run build && wrangler pages deploy dist"
