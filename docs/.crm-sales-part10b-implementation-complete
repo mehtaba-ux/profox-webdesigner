@@ -35,9 +35,18 @@ Part 10B.1 release actions completed:
 - Cloudflare merged-main build result recorded truthfully
 - activation withheld because compatible production deploy/authenticated QA are not verified
 - rollback procedure documented
+- post-release migration-integrity audit found the split between the custom profox_migrations ledger and Supabase native migration history
+- production migration runner now has an explicit audited 30-migration native-to-repository reconciliation map that prevents already-applied SQL from being replayed
+- reconciliation records the actual repository checksum transactionally only after exact native version + logical-name verification
+- applied migration history now rejects same-version migration renames as well as checksum changes
+- migration reconciliation regression coverage is wired into migrations:check and the full test chain
+- no migration SQL file or production business row was changed by the ledger-safety patch
 
 Release record:
 docs/crm-sales-final-quotation-send-gate-part-10b-release.md
+
+Migration-ledger reconciliation record:
+docs/production-migration-ledger-reconciliation.md
 
 Implementation closure audit:
 docs/crm-sales-final-quotation-send-gate-part-10b-final-audit.md
