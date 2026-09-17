@@ -24,7 +24,9 @@ Because unresolved current provenance is non-zero, the migration runner must fai
 - Custom ledger baseline rows: 566
 - Custom ledger post-baseline rows: 110
 - Custom ledger max version: `20260908100000`
-- Native Supabase migration rows: 123
+- Native Supabase migration rows: 667 total
+- Native Supabase post-baseline rows: 102
+- Native Supabase max version: `20260916070455`
 - `finalQuotationSendGateActive=false`
 - policy version: 2
 - snapshot schema version: 2
@@ -38,6 +40,8 @@ Because unresolved current provenance is non-zero, the migration runner must fai
 - quotation sales coverage: 0
 - captured historical sales snapshots: 0
 - legacy Sent quotations without snapshot: 2
+
+The 123 figure used elsewhere in this audit is the current repository **post-baseline migration-file count**, not the total native-ledger row count.
 
 No production row, policy value, migration ledger row, schema object, fake CRM record, or quotation state was mutated by this audit.
 
@@ -106,21 +110,21 @@ Audit branch: `part10b3-migration-lineage-truth-audit`
 
 PR: #117
 
-GitHub Actions `verify` on the Part 10B.3 branch failed before any repository-code step executed. The workflow job has no repository execution evidence; the correct conclusion is:
+On closure head `9c63891963e9e85268e0c9d6c20e5391f9281b01`, GitHub Actions `verify` run 806 / run ID `35218111072` completed with `runner_id=0` and `steps=[]`. The correct conclusion is:
 
 **GITHUB ACTIONS DID NOT EXECUTE REPOSITORY CODE.**
 
 This is not evidence that repository tests failed. It is also not acceptable evidence that they passed.
 
-Cloudflare Workers build/check for branch head `c8551186ac72d4b036fea865c3490e9b3d8b7826` succeeded:
+Cloudflare Workers build/check for that closure head succeeded:
 
-- build ID `a6ba7ae5-0c97-4801-aebd-7a0995ef9bb2`
-- version ID `880044cc-e83f-45d5-bbab-8980092b503f`
+- build ID `933815b8-c909-48bd-a49e-a7c44110b2f8`
+- version ID `efbf6b5f-5df7-46bb-afdb-76d13c516f01`
 - branch preview generated successfully
 
 Cloudflare preview success does not replace the trusted GitHub CI prerequisite and does not authorize production migration or activation.
 
-Current `main` likewise has the zero-runner/zero-repository-step GitHub Actions condition. Production deployment integrity is therefore not promoted to “verified” by this audit.
+Current `main` remained `0be12a91cc096ecb7c67c1d5e9858bdac18967b4` during the final audit pass. Production deployment integrity is therefore not promoted to “verified” by this audit.
 
 ## Required 46-field final report
 
@@ -131,7 +135,7 @@ Current `main` likewise has the zero-runner/zero-repository-step GitHub Actions 
 5. **Repository post-baseline migration count:** 123.
 6. **Current custom ledger row count:** 676.
 7. **Current custom ledger max version:** `20260908100000`.
-8. **Current native ledger row count:** 123.
+8. **Current native ledger row count:** 667 total; 102 post-baseline; max native version `20260916070455`.
 9. **`CUSTOM_LEDGER_EXACT` count + list:** 110; exact list is in the appendix below.
 10. **`NATIVE_LEDGER_EQUIVALENT` count + list:** 8 total — five `NATIVE_CONTENT_EQUIVALENT` plus three `NATIVE_EXACT`; exact list is above.
 11. **`GENUINELY_PENDING` count + list:** 0; none.
@@ -163,10 +167,10 @@ Current `main` likewise has the zero-runner/zero-repository-step GitHub Actions 
 37. **Quotations sales coverage count:** 0.
 38. **Historical sales snapshots count:** 0.
 39. **Legacy Sent quotations without snapshots:** 2.
-40. **Files changed:** repository hardening files plus this focused audit record and the Part 10B completion marker; exact PR file list is authoritative.
-41. **Commits created:** four implementation/test commits existed before closure documentation; closure documentation is added on this branch before merge.
+40. **Files changed:** 6 — `scripts/migrate-production.mjs`, `scripts/native-migration-reconciliation.mjs`, `scripts/verify-part10b-release-readiness.mjs`, `tests/security/production-migration-native-reconciliation.test.mjs`, `docs/crm-sales-part10b3-migration-lineage-truth-audit.md`, and `docs/.crm-sales-part10b-implementation-complete`.
+41. **Commits created:** 7 total on PR #117 after this factual native-ledger-count correction.
 42. **PR number:** #117.
-43. **PR status/review state:** open draft; no approvals/reviews at time of audit closure; intentionally not merge-ready while blockers remain.
+43. **PR status/review state:** open draft; no requested reviewers are present in current PR metadata; intentionally not merge-ready while blockers remain.
 44. **Merge result/post-merge main SHA:** not merged; `main` remains `0be12a91cc096ecb7c67c1d5e9858bdac18967b4` at audit time.
 45. **Whether Part 11 eligible:** no.
 46. **Exact remaining blockers:** five unresolved current migration provenance rows; GitHub Actions zero-runner/zero-repository-step condition; therefore trusted `migrations:apply`, custom-ledger convergence, compatible production deployment/integrity proof, final activation, authenticated production QA, merge, and Part 11 remain blocked.
