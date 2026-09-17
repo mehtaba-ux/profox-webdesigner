@@ -1,8 +1,11 @@
 PART 10B IMPLEMENTATION: COMPLETE
 PART 10B.2 PRODUCTION RELEASE / ACTIVATION: BLOCKED
+PART 10B.3 MIGRATION LINEAGE TRUTH AUDIT: COMPLETE
+PART 10B.3 PRODUCTION MIGRATION CONVERGENCE: BLOCKED
 
 Scope: Immutable Send-Time Sales Snapshot + Universal Quotation Send Gate
 Recovery audit date: 2026-09-16
+Part 10B.3 audit closure date: 2026-09-17
 
 Authoritative implementation history:
 - Part 10B PR #110 merge: 4037df16b328259863b3b9666c5cffaf5c4aaa01
@@ -91,15 +94,48 @@ Historical migration-alias evidence audit completed after PR #115:
 - no custom-ledger row was inserted and no historical migration SQL was replayed
 - migration evidence record: docs/production-migration-ledger-reconciliation.md
 
+Part 10B.3 migration-lineage truth audit completed in PR #117:
+- starting/current audited main: 0be12a91cc096ecb7c67c1d5e9858bdac18967b4
+- authoritative production baseline: 20260831103000
+- current repository migration count: 689
+- current post-baseline migration count: 123
+- current custom ledger: 676 rows total, 110 post-baseline exact rows, max 20260908100000
+- current post-baseline lineage: 110 CUSTOM_LEDGER_EXACT + 8 evidence-backed native equivalents + 0 genuinely pending + 5 UNRESOLVED_PROVENANCE
+- original 30 executable-looking aliases were corrected to 3 still-current exact aliases + 27 stale/orphan historical aliases
+- five additional current native mappings are accepted only by deterministic canonical SQL content proof
+- the 27 stale/orphan aliases are retained only as passive, non-executable history
+- five current same-name native candidates remain explicit unresolved blockers because authoritative deterministic provenance is insufficient
+- unresolved rows fail closed before any custom-ledger insert or SQL execution
+- native version/name drift, local content drift, native content drift, missing evidence, ambiguous statements and duplicate configuration fail closed
+- only genuinely new unlisted future migrations may enter the normal transactional SQL-apply path
+- migration runner and Part 10B release verifier share current-manifest lineage truth
+- production rechecked read-only: finalQuotationSendGateActive=false, policyVersion=2, snapshotSchemaVersion=2
+- production canonical assertion/capture/reconciliation/snapshot-builder functions remain exactly one each
+- anon/authenticated assertion/capture execution remains denied; service_role remains allowed
+- production business counts remain Scope 0, Promises 0, Coverage 0, Captured Snapshots 0, Legacy Sent without Snapshot 2
+- production custom-ledger reconciliation writes performed by Part 10B.3: 0
+- production migration SQL files applied by Part 10B.3: 0
+- no historical migration rename/delete/rewrite, guessed checksum, manual backfill, fake CRM data or activation performed
+- GitHub Actions verify on the Part 10B.3 branch again failed before repository-code step execution; GITHUB ACTIONS DID NOT EXECUTE REPOSITORY CODE
+- Cloudflare branch preview build succeeded, but preview success does not satisfy trusted GitHub CI or production activation prerequisites
+- PR #117 must remain draft/unmerged while the five unresolved provenance blockers and trusted CI prerequisite remain open
+- canonical Part 10B.3 audit record: docs/crm-sales-part10b3-migration-lineage-truth-audit.md
+
 Production activation state:
 - finalQuotationSendGateActive=false
 - policyVersion=2
 - snapshotSchemaVersion=2
+- migrations:apply=BLOCKED
+- custom-ledger convergence=BLOCKED
+- production activation=BLOCKED
 
 PART 11: BLOCKED
 
 Canonical release record:
 docs/crm-sales-final-quotation-send-gate-part-10b-release.md
 
+Part 10B.3 audit record:
+docs/crm-sales-part10b3-migration-lineage-truth-audit.md
+
 Required status:
-PART 10B IMPLEMENTATION IS COMPLETE, BUT PRODUCTION ACTIVATION REMAINS BLOCKED. PART 11 MUST NOT BEGIN.
+PART 10B IMPLEMENTATION AND PART 10B.3 REPOSITORY AUDIT ARE COMPLETE, BUT PRODUCTION MIGRATION CONVERGENCE AND ACTIVATION REMAIN BLOCKED. PART 11 MUST NOT BEGIN.
