@@ -9,7 +9,8 @@ const hardening = read('supabase/migrations/20260916123500_crm_sales_final_send_
 const privilege = read('supabase/migrations/20260916124500_crm_sales_final_send_assertion_privilege_hardening.sql');
 const part10a = read('tests/security/crm-sales-quotation-reconciliation-part-10a.test.mjs');
 const part10aHardening = read('tests/security/crm-sales-quotation-reconciliation-part-10a-hardening.test.mjs');
-const part9 = read('tests/security/crm-sales-scope-conditions-promise-register-part-9.test.ts');
+const part9Test = read('tests/security/crm-sales-scope-conditions-promise-register-part-9.test.ts');
+const part9Schema = read('supabase/migrations/native-history/20260910042939_crm_sales_scope_conditions_promise_register_part_9.sql');
 const part8 = read('tests/security/crm-sales-requirements-confirmed-proposal-readiness-part-8.test.ts');
 const part7 = read('tests/security/crm-sales-validation-escalation-part-7.test.ts');
 const part6 = read('tests/security/crm-sales-package-fit-part-6.test.ts');
@@ -66,12 +67,12 @@ const groups = [
     has(panel, 'Approved constraints:');
   }],
   [43, 52, 'scope conditions', () => {
-    has(part9, 'crm_sales_scope_conditions', 'DRAFT', 'ACTIVE', 'STALE', 'RESOLVED', 'SUPERSEDED', 'WITHDRAWN');
+    has(part9Schema, 'crm_sales_scope_conditions', 'DRAFT', 'ACTIVE', 'STALE', 'RESOLVED', 'SUPERSEDED', 'WITHDRAWN');
     has(part10a, "c.state='ACTIVE'", 'SCOPE_COVERAGE_STALE', 'SCOPE_COVERAGE_CONFLICT', 'SCOPE_COVERAGE_REQUIRED');
     has(foundation, "'activeScopeConditions',v_scope");
   }],
   [53, 65, 'promises', () => {
-    has(part9, 'crm_sales_promises', 'DRAFT', 'ACTIVE', 'SUPERSEDED', 'WITHDRAWN', 'PERFORMANCE_RESULT', 'COMMERCIAL', 'TIMELINE', 'TECHNICAL');
+    has(part9Schema, 'crm_sales_promises', 'DRAFT', 'ACTIVE', 'SUPERSEDED', 'WITHDRAWN', 'PERFORMANCE_RESULT', 'COMMERCIAL', 'TIMELINE', 'TECHNICAL');
     has(part10a, "p.record_state='ACTIVE'", 'PROMISE_COVERAGE_STALE', 'PROMISE_COVERAGE_CONFLICT', 'PROMISE_COVERAGE_REQUIRED', 'NO_MATERIAL_PROMISES_REGISTERED', 'promiseIntegrityStatus');
     has(panel, 'Timeline Promise vs quotation', 'Existing quotation approval dependency', 'Coverage does not bypass approval.');
     has(foundation, "'activePromises',v_promises");
@@ -114,7 +115,7 @@ const groups = [
     lacks(sql, 'force=true', 'skipSalesGate', 'ignoreReconciliation');
   }],
   [144, 159, 'regression and executable tooling', () => {
-    for (const [name, source] of [['Part 1',part1],['Part 2',part2],['Part 3',part3],['Part 3.5',part35],['Part 4',part4],['Part 5',part5],['Part 6',part6],['Part 7',part7],['Part 8',part8],['Part 9',part9],['Part 10A',part10a],['Part 10A hardening',part10aHardening]]) {
+    for (const [name, source] of [['Part 1',part1],['Part 2',part2],['Part 3',part3],['Part 3.5',part35],['Part 4',part4],['Part 5',part5],['Part 6',part6],['Part 7',part7],['Part 8',part8],['Part 9',part9Test],['Part 10A',part10a],['Part 10A hardening',part10aHardening]]) {
       assert.ok(source.length > 100, `${name} regression suite must remain present.`);
     }
     has(catalog, 'catalog_snapshot jsonb', 'catalog_version_snapshot integer');

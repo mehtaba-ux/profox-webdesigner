@@ -176,7 +176,7 @@ test('ordering · universal Sent invariant appears before atomic-RPC bypass', ()
 
 test('rollout · foundation policy update keeps production gate false', () => {
   assert.ok(migration.includes("'{finalQuotationSendGateActive}', 'false'::jsonb"));
-  assert.ok(migration.includes('foundation intentionally ends with activation false'));
+  assert.match(migration, /foundation migration intentionally ends with activation false/i);
   assert.equal(/\{finalQuotationSendGateActive\}',\s*'true'::jsonb/i.test(migration), false);
 });
 
