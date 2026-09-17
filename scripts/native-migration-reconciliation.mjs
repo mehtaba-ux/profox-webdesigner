@@ -42,11 +42,41 @@ const historicalAliasRows = [
 ];
 
 const unresolvedRows = [
-  ['20260909110000', 'crm_sales_meeting_management_closeout_part_5', '20260909063552', 'crm_sales_meeting_management_closeout_part_5'],
-  ['20260909193000', 'crm_sales_validation_escalation_part_7', '20260909110302', 'crm_sales_validation_escalation_part_7'],
-  ['20260909200000', 'crm_sales_requirements_confirmed_proposal_readiness_part_8', '20260910024728', 'crm_sales_requirements_confirmed_proposal_readiness_part_8'],
-  ['20260909201500', 'crm_sales_requirements_confirmed_proposal_readiness_part_8_hardening', '20260910024912', 'crm_sales_requirements_confirmed_proposal_readiness_part_8_hardening'],
-  ['20260915154800', 'sales_catalog_clarity_repository_reconciliation', '20260915102211', 'sales_catalog_clarity_repository_reconciliation'],
+  [
+    '20260909110000',
+    'crm_sales_meeting_management_closeout_part_5',
+    '20260909063552',
+    'crm_sales_meeting_management_closeout_part_5',
+    'Repository/native raw bytes differ. Additional comments are observed inside the PL/pgSQL close-out body, but no trusted PostgreSQL/PL/pgSQL tokenizer is available to prove that every executable body token is identical.',
+  ],
+  [
+    '20260909193000',
+    'crm_sales_validation_escalation_part_7',
+    '20260909110302',
+    'crm_sales_validation_escalation_part_7',
+    'Repository/native raw bytes differ. Additional explanatory comments are observed, but no trusted PostgreSQL/PL/pgSQL tokenizer is available to prove that all executable SQL and function-body tokens are identical.',
+  ],
+  [
+    '20260909200000',
+    'crm_sales_requirements_confirmed_proposal_readiness_part_8',
+    '20260910024728',
+    'crm_sales_requirements_confirmed_proposal_readiness_part_8',
+    'Repository/native raw bytes differ. No trusted PostgreSQL/PL/pgSQL tokenizer is available to establish that every difference is limited to comments or non-semantic formatting.',
+  ],
+  [
+    '20260909201500',
+    'crm_sales_requirements_confirmed_proposal_readiness_part_8_hardening',
+    '20260910024912',
+    'crm_sales_requirements_confirmed_proposal_readiness_part_8_hardening',
+    'Repository/native raw bytes differ. No trusted PostgreSQL/PL/pgSQL tokenizer is available to establish that every difference is limited to comments or non-semantic formatting.',
+  ],
+  [
+    '20260915154800',
+    'sales_catalog_clarity_repository_reconciliation',
+    '20260915102211',
+    'sales_catalog_clarity_repository_reconciliation',
+    'Repository/native raw bytes differ. The repository file contains additional rollout-history comments, but no trusted PostgreSQL/PL/pgSQL tokenizer is available to prove that all executable SQL and function-body tokens are identical.',
+  ],
 ];
 
 export const nativeMigrationAliases = Object.freeze(activeAliasRows.map(([
@@ -68,12 +98,13 @@ export const unresolvedNativeMigrationProvenance = Object.freeze(unresolvedRows.
   name,
   nativeCandidateVersion,
   nativeCandidateName,
+  reason,
 ]) => Object.freeze({
   localVersion,
   name,
   nativeCandidateVersion,
   nativeCandidateName,
-  reason: 'Current repository SQL does not deterministically match any authoritative native migration row; same-name/native schema evidence is insufficient.',
+  reason,
 })));
 
 export function canonicalizeMigrationSourceForContentProof(source) {
