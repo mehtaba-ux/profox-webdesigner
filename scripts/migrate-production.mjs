@@ -83,10 +83,11 @@ async function verifyAndApply(client, migrations, authoritativeBaseline) {
 
   // Some audited production migrations were originally applied through Supabase's
   // native migration ledger before the repository runner existed. Reconcile only
-  // the explicit aliases in native-migration-reconciliation.mjs. Exact native
-  // version+name matches are recorded in the custom ledger without replaying SQL.
+  // current-manifest aliases with exact authoritative identity/content evidence.
+  // Known current migrations with unresolved provenance are blocked before any
+  // custom-ledger insert or SQL execution occurs.
   const nativeHistory = await client.query(`
-    select version,name
+    select version,name,statements
     from supabase_migrations.schema_migrations
     order by version
   `);
@@ -100,14 +101,14 @@ async function verifyAndApply(client, migrations, authoritativeBaseline) {
   if (reconciled.length) {
     await client.query('begin');
     try {
-      for (const { migration, alias } of reconciled) {
+      for (const { migration, alias, classification } of reconciled) {
         await client.query(
           `insert into profox_migrations.applied_migrations(version,name,checksum,baseline)
            values($1,$2,$3,false)`,
           [migration.version, migration.name, migration.checksum],
         );
         console.log(
-          `Reconciled ${migration.file} from native Supabase history ${alias.nativeVersion}_${alias.name}; SQL was not replayed.`,
+          `Reconciled ${migration.file} from native Supabase history ${alias.nativeVersion}_${alias.name} via ${classification}; SQL was not replayed.`,
         );
       }
       await client.query('commit');
