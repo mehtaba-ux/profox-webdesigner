@@ -303,3 +303,63 @@ Required state after this audit:
 - production activation: **BLOCKED**
 - PR #117 merge: **BLOCKED / keep draft**
 - Part 11: **NOT ELIGIBLE / MUST NOT BEGIN**
+
+## Part 10B.4 — Final Provenance Resolution
+
+Part 10B.4 re-investigated the five current `UNRESOLVED_PROVENANCE` rows without changing any executable migration SQL and without writing to production. The result remains fail-closed: **none of the five can be promoted to `NATIVE_SQL_TOKEN_EQUIVALENT` with the authoritative tooling currently available.**
+
+### Token/parser method decision
+
+The repository dependency set contains no PostgreSQL/PL/pgSQL parser or tokenizer. The available worker runtime likewise did not provide `pglast`, `libpg_query`/`pg_query`, a PostgreSQL-aware JavaScript parser, or a local `psql`/server parser interface suitable for arbitrary migration-source comparison. Production PostgreSQL was inspected read-only and exposes no safe arbitrary-SQL parser API that can be used here to compare migration source while preserving dollar-quoted PL/pgSQL bodies, dynamic SQL, quoted strings, comments, and operators.
+
+Accordingly, Part 10B.4 did **not** add a regex/comment-stripper, fuzzy comparison, or home-grown lexer. No `NATIVE_SQL_TOKEN_EQUIVALENT` proof type was added. This is intentional: without a trustworthy language-aware method, comment-looking differences cannot be treated as proof that executable SQL is identical.
+
+### Native evidence reverified read-only
+
+Each candidate exists at the expected native version/name and contains exactly one stored statement. Native raw SHA-256 evidence:
+
+| Repository migration | Native candidate | Native statement count | Native raw SHA-256 | Repository Git blob SHA-1 | Creation commit | Result |
+| --- | --- | ---: | --- | --- | --- | --- |
+| `20260909110000_crm_sales_meeting_management_closeout_part_5` | `20260909063552_crm_sales_meeting_management_closeout_part_5` | 1 | `02f7fff7608cfea2c565c61265a9470357917e39325ac75f5f56a525f2419365` | `cd99a43ff8030c9c1b439589e09a6bca0ec550c0` | `7df2cd3fb749f4a3c8af758b07129e21bc2e3a51` | `UNRESOLVED_PROVENANCE` |
+| `20260909193000_crm_sales_validation_escalation_part_7` | `20260909110302_crm_sales_validation_escalation_part_7` | 1 | `24e009abf749d7ea45bcc5526af6661305a0e12889e788670b3ba2ffeaf5f995` | `54b82d420193a17374a321d12438dded67b59012` | `43953366044955ce1a11733d5169d8a24ca401fe` | `UNRESOLVED_PROVENANCE` |
+| `20260909200000_crm_sales_requirements_confirmed_proposal_readiness_part_8` | `20260910024728_crm_sales_requirements_confirmed_proposal_readiness_part_8` | 1 | `81c117ba04074f026c6a04d47c77edc9cde165808233dcf311f64707dd433806` | `617301e6f51ab3743fee5bda6cfe50d3f52da88a` | `4695a0cc7e2067bd69d8baac50cb411943214556` | `UNRESOLVED_PROVENANCE` |
+| `20260909201500_crm_sales_requirements_confirmed_proposal_readiness_part_8_hardening` | `20260910024912_crm_sales_requirements_confirmed_proposal_readiness_part_8_hardening` | 1 | `11854b9216d82c2d9fc7b010b90c36f6622c1d8efe96bbe5c7daea8c5055bb1d` | `286289db5080ce33bbee6a8a04b123b96d6c41d5` | `4695a0cc7e2067bd69d8baac50cb411943214556` | `UNRESOLVED_PROVENANCE` |
+| `20260915154800_sales_catalog_clarity_repository_reconciliation` | `20260915102211_sales_catalog_clarity_repository_reconciliation` | 1 | `e267e75af14d13dd5c39a7402d999d2a521d4881d93adcd219f1d2ad6d756758` | `3ba8a2d47d235e98ca9337be70966cc82037f64f` | `d62e78d57fd3351838786cb88c4172094e6f1806` | `UNRESOLVED_PROVENANCE` |
+
+The repository SHA values above are Git blob SHA-1 identities from GitHub, not substitutes for the requested raw repository SHA-256. A separate authoritative raw repository SHA-256 was not available through the connected GitHub contents interface in this continuation, so no value is invented. The native raw SHA-256 values were computed read-only in PostgreSQL over the exact stored statement bytes.
+
+### Per-blocker mismatch findings
+
+1. **Part 5 meeting close-out:** current and native raw bytes differ. The current repository body visibly contains additional explanatory `--` comments inside the dollar-quoted PL/pgSQL body, including comments around next-action semantics and generic Meeting Follow-Up behavior. Because the body is executable-language text inside a dollar quote, those comments cannot be stripped by a top-level regex proof. Executable-token equality therefore remains unproven.
+2. **Part 7 validation escalation:** current and native raw bytes differ. The current repository file visibly contains additional explanatory header comments. That observation is not sufficient to prove the remainder of the large SQL/PL/pgSQL source is executable-token identical, so it remains unresolved.
+3. **Part 8 requirements/proposal readiness:** current and native raw bytes differ. The inspected beginnings align, but no trusted parser/tokenizer is available to prove the complete SQL and dollar-quoted PL/pgSQL bodies differ only by comments/formatting. It remains unresolved.
+4. **Part 8 hardening:** current and native raw bytes differ. The inspected beginnings align, but complete executable-token equivalence cannot be proven with the available trusted tooling. It remains unresolved.
+5. **Sales catalog clarity reconciliation:** current and native raw bytes differ. The repository file visibly adds rollout-history/idempotency explanatory comments before executable SQL. That is not sufficient to prove the full migration executable tokens are identical, so it remains unresolved.
+
+For all five: `comments-only?` = **not authoritatively proven**; `whitespace-only?` = **no / not established**; `executable SQL token difference?` = **unknown because safe token proof is unavailable**; `PL/pgSQL body difference?` = **not safely classifiable where bodies are present**; `dynamic SQL/string difference?` = **not proven absent**; final classification = `UNRESOLVED_PROVENANCE`; safe action = `BLOCK_UNRESOLVED`.
+
+### Git-history evidence
+
+Each of the five migration paths has a single creation commit in reachable branch history and no later file-specific commit returned by the path history query:
+
+- Part 5: `7df2cd3fb749f4a3c8af758b07129e21bc2e3a51`
+- Part 7: `43953366044955ce1a11733d5169d8a24ca401fe`
+- Part 8 foundation and hardening: `4695a0cc7e2067bd69d8baac50cb411943214556`
+- Catalog reconciliation: `d62e78d57fd3351838786cb88c4172094e6f1806`
+
+This history strengthens identity/provenance context but does not override the raw mismatch or replace executable SQL comparison.
+
+### Part 10B.4 final lineage counts
+
+- `CUSTOM_LEDGER_EXACT`: **110**
+- `NATIVE_EXACT`: **3**
+- `NATIVE_CONTENT_EQUIVALENT`: **5**
+- `NATIVE_SQL_TOKEN_EQUIVALENT`: **0**
+- `UNRESOLVED_PROVENANCE`: **5**
+- `GENUINELY_PENDING_NEW`: **0**
+- total post-baseline: **123**
+- active native reconciliation mappings: **8**
+
+No migration SQL file changed. No production write occurred. `npm run migrations:apply` was not run. The final quotation Send gate remains off. PR #117 must remain draft/unmerged.
+
+**CURRENT MIGRATION PROVENANCE STILL CONTAINS UNRESOLVED BLOCKERS. PR #117 MUST REMAIN DRAFT. PRODUCTION migrations:apply, PART 10B ACTIVATION, AND PART 11 MUST NOT BEGIN.**
