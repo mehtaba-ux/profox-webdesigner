@@ -1,4 +1,17 @@
-const aliasRows = [
+import { createHash } from 'node:crypto';
+
+const activeAliasRows = [
+  ['20260909103000', 'crm_sales_meeting_prep_part_4', '20260909045346', 'NATIVE_CONTENT_EQUIVALENT', 'bb4678491d27b4e1f03a16f77de488d745c55cd84485715148be5747c9d4b897'],
+  ['20260909160000', 'crm_sales_package_fit_part_6', '20260909084757', 'NATIVE_CONTENT_EQUIVALENT', '2dad0ccd1bd1dfe04fae054e9c8217f424dcc511e15b800cd3e4ed4a56e31a17'],
+  ['20260909162000', 'crm_sales_package_fit_part_6_policy_hardening', '20260909085018', 'NATIVE_CONTENT_EQUIVALENT', 'fc7fe8f4f308b33cfe275f3888e220972d18109cc443167aa75ac1f44210df08'],
+  ['20260909194500', 'crm_sales_validation_queue_routing_part_7', '20260909111815', 'NATIVE_CONTENT_EQUIVALENT', '9ef9ce06da4f7168ba1f9d0ae2138ed64009b930182ef1833358177911022ee9'],
+  ['20260909195500', 'crm_sales_validation_advisor_hardening_part_7', '20260909111835', 'NATIVE_CONTENT_EQUIVALENT', '24830078bb4a72b200d7473907228dd2b1f23b1450c7fb3afdd60ee579384c86'],
+  ['20260916121000', 'crm_sales_final_quotation_send_gate_part10b_foundation', '20260916063249', 'NATIVE_EXACT', null],
+  ['20260916123500', 'crm_sales_final_send_snapshot_forge_hardening', '20260916070047', 'NATIVE_EXACT', null],
+  ['20260916124500', 'crm_sales_final_send_assertion_privilege_hardening', '20260916070455', 'NATIVE_EXACT', null],
+];
+
+const historicalAliasRows = [
   ['20260909130000', 'crm_sales_requirements_resolution_part_4', '20260909123856'],
   ['20260909140000', 'crm_sales_requirements_resolution_part_4_recut', '20260909132143'],
   ['20260910123000', 'crm_sales_package_fit_part_5', '20260910042031'],
@@ -19,9 +32,6 @@ const aliasRows = [
   ['20260915195000', 'crm_sales_reconciliation_part10a_review_coverage', '20260915145857'],
   ['20260915214500', 'crm_sales_reconciliation_part10a_review_coverage_forge_hardening', '20260915155758'],
   ['20260915220000', 'crm_sales_reconciliation_part10a_owner_delete_hardening', '20260915181516'],
-  ['20260916121000', 'crm_sales_final_quotation_send_gate_part10b_foundation', '20260916063249'],
-  ['20260916123500', 'crm_sales_final_send_snapshot_forge_hardening', '20260916070047'],
-  ['20260916124500', 'crm_sales_final_send_assertion_privilege_hardening', '20260916070455'],
   ['20260916150000', 'crm_sales_catalog_v1', '20260916093503'],
   ['20260916174500', 'crm_sales_catalog_v1_catalog_id_compatibility', '20260916114854'],
   ['20260916175000', 'crm_sales_catalog_v1_trigger_search_path_repair', '20260916120501'],
@@ -31,81 +41,302 @@ const aliasRows = [
   ['20260916210000', 'security_linter_hardening', '20260916153027'],
 ];
 
-export const nativeMigrationAliases = Object.freeze(aliasRows.map(([localVersion, name, nativeVersion]) => Object.freeze({
+const unresolvedRows = [
+  ['20260909110000', 'crm_sales_meeting_management_closeout_part_5', '20260909063552', 'crm_sales_meeting_management_closeout_part_5'],
+  ['20260909193000', 'crm_sales_validation_escalation_part_7', '20260909110302', 'crm_sales_validation_escalation_part_7'],
+  ['20260909200000', 'crm_sales_requirements_confirmed_proposal_readiness_part_8', '20260910024728', 'crm_sales_requirements_confirmed_proposal_readiness_part_8'],
+  ['20260909201500', 'crm_sales_requirements_confirmed_proposal_readiness_part_8_hardening', '20260910024912', 'crm_sales_requirements_confirmed_proposal_readiness_part_8_hardening'],
+  ['20260915154800', 'sales_catalog_clarity_repository_reconciliation', '20260915102211', 'sales_catalog_clarity_repository_reconciliation'],
+];
+
+export const nativeMigrationAliases = Object.freeze(activeAliasRows.map(([
   localVersion,
   name,
   nativeVersion,
+  proof,
+  contentSha256,
+]) => Object.freeze({ localVersion, name, nativeVersion, proof, contentSha256 })));
+
+export const historicalNativeMigrationAliases = Object.freeze(historicalAliasRows.map(([
+  localVersion,
+  name,
+  nativeVersion,
+]) => Object.freeze({ localVersion, name, nativeVersion })));
+
+export const unresolvedNativeMigrationProvenance = Object.freeze(unresolvedRows.map(([
+  localVersion,
+  name,
+  nativeCandidateVersion,
+  nativeCandidateName,
+]) => Object.freeze({
+  localVersion,
+  name,
+  nativeCandidateVersion,
+  nativeCandidateName,
+  reason: 'Current repository SQL does not deterministically match any authoritative native migration row; same-name/native schema evidence is insufficient.',
 })));
 
-function validateAliases() {
-  const localVersions = new Set();
-  const nativeVersions = new Set();
-  const names = new Set();
-  for (const alias of nativeMigrationAliases) {
+export function canonicalizeMigrationSourceForContentProof(source) {
+  let normalized = String(source);
+  if (normalized.startsWith('\uFEFF')) normalized = normalized.slice(1);
+  normalized = normalized.replace(/\r\n/g, '\n');
+  if (normalized.endsWith('\n')) normalized = normalized.slice(0, -1);
+  return normalized;
+}
+
+export function migrationContentProofChecksum(source) {
+  return createHash('sha256')
+    .update(canonicalizeMigrationSourceForContentProof(source))
+    .digest('hex');
+}
+
+export function validateNativeMigrationReconciliationConfig({
+  activeAliases = nativeMigrationAliases,
+  historicalAliases = historicalNativeMigrationAliases,
+  unresolvedRows: unresolvedItems = unresolvedNativeMigrationProvenance,
+} = {}) {
+  const activeLocalVersions = new Set();
+  const activeNativeVersions = new Set();
+  const activeNames = new Set();
+
+  for (const alias of activeAliases) {
     if (!/^\d{14}$/.test(alias.localVersion) || !/^\d{14}$/.test(alias.nativeVersion)) {
       throw new Error(`Invalid native migration reconciliation version for ${alias.name}.`);
     }
-    if (!alias.name || localVersions.has(alias.localVersion) || nativeVersions.has(alias.nativeVersion) || names.has(alias.name)) {
+    if (!['NATIVE_EXACT', 'NATIVE_CONTENT_EQUIVALENT'].includes(alias.proof)) {
+      throw new Error(`Invalid native migration reconciliation proof for ${alias.localVersion}_${alias.name}.`);
+    }
+    if (alias.proof === 'NATIVE_CONTENT_EQUIVALENT' && !/^[a-f0-9]{64}$/.test(alias.contentSha256 || '')) {
+      throw new Error(`Missing deterministic content proof checksum for ${alias.localVersion}_${alias.name}.`);
+    }
+    if (alias.proof === 'NATIVE_EXACT' && alias.contentSha256 !== null) {
+      throw new Error(`Exact native alias must not carry a content proof checksum: ${alias.localVersion}_${alias.name}.`);
+    }
+    if (!alias.name || activeLocalVersions.has(alias.localVersion)
+        || activeNativeVersions.has(alias.nativeVersion) || activeNames.has(alias.name)) {
       throw new Error(`Duplicate or invalid native migration reconciliation alias: ${alias.localVersion}_${alias.name}.`);
     }
-    localVersions.add(alias.localVersion);
-    nativeVersions.add(alias.nativeVersion);
-    names.add(alias.name);
+    activeLocalVersions.add(alias.localVersion);
+    activeNativeVersions.add(alias.nativeVersion);
+    activeNames.add(alias.name);
+  }
+
+  const historicalLocalVersions = new Set();
+  const historicalNativeVersions = new Set();
+  for (const alias of historicalAliases) {
+    if (!/^\d{14}$/.test(alias.localVersion) || !/^\d{14}$/.test(alias.nativeVersion) || !alias.name) {
+      throw new Error(`Invalid historical native migration alias: ${alias.localVersion}_${alias.name}.`);
+    }
+    if (historicalLocalVersions.has(alias.localVersion) || historicalNativeVersions.has(alias.nativeVersion)) {
+      throw new Error(`Duplicate historical native migration alias: ${alias.localVersion}_${alias.name}.`);
+    }
+    if (activeLocalVersions.has(alias.localVersion)) {
+      throw new Error(`Historical native migration alias is still executable: ${alias.localVersion}_${alias.name}.`);
+    }
+    historicalLocalVersions.add(alias.localVersion);
+    historicalNativeVersions.add(alias.nativeVersion);
+  }
+
+  const unresolvedLocalVersions = new Set();
+  for (const item of unresolvedItems) {
+    if (!/^\d{14}$/.test(item.localVersion) || !/^\d{14}$/.test(item.nativeCandidateVersion)
+        || !item.name || !item.nativeCandidateName) {
+      throw new Error(`Invalid unresolved migration provenance row: ${item.localVersion}_${item.name}.`);
+    }
+    if (unresolvedLocalVersions.has(item.localVersion) || activeLocalVersions.has(item.localVersion)) {
+      throw new Error(`Duplicate or executable unresolved migration provenance row: ${item.localVersion}_${item.name}.`);
+    }
+    unresolvedLocalVersions.add(item.localVersion);
   }
 }
 
-validateAliases();
+validateNativeMigrationReconciliationConfig();
 
 const aliasByLocalVersion = new Map(nativeMigrationAliases.map(alias => [alias.localVersion, alias]));
+const unresolvedByLocalVersion = new Map(
+  unresolvedNativeMigrationProvenance.map(item => [item.localVersion, item]),
+);
 
-export function planNativeMigrationReconciliation({ migrations, appliedByVersion, authoritativeBaseline, nativeRows }) {
-  const nativeKeys = new Set(nativeRows.map(row => `${String(row.version)}:${String(row.name)}`));
-  const nativeVersionsByName = new Map();
-  for (const row of nativeRows) {
-    const name = String(row.name);
-    const versions = nativeVersionsByName.get(name) || [];
-    versions.push(String(row.version));
-    nativeVersionsByName.set(name, versions);
+function nativeSourceForContentProof(row) {
+  if (!Array.isArray(row?.statements) || row.statements.length !== 1 || typeof row.statements[0] !== 'string') {
+    return null;
   }
+  return row.statements[0];
+}
 
-  const reconciled = [];
-  const pending = [];
+function nativeIndexes(nativeRows) {
+  const byKey = new Map();
+  const byName = new Map();
+  const byVersion = new Map();
+  for (const row of nativeRows) {
+    const version = String(row.version);
+    const name = String(row.name);
+    byKey.set(`${version}:${name}`, row);
+    const nameRows = byName.get(name) || [];
+    nameRows.push(row);
+    byName.set(name, nameRows);
+    const versionRows = byVersion.get(version) || [];
+    versionRows.push(row);
+    byVersion.set(version, versionRows);
+  }
+  return { byKey, byName, byVersion };
+}
+
+function unresolvedRow(migration, reason, extra = {}) {
+  return {
+    migration,
+    classification: 'UNRESOLVED_PROVENANCE',
+    safeAction: 'BLOCK_UNRESOLVED',
+    reason,
+    ...extra,
+  };
+}
+
+export function auditCurrentMigrationLineage({
+  migrations,
+  appliedByVersion,
+  authoritativeBaseline,
+  nativeRows,
+}) {
+  const indexes = nativeIndexes(nativeRows);
+  const rows = [];
 
   for (const migration of migrations) {
-    if (migration.version <= authoritativeBaseline || appliedByVersion.has(migration.version)) continue;
+    if (migration.version <= authoritativeBaseline) continue;
+
+    if (appliedByVersion.has(migration.version)) {
+      rows.push({
+        migration,
+        classification: 'CUSTOM_LEDGER_EXACT',
+        safeAction: 'NONE_ALREADY_RECORDED',
+      });
+      continue;
+    }
+
+    const blocked = unresolvedByLocalVersion.get(migration.version);
+    if (blocked) {
+      if (migration.name !== blocked.name) {
+        rows.push(unresolvedRow(
+          migration,
+          `Unresolved migration provenance name mismatch for ${migration.file}: expected ${blocked.name}.`,
+          { blocked },
+        ));
+      } else {
+        rows.push(unresolvedRow(
+          migration,
+          `Unresolved migration provenance for ${migration.file}: ${blocked.reason} Refusing SQL execution.`,
+          { blocked },
+        ));
+      }
+      continue;
+    }
 
     const alias = aliasByLocalVersion.get(migration.version);
     if (!alias) {
-      pending.push(migration);
+      rows.push({
+        migration,
+        classification: 'GENUINELY_PENDING_NEW',
+        safeAction: 'SAFE_NEW_APPLY_LATER',
+      });
       continue;
     }
+
     if (migration.name !== alias.name) {
-      throw new Error(
+      rows.push(unresolvedRow(
+        migration,
         `Native migration reconciliation name mismatch for ${migration.file}: expected ${alias.name}.`,
-      );
+        { alias },
+      ));
+      continue;
     }
 
     const expectedKey = `${alias.nativeVersion}:${alias.name}`;
-    if (nativeKeys.has(expectedKey)) {
-      reconciled.push({ migration, alias });
+    const nativeRow = indexes.byKey.get(expectedKey);
+    if (!nativeRow) {
+      const atExpectedVersion = indexes.byVersion.get(alias.nativeVersion) || [];
+      if (atExpectedVersion.length) {
+        rows.push(unresolvedRow(
+          migration,
+          `Native migration history name mismatch for ${migration.file}: expected ${alias.nativeVersion}_${alias.name}, found ${atExpectedVersion.map(row => `${row.version}_${row.name}`).join(', ')}.`,
+          { alias },
+        ));
+        continue;
+      }
+      const sameNameRows = indexes.byName.get(alias.name) || [];
+      if (sameNameRows.length) {
+        rows.push(unresolvedRow(
+          migration,
+          `Native migration history mismatch for ${migration.file}: expected ${alias.nativeVersion}_${alias.name}, found ${sameNameRows.map(row => `${row.version}_${row.name}`).join(', ')}.`,
+          { alias },
+        ));
+        continue;
+      }
+      rows.push(unresolvedRow(
+        migration,
+        `Audited native migration evidence is missing for ${migration.file}: expected ${alias.nativeVersion}_${alias.name}. Refusing SQL execution.`,
+        { alias },
+      ));
       continue;
     }
 
-    const sameNameVersions = nativeVersionsByName.get(alias.name) || [];
-    if (sameNameVersions.length) {
-      throw new Error(
-        `Native migration history mismatch for ${migration.file}: expected ${alias.nativeVersion}_${alias.name}, found ${sameNameVersions.join(', ')}.`,
-      );
+    if (alias.proof === 'NATIVE_CONTENT_EQUIVALENT') {
+      const localProof = migrationContentProofChecksum(migration.source);
+      if (localProof !== alias.contentSha256) {
+        rows.push(unresolvedRow(
+          migration,
+          `Current repository content changed for audited content-proof migration ${migration.file}: expected canonical SHA-256 ${alias.contentSha256}, found ${localProof}.`,
+          { alias, nativeRow },
+        ));
+        continue;
+      }
+      const nativeSource = nativeSourceForContentProof(nativeRow);
+      if (nativeSource === null) {
+        rows.push(unresolvedRow(
+          migration,
+          `Native statement representation is not deterministically comparable for ${migration.file}; expected exactly one stored SQL statement.`,
+          { alias, nativeRow },
+        ));
+        continue;
+      }
+      const nativeProof = migrationContentProofChecksum(nativeSource);
+      if (nativeProof !== alias.contentSha256) {
+        rows.push(unresolvedRow(
+          migration,
+          `Native content proof mismatch for ${migration.file}: expected canonical SHA-256 ${alias.contentSha256}, found ${nativeProof}.`,
+          { alias, nativeRow },
+        ));
+        continue;
+      }
     }
 
-    // Alias-listed migrations are historical reconciliation candidates, not normal
-    // future migrations. If their exact audited native evidence is absent, replaying
-    // the SQL could duplicate effects that already exist in production through an
-    // untracked path. Fail closed until authoritative production evidence is added.
-    throw new Error(
-      `Audited native migration evidence is missing for ${migration.file}: expected ${alias.nativeVersion}_${alias.name}. Refusing to execute historical alias SQL.`,
-    );
+    rows.push({
+      migration,
+      alias,
+      nativeRow,
+      classification: alias.proof,
+      safeAction: alias.proof === 'NATIVE_EXACT'
+        ? 'RECONCILE_FROM_NATIVE_EXACT'
+        : 'RECONCILE_FROM_NATIVE_CONTENT_PROOF',
+    });
   }
 
-  return { reconciled, pending };
+  return rows;
+}
+
+export function planNativeMigrationReconciliation(options) {
+  const rows = auditCurrentMigrationLineage(options);
+  const blocked = rows.filter(row => row.safeAction === 'BLOCK_UNRESOLVED');
+  if (blocked.length) {
+    throw new Error(blocked.map(row => row.reason).join(' | '));
+  }
+  return {
+    reconciled: rows
+      .filter(row => row.safeAction === 'RECONCILE_FROM_NATIVE_EXACT'
+        || row.safeAction === 'RECONCILE_FROM_NATIVE_CONTENT_PROOF')
+      .map(row => ({ migration: row.migration, alias: row.alias, classification: row.classification })),
+    pending: rows
+      .filter(row => row.safeAction === 'SAFE_NEW_APPLY_LATER')
+      .map(row => row.migration),
+    rows,
+  };
 }
