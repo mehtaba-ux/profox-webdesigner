@@ -260,6 +260,21 @@ test('replacement ledger name/checksum mismatch never produces SUPERSEDED state'
   assert.match(affected.reason, /exact forward replacement/);
 });
 
+test('pending replacements do not require postcondition proof before their repair SQL runs', () => {
+  const manifest = manifestFromRegistry();
+  const plan = planForwardMigrationConvergence({
+    migrations: manifest,
+    appliedByVersion: new Map(),
+    authoritativeBaseline: BASELINE,
+    nativeRows: [],
+    postconditionResults: new Map(),
+  });
+  assert.deepEqual(
+    plan.pendingReplacements.map(item => item.version),
+    PART10B6_FORWARD_REPLACEMENT_VERSIONS,
+  );
+});
+
 test('convergence planner returns only the four explicitly approved replacement migrations', () => {
   const manifest = manifestFromRegistry();
   const plan = planForwardMigrationConvergence({
