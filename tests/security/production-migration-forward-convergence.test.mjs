@@ -183,6 +183,27 @@ test('supersession registry detects cycles explicitly', () => {
   );
 });
 
+test('a forbidden historical custom-ledger row never becomes APPLIED_EXACT', () => {
+  const manifest = manifestFromRegistry();
+  const old = manifest.find(item => item.version === historicalForwardMigrationSupersessions[0].oldVersion);
+  const appliedByVersion = new Map([[old.version, {
+    version: old.version,
+    name: old.name,
+    checksum: old.checksum,
+  }]]);
+  const rows = auditCurrentMigrationLineage({
+    migrations: manifest,
+    appliedByVersion,
+    authoritativeBaseline: BASELINE,
+    nativeRows: [],
+    postconditionResults: new Map(),
+  });
+  const row = rows.find(item => item.migration.version === old.version);
+  assert.equal(row.truthStatus, 'BLOCKED_UNRESOLVED');
+  assert.equal(row.classification, 'UNRESOLVED_PROVENANCE');
+  assert.match(row.reason, /forbidden historical version/);
+});
+
 test('historical rows stay BLOCKED_UNRESOLVED while replacements are absent from the ledger', () => {
   const manifest = manifestFromRegistry();
   const rows = auditCurrentMigrationLineage({
