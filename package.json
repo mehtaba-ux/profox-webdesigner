@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --port=3000 --host=0.0.0.0",
-    "build": "npm run test:crm-part10a && npm run test:crm-part10b && vite build && node scripts/verify-supabase-build-config.mjs",
+    "build": "npm install --no-save --package-lock=false @libpg-query/parser@17.6.10 && node scripts/part10b4-parser-audit.mjs && npm run test:crm-part10a && npm run test:crm-part10b && vite build && node scripts/verify-supabase-build-config.mjs",
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit",
