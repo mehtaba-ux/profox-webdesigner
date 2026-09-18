@@ -289,40 +289,49 @@ const checks = Object.freeze({
     select (
       (select count(*) from pg_attribute
        where attrelid='public.crm_sales_validations'::regclass and attnum>0 and not attisdropped)=39
+      and (select md5(string_agg(
+        a.attname||'|'||format_type(a.atttypid,a.atttypmod)||'|'||a.attnotnull::text||'|'||coalesce(pg_get_expr(ad.adbin,ad.adrelid),''),
+        E'\\n' order by a.attnum))
+        from pg_attribute a left join pg_attrdef ad on ad.adrelid=a.attrelid and ad.adnum=a.attnum
+        where a.attrelid='public.crm_sales_validations'::regclass and a.attnum>0 and not a.attisdropped)
+        ='98fa670c513f1a899f7e14a65973959f'
       and (select count(*) from pg_constraint where conrelid='public.crm_sales_validations'::regclass)=30
+      and (select md5(string_agg(conname||'|'||pg_get_constraintdef(oid,true),E'\\n' order by conname))
+           from pg_constraint where conrelid='public.crm_sales_validations'::regclass)
+        ='4559ee76b6dcd7f0f9b729c630f576a5'
     ) as ok
   `,
   P10B6_VALIDATION_INDEXES_13_CURRENT: `
     select (
-      select count(*)=13 from pg_indexes
-      where schemaname='public' and tablename='crm_sales_validations'
-        and indexname<>'crm_sales_validations_pkey'
+      (select count(*)=13 from pg_indexes
+       where schemaname='public' and tablename='crm_sales_validations'
+         and indexname<>'crm_sales_validations_pkey')
+      and (select md5(string_agg(indexname||'|'||indexdef,E'\\n' order by indexname))
+           from pg_indexes where schemaname='public' and tablename='crm_sales_validations')
+        ='d159db1013b7d53e6b4aa7d487f38ecf'
     ) as ok
   `,
   P10B6_VALIDATION_TRIGGERS_3_ENABLED: `
     select (
       (select count(*)=2 from pg_trigger
        where tgrelid='public.crm_sales_validations'::regclass and not tgisinternal and tgenabled<>'D')
-      and exists (
-        select 1 from pg_trigger
-        where tgrelid='public.crm_requirements'::regclass
-          and tgname='trg_crm_requirement_sales_validation_stale'
-          and not tgisinternal and tgenabled<>'D'
-      )
+      and (select md5(string_agg(tgname||'|'||tgenabled::text||'|'||pg_get_triggerdef(oid,true),E'\\n' order by tgname))
+           from pg_trigger where tgrelid='public.crm_sales_validations'::regclass and not tgisinternal)
+        ='dd89b937427d8fb3c4d3d27b98e858f8'
+      and (select md5(tgname||'|'||tgenabled::text||'|'||pg_get_triggerdef(oid,true))
+           from pg_trigger where tgrelid='public.crm_requirements'::regclass
+             and tgname='trg_crm_requirement_sales_validation_stale' and not tgisinternal)
+        ='b7c29947e655c042477dd4e9b1b7504b'
     ) as ok
   `,
   P10B6_VALIDATION_RLS_POLICY_CURRENT: `
     select (
       (select relrowsecurity from pg_class where oid='public.crm_sales_validations'::regclass)
       and (select count(*)=1 from pg_policies where schemaname='public' and tablename='crm_sales_validations')
-      and exists (
-        select 1 from pg_policies
-        where schemaname='public' and tablename='crm_sales_validations'
-          and policyname='crm_sales_validations_select_authorized'
-          and cmd='SELECT'
-          and roles=array['authenticated']::name[]
-          and position('( SELECT auth.uid() AS uid)' in qual)>0
-      )
+      and (select md5(policyname||'|'||cmd||'|'||roles::text||'|'||coalesce(qual,'')||'|'||coalesce(with_check,''))
+           from pg_policies where schemaname='public' and tablename='crm_sales_validations'
+             and policyname='crm_sales_validations_select_authorized')
+        ='2567384344256ed027568853b9e6b4a2'
     ) as ok
   `,
   P10B6_VALIDATION_FUNCTIONS_CURRENT: `
@@ -360,6 +369,7 @@ const checks = Object.freeze({
     select coalesce((
       select (config_value->>'policyVersion')::integer=1
         and jsonb_object_length(config_value->'validationTypes')=5
+        and md5(config_value::text)='91a6512ebef95ed1d0cb8e281beed13a'
       from public.system_configuration
       where config_key='crm_sales_validation_policy_v1'
     ),false) as ok
@@ -376,6 +386,7 @@ const checks = Object.freeze({
     select coalesce((
       select (config_value->>'policyVersion')::integer=1
         and (config_value->>'evaluatorVersion')::integer=3
+        and md5(config_value::text)='01dc540a693238005b36b90547451fa5'
       from public.system_configuration
       where config_key='crm_sales_gate_policy_v1'
     ),false) as ok
@@ -443,9 +454,23 @@ const checks = Object.freeze({
       (select count(*)=8 from pg_attribute
        where attrelid='public.sales_products'::regclass and attnum>0 and not attisdropped
          and attname=any(array['seller_guidance','catalog_version','effective_from','delivery_duration_min','delivery_duration_max','delivery_duration_unit','timeline_impact','delivery_duration_note']))
+      and (select md5(string_agg(
+        a.attname||'|'||format_type(a.atttypid,a.atttypmod)||'|'||a.attnotnull::text||'|'||coalesce(pg_get_expr(ad.adbin,ad.adrelid),''),
+        E'\\n' order by a.attnum))
+        from pg_attribute a left join pg_attrdef ad on ad.adrelid=a.attrelid and ad.adnum=a.attnum
+        where a.attrelid='public.sales_products'::regclass
+          and a.attname=any(array['seller_guidance','catalog_version','effective_from','delivery_duration_min','delivery_duration_max','delivery_duration_unit','timeline_impact','delivery_duration_note']))
+        ='e44e1c6e823f5433b6f0ca90875e32e4'
       and (select count(*)=2 from pg_attribute
        where attrelid='public.quotation_items'::regclass and attnum>0 and not attisdropped
          and attname=any(array['catalog_snapshot','catalog_version_snapshot']))
+      and (select md5(string_agg(
+        a.attname||'|'||format_type(a.atttypid,a.atttypmod)||'|'||a.attnotnull::text||'|'||coalesce(pg_get_expr(ad.adbin,ad.adrelid),''),
+        E'\\n' order by a.attnum))
+        from pg_attribute a left join pg_attrdef ad on ad.adrelid=a.attrelid and ad.adnum=a.attnum
+        where a.attrelid='public.quotation_items'::regclass
+          and a.attname=any(array['catalog_snapshot','catalog_version_snapshot']))
+        ='7de53638ed4bc135b92c733c2f881a3b'
     ) as ok
   `,
   P10B6_CATALOG_SELLER_GUIDANCE_TRIGGER_CURRENT: `
@@ -465,6 +490,10 @@ const checks = Object.freeze({
       not has_function_privilege('anon',to_regprocedure('public.preserve_sales_product_seller_guidance()'),'EXECUTE')
       and not has_function_privilege('authenticated',to_regprocedure('public.preserve_sales_product_seller_guidance()'),'EXECUTE')
       and has_function_privilege('service_role',to_regprocedure('public.preserve_sales_product_seller_guidance()'),'EXECUTE')
+      and coalesce((select relacl::text from pg_class where oid='public.sales_products'::regclass),'')
+        ='{postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}'
+      and coalesce((select relacl::text from pg_class where oid='public.quotation_items'::regclass),'')
+        ='{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=rDxtm/postgres,service_role=arwdDxtm/postgres}'
     ) as ok
   `,
   P10B6_CATALOG_ACTIVE_45_UNIQUE: `
