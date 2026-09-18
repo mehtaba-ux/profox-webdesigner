@@ -278,3 +278,175 @@ test('an unlisted future migration remains on the normal apply path', () => {
   assert.equal(plan.rows[0].classification, 'GENUINELY_PENDING_NEW');
   assert.equal(plan.rows[0].safeAction, 'SAFE_NEW_APPLY_LATER');
 });
+
+
+function assertUnresolvedTextDifferenceBlocks({ localSource, nativeSource }) {
+  const blocked = unresolvedNativeMigrationProvenance[0];
+  const migration = {
+    version: blocked.localVersion,
+    name: blocked.name,
+    file: blocked.localVersion + '_' + blocked.name + '.sql',
+    checksum: 'd'.repeat(64),
+    source: localSource,
+  };
+  const nativeRows = [{
+    version: blocked.nativeCandidateVersion,
+    name: blocked.nativeCandidateName,
+    statements: [nativeSource],
+  }];
+
+  const rows = auditCurrentMigrationLineage({
+    migrations: [migration],
+    appliedByVersion: new Map(),
+    authoritativeBaseline: '20260908100000',
+    nativeRows,
+  });
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].classification, 'UNRESOLVED_PROVENANCE');
+  assert.equal(rows[0].safeAction, 'BLOCK_UNRESOLVED');
+
+  assert.throws(
+    () => planNativeMigrationReconciliation({
+      migrations: [migration],
+      appliedByVersion: new Map(),
+      authoritativeBaseline: '20260908100000',
+      nativeRows,
+    }),
+    /Unresolved migration provenance/,
+  );
+}
+
+const tokenProofRequiredCases = [
+  [
+    'comment-only difference',
+    'select 1; -- repository explanation',
+    'select 1;',
+  ],
+  [
+    'whitespace-only difference',
+    'select  1;\\n',
+    'select 1;',
+  ],
+  [
+    'comment-looking text inside a string literal',
+    "select '-- not a comment';",
+    "select '-- changed literal';",
+  ],
+  [
+    '-- inside a URL/text literal',
+    "select 'https://example.test/a--b';",
+    "select 'https://example.test/a-b';",
+  ],
+  [
+    '/* */ inside a string literal',
+    "select 'literal /* keep me */ text';",
+    "select 'literal text';",
+  ],
+  [
+    'comments inside a PL/pgSQL dollar-quoted body',
+    "create function f() returns void language plpgsql as $$ begin -- body comment\\n perform 1; end; $$;",
+    "create function f() returns void language plpgsql as $$ begin perform 1; end; $$;",
+  ],
+  [
+    'executable statement added',
+    'select 1; select 2;',
+    'select 1;',
+  ],
+  [
+    'executable statement removed',
+    'select 1;',
+    'select 1; select 2;',
+  ],
+  [
+    'WHERE predicate changed',
+    'delete from x where owner_id = 1;',
+    'delete from x where owner_id = 2;',
+  ],
+  [
+    'GRANT/REVOKE changed',
+    'grant execute on function f() to authenticated;',
+    'revoke execute on function f() from authenticated;',
+  ],
+  [
+    'SECURITY DEFINER changed',
+    'create function f() returns void language sql security definer as $$ select 1 $$;',
+    'create function f() returns void language sql security invoker as $$ select 1 $$;',
+  ],
+  [
+    'search_path changed',
+    "create function f() returns void language sql set search_path='public' as $$ select 1 $$;",
+    "create function f() returns void language sql set search_path='pg_catalog' as $$ select 1 $$;",
+  ],
+  [
+    'function parameter/type changed',
+    'create function f(p uuid) returns void language sql as $$ select 1 $$;',
+    'create function f(p text) returns void language sql as $$ select 1 $$;',
+  ],
+  [
+    'RAISE condition changed',
+    "do $$ begin if x then raise exception 'blocked'; end if; end $$;",
+    "do $$ begin if not x then raise exception 'blocked'; end if; end $$;",
+  ],
+  [
+    'JSON/string literal changed',
+    "select '{\\\"enabled\\\":true}'::jsonb;",
+    "select '{\\\"enabled\\\":false}'::jsonb;",
+  ],
+  [
+    'dynamic SQL text changed',
+    "do $$ begin execute 'delete from x where owner_id = 1'; end $$;",
+    "do $$ begin execute 'delete from x where owner_id = 2'; end $$;",
+  ],
+];
+
+for (const [label, localSource, nativeSource] of tokenProofRequiredCases) {
+  test('token-proof-required textual differences remain fail-closed without a trusted tokenizer: ' + label, () => {
+    assertUnresolvedTextDifferenceBlocks({ localSource, nativeSource });
+  });
+}
+
+test('current repository drift for an audited content-proof migration fails closed', async () => {
+  const manifest = await loadMigrationManifest();
+  const alias = nativeMigrationAliases.find(item => item.proof === 'NATIVE_CONTENT_EQUIVALENT');
+  const migration = manifest.find(item => item.version === alias.localVersion);
+  assert.ok(migration);
+
+  const changedMigration = {
+    ...migration,
+    source: migration.source + '\\n-- unexpected repository drift',
+  };
+
+  assert.throws(
+    () => planNativeMigrationReconciliation({
+      migrations: [changedMigration],
+      appliedByVersion: new Map(),
+      authoritativeBaseline: '20260908100000',
+      nativeRows: [{
+        version: alias.nativeVersion,
+        name: alias.name,
+        statements: [migration.source],
+      }],
+    }),
+    /Current repository content changed/,
+  );
+});
+
+test('unsupported SQL-token proof class is rejected until a trusted tokenizer is implemented', () => {
+  const alias = {
+    ...nativeMigrationAliases[0],
+    localVersion: '20990101000000',
+    nativeVersion: '20990101000001',
+    name: 'token_proof_fixture',
+    proof: 'NATIVE_SQL_TOKEN_EQUIVALENT',
+    contentSha256: null,
+  };
+
+  assert.throws(
+    () => validateNativeMigrationReconciliationConfig({
+      activeAliases: [alias],
+      historicalAliases: [],
+      unresolvedRows: [],
+    }),
+    /Invalid native migration reconciliation proof/,
+  );
+});
