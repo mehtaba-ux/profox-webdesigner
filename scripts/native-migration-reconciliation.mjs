@@ -248,18 +248,16 @@ export function auditCurrentMigrationLineage({
   for (const migration of migrations) {
     if (migration.version <= authoritativeBaseline) continue;
 
-    if (appliedByVersion.has(migration.version)) {
-      rows.push({
-        migration,
-        classification: 'CUSTOM_LEDGER_EXACT',
-        truthStatus: 'APPLIED_EXACT',
-        safeAction: 'NONE_ALREADY_RECORDED',
-      });
-      continue;
-    }
-
     const blocked = unresolvedByLocalVersion.get(migration.version);
     if (blocked) {
+      if (appliedByVersion.has(migration.version)) {
+        rows.push(unresolvedRow(
+          migration,
+          `Unresolved migration provenance: forbidden historical version ${migration.file} is present in the custom ledger. Historical provenance is not converted into APPLIED_EXACT by a ledger row.`,
+          { blocked, forbiddenHistoricalLedgerRow: appliedByVersion.get(migration.version) },
+        ));
+        continue;
+      }
       const supersession = supersessionByOldVersion.get(migration.version);
       if (migration.name !== blocked.name) {
         rows.push(unresolvedRow(
@@ -333,6 +331,16 @@ export function auditCurrentMigrationLineage({
         truthStatus: 'SUPERSEDED_BY_FORWARD_RECONCILIATION',
         safeAction: 'NONE_SUPERSEDED_FORWARD_RECONCILIATION',
         reason: `Historical provenance remains unresolved; exact applied replacement ${replacement.file} and all mapped current-state postconditions are verified.`,
+      });
+      continue;
+    }
+
+    if (appliedByVersion.has(migration.version)) {
+      rows.push({
+        migration,
+        classification: 'CUSTOM_LEDGER_EXACT',
+        truthStatus: 'APPLIED_EXACT',
+        safeAction: 'NONE_ALREADY_RECORDED',
       });
       continue;
     }
