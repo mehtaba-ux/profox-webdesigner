@@ -161,6 +161,7 @@ export function validateForwardMigrationSupersessionRegistry({
   const byVersion = new Map(migrations.map(migration => [migration.version, migration]));
   const seenOld = new Set();
   const oldGraph = new Map();
+  const invalidOrdering = [];
 
   for (const record of registry) {
     if (!/^\d{14}$/.test(record.oldVersion || '') || !/^\d{14}$/.test(record.replacementVersion || '')) {
@@ -212,7 +213,7 @@ export function validateForwardMigrationSupersessionRegistry({
       throw new Error(`Supersession replacement checksum drift for ${replacement.file}: expected ${record.replacementSha256}, found ${replacement.checksum}.`);
     }
     if (record.replacementVersion <= record.oldVersion) {
-      throw new Error(`Supersession replacement must be later than historical migration ${record.oldVersion}.`);
+      invalidOrdering.push(record);
     }
     oldGraph.set(record.oldVersion, record.replacementVersion);
   }
@@ -225,6 +226,12 @@ export function validateForwardMigrationSupersessionRegistry({
       seen.add(cursor);
       cursor = oldGraph.get(cursor);
     }
+  }
+
+  if (invalidOrdering.length) {
+    throw new Error(
+      `Supersession replacement must be later than historical migration ${invalidOrdering[0].oldVersion}.`,
+    );
   }
 
   return {
@@ -540,3 +547,46 @@ export async function verifyForwardReconciliationPostconditions(client, {
 export function mappedPostconditionsPass(record, postconditionResults) {
   return record.postconditionIds.every(id => postconditionResults?.get(id) === true);
 }
+
+export async function executeApprovedForwardReplacement(client, {
+  migration,
+  records = historicalForwardMigrationSupersessions.filter(
+    record => record.replacementVersion === migration?.version,
+  ),
+} = {}) {
+  if (!migration || !PART10B6_FORWARD_REPLACEMENT_VERSIONS.includes(migration.version)) {
+    throw new Error(`Migration is not an approved Part 10B.6 replacement: ${migration?.file || 'missing migration'}.`);
+  }
+  if (!Array.isArray(records) || records.length === 0) {
+    throw new Error(`No supersession record maps to approved replacement ${migration.file}.`);
+  }
+  for (const record of records) {
+    if (record.replacementVersion !== migration.version
+        || record.replacementName !== migration.name
+        || record.replacementSha256 !== migration.checksum) {
+      throw new Error(`Replacement identity/checksum mismatch for ${migration.file}.`);
+    }
+  }
+
+  const postconditionIds = [...new Set(records.flatMap(record => record.postconditionIds))];
+  await client.query('begin');
+  try {
+    await client.query(migration.source);
+    await verifyForwardReconciliationPostconditions(client, {
+      ids: postconditionIds,
+      throwOnFailure: true,
+    });
+    await client.query(
+      `insert into profox_migrations.applied_migrations(version,name,checksum,baseline)
+       values($1,$2,$3,false)`,
+      [migration.version, migration.name, migration.checksum],
+    );
+    await client.query('commit');
+  } catch (error) {
+    await client.query('rollback').catch(() => {});
+    throw new Error(
+      `Part 10B.6 replacement ${migration.file} failed; SQL and ledger insert were rolled back: ${error.message}`,
+    );
+  }
+}
+
