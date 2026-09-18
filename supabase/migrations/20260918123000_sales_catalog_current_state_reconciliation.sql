@@ -59,6 +59,15 @@ begin
     ) then
       raise exception '[P10B6_CATALOG_PRECONDITION] incompatible sales_products column: %',r.name;
     end if;
+
+    if not exists (
+      select 1 from pg_attribute a
+      where a.attrelid='public.sales_products'::regclass
+        and a.attname=r.name and a.attnum>0 and not a.attisdropped
+    )
+    and exists (select 1 from public.sales_products limit 1) then
+      raise exception '[P10B6_CATALOG_PRECONDITION] missing catalog column % cannot be added safely to a nonempty catalog without explicit reviewed backfill.',r.name;
+    end if;
   end loop;
 
   for r in select * from (values
@@ -78,6 +87,15 @@ begin
         )
     ) then
       raise exception '[P10B6_CATALOG_PRECONDITION] incompatible quotation_items column: %',r.name;
+    end if;
+
+    if not exists (
+      select 1 from pg_attribute a
+      where a.attrelid='public.quotation_items'::regclass
+        and a.attname=r.name and a.attnum>0 and not a.attisdropped
+    )
+    and exists (select 1 from public.quotation_items limit 1) then
+      raise exception '[P10B6_CATALOG_PRECONDITION] missing quotation snapshot column % cannot be added to nonempty quotation history without explicit reviewed backfill.',r.name;
     end if;
   end loop;
 
