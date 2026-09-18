@@ -2,6 +2,8 @@ import { createHash } from 'node:crypto';
 import {
   historicalForwardMigrationSupersessions,
   mappedPostconditionsPass,
+  PART10B6_FORWARD_REPLACEMENT_VERSIONS,
+  validateForwardMigrationSupersessionRegistry,
 } from './forward-migration-convergence.mjs';
 
 const activeAliasRows = [
@@ -453,3 +455,75 @@ export function planNativeMigrationReconciliation(options) {
     rows,
   };
 }
+
+export function planForwardMigrationConvergence(options) {
+  const {
+    migrations,
+    appliedByVersion,
+    authoritativeBaseline,
+    nativeRows,
+    postconditionResults = new Map(),
+  } = options;
+
+  const registryAudit = validateForwardMigrationSupersessionRegistry({ migrations });
+  const rows = auditCurrentMigrationLineage({
+    migrations,
+    appliedByVersion,
+    authoritativeBaseline,
+    nativeRows,
+    postconditionResults,
+  });
+  const allowedReplacementVersions = new Set(PART10B6_FORWARD_REPLACEMENT_VERSIONS);
+
+  const unrelatedPending = rows.filter(
+    row => row.truthStatus === 'PENDING_NEW'
+      && !allowedReplacementVersions.has(row.migration.version),
+  );
+  if (unrelatedPending.length) {
+    throw new Error(
+      `Forward convergence refuses unrelated pending migrations: ${unrelatedPending.map(row => row.migration.file).join(', ')}.`,
+    );
+  }
+
+  const unapprovedBlocked = rows.filter(
+    row => row.truthStatus === 'BLOCKED_UNRESOLVED' && !row.supersession,
+  );
+  if (unapprovedBlocked.length) {
+    throw new Error(
+      `Forward convergence found unresolved migration(s) without an approved supersession: ${unapprovedBlocked.map(row => row.migration.file).join(', ')}.`,
+    );
+  }
+
+  for (const record of registryAudit.records) {
+    const replacementLedgerRow = appliedByVersion.get(record.replacementVersion);
+    if (replacementLedgerRow && !mappedPostconditionsPass(record, postconditionResults)) {
+      const failed = record.postconditionIds.filter(id => postconditionResults.get(id) !== true);
+      throw new Error(
+        `Applied forward replacement ${record.replacementVersion}_${record.replacementName} has failing/unproven postconditions: ${failed.join(', ')}.`,
+      );
+    }
+  }
+
+  const migrationByVersion = new Map(migrations.map(migration => [migration.version, migration]));
+  const pendingReplacements = [];
+  for (const version of PART10B6_FORWARD_REPLACEMENT_VERSIONS) {
+    const migration = migrationByVersion.get(version);
+    if (!migration) throw new Error(`Approved forward replacement ${version} is missing.`);
+    if (!appliedByVersion.has(version)) {
+      const row = rows.find(item => item.migration.version === version);
+      if (!row || row.truthStatus !== 'PENDING_NEW') {
+        throw new Error(
+          `Approved forward replacement ${migration.file} is not a clean PENDING_NEW migration.`,
+        );
+      }
+      pendingReplacements.push(migration);
+    }
+  }
+
+  return {
+    pendingReplacements,
+    rows,
+    registryAudit,
+  };
+}
+
