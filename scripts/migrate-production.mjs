@@ -8,6 +8,7 @@ import {
   planNativeMigrationReconciliation,
 } from './native-migration-reconciliation.mjs';
 import {
+  executeApprovedForwardReplacement,
   historicalForwardMigrationSupersessions,
   validateForwardMigrationSupersessionRegistry,
   verifyForwardReconciliationPostconditions,
@@ -219,36 +220,16 @@ async function verifyAndConvergePart10b6(client, migrations, authoritativeBaseli
     const records = historicalForwardMigrationSupersessions.filter(
       record => record.replacementVersion === migration.version,
     );
-    const postconditionIds = [...new Set(records.flatMap(record => record.postconditionIds))];
-
-    await client.query('begin');
-    try {
-      await client.query(migration.source);
-      await verifyForwardReconciliationPostconditions(client, {
-        ids: postconditionIds,
-        throwOnFailure: true,
-      });
-      await client.query(
-        `insert into profox_migrations.applied_migrations(version,name,checksum,baseline)
-         values($1,$2,$3,false)`,
-        [migration.version, migration.name, migration.checksum],
-      );
-      await client.query('commit');
-      appliedByVersion.set(migration.version, {
-        version: migration.version,
-        name: migration.name,
-        checksum: migration.checksum,
-        baseline: false,
-      });
-      console.log(
-        `Applied approved Part 10B.6 forward replacement ${migration.file}; mapped historical SQL was not executed.`,
-      );
-    } catch (error) {
-      await client.query('rollback');
-      throw new Error(
-        `Part 10B.6 replacement ${migration.file} failed; SQL and ledger insert were rolled back: ${error.message}`,
-      );
-    }
+    await executeApprovedForwardReplacement(client, { migration, records });
+    appliedByVersion.set(migration.version, {
+      version: migration.version,
+      name: migration.name,
+      checksum: migration.checksum,
+      baseline: false,
+    });
+    console.log(
+      `Applied approved Part 10B.6 forward replacement ${migration.file}; mapped historical SQL was not executed.`,
+    );
   }
 
   const finalPostconditions = await verifyForwardReconciliationPostconditions(client);
