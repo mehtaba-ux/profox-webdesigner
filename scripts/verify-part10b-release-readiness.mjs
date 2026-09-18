@@ -2,6 +2,11 @@ import dotenv from 'dotenv';
 import pg from 'pg';
 import { auditAppliedMigrationLedger, loadMigrationManifest } from './migration-manifest.mjs';
 import { auditCurrentMigrationLineage } from './native-migration-reconciliation.mjs';
+import {
+  historicalForwardMigrationSupersessions,
+  validateForwardMigrationSupersessionRegistry,
+  verifyForwardReconciliationPostconditions,
+} from './forward-migration-convergence.mjs';
 
 dotenv.config({ path: '.env.local', quiet: true });
 
@@ -71,40 +76,54 @@ try {
     pass('Production migration baseline coverage', `current repository history is tracked through ${authoritativeBaseline}`);
   }
 
+  validateForwardMigrationSupersessionRegistry({ migrations });
+  for (const record of historicalForwardMigrationSupersessions) {
+    if (ledgerAudit.appliedByVersion.has(record.oldVersion)) {
+      fail(
+        'Historical unresolved custom-ledger safety',
+        `forbidden historical version is present in the custom ledger: ${record.oldVersion}_${record.oldName}`,
+      );
+    }
+  }
+
   const nativeRows = (await client.query(`
     select version,name,statements
     from supabase_migrations.schema_migrations
     order by version
   `)).rows;
+  const postconditionResults = await verifyForwardReconciliationPostconditions(client);
   const lineageRows = authoritativeBaseline
     ? auditCurrentMigrationLineage({
       migrations,
       appliedByVersion: ledgerAudit.appliedByVersion,
       authoritativeBaseline,
       nativeRows,
+      postconditionResults,
     })
     : [];
 
-  const customExact = lineageRows.filter(row => row.classification === 'CUSTOM_LEDGER_EXACT');
-  const nativeExact = lineageRows.filter(row => row.classification === 'NATIVE_EXACT');
-  const nativeContent = lineageRows.filter(row => row.classification === 'NATIVE_CONTENT_EQUIVALENT');
-  const pending = lineageRows.filter(row => row.classification === 'GENUINELY_PENDING_NEW');
-  const unresolved = lineageRows.filter(row => row.classification === 'UNRESOLVED_PROVENANCE');
+  const appliedExact = lineageRows.filter(row => row.truthStatus === 'APPLIED_EXACT');
+  const reconciledNative = lineageRows.filter(row => row.truthStatus === 'RECONCILED_FROM_NATIVE');
+  const superseded = lineageRows.filter(
+    row => row.truthStatus === 'SUPERSEDED_BY_FORWARD_RECONCILIATION',
+  );
+  const pending = lineageRows.filter(row => row.truthStatus === 'PENDING_NEW');
+  const blocked = lineageRows.filter(row => row.truthStatus === 'BLOCKED_UNRESOLVED');
 
-  if (unresolved.length) {
+  if (blocked.length) {
     fail(
       'Current repository migration lineage',
-      `${unresolved.length} current post-baseline migration(s) have unresolved provenance and are blocked from execution: ${unresolved.map(row => `${row.migration.file} (${row.reason})`).join(' | ')}`,
+      `${blocked.length} current post-baseline migration(s) remain BLOCKED_UNRESOLVED: ${blocked.map(row => `${row.migration.file} (${row.reason})`).join(' | ')}`,
     );
   } else if (pending.length) {
     fail(
       'Current repository migration lineage',
-      `${pending.length} genuinely new current migration(s) remain unapplied: ${pending.map(row => row.migration.file).join(', ')}`,
+      `${pending.length} PENDING_NEW migration(s) remain unapplied: ${pending.map(row => row.migration.file).join(', ')}`,
     );
   } else {
     pass(
       'Current repository migration lineage',
-      `${lineageRows.length} post-baseline current migration(s): custom exact ${customExact.length}, native exact ${nativeExact.length}, native content-equivalent ${nativeContent.length}, unresolved 0, pending 0`,
+      `${lineageRows.length} post-baseline current migration(s): APPLIED_EXACT ${appliedExact.length}, RECONCILED_FROM_NATIVE ${reconciledNative.length}, SUPERSEDED_BY_FORWARD_RECONCILIATION ${superseded.length}, PENDING_NEW 0, BLOCKED_UNRESOLVED 0`,
     );
   }
 
