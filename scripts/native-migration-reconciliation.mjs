@@ -1,4 +1,8 @@
 import { createHash } from 'node:crypto';
+import {
+  historicalForwardMigrationSupersessions,
+  mappedPostconditionsPass,
+} from './forward-migration-convergence.mjs';
 
 const activeAliasRows = [
   ['20260909103000', 'crm_sales_meeting_prep_part_4', '20260909045346', 'NATIVE_CONTENT_EQUIVALENT', 'bb4678491d27b4e1f03a16f77de488d745c55cd84485715148be5747c9d4b897'],
@@ -187,6 +191,9 @@ const aliasByLocalVersion = new Map(nativeMigrationAliases.map(alias => [alias.l
 const unresolvedByLocalVersion = new Map(
   unresolvedNativeMigrationProvenance.map(item => [item.localVersion, item]),
 );
+const supersessionByOldVersion = new Map(
+  historicalForwardMigrationSupersessions.map(item => [item.oldVersion, item]),
+);
 
 function nativeSourceForContentProof(row) {
   if (!Array.isArray(row?.statements) || row.statements.length !== 1 || typeof row.statements[0] !== 'string') {
@@ -217,6 +224,8 @@ function unresolvedRow(migration, reason, extra = {}) {
   return {
     migration,
     classification: 'UNRESOLVED_PROVENANCE',
+    historicalClassification: 'HISTORICAL_PROVENANCE_UNRESOLVED',
+    truthStatus: 'BLOCKED_UNRESOLVED',
     safeAction: 'BLOCK_UNRESOLVED',
     reason,
     ...extra,
@@ -228,8 +237,10 @@ export function auditCurrentMigrationLineage({
   appliedByVersion,
   authoritativeBaseline,
   nativeRows,
+  postconditionResults = new Map(),
 }) {
   const indexes = nativeIndexes(nativeRows);
+  const migrationByVersion = new Map(migrations.map(migration => [migration.version, migration]));
   const rows = [];
 
   for (const migration of migrations) {
@@ -239,6 +250,7 @@ export function auditCurrentMigrationLineage({
       rows.push({
         migration,
         classification: 'CUSTOM_LEDGER_EXACT',
+        truthStatus: 'APPLIED_EXACT',
         safeAction: 'NONE_ALREADY_RECORDED',
       });
       continue;
@@ -246,19 +258,80 @@ export function auditCurrentMigrationLineage({
 
     const blocked = unresolvedByLocalVersion.get(migration.version);
     if (blocked) {
+      const supersession = supersessionByOldVersion.get(migration.version);
       if (migration.name !== blocked.name) {
         rows.push(unresolvedRow(
           migration,
           `Unresolved migration provenance name mismatch for ${migration.file}: expected ${blocked.name}.`,
-          { blocked },
+          { blocked, supersession },
         ));
-      } else {
+        continue;
+      }
+      if (!supersession) {
         rows.push(unresolvedRow(
           migration,
-          `Unresolved migration provenance for ${migration.file}: ${blocked.reason} Refusing SQL execution.`,
+          `Unresolved migration provenance for ${migration.file}: ${blocked.reason} No approved forward supersession record exists. Refusing SQL execution.`,
           { blocked },
         ));
+        continue;
       }
+      if (migration.checksum !== supersession.oldRepositorySha256) {
+        rows.push(unresolvedRow(
+          migration,
+          `Historical repository SHA drift for ${migration.file}: expected ${supersession.oldRepositorySha256}, found ${migration.checksum}. Refusing supersession and SQL execution.`,
+          { blocked, supersession },
+        ));
+        continue;
+      }
+
+      const replacement = migrationByVersion.get(supersession.replacementVersion);
+      if (!replacement
+          || replacement.name !== supersession.replacementName
+          || replacement.checksum !== supersession.replacementSha256) {
+        rows.push(unresolvedRow(
+          migration,
+          `Approved forward replacement is missing or drifted for ${migration.file}: expected ${supersession.replacementVersion}_${supersession.replacementName} SHA-256 ${supersession.replacementSha256}.`,
+          { blocked, supersession, replacement },
+        ));
+        continue;
+      }
+
+      const replacementLedgerRow = appliedByVersion.get(supersession.replacementVersion);
+      if (!replacementLedgerRow
+          || String(replacementLedgerRow.name || '') !== supersession.replacementName
+          || String(replacementLedgerRow.checksum || '') !== supersession.replacementSha256) {
+        rows.push(unresolvedRow(
+          migration,
+          `Historical provenance remains blocked until exact forward replacement ${replacement.file} is recorded in the custom ledger.`,
+          { blocked, supersession, replacement, replacementLedgerRow },
+        ));
+        continue;
+      }
+
+      if (!mappedPostconditionsPass(supersession, postconditionResults)) {
+        const failedPostconditions = supersession.postconditionIds.filter(
+          id => postconditionResults?.get(id) !== true,
+        );
+        rows.push(unresolvedRow(
+          migration,
+          `Forward replacement ${replacement.file} is ledgered, but mapped postconditions are not all proven: ${failedPostconditions.join(', ')}.`,
+          { blocked, supersession, replacement, replacementLedgerRow, failedPostconditions },
+        ));
+        continue;
+      }
+
+      rows.push({
+        migration,
+        blocked,
+        supersession,
+        replacement,
+        replacementLedgerRow,
+        classification: 'UNRESOLVED_PROVENANCE',
+        historicalClassification: 'HISTORICAL_PROVENANCE_UNRESOLVED',
+        truthStatus: 'SUPERSEDED_BY_FORWARD_RECONCILIATION',
+        safeAction: 'NONE_SUPERSEDED_FORWARD_RECONCILIATION',
+        reason: `Historical provenance remains unresolved; exact applied replacement ${replacement.file} and all mapped current-state postconditions are verified.`,
+      });
       continue;
     }
 
@@ -267,6 +340,7 @@ export function auditCurrentMigrationLineage({
       rows.push({
         migration,
         classification: 'GENUINELY_PENDING_NEW',
+        truthStatus: 'PENDING_NEW',
         safeAction: 'SAFE_NEW_APPLY_LATER',
       });
       continue;
@@ -345,6 +419,7 @@ export function auditCurrentMigrationLineage({
       alias,
       nativeRow,
       classification: alias.proof,
+      truthStatus: 'RECONCILED_FROM_NATIVE',
       safeAction: alias.proof === 'NATIVE_EXACT'
         ? 'RECONCILE_FROM_NATIVE_EXACT'
         : 'RECONCILE_FROM_NATIVE_CONTENT_PROOF',
@@ -364,7 +439,14 @@ export function planNativeMigrationReconciliation(options) {
     reconciled: rows
       .filter(row => row.safeAction === 'RECONCILE_FROM_NATIVE_EXACT'
         || row.safeAction === 'RECONCILE_FROM_NATIVE_CONTENT_PROOF')
-      .map(row => ({ migration: row.migration, alias: row.alias, classification: row.classification })),
+      .map(row => ({
+        migration: row.migration,
+        alias: row.alias,
+        classification: row.classification,
+        truthStatus: row.truthStatus,
+      })),
+    superseded: rows
+      .filter(row => row.truthStatus === 'SUPERSEDED_BY_FORWARD_RECONCILIATION'),
     pending: rows
       .filter(row => row.safeAction === 'SAFE_NEW_APPLY_LATER')
       .map(row => row.migration),
