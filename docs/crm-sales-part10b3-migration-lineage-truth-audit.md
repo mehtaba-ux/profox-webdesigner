@@ -335,6 +335,8 @@ No migration SQL file was changed, renamed, deleted, regenerated, or replayed. N
 
 The repository dependency set contains no PostgreSQL/PL/pgSQL parser or tokenizer suitable for this proof. No `pglast`, `libpg_query`/`pg_query`, trusted PostgreSQL-aware JavaScript parser, or equivalent safe arbitrary migration-source parser is available in the audited repository/runtime.
 
+A temporary PostgreSQL WASM parser experiment was attempted after the fail-closed audit. A non-gating preview was able to execute, but the proof-gated build did not establish `ALL_EQUIVALENT`. Detailed private Cloudflare diagnostic output was unavailable, so the experiment produced **INSUFFICIENT AUTHORITATIVE EVIDENCE** and did not authorize any migration promotion. All five candidates remain `UNRESOLVED_PROVENANCE` with `safeAction=BLOCK_UNRESOLVED`. The temporary parser probe, private native SQL fixtures, and build hook were subsequently removed from the branch; no parser dependency or executable diagnostic input remains in the production repository.
+
 Part 10B.4 therefore does **not** add a regex comment stripper, fuzzy comparison, or home-grown lexer. No `NATIVE_SQL_TOKEN_EQUIVALENT` proof class is enabled. Configuration validation explicitly rejects that proof class until a trusted implementation exists.
 
 ### Authoritative evidence table
@@ -441,7 +443,7 @@ Source presence is not a runtime pass. Trusted CI must execute repository steps 
 5. **Migration SQL files changed:** **NO**.
 6. **Production writes:** **NO**.
 7. **Each five migration results:** all five `UNRESOLVED_PROVENANCE` / `BLOCK_UNRESOLVED`; exact evidence table above.
-8. **Token/parser method used:** **NONE**; no trusted PostgreSQL/PLpgSQL tokenizer/parser available, so fail closed.
+8. **Token/parser method used:** a temporary PostgreSQL WASM parser experiment executed as a non-gating preview, but the proof-gated build did not establish `ALL_EQUIVALENT`; private Cloudflare diagnostic detail was unavailable, the temporary files/build hook were removed, and no trusted proof was accepted. Final decision: **INSUFFICIENT AUTHORITATIVE EVIDENCE / fail closed**.
 9. **Git-history evidence:** original PRs/heads/merge or creation commits and stable blobs recorded above; native application cannot be tied to a Git SHA from authoritative native-ledger evidence.
 10. **Proof digests:** **NONE for the five unresolved rows**; raw repository/native SHA-256 evidence recorded instead.
 11. **Final `CUSTOM_LEDGER_EXACT` count:** **110**.
