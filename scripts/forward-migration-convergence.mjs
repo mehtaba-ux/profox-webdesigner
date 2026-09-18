@@ -38,7 +38,7 @@ const records = [
     classification: 'HISTORICAL_PROVENANCE_UNRESOLVED',
     replacementVersion: '20260918121000',
     replacementName: 'crm_sales_validation_current_state_reconciliation',
-    replacementSha256: 'b4d024cf5bb08749af648e4c4e97730dc80a15f634868d0e59c68608c4977389',
+    replacementSha256: 'afdaeed9a52e3d59a960dcc4a896c56930bbd15357def57c3f2cb2029a99d13c',
     reason: 'Forward-only reconciliation establishes the final current Part 7 table, policy, functions, My Work routing, indexes, triggers, RLS and ACLs including later hardening.',
     coveredStateIds: [
       'SALES_VALIDATION_SCHEMA_AND_POLICY_CURRENT',
@@ -112,7 +112,7 @@ const records = [
     classification: 'HISTORICAL_PROVENANCE_UNRESOLVED',
     replacementVersion: '20260918123000',
     replacementName: 'sales_catalog_current_state_reconciliation',
-    replacementSha256: 'a2f203823e853dd2ae2ca555adf94abe91b5d9f776e4f255ccb951183adb2572',
+    replacementSha256: '5c837bf6ab4c38835bec8c195ace7203c68858dc977079c9ecd3ec071f188b58',
     reason: 'Forward-only reconciliation asserts canonical catalog schema, trigger, ACL and business invariants without replaying historical broad UPDATE statements or backfilling snapshots.',
     coveredStateIds: [
       'SALES_CATALOG_SCHEMA_CURRENT',
