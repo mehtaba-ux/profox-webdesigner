@@ -27,12 +27,8 @@ try {
     report.status = 'INSTALL_FAILED';
     report.error = install.error ? String(install.error) : 'npm install returned non-zero status';
     await finish();
-if (report.status !== 'ALL_EQUIVALENT') {
-  console.error('Part 10B.4 parser proof failed closed with status: ' + report.status);
-  process.exitCode = 2;
-}
-
-    process.exit(0);
+    console.error('Part 10B.4 parser proof failed closed with status: ' + report.status);
+    process.exit(2);
   }
 
   const parser = await import('@libpg-query/parser');
@@ -40,7 +36,8 @@ if (report.status !== 'ALL_EQUIVALENT') {
     report.status = 'API_UNAVAILABLE';
     report.error = 'Required parse/scan APIs are not exported.';
     await finish();
-    process.exit(0);
+    console.error('Part 10B.4 parser proof failed closed with status: ' + report.status);
+    process.exit(2);
   }
 
   const { parse, scan } = parser;
@@ -199,3 +196,7 @@ if (report.status !== 'ALL_EQUIVALENT') {
   report.error = String(error?.stack || error);
 }
 await finish();
+if (report.status !== 'ALL_EQUIVALENT') {
+  console.error('Part 10B.4 parser proof failed closed with status: ' + report.status);
+  process.exitCode = 2;
+}
