@@ -45,6 +45,15 @@ async function ensureControlSchema(client) {
   `);
 }
 
+
+function mappedPostconditionIdsForAppliedReplacements(appliedByVersion) {
+  return [...new Set(
+    historicalForwardMigrationSupersessions
+      .filter(record => appliedByVersion.has(record.replacementVersion))
+      .flatMap(record => record.postconditionIds),
+  )];
+}
+
 async function initializeBaseline(client, migrations) {
   const state = await client.query('select baseline_version from profox_migrations.state where singleton=true');
   if (state.rowCount) return state.rows[0].baseline_version;
@@ -106,7 +115,10 @@ async function verifyAndApply(client, migrations, authoritativeBaseline) {
     order by version
   `);
   validateForwardMigrationSupersessionRegistry({ migrations });
-  const postconditionResults = await verifyForwardReconciliationPostconditions(client);
+  const appliedPostconditionIds = mappedPostconditionIdsForAppliedReplacements(appliedByVersion);
+  const postconditionResults = appliedPostconditionIds.length
+    ? await verifyForwardReconciliationPostconditions(client, { ids: appliedPostconditionIds })
+    : new Map();
   const { reconciled, pending } = planNativeMigrationReconciliation({
     migrations,
     appliedByVersion,
@@ -203,7 +215,10 @@ async function verifyAndConvergePart10b6(client, migrations, authoritativeBaseli
     from supabase_migrations.schema_migrations
     order by version
   `);
-  const prePostconditions = await verifyForwardReconciliationPostconditions(client);
+  const appliedPostconditionIds = mappedPostconditionIdsForAppliedReplacements(appliedByVersion);
+  const prePostconditions = appliedPostconditionIds.length
+    ? await verifyForwardReconciliationPostconditions(client, { ids: appliedPostconditionIds })
+    : new Map();
   const plan = planForwardMigrationConvergence({
     migrations,
     appliedByVersion,
