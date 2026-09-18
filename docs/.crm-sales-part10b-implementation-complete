@@ -3,12 +3,15 @@ PART 10B.2 PRODUCTION RELEASE / ACTIVATION: BLOCKED
 PART 10B.3 MIGRATION LINEAGE TRUTH AUDIT: COMPLETE
 PART 10B.3 PRODUCTION MIGRATION CONVERGENCE: BLOCKED
 PART 10B.4 PROVENANCE INVESTIGATION / FAIL-CLOSED COVERAGE: COMPLETE
-PART 10B.4 AUTHORITATIVE PROVENANCE RESOLUTION: BLOCKED
+PART 10B.4 AUTHORITATIVE PROVENANCE RESOLUTION: HISTORICALLY UNRESOLVED / FORWARD SUPERSESSION DESIGNED
+PART 10B.6 FORWARD-CONVERGENCE REPOSITORY IMPLEMENTATION: COMPLETE
+PART 10B.6 PRODUCTION CONVERGENCE: NOT RUN / BLOCKED PENDING TRUSTED CI
 
 Scope: Immutable Send-Time Sales Snapshot + Universal Quotation Send Gate
 Recovery audit date: 2026-09-16
 Part 10B.3 audit closure date: 2026-09-17
 Part 10B.4 evidence closure date: 2026-09-18
+Part 10B.6 repository implementation closure date: 2026-09-18
 
 Authoritative implementation history:
 - Part 10B PR #110 merge: 4037df16b328259863b3b9666c5cffaf5c4aaa01
@@ -146,6 +149,44 @@ Part 10B.4 provenance investigation completed in PR #117:
 - trusted GitHub CI execution remains a separate prerequisite and must be rechecked on the final head
 - PR #117 must remain draft/unmerged; Part 10B activation and Part 11 remain blocked
 
+Part 10B.6 forward-convergence repository implementation completed in PR #117:
+- four new forward-only current-state reconciliation migrations added with collision-free versions:
+  - 20260918120000_crm_sales_meeting_closeout_current_state_reconciliation
+  - 20260918121000_crm_sales_validation_current_state_reconciliation
+  - 20260918122000_crm_sales_proposal_readiness_current_state_reconciliation
+  - 20260918123000_sales_catalog_current_state_reconciliation
+- five historically unresolved migrations remain historically unresolved; none was modified, renamed, deleted, replayed or inserted into the custom ledger
+- static five-entry supersession registry pins exact old version/name/SHA and exact replacement version/name/SHA
+- truthful state model implemented: APPLIED_EXACT, RECONCILED_FROM_NATIVE, SUPERSEDED_BY_FORWARD_RECONCILIATION, PENDING_NEW, BLOCKED_UNRESOLVED
+- SUPERSEDED_BY_FORWARD_RECONCILIATION requires exact replacement ledger identity/checksum plus all mapped postconditions
+- unresolved historical versions are checked before ordinary custom-ledger exact classification; a forbidden old ledger row remains BLOCKED_UNRESOLVED
+- existing production migration runner extended with --converge-part10b6; no second runner created
+- convergence-only mode executes only the four reviewed replacement migrations, refuses unrelated/future pending SQL and refuses any old historical ledger row
+- each replacement executes transactionally; mapped postconditions must pass before its custom-ledger insert; failure rolls SQL and ledger insert back together
+- normal migrations:apply remains fail-closed until replacement evidence/postconditions are satisfied
+- catalog migration contains zero sales_products/quotation_items business-row INSERT/UPDATE/DELETE and refuses unknown catalog drift
+- compatible partial-state safety tightened so unsafe nonempty validation/catalog history states abort before first mutation
+- exact replacement SHA-256 pins:
+  - meeting dbd984de4d6bd324a2529e523346733798d4bc8817c14dad1abaed5ad5516035
+  - validation afdaeed9a52e3d59a960dcc4a896c56930bbd15357def57c3f2cb2029a99d13c
+  - readiness bd318ef44168c97c1200e71c676570f2bf2e887725e25b285c6b2b88a663a32e
+  - catalog 5c837bf6ab4c38835bec8c195ace7203c68858dc977079c9ecd3ec071f188b58
+- top-level migration manifest rechecked: 693 migrations, strictly ordered, zero duplicate versions
+- latest source-level JavaScript/test syntax checks passed for all Part 10B.6 migration/convergence modules and tests
+- direct registry/planner/transaction behavior checks passed: 5 registry rows, 4 replacements, 5 superseded only after exact evidence, unrelated pending blocked, simulated replacement failure rolled back without ledger write
+- complete shared current-state postcondition matrix executed against production inside an explicit read-only transaction and every check returned true
+- production authoritative baseline reverified: 20260831103000
+- custom ledger reverified read-only: 676 total, 110 post-baseline, max 20260908100000
+- native ledger reverified read-only: 667 total, 102 post-baseline, max 20260916070455
+- five historical custom-ledger rows present: 0
+- four new replacement custom-ledger rows present: 0
+- Scope Conditions 0, Promises 0, Coverage 0, Captured Snapshots 0, Legacy Sent without Snapshot 2
+- finalQuotationSendGateActive remains false; policyVersion 2; snapshotSchemaVersion 2
+- production convergence NOT RUN; production migrations:apply NOT RUN; production business-data writes by Part 10B.6: 0
+- PR #117 remains draft/unmerged and Part 11 remains blocked
+- canonical Part 10B.6 implementation record: docs/crm-sales-part10b6-forward-migration-convergence-implementation.md
+- exact final-head GitHub CI / Cloudflare evidence is recorded in PR #117 body after the documentation commit because a file cannot self-record the commit that contains itself
+
 Production activation state:
 - finalQuotationSendGateActive=false
 - policyVersion=2
@@ -163,4 +204,4 @@ Part 10B.3 audit record:
 docs/crm-sales-part10b3-migration-lineage-truth-audit.md
 
 Required status:
-PART 10B IMPLEMENTATION, PART 10B.3 REPOSITORY AUDIT, AND PART 10B.4 FAIL-CLOSED PROVENANCE INVESTIGATION ARE COMPLETE. FIVE AUTHORITATIVE PROVENANCE BLOCKERS AND TRUSTED CI REMAIN OPEN; PRODUCTION MIGRATION CONVERGENCE, PART 10B ACTIVATION, MERGE, AND PART 11 REMAIN BLOCKED.
+PART 10B.6 FORWARD-CONVERGENCE REPOSITORY IMPLEMENTATION IS COMPLETE FOR REVIEW. THE FIVE HISTORICAL ROWS REMAIN TRUTHFULLY HISTORICALLY UNRESOLVED UNTIL THEIR EXACT FORWARD REPLACEMENTS ARE ACTUALLY EXECUTED, LEDGERED, AND POSTCONDITION-VERIFIED. PRODUCTION CONVERGENCE WAS NOT RUN. TRUSTED GITHUB CI, PRODUCTION CONVERGENCE REVIEW/EXECUTION, PART 10B ACTIVATION, MERGE, AND PART 11 REMAIN BLOCKED.
