@@ -110,6 +110,17 @@ begin
       ) then
         raise exception '[P10B6_VALIDATION_PRECONDITION] incompatible existing validation column: %',r.name;
       end if;
+
+      if not exists (
+        select 1 from pg_attribute a
+        where a.attrelid='public.crm_sales_validations'::regclass
+          and a.attname=r.name and a.attnum>0 and not a.attisdropped
+      )
+      and r.not_null
+      and r.default_expr=''
+      and exists (select 1 from public.crm_sales_validations limit 1) then
+        raise exception '[P10B6_VALIDATION_PRECONDITION] missing required NOT NULL column % cannot be added safely to a nonempty partial table.',r.name;
+      end if;
     end loop;
 
     if exists (
@@ -158,6 +169,14 @@ begin
           and pg_get_constraintdef(oid,true)<>r.definition
       ) then
         raise exception '[P10B6_VALIDATION_PRECONDITION] incompatible validation constraint: %',r.name;
+      end if;
+
+      if not exists (
+        select 1 from pg_constraint
+        where conrelid='public.crm_sales_validations'::regclass and conname=r.name
+      )
+      and exists (select 1 from public.crm_sales_validations limit 1) then
+        raise exception '[P10B6_VALIDATION_PRECONDITION] missing validation constraint % requires review on a nonempty partial table.',r.name;
       end if;
     end loop;
 
