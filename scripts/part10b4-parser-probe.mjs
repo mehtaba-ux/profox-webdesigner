@@ -27,6 +27,11 @@ try {
     report.status = 'INSTALL_FAILED';
     report.error = install.error ? String(install.error) : 'npm install returned non-zero status';
     await finish();
+if (report.status !== 'ALL_EQUIVALENT') {
+  console.error('Part 10B.4 parser proof failed closed with status: ' + report.status);
+  process.exitCode = 2;
+}
+
     process.exit(0);
   }
 
