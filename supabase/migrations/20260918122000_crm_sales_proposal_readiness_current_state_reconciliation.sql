@@ -904,7 +904,7 @@ begin
 
   if md5(pg_get_functiondef(to_regprocedure('public.crm_transition_opportunity(uuid,text)')))<>'a43508854e20f76c4a3966e8adf793d4'
      or position(
-       'crm_get_sales_gate_assessment',
+       'crm_get_sales_gate_assessment' in
        pg_get_functiondef(to_regprocedure('public.crm_transition_opportunity(uuid,text)'))
      )=0 then
     raise exception '[P10B6_READINESS_TRANSITION_CURRENT] canonical opportunity transition drift.';
