@@ -280,7 +280,7 @@ export function auditCurrentMigrationLineage({
       if (migration.checksum !== supersession.oldRepositorySha256) {
         rows.push(unresolvedRow(
           migration,
-          `Historical repository SHA drift for ${migration.file}: expected ${supersession.oldRepositorySha256}, found ${migration.checksum}. Refusing supersession and SQL execution.`,
+          `Unresolved migration provenance: historical repository SHA drift for ${migration.file}: expected ${supersession.oldRepositorySha256}, found ${migration.checksum}. Refusing supersession and SQL execution.`,
           { blocked, supersession },
         ));
         continue;
@@ -292,7 +292,7 @@ export function auditCurrentMigrationLineage({
           || replacement.checksum !== supersession.replacementSha256) {
         rows.push(unresolvedRow(
           migration,
-          `Approved forward replacement is missing or drifted for ${migration.file}: expected ${supersession.replacementVersion}_${supersession.replacementName} SHA-256 ${supersession.replacementSha256}.`,
+          `Unresolved migration provenance: approved forward replacement is missing or drifted for ${migration.file}: expected ${supersession.replacementVersion}_${supersession.replacementName} SHA-256 ${supersession.replacementSha256}.`,
           { blocked, supersession, replacement },
         ));
         continue;
@@ -304,7 +304,7 @@ export function auditCurrentMigrationLineage({
           || String(replacementLedgerRow.checksum || '') !== supersession.replacementSha256) {
         rows.push(unresolvedRow(
           migration,
-          `Historical provenance remains blocked until exact forward replacement ${replacement.file} is recorded in the custom ledger.`,
+          `Unresolved migration provenance: historical provenance remains blocked until exact forward replacement ${replacement.file} is recorded in the custom ledger.`,
           { blocked, supersession, replacement, replacementLedgerRow },
         ));
         continue;
@@ -316,7 +316,7 @@ export function auditCurrentMigrationLineage({
         );
         rows.push(unresolvedRow(
           migration,
-          `Forward replacement ${replacement.file} is ledgered, but mapped postconditions are not all proven: ${failedPostconditions.join(', ')}.`,
+          `Unresolved migration provenance: forward replacement ${replacement.file} is ledgered, but mapped postconditions are not all proven: ${failedPostconditions.join(', ')}.`,
           { blocked, supersession, replacement, replacementLedgerRow, failedPostconditions },
         ));
         continue;
