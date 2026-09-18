@@ -368,7 +368,8 @@ const checks = Object.freeze({
   P10B6_VALIDATION_POLICY_V1: `
     select coalesce((
       select (config_value->>'policyVersion')::integer=1
-        and jsonb_object_length(config_value->'validationTypes')=5
+        and jsonb_typeof(config_value->'validationTypes')='object'
+        and config_value->'validationTypes' ?& array['TECHNICAL','COMMERCIAL','TIMELINE','COMPLIANCE_RISK','SCOPE']
         and md5(config_value::text)='91a6512ebef95ed1d0cb8e281beed13a'
       from public.system_configuration
       where config_key='crm_sales_validation_policy_v1'
