@@ -2,10 +2,13 @@ PART 10B IMPLEMENTATION: COMPLETE
 PART 10B.2 PRODUCTION RELEASE / ACTIVATION: BLOCKED
 PART 10B.3 MIGRATION LINEAGE TRUTH AUDIT: COMPLETE
 PART 10B.3 PRODUCTION MIGRATION CONVERGENCE: BLOCKED
+PART 10B.4 PROVENANCE INVESTIGATION / FAIL-CLOSED COVERAGE: COMPLETE
+PART 10B.4 AUTHORITATIVE PROVENANCE RESOLUTION: BLOCKED
 
 Scope: Immutable Send-Time Sales Snapshot + Universal Quotation Send Gate
 Recovery audit date: 2026-09-16
 Part 10B.3 audit closure date: 2026-09-17
+Part 10B.4 evidence closure date: 2026-09-18
 
 Authoritative implementation history:
 - Part 10B PR #110 merge: 4037df16b328259863b3b9666c5cffaf5c4aaa01
@@ -121,6 +124,28 @@ Part 10B.3 migration-lineage truth audit completed in PR #117:
 - PR #117 must remain draft/unmerged while the five unresolved provenance blockers and trusted CI prerequisite remain open
 - canonical Part 10B.3 audit record: docs/crm-sales-part10b3-migration-lineage-truth-audit.md
 
+
+Part 10B.4 provenance investigation completed in PR #117:
+- all five remaining current blockers re-investigated against exact repository bytes, live native migration evidence, Git history and original implementation PR history
+- exact repository raw SHA-256 evidence is now recorded for all five blockers
+- exact native raw SHA-256 evidence and single-statement counts reverified read-only
+- original implementation PRs identified: #100 (Part 5), #102 (Part 7), #103 (Part 8), #109 (catalog reconciliation)
+- each migration blob at its original implementation PR head is identical to the current repository blob; no later repository-file mutation is evidenced
+- native ledger does not contain a Git SHA or authoritative Git-state linkage, so commits immediately before/after native application are not guessed
+- repository/native raw bytes differ for all five
+- no trusted PostgreSQL/PLpgSQL token-aware parser/tokenizer is available; no regex, fuzzy or home-grown equivalence proof was introduced
+- no NATIVE_SQL_TOKEN_EQUIVALENT mapping was enabled; unsupported token-proof configuration is rejected
+- all five remain UNRESOLVED_PROVENANCE with safeAction=BLOCK_UNRESOLVED
+- requested token-safety regression scenarios are encoded as fail-closed tests, including quoted comment markers, URL literals, PL/pgSQL bodies, executable additions/removals, WHERE, GRANT/REVOKE, SECURITY DEFINER, search_path, function signatures, RAISE, JSON/string literals and dynamic SQL
+- explicit repository content-drift regression added
+- migration SQL changed by Part 10B.4: 0
+- production writes by Part 10B.4: 0
+- production migrations:apply: NOT RUN
+- finalQuotationSendGateActive remains false
+- lineage remains 110 CUSTOM_LEDGER_EXACT + 3 NATIVE_EXACT + 5 NATIVE_CONTENT_EQUIVALENT + 0 NATIVE_SQL_TOKEN_EQUIVALENT + 5 UNRESOLVED_PROVENANCE + 0 GENUINELY_PENDING_NEW = 123
+- trusted GitHub CI execution remains a separate prerequisite and must be rechecked on the final head
+- PR #117 must remain draft/unmerged; Part 10B activation and Part 11 remain blocked
+
 Production activation state:
 - finalQuotationSendGateActive=false
 - policyVersion=2
@@ -138,4 +163,4 @@ Part 10B.3 audit record:
 docs/crm-sales-part10b3-migration-lineage-truth-audit.md
 
 Required status:
-PART 10B IMPLEMENTATION AND PART 10B.3 REPOSITORY AUDIT ARE COMPLETE, BUT PRODUCTION MIGRATION CONVERGENCE AND ACTIVATION REMAIN BLOCKED. PART 11 MUST NOT BEGIN.
+PART 10B IMPLEMENTATION, PART 10B.3 REPOSITORY AUDIT, AND PART 10B.4 FAIL-CLOSED PROVENANCE INVESTIGATION ARE COMPLETE. FIVE AUTHORITATIVE PROVENANCE BLOCKERS AND TRUSTED CI REMAIN OPEN; PRODUCTION MIGRATION CONVERGENCE, PART 10B ACTIVATION, MERGE, AND PART 11 REMAIN BLOCKED.
