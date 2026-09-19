@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { readFileSync } from 'node:fs';
 
 import {
   executeApprovedForwardReplacement,
@@ -14,6 +15,7 @@ import {
 } from '../../scripts/native-migration-reconciliation.mjs';
 
 const BASELINE = '20260908100000';
+const convergenceSource = readFileSync(new URL('../../scripts/forward-migration-convergence.mjs', import.meta.url), 'utf8');
 
 function manifestFromRegistry() {
   const byVersion = new Map();
@@ -74,6 +76,15 @@ test('Part 10B.6 registry has five explicit records and exactly four approved re
       && /^[a-f0-9]{64}$/.test(record.oldRepositorySha256)
       && /^[a-f0-9]{64}$/.test(record.replacementSha256)
   ));
+});
+
+test('Part 10B.8 activation keeps the legacy Send-gate postcondition fail-closed and rollout-aware', () => {
+  assert.match(convergenceSource, /when gate_active=false then true/i);
+  assert.match(convergenceSource, /when gate_active=true then \(select applied_exact from approved_activation\)/i);
+  assert.match(convergenceSource, /version='20260919142410'/i);
+  assert.match(convergenceSource, /name='activate_part10b_final_quotation_send_gate'/i);
+  assert.match(convergenceSource, /checksum='77712b2f7c2918684e39971c37311f7228c5377b817e9d0df23084edd1bc236c'/i);
+  assert.match(convergenceSource, /and baseline=false/i);
 });
 
 test('supersession registry rejects old repository SHA drift', () => {
@@ -398,7 +409,7 @@ test('approved replacement transaction rolls back when a postcondition fails and
     async query(sql, params) {
       calls.push({ sql, params });
       if (sql === 'begin' || sql === migration.source || sql === 'rollback') return { rows: [] };
-      if (/^\s*select/i.test(sql)) return { rows: [{ ok: false }] };
+      if (/^\s*(?:select|with)/i.test(sql)) return { rows: [{ ok: false }] };
       return { rows: [] };
     },
   };
@@ -418,7 +429,7 @@ test('approved replacement transaction executes only replacement SQL, then postc
   const client = {
     async query(sql, params) {
       calls.push({ sql, params });
-      if (/^\s*select/i.test(sql)) return { rows: [{ ok: true }] };
+      if (/^\s*(?:select|with)/i.test(sql)) return { rows: [{ ok: true }] };
       return { rows: [] };
     },
   };

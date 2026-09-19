@@ -7,6 +7,7 @@ const read = path => readFileSync(resolve(process.cwd(), path), 'utf8');
 const migration = read('supabase/migrations/20260916121000_crm_sales_final_quotation_send_gate_part10b_foundation.sql');
 const hardening = read('supabase/migrations/20260916123500_crm_sales_final_send_snapshot_forge_hardening.sql');
 const privilegeHardening = read('supabase/migrations/20260916124500_crm_sales_final_send_assertion_privilege_hardening.sql');
+const activation = read('supabase/migrations/20260919142410_activate_part10b_final_quotation_send_gate.sql');
 const service = read('src/lib/quotationSalesReconciliationService.ts');
 const panel = read('src/components/admin/QuotationSalesReconciliationPanel.tsx');
 const wrapper = read('src/components/admin/QuotationWorkspace.tsx');
@@ -183,3 +184,40 @@ test('rollout · foundation policy update keeps production gate false', () => {
 test('coverage · Part 10B suite has broad contract coverage', () => {
   assert.ok(checks.length >= 98, `Expected at least 98 Part 10B contract checks; found ${checks.length}.`);
 });
+
+const activationChecks = [
+  ['activation migration identity is unique', () => assert.match(activation, /Part 10B\.8: controlled activation/i)],
+  ['canonical policy is reused', () => assert.match(activation, /config_key='crm_quotation_sales_reconciliation_policy_v1'/i)],
+  ['policy version 2 is required', () => assert.match(activation, /policyVersion'\)::integer<>2/i)],
+  ['snapshot schema version 2 is required', () => assert.match(activation, /snapshotSchemaVersion'\)::integer<>2/i)],
+  ['gate must be false before transition', () => assert.match(activation, /finalQuotationSendGateActive'\)::boolean,true\)<>false/i)],
+  ['gate transitions narrowly to true', () => assert.match(activation, /jsonb_set\(config_value,'\{finalQuotationSendGateActive\}','true'::jsonb,false\)/i)],
+  ['all other policy fields are preserved', () => assert.match(activation, /v_policy_before-'finalQuotationSendGateActive'.*v_policy_after-'finalQuotationSendGateActive'/i)],
+  ['exactly one policy row is required', () => assert.match(activation, /Exactly one canonical quotation Sales reconciliation policy is required/i)],
+  ['canonical assertion is required exactly once', () => assert.match(activation, /crm_assert_quotation_send_ready\(uuid\).*<>1/i)],
+  ['canonical capture is required exactly once', () => assert.match(activation, /crm_capture_quotation_sales_scope_snapshot\(uuid\).*<>1/i)],
+  ['canonical reconciliation is required exactly once', () => assert.match(activation, /crm_get_quotation_sales_reconciliation\(uuid\).*<>1/i)],
+  ['canonical snapshot builder is required exactly once', () => assert.match(activation, /crm_build_quotation_sales_scope_snapshot\(uuid\).*<>1/i)],
+  ['send_quotation_professional remains canonical', () => assert.match(activation, /send_quotation_professional\(uuid,text,text\[\],text,text\)/i)],
+  ['update_quotation_atomic remains canonical', () => assert.match(activation, /update_quotation_atomic\(uuid,jsonb,jsonb\)/i)],
+  ['transition function remains canonical', () => assert.match(activation, /protect_quotation_transition\(\)/i)],
+  ['enabled transition trigger is required', () => assert.match(activation, /P10B8_TRANSITION_TRIGGER_MISSING/i)],
+  ['Admin return stays after capture', () => assert.match(activation, /v_admin_position<=v_capture_position/i)],
+  ['atomic return stays after capture', () => assert.match(activation, /v_atomic_position<=v_capture_position/i)],
+  ['browser assertion execution is rejected', () => assert.match(activation, /has_function_privilege\('authenticated'.*crm_assert_quotation_send_ready/is)],
+  ['browser capture execution is rejected', () => assert.match(activation, /has_function_privilege\('authenticated'.*crm_capture_quotation_sales_scope_snapshot/is)],
+  ['service-role assertion\/capture authority is retained', () => assert.match(activation, /not coalesce\(has_function_privilege\('service_role'.*crm_capture_quotation_sales_scope_snapshot/is)],
+  ['exact forward replacements are required', () => assert.match(activation, /P10B8_FORWARD_REPLACEMENT_DRIFT/i)],
+  ['forbidden historical ledger rows fail closed', () => assert.match(activation, /P10B8_HISTORICAL_LEDGER_DRIFT/i)],
+  ['Sales gate evaluator v3 is required', () => assert.match(activation, /evaluatorVersion'\)::integer<>3/i)],
+  ['Part 10A and Parts 6-9 architecture are required', () => assert.match(activation, /P10B8_RECONCILIATION_ARCHITECTURE_DRIFT/i)],
+  ['snapshot columns are required without recreation', () => assert.match(activation, /P10B8_SNAPSHOT_COLUMNS_DRIFT/i)],
+  ['business inventory is compared in-transaction', () => assert.match(activation, /v_business_counts_after is distinct from v_business_counts_before/i)],
+  ['historical Sent snapshots are count-protected', () => assert.match(activation, /capturedSnapshots.*sales_scope_snapshot is not null/is)],
+  ['no quotation or CRM business DML is present', () => assert.equal(/(?:insert|update|delete)\s+(?:into\s+|from\s+)?public\.(?:quotations|quotation_items|crm_|payments|clients|client_onboardings)/i.test(activation), false)],
+  ['no duplicate or Part 11 architecture is introduced', () => assert.equal(/create\s+(?:table|function)|_v2|part\s*11|force.?send|skip.?sales.?gate/i.test(activation), false)],
+];
+
+for (const [index, [name, run]] of activationChecks.entries()) {
+  test(`activation ${String(index + 1).padStart(2, '0')} - ${name}`, run);
+}

@@ -7,6 +7,7 @@ const read = path => readFileSync(resolve(process.cwd(), path), 'utf8');
 const foundation = read('supabase/migrations/20260916121000_crm_sales_final_quotation_send_gate_part10b_foundation.sql');
 const hardening = read('supabase/migrations/20260916123500_crm_sales_final_send_snapshot_forge_hardening.sql');
 const privilege = read('supabase/migrations/20260916124500_crm_sales_final_send_assertion_privilege_hardening.sql');
+const activation = read('supabase/migrations/20260919142410_activate_part10b_final_quotation_send_gate.sql');
 const part10a = read('tests/security/crm-sales-quotation-reconciliation-part-10a.test.mjs');
 const part10aHardening = read('tests/security/crm-sales-quotation-reconciliation-part-10a-hardening.test.mjs');
 const part9Test = read('tests/security/crm-sales-scope-conditions-promise-register-part-9.test.ts');
@@ -46,6 +47,8 @@ const groups = [
     has(panel, 'Existing commercial approval remains authoritative.');
     assert.equal(/create\s+table\s+/i.test(sql), false);
     lacks(sql, 'send_quotation_professional_v2', 'crm_get_quotation_sales_reconciliation_v2', 'crm_quotation_sales_reconciliation_policy_v2');
+    has(activation, "crm_quotation_sales_reconciliation_policy_v1", "jsonb_set(config_value,'{finalQuotationSendGateActive}','true'::jsonb,false)");
+    assert.equal(/create\s+(?:table|function)/i.test(activation), false);
   }],
   [13, 23, 'universal send paths', () => {
     has(doc, 'send_quotation_professional', 'update_quotation_atomic', 'direct `UPDATE`', 'Direct INSERT', 'Admin updates', 'atomic-RPC');
@@ -113,6 +116,8 @@ const groups = [
     has(part10a, 'quotation_sales_coverage_no_direct_authenticated', 'crm_can_access_lead');
     assert.equal(/service[_-]?role(?:_key)?\s*[:=]\s*['"`][^'"`]+/i.test(`${panel}\n${wrapper}`), false);
     lacks(sql, 'force=true', 'skipSalesGate', 'ignoreReconciliation');
+    has(activation, 'P10B8_INTERNAL_FUNCTION_ACL_DRIFT', 'P10B8_TRANSITION_ORDER_DRIFT', 'P10B8_BUSINESS_DATA_MUTATION');
+    lacks(activation, 'force=true', 'skipSalesGate', 'ignoreReconciliation', 'adminBypass');
   }],
   [144, 159, 'regression and executable tooling', () => {
     for (const [name, source] of [['Part 1',part1],['Part 2',part2],['Part 3',part3],['Part 3.5',part35],['Part 4',part4],['Part 5',part5],['Part 6',part6],['Part 7',part7],['Part 8',part8],['Part 9',part9Test],['Part 10A',part10a],['Part 10A hardening',part10aHardening]]) {
@@ -121,6 +126,7 @@ const groups = [
     has(catalog, 'catalog_snapshot jsonb', 'catalog_version_snapshot integer');
     has(packageJson, '"lint": "tsc --noEmit"', '"test:security": "tsx --test tests/security/*.test.ts"', '"test:crm-part10a"', '"test:crm-part10b"', 'crm-sales-final-quotation-send-gate-part-10b-spec-matrix.test.mjs', '"migrations:check"', '"build"');
     has(ci, 'run: npm run lint', 'run: npm run migrations:check', 'run: npm test', 'run: npm run build');
+    has(activation, '20260918120000', '20260918121000', '20260918122000', '20260918123000');
   }],
 ];
 

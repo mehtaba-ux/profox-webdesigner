@@ -242,11 +242,31 @@ export function validateForwardMigrationSupersessionRegistry({
 }
 
 const checks = Object.freeze({
+  // Legacy stable ID retained for the four Part 10B.6 replacement contracts.
+  // Before activation, the gate must be false. After Part 10B.8, true is valid
+  // only when the exact repository-controlled activation migration is ledgered.
   P10B6_SEND_GATE_FALSE: `
-    select coalesce((
-      select (config_value->>'finalQuotationSendGateActive')::boolean=false
+    with policy as (
+      select (config_value->>'finalQuotationSendGateActive')::boolean as gate_active
       from public.system_configuration
       where config_key='crm_quotation_sales_reconciliation_policy_v1'
+    ), approved_activation as (
+      select exists (
+        select 1
+        from profox_migrations.applied_migrations
+        where version='20260919142410'
+          and name='activate_part10b_final_quotation_send_gate'
+          and checksum='77712b2f7c2918684e39971c37311f7228c5377b817e9d0df23084edd1bc236c'
+          and baseline=false
+      ) as applied_exact
+    )
+    select coalesce((
+      select case
+        when gate_active=false then true
+        when gate_active=true then (select applied_exact from approved_activation)
+        else false
+      end
+      from policy
     ),false) as ok
   `,
 
