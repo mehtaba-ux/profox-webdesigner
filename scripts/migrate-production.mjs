@@ -2,12 +2,26 @@ import dotenv from 'dotenv';
 import process from 'node:process';
 import pg from 'pg';
 import { assertAppliedMigrationLedger, loadMigrationManifest } from './migration-manifest.mjs';
-import { planNativeMigrationReconciliation } from './native-migration-reconciliation.mjs';
+import {
+  auditCurrentMigrationLineage,
+  planForwardMigrationConvergence,
+  planNativeMigrationReconciliation,
+} from './native-migration-reconciliation.mjs';
+import {
+  executeApprovedForwardReplacement,
+  historicalForwardMigrationSupersessions,
+  validateForwardMigrationSupersessionRegistry,
+  verifyForwardReconciliationPostconditions,
+} from './forward-migration-convergence.mjs';
 
 dotenv.config({ path: '.env.local', quiet: true });
 
 const { Client } = pg;
 const apply = process.argv.includes('--apply');
+const convergePart10b6 = process.argv.includes('--converge-part10b6');
+if (apply && convergePart10b6) {
+  throw new Error('Use either --apply or --converge-part10b6, never both.');
+}
 const baselineVersion = String(process.env.MIGRATION_BASELINE_VERSION || '').trim();
 const databaseUrl = String(process.env.SUPABASE_DB_URL || '').trim();
 
@@ -29,6 +43,15 @@ async function ensureControlSchema(client) {
     );
     revoke all on all tables in schema profox_migrations from public, anon, authenticated;
   `);
+}
+
+
+function mappedPostconditionIdsForAppliedReplacements(appliedByVersion) {
+  return [...new Set(
+    historicalForwardMigrationSupersessions
+      .filter(record => appliedByVersion.has(record.replacementVersion))
+      .flatMap(record => record.postconditionIds),
+  )];
 }
 
 async function initializeBaseline(client, migrations) {
@@ -83,31 +106,38 @@ async function verifyAndApply(client, migrations, authoritativeBaseline) {
 
   // Some audited production migrations were originally applied through Supabase's
   // native migration ledger before the repository runner existed. Reconcile only
-  // the explicit aliases in native-migration-reconciliation.mjs. Exact native
-  // version+name matches are recorded in the custom ledger without replaying SQL.
+  // current-manifest aliases with exact authoritative identity/content evidence.
+  // Known current migrations with unresolved provenance are blocked before any
+  // custom-ledger insert or SQL execution occurs.
   const nativeHistory = await client.query(`
-    select version,name
+    select version,name,statements
     from supabase_migrations.schema_migrations
     order by version
   `);
+  validateForwardMigrationSupersessionRegistry({ migrations });
+  const appliedPostconditionIds = mappedPostconditionIdsForAppliedReplacements(appliedByVersion);
+  const postconditionResults = appliedPostconditionIds.length
+    ? await verifyForwardReconciliationPostconditions(client, { ids: appliedPostconditionIds })
+    : new Map();
   const { reconciled, pending } = planNativeMigrationReconciliation({
     migrations,
     appliedByVersion,
     authoritativeBaseline,
     nativeRows: nativeHistory.rows,
+    postconditionResults,
   });
 
   if (reconciled.length) {
     await client.query('begin');
     try {
-      for (const { migration, alias } of reconciled) {
+      for (const { migration, alias, classification } of reconciled) {
         await client.query(
           `insert into profox_migrations.applied_migrations(version,name,checksum,baseline)
            values($1,$2,$3,false)`,
           [migration.version, migration.name, migration.checksum],
         );
         console.log(
-          `Reconciled ${migration.file} from native Supabase history ${alias.nativeVersion}_${alias.name}; SQL was not replayed.`,
+          `Reconciled ${migration.file} from native Supabase history ${alias.nativeVersion}_${alias.name} via ${classification}; SQL was not replayed.`,
         );
       }
       await client.query('commit');
@@ -138,10 +168,125 @@ async function verifyAndApply(client, migrations, authoritativeBaseline) {
   );
 }
 
+async function loadExistingBaseline(client) {
+  const state = await client.query(
+    'select baseline_version from profox_migrations.state where singleton=true',
+  );
+  if (state.rowCount !== 1) {
+    throw new Error(
+      'Part 10B.6 convergence requires the existing authoritative production migration baseline; it will not initialize or repair migration control state.',
+    );
+  }
+  return String(state.rows[0].baseline_version);
+}
+
+async function verifyAndConvergePart10b6(client, migrations, authoritativeBaseline) {
+  const result = await client.query(`
+    select version,name,checksum,baseline
+    from profox_migrations.applied_migrations
+    order by version
+  `);
+  const { appliedByVersion } = assertAppliedMigrationLedger({
+    migrations,
+    appliedRows: result.rows,
+    requireAllApplied: false,
+  });
+
+  const untrackedHistorical = migrations.filter(migration =>
+    migration.version <= authoritativeBaseline && !appliedByVersion.has(migration.version)
+  );
+  if (untrackedHistorical.length) {
+    throw new Error(
+      `Historical migrations were inserted before the baseline: ${untrackedHistorical.map(item => item.file).join(', ')}`,
+    );
+  }
+
+  validateForwardMigrationSupersessionRegistry({ migrations });
+  for (const record of historicalForwardMigrationSupersessions) {
+    if (appliedByVersion.has(record.oldVersion)) {
+      throw new Error(
+        `Historical migration ${record.oldVersion}_${record.oldName} is present in the custom ledger. Part 10B.6 refuses to continue because historical unresolved rows must never be marked applied.`,
+      );
+    }
+  }
+
+  const nativeHistory = await client.query(`
+    select version,name,statements
+    from supabase_migrations.schema_migrations
+    order by version
+  `);
+  const appliedPostconditionIds = mappedPostconditionIdsForAppliedReplacements(appliedByVersion);
+  const prePostconditions = appliedPostconditionIds.length
+    ? await verifyForwardReconciliationPostconditions(client, { ids: appliedPostconditionIds })
+    : new Map();
+  const plan = planForwardMigrationConvergence({
+    migrations,
+    appliedByVersion,
+    authoritativeBaseline,
+    nativeRows: nativeHistory.rows,
+    postconditionResults: prePostconditions,
+  });
+
+  if (!plan.pendingReplacements.length) {
+    console.log('Part 10B.6 forward convergence has no approved replacement migration left to execute.');
+  }
+
+  for (const migration of plan.pendingReplacements) {
+    const records = historicalForwardMigrationSupersessions.filter(
+      record => record.replacementVersion === migration.version,
+    );
+    await executeApprovedForwardReplacement(client, { migration, records });
+    appliedByVersion.set(migration.version, {
+      version: migration.version,
+      name: migration.name,
+      checksum: migration.checksum,
+      baseline: false,
+    });
+    console.log(
+      `Applied approved Part 10B.6 forward replacement ${migration.file}; mapped historical SQL was not executed.`,
+    );
+  }
+
+  const finalPostconditions = await verifyForwardReconciliationPostconditions(client);
+  const finalRows = auditCurrentMigrationLineage({
+    migrations,
+    appliedByVersion,
+    authoritativeBaseline,
+    nativeRows: nativeHistory.rows,
+    postconditionResults: finalPostconditions,
+  });
+  const superseded = finalRows.filter(
+    row => row.truthStatus === 'SUPERSEDED_BY_FORWARD_RECONCILIATION',
+  );
+  const blocked = finalRows.filter(row => row.truthStatus === 'BLOCKED_UNRESOLVED');
+  const unrelatedPending = finalRows.filter(
+    row => row.truthStatus === 'PENDING_NEW'
+      && !plan.registryAudit.replacementVersions.has(row.migration.version),
+  );
+
+  if (superseded.length !== historicalForwardMigrationSupersessions.length
+      || blocked.length || unrelatedPending.length) {
+    throw new Error(
+      `Part 10B.6 convergence final audit failed: superseded=${superseded.length}, blocked=${blocked.length}, unrelated pending=${unrelatedPending.length}.`,
+    );
+  }
+
+  console.log(
+    `Part 10B.6 forward convergence verification passed: ${superseded.length} historical migration(s) are truthfully superseded by exact applied replacements; no historical SQL was replayed.`,
+  );
+}
+
 const migrations = await loadMigrationManifest();
 console.log(`Static migration verification passed: ${migrations.length} unique ordered versions.`);
-if (!apply) process.exit(0);
-if (!databaseUrl) throw new Error('SUPABASE_DB_URL is required with --apply.');
+validateForwardMigrationSupersessionRegistry({ migrations });
+if (!apply && !convergePart10b6) process.exit(0);
+if (!databaseUrl) {
+  throw new Error(
+    convergePart10b6
+      ? 'SUPABASE_DB_URL is required with --converge-part10b6.'
+      : 'SUPABASE_DB_URL is required with --apply.',
+  );
+}
 
 const client = new Client({
   connectionString: databaseUrl,
@@ -157,9 +302,14 @@ try {
   const lock = await client.query("select pg_try_advisory_lock(hashtextextended('profox-production-migrations',0)) as acquired");
   lockAcquired = lock.rows[0]?.acquired === true;
   if (!lockAcquired) throw new Error('Another production migration runner currently holds the deployment lock.');
-  await ensureControlSchema(client);
-  const authoritativeBaseline = await initializeBaseline(client, migrations);
-  await verifyAndApply(client, migrations, authoritativeBaseline);
+  if (convergePart10b6) {
+    const authoritativeBaseline = await loadExistingBaseline(client);
+    await verifyAndConvergePart10b6(client, migrations, authoritativeBaseline);
+  } else {
+    await ensureControlSchema(client);
+    const authoritativeBaseline = await initializeBaseline(client, migrations);
+    await verifyAndApply(client, migrations, authoritativeBaseline);
+  }
 } finally {
   if (lockAcquired) {
     await client.query("select pg_advisory_unlock(hashtextextended('profox-production-migrations',0))").catch(() => {});

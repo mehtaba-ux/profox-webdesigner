@@ -64,7 +64,7 @@ export function deriveMeetingOpenQuestions(
       else if (!response || response.question_state === 'NOT_ASKED') reason = 'Not asked yet.';
       return { question, response, reason };
     })
-    .filter((item): item is { question: CRMDiscoveryQuestion; response?: CRMDiscoveryResponse; reason: string } => Boolean(item))
+    .filter((item): item is { question: CRMDiscoveryQuestion; response: CRMDiscoveryResponse | undefined; reason: string } => item !== null)
     .sort((a, b) => {
       const pa = a.response?.question_state === 'NEEDS_FOLLOW_UP' ? 0 : getDiscoveryQuestionConfiguration(a.question).questionClass === 'CORE' ? 1 : 2;
       const pb = b.response?.question_state === 'NEEDS_FOLLOW_UP' ? 0 : getDiscoveryQuestionConfiguration(b.question).questionClass === 'CORE' ? 1 : 2;

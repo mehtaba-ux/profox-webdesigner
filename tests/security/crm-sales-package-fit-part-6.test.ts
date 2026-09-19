@@ -16,7 +16,7 @@ const discoveryService = read('src/lib/crmSalesDiscoveryService.ts');
 const drawer = read('src/components/admin/crm/CRMLeadDrawerBase.tsx');
 const packageJson = JSON.parse(read('package.json'));
 
-const policyStart = migration.indexOf("'crm_package_fit_policy_v1',\n    jsonb_build_object(");
+const policyStart = migration.indexOf("'crm_package_fit_policy_v1'");
 const policyEnd = migration.indexOf("'Versioned deterministic Package Fit policy", policyStart);
 assert.ok(policyStart >= 0 && policyEnd > policyStart);
 const policyBlock = migration.slice(policyStart, policyEnd);
@@ -30,7 +30,7 @@ const policyRequirementKeys = [...migration.matchAll(/'requirementKey','([^']+)'
 
 type AcceptanceCase = [string, () => void];
 const cases: AcceptanceCase[] = [
-  ['sales_products remains canonical commercial source', () => { assert.ok(has(functionBlock, 'from public.sales_products')); assert.ok(has(panel, 'current sales catalog')); }],
+  ['sales_products remains canonical commercial source', () => { assert.ok(has(functionBlock, 'from public.sales_products')); assert.ok(has(panel, 'live Sales Catalog')); }],
   ['No duplicate product catalog is created', () => { assert.ok(no(migration, 'create table')); assert.ok(no(migration, 'sales_package_catalog')); }],
   ['No client-specific Package Fit table is created', () => { assert.ok(no(migration, 'create table')); assert.ok(no(migration, 'crm_package_fit ')); assert.ok(no(migration, 'crm_package_recommendations')); }],
   ['One canonical Package Fit policy exists', () => { assert.equal((migration.match(/crm_package_fit_policy_v1/g) || []).length > 0, true); assert.ok(has(migration, 'system_configuration')); }],
@@ -71,7 +71,7 @@ const cases: AcceptanceCase[] = [
   ['Confidence is deterministic', () => { assert.ok(has(functionBlock, "v_confidence := 'LOW'")); assert.ok(has(functionBlock, "v_confidence := 'MEDIUM'")); assert.ok(has(functionBlock, "v_confidence := 'HIGH'")); }],
   ['Confidence does not use fake mathematical precision', () => { assert.ok(no(service, 'confidence: number')); assert.ok(has(service, "'HIGH' | 'MEDIUM' | 'LOW'")); }],
   ['Low confidence does not produce false certainty', () => { assert.ok(has(panel, 'more information or review is required before a reliable recommendation')); assert.ok(no(panel, 'SELL THIS PACKAGE NOW')); }],
-  ['No candidate can be returned from inactive catalog row', () => { assert.ok(has(functionBlock, "sp.active\n      and lower(coalesce(sp.product_type,'')) = 'package'")); }],
+  ['No candidate can be returned from inactive catalog row', () => { assert.ok(has(functionBlock, 'sp.active')); assert.ok(has(functionBlock, "lower(coalesce(sp.product_type,'')) = 'package'")); }],
   ['Manager approval flag comes from sales_products', () => { assert.ok(has(functionBlock, 'v_product.manager_approval_required')); assert.ok(no(policyBlock, 'manager_approval_required')); }],
   ['Timeline impact comes from sales_products', () => { assert.ok(has(functionBlock, 'v_product.timeline_impact')); assert.ok(no(policyBlock, 'timeline_impact')); }],
   ['Delivery duration comes from sales_products', () => { assert.ok(has(functionBlock, 'v_product.delivery_duration_min')); assert.ok(has(functionBlock, 'v_product.delivery_duration_max')); }],

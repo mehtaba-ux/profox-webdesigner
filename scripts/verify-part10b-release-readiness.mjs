@@ -1,6 +1,12 @@
 import dotenv from 'dotenv';
 import pg from 'pg';
 import { auditAppliedMigrationLedger, loadMigrationManifest } from './migration-manifest.mjs';
+import { auditCurrentMigrationLineage } from './native-migration-reconciliation.mjs';
+import {
+  historicalForwardMigrationSupersessions,
+  validateForwardMigrationSupersessionRegistry,
+  verifyForwardReconciliationPostconditions,
+} from './forward-migration-convergence.mjs';
 
 dotenv.config({ path: '.env.local', quiet: true });
 
@@ -27,6 +33,16 @@ try {
   await client.connect();
   await client.query('begin read only');
 
+  const stateRows = (await client.query(`
+    select baseline_version
+    from profox_migrations.state
+    where singleton=true
+  `)).rows;
+  if (stateRows.length !== 1) {
+    fail('Production migration baseline', `expected exactly one authoritative state row, found ${stateRows.length}`);
+  }
+  const authoritativeBaseline = String(stateRows[0]?.baseline_version || '');
+
   const appliedRows = (await client.query(`
     select version,name,checksum,baseline
     from profox_migrations.applied_migrations
@@ -35,20 +51,79 @@ try {
   const ledgerAudit = auditAppliedMigrationLedger({
     migrations,
     appliedRows,
-    requireAllApplied: true,
+    requireAllApplied: false,
   });
 
   if (ledgerAudit.issues.length) {
     fail('Production migration ledger integrity', ledgerAudit.issues.join(' | '));
-  } else if (ledgerAudit.missing.length) {
+  } else {
+    pass(
+      'Production migration ledger integrity',
+      `${appliedRows.length} recorded migration row(s) match current repository version, logical name and SHA-256`,
+    );
+  }
+
+  const untrackedHistorical = authoritativeBaseline
+    ? migrations.filter(migration => migration.version <= authoritativeBaseline
+      && !ledgerAudit.appliedByVersion.has(migration.version))
+    : [];
+  if (untrackedHistorical.length) {
     fail(
-      'Production migration ledger parity',
-      `${ledgerAudit.missing.length} repository migration(s) are not recorded in the custom production ledger: ${ledgerAudit.missing.map(item => item.file).join(', ')}`,
+      'Production migration baseline coverage',
+      `${untrackedHistorical.length} current historical migration(s) through baseline ${authoritativeBaseline} are untracked: ${untrackedHistorical.map(item => item.file).join(', ')}`,
+    );
+  } else if (authoritativeBaseline) {
+    pass('Production migration baseline coverage', `current repository history is tracked through ${authoritativeBaseline}`);
+  }
+
+  validateForwardMigrationSupersessionRegistry({ migrations });
+  for (const record of historicalForwardMigrationSupersessions) {
+    if (ledgerAudit.appliedByVersion.has(record.oldVersion)) {
+      fail(
+        'Historical unresolved custom-ledger safety',
+        `forbidden historical version is present in the custom ledger: ${record.oldVersion}_${record.oldName}`,
+      );
+    }
+  }
+
+  const nativeRows = (await client.query(`
+    select version,name,statements
+    from supabase_migrations.schema_migrations
+    order by version
+  `)).rows;
+  const postconditionResults = await verifyForwardReconciliationPostconditions(client);
+  const lineageRows = authoritativeBaseline
+    ? auditCurrentMigrationLineage({
+      migrations,
+      appliedByVersion: ledgerAudit.appliedByVersion,
+      authoritativeBaseline,
+      nativeRows,
+      postconditionResults,
+    })
+    : [];
+
+  const appliedExact = lineageRows.filter(row => row.truthStatus === 'APPLIED_EXACT');
+  const reconciledNative = lineageRows.filter(row => row.truthStatus === 'RECONCILED_FROM_NATIVE');
+  const superseded = lineageRows.filter(
+    row => row.truthStatus === 'SUPERSEDED_BY_FORWARD_RECONCILIATION',
+  );
+  const pending = lineageRows.filter(row => row.truthStatus === 'PENDING_NEW');
+  const blocked = lineageRows.filter(row => row.truthStatus === 'BLOCKED_UNRESOLVED');
+
+  if (blocked.length) {
+    fail(
+      'Current repository migration lineage',
+      `${blocked.length} current post-baseline migration(s) remain BLOCKED_UNRESOLVED: ${blocked.map(row => `${row.migration.file} (${row.reason})`).join(' | ')}`,
+    );
+  } else if (pending.length) {
+    fail(
+      'Current repository migration lineage',
+      `${pending.length} PENDING_NEW migration(s) remain unapplied: ${pending.map(row => row.migration.file).join(', ')}`,
     );
   } else {
     pass(
-      'Production migration ledger parity',
-      `${appliedRows.length}/${migrations.length} repository migration(s) match exact version, logical name and SHA-256; latest ${ledgerAudit.latestAppliedVersion}`,
+      'Current repository migration lineage',
+      `${lineageRows.length} post-baseline current migration(s): APPLIED_EXACT ${appliedExact.length}, RECONCILED_FROM_NATIVE ${reconciledNative.length}, SUPERSEDED_BY_FORWARD_RECONCILIATION ${superseded.length}, PENDING_NEW 0, BLOCKED_UNRESOLVED 0`,
     );
   }
 

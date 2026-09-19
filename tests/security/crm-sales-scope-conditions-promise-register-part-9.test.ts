@@ -73,7 +73,7 @@ const checks: Array<[string, () => void]> = [
   ['Promise types supported', () => ['SCOPE','TECHNICAL','TIMELINE','COMMERCIAL','SUPPORT','COMPLIANCE','PERFORMANCE_RESULT','OTHER'].forEach(value => must(schema, `'${value}'`))],
   ['Draft Promise works', () => must(mutations, 'crm_save_sales_promise_draft', "'DRAFT'", 'recorded_by')],
   ['Draft is not Active commitment', () => must(workspaceSql, 'Promise draft(s) are internal preparation only and do not count as client commitments')],
-  ['Explicit action required to record Active Promise', () => must(mutations, "p_action='ACTIVATE'", 'p_client_communicated', 'Confirm that ProFox actually communicated this commitment to the client')],
+  ['Explicit action required to record Active Promise', () => must(mutations, "v_action='ACTIVATE'", 'p_client_communicated', 'Confirm that ProFox actually communicated this commitment to the client')],
   ['Active Promise actor stamped server-side', () => must(mutations, 'auth.uid()', 'promised_by=v_uid')],
   ['recorded_at server-controlled', () => must(schema, 'recorded_at timestamptz NOT NULL DEFAULT now()', 'recorded_by uuid NOT NULL')],
   ['Client request cannot automatically create Promise', () => { must(scopeWorkspace, "Do not turn a client's request"); mustLack(service, 'clientRequest'); }],
@@ -92,7 +92,7 @@ const checks: Array<[string, () => void]> = [
   ['Promise can link Meeting/source', () => must(schema, 'source_meeting_id', 'source_type', 'source_summary')],
   ['Cross-Lead source rejected', () => must(schema, 'Meeting does not belong to this Lead')],
   ['Opening Promise Register creates no Promise', () => mustLack(scopeWorkspace, 'savePromiseDraft(')],
-  ['Unapproved real Promise may be recorded truthfully', () => { must(mutations, 'material commitment actually communicated by ProFox was recorded'); mustLack(mutations, 'linked_validation_id is null then raise'); }],
+  ['Unapproved real Promise may be recorded truthfully', () => { must(mutations, 'material commitment actually communicated by ProFox was recorded', 'Approval/validation integrity is evaluated separately'); mustLack(mutations, "v_action='ACTIVATE' AND v_row.linked_validation_id IS NULL"); }],
   ['Unapproved Promise produces blocker/review signal', () => must(workspaceSql, 'PROMISE_UNAPPROVED_COMMITMENT', 'UNAPPROVED COMMITMENT', 'hardBlocker', 'OPEN_VALIDATION')],
   ['Approved validation is visible', () => must(workspaceSql, "v_validation.status<>'APPROVED'", 'linkedValidationStatus')],
   ['Approved constraints visible', () => must(workspaceSql, 'approved_constraints', 'approvedConstraints')],
@@ -162,7 +162,7 @@ const checks: Array<[string, () => void]> = [
   ['Promise guidance exists', () => must(guidance, 'section.promise_register', 'material commitment ProFox actually communicated')],
   ['Unapproved Promise guidance exists', () => must(guidance, 'status.promise_unapproved', 'required internal validation is not current')],
   ['Touch/mobile support', () => must(`${scopePanel}\n${promisePanel}\n${scopeWorkspace}`, 'min-h-10', 'sm:', 'md:', 'lg:', 'whitespace-pre-wrap')],
-  ['Keyboard/accessibility support', () => must(`${dialog}\n${scopeWorkspace}`, 'role="dialog"', 'aria-modal="true"', "event.key === 'Tab'", "event.key === 'Escape'", 'focus-visible', 'previousFocusRef', 'window.confirm')],
+  ['Keyboard/accessibility support', () => must(`${dialog}\n${scopeWorkspace}`, 'role="dialog"', 'aria-modal="true"', "event.key !== 'Tab'", "event.key === 'Escape'", 'focus-visible', 'previousFocusRef', 'window.confirm')],
 
   ['Part 1 preserved', () => assert.ok(existsSync('tests/security/crm-sales-discovery-foundation-part-1.test.ts'))],
   ['Part 2 preserved', () => assert.ok(existsSync('tests/security/crm-sales-requirements-part-2.test.ts'))],
@@ -187,5 +187,5 @@ test('Part 9 canonical guidance keys are complete', () => [
 ].forEach(key => must(guidance, key)));
 
 test('Part 9 implementation record preserves native migration lineage and Part 10 boundary', () => {
-  must(part9Doc, '20260910042939', '20260910043137', '20260910043416', '20260910043453', 'Part 10', 'finalQuotationSendGateActive', 'No quotation writes');
+  must(part9Doc, '20260910042939', '20260910043137', '20260910043416', '20260910043453', 'Part 10', 'finalQuotationSendGateActive', 'does not create, update, approve, send, accept, or otherwise mutate quotation records');
 });

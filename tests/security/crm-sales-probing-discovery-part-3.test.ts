@@ -44,7 +44,7 @@ const makeResponse = (patch: Partial<CRMDiscoveryResponse> = {}): CRMDiscoveryRe
 });
 
 test('TEST 1 — Probing & Discovery tab appears immediately after Requirements', () => {
-  assert.match(drawer, /LeadDrawerTab = 'overview' \| 'requirements' \| 'discovery' \| 'timeline' \| 'communication' \| 'activities'/);
+  assert.match(drawer, /LeadDrawerTab = [^;]*'requirements'[^;]*'discovery'/);
   assert.match(drawer, /id: 'requirements', label: 'Requirements'[\s\S]*id: 'discovery', label: 'Probing & Discovery'[\s\S]*id: 'timeline', label: 'Complete log'/);
 });
 

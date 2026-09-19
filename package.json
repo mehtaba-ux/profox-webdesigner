@@ -18,12 +18,13 @@
     "test": "npm run test:talent-partner && npm run test:security && npm run test:migration-reconciliation && npm run test:crm-part10a && npm run test:crm-part10b",
     "test:talent-partner": "tsx --test tests/talent-partner/*.test.ts",
     "test:security": "tsx --test tests/security/*.test.ts",
-    "test:migration-reconciliation": "node --test tests/security/production-migration-native-reconciliation.test.mjs tests/security/production-migration-ledger-audit.test.mjs",
+    "test:migration-reconciliation": "node --test tests/security/production-migration-native-reconciliation.test.mjs tests/security/production-migration-ledger-audit.test.mjs tests/security/production-migration-forward-convergence.test.mjs tests/security/part10b6-forward-reconciliation-migrations.test.mjs",
     "test:crm-part10a": "node --test tests/security/crm-sales-quotation-reconciliation-part-10a.test.mjs tests/security/crm-sales-quotation-reconciliation-part-10a-hardening.test.mjs",
     "test:crm-part10b": "node --test tests/security/crm-sales-final-quotation-send-gate-part-10b.test.mjs tests/security/crm-sales-final-quotation-send-gate-part-10b-spec-matrix.test.mjs",
     "test:e2e": "playwright test",
     "deploy": "npm run build && wrangler deploy",
-    "pages:deploy": "npm run build && wrangler pages deploy dist"
+    "pages:deploy": "npm run build && wrangler pages deploy dist",
+    "migrations:converge-part10b6": "node scripts/migrate-production.mjs --converge-part10b6"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

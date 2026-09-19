@@ -79,8 +79,9 @@ test('Part 3.5 — non-obvious current Seller actions have canonical stable guid
   for (const key of requiredKeys) assert.ok(getSellerGuidance(key), key);
 });
 
-test('Part 3.5 — guidance registry remains read-only and Part 4-free', () => {
-  assert.doesNotMatch(guidanceSource, /supabase|\.insert\(|\.upsert\(|crm_meeting_preparations|Mark Prep Ready|Meeting Objective|Intended Advance/i);
+test('Part 3.5 — guidance registry remains read-only while later guidance coexists', () => {
+  assert.doesNotMatch(guidanceSource, /supabase\.from|\.insert\(|\.upsert\(/i);
+  assert.match(guidanceSource, /Mark Prep Ready|Meeting Objective|Intended Advance/i);
   assert.match(docs, /FUTURE UI — NOT YET APPLICABLE/);
   assert.match(docs, /No Part 3\.5 database migration is required/);
 });

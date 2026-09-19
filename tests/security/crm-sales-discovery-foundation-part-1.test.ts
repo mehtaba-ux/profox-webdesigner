@@ -141,7 +141,8 @@ test('frontend foundation uses the existing Supabase client and one coherent wor
 
 test('Part 1 itself did not change downstream sales gates; later Parts may extend the existing Lead Drawer', () => {
   assert.match(drawer, /export type LeadDrawerTab =/);
-  assert.doesNotMatch(drawer, /label: 'Meeting Prep'/);
+  assert.match(drawer, /label: 'Meeting Prep'/);
+  assert.match(drawer, /label: 'Meeting Management'/);
   assert.doesNotMatch(migration, /create or replace function public\.convert_lead_to_opportunity/i);
   assert.doesNotMatch(migration, /create or replace function public\.crm_transition_opportunity/i);
   assert.doesNotMatch(migration, /alter table public\.quotations/i);
