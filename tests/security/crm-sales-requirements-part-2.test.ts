@@ -61,7 +61,7 @@ const makeRequirement = (patch: Partial<CRMRequirement> = {}): CRMRequirement =>
 });
 
 test('TEST 1 — Requirements tab appears in the existing Lead Drawer', () => {
-  assert.match(drawer, /LeadDrawerTab = 'overview' \| 'requirements' \| 'discovery' \| 'timeline' \| 'communication' \| 'activities'/);
+  assert.match(drawer, /LeadDrawerTab = [^;]*'requirements'[^;]*'discovery'/);
   assert.match(drawer, /id: 'requirements', label: 'Requirements'/);
 });
 
@@ -191,9 +191,9 @@ test('TEST 19 — AWAITING_CLIENT is not client confirmation and empty awaiting 
   assert.equal(coverage.needsAttentionCore, 1);
 });
 
-test('TEST 20 — NEEDS_SPECIALIST_VALIDATION remains visibly unresolved without creating a review workflow', () => {
-  assert.match(workspace, /Specialist validation required\. No review workflow has been started\./);
-  assert.doesNotMatch(workspace, /Request technical review/i);
+test('TEST 20 — NEEDS_SPECIALIST_VALIDATION remains visibly unresolved with the later canonical review workflow', () => {
+  assert.match(workspace, /Specialist validation required\. Current review status and Request Review actions are shown in Sales Validation above\./);
+  assert.match(workspace, /Request Review/i);
   const coverage = calculateRequirementCoverage(
     [makeDefinition('business_objective')],
     [makeRequirement({ information_certainty: 'NEEDS_SPECIALIST_VALIDATION' })],

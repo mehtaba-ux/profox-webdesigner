@@ -13,6 +13,7 @@ import {
   REQUIREMENT_GUIDANCE_KEY_SET,
   REQUIREMENT_GUIDANCE_KEYS,
 } from './crmSellerGuidanceData';
+import { getDiscoveryQuestionConfiguration } from './crmDiscoveryUtils';
 
 export type SellerGuidanceEntry = {
   key: string;
@@ -104,9 +105,7 @@ export function getDiscoveryQuestionGuidance(question: CRMDiscoveryQuestion): Se
   if (!focus) return undefined;
   const override = DISCOVERY_OVERRIDES[question.question_key] ?? {};
   const listenFor = LISTEN_FOR.find(([pattern]) => pattern.test(question.question_key))?.[1];
-  const related = Array.isArray(question.applicability?.relatedRequirementKeys)
-    ? question.applicability.relatedRequirementKeys.map(humanize)
-    : [];
+  const related = getDiscoveryQuestionConfiguration(question).relatedRequirementKeys.map(humanize);
   return make(`discovery.question.${question.question_key}`, question.question_text, focus, {
     meaning: question.purpose?.trim() || `Use this question to understand ${humanize(question.category).toLowerCase()} before recommending a solution.`,
     whyItMatters: 'A factual answer reduces assumptions and gives the Seller clearer context for scope, follow-up and later recommendation without creating a promise or automatic decision.',

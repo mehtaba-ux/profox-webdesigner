@@ -52,12 +52,20 @@ const block = (text: string, startNeedle: string, endNeedle: string) => {
   return end === -1 ? tail : tail.slice(0, end);
 };
 
+const lastBlock = (text: string, startNeedle: string, endNeedle: string) => {
+  const start = lower(text).lastIndexOf(lower(startNeedle));
+  assert.notEqual(start, -1, `Missing block start: ${startNeedle}`);
+  const tail = text.slice(start);
+  const end = lower(tail).indexOf(lower(endNeedle));
+  return end === -1 ? tail : tail.slice(0, end);
+};
+
 const draftSql = fnSql('save_sales_meeting_closeout_draft');
 const finalizeSql = fnSql('finalize_sales_meeting');
 const noShowSql = fnSql('queue_meeting_status_automation');
 const communicationSql = fnSql('crm_queue_meeting_communication_update');
 const customerPayloadSql = fnSql('build_sales_meeting_notification_payload');
-const completedFollowupBlock = block(finalizeSql, '-- Generic Meeting Follow-Up is for Completed meetings only.', 'return v_meeting;');
+const completedFollowupBlock = lastBlock(finalizeSql, "if p_status = 'Completed'", 'return v_meeting;');
 const saveVoiceBlock = block(meetingManagement, 'const saveVoice = async', 'const launch = async');
 const saveRecapBlock = block(meetingManagement, 'const saveRecap = async', 'const saveResponse = async');
 const recapTypeBlock = block(meetingManagement, 'type CustomerRecapDraft', 'export type CRMMeetingManagementWorkspaceProps');
@@ -222,12 +230,12 @@ const cases: AcceptanceCase[] = [
   ['No duplicate reviewed customer follow-up is generated', () => { assert.equal(count(lower(communicationSql), 'meeting-followup-reviewed:'), 1); }],
   ['Seller Guidance is reused', () => { assert.ok(has(meetingManagement, 'sellerguidancehelp')); }],
   ['Meeting Outcome guidance exists', () => { assert.ok(has(guidance, 'field.meeting_outcome')); }],
-  ['Next Step guidance exists', () => { assert.ok(has(guidance, 'field.meeting_next_step')); }],
-  ['Customer Summary guidance exists', () => { assert.ok(has(guidance, 'field.meeting_customer_summary')); }],
-  ['Commercial Notes guidance exists', () => { assert.ok(has(guidance, 'field.meeting_commercial_notes')); }],
-  ['Timeline Notes guidance exists', () => { assert.ok(has(guidance, 'field.meeting_timeline_notes')); }],
+  ['Next Step guidance exists', () => { assert.ok(has(guidance, 'field.next_step')); }],
+  ['Customer Summary guidance exists', () => { assert.ok(has(guidance, 'field.customer_summary')); }],
+  ['Commercial Notes guidance exists', () => { assert.ok(has(guidance, 'field.commercial_notes')); }],
+  ['Timeline Notes guidance exists', () => { assert.ok(has(guidance, 'field.timeline_notes')); }],
   ['Complete Meeting guidance exists', () => { assert.ok(has(guidance, 'action.complete_meeting')); }],
-  ['Mark No Show guidance exists', () => { assert.ok(has(guidance, 'action.mark_meeting_no_show')); }],
+  ['Mark No Show guidance exists', () => { assert.ok(has(guidance, 'action.mark_no_show')); }],
   ['Lead A to Lead B state does not leak', () => { assert.ok(has(meetingManagement, 'setworkspace(null)')); assert.ok(has(meetingManagement, "setselectedmeetingid('')")); assert.ok(has(meetingManagement, '[load, refreshkey]')); }],
   ['Meeting A to Meeting B state does not leak', () => { assert.ok(has(meetingManagement, 'setcloseout(nextcloseout)')); assert.ok(has(meetingManagement, 'setresponseedit(null)')); assert.ok(has(meetingManagement, 'discard those unsaved changes')); }],
   ['Internal meeting fields are not customer-readable', () => { for (const field of ['requirements_summary','problems_identified','decision_makers','commercial_notes','timeline_notes']) assert.ok(no(customerPayloadSql, field), `${field} leaked into customer payload`); }],

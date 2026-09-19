@@ -41,6 +41,15 @@ export type CRMApprovedConstraint = {
   constraints: string;
 };
 
+export type CRMResolvedValidation = {
+  validationId: string;
+  validationType: string;
+  requirementId?: string | null;
+  requirementKey?: string;
+  status?: string;
+  severity?: string;
+};
+
 export type CRMSalesGateAssessment = {
   opportunityId: string;
   leadId: string;
@@ -55,7 +64,7 @@ export type CRMSalesGateAssessment = {
   dimensions: CRMReadinessDimension[];
   blockers: CRMReadinessIssue[];
   warnings: CRMReadinessIssue[];
-  resolvedValidations: Array<Record<string, unknown>>;
+  resolvedValidations: CRMResolvedValidation[];
   approvedConstraints: CRMApprovedConstraint[];
   futureDimensions: Array<{ key: string; status: 'NOT_YET_EVALUATED' | string; coverageState?: string }>;
   nextAction?: Record<string, unknown> | null;

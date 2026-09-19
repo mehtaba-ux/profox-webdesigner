@@ -13,6 +13,13 @@ const block = (text: string, startNeedle: string, endNeedle: string) => {
   const end = lower(tail).indexOf(lower(endNeedle));
   return end === -1 ? tail : tail.slice(0, end);
 };
+const lastBlock = (text: string, startNeedle: string, endNeedle: string) => {
+  const start = lower(text).lastIndexOf(lower(startNeedle));
+  assert.notEqual(start, -1, `Missing block start: ${startNeedle}`);
+  const tail = text.slice(start);
+  const end = lower(tail).indexOf(lower(endNeedle));
+  return end === -1 ? tail : tail.slice(0, end);
+};
 
 const hardening = read('supabase/migrations/20260909162000_crm_sales_package_fit_part_6_policy_hardening.sql');
 const service = read('src/lib/crmPackageFitService.ts');
@@ -24,7 +31,7 @@ const policy = block(hardening, 'config_value = jsonb_build_object(', "descripti
 const rules = block(policy, "'rules', jsonb_build_array(", "'addonMappings', jsonb_build_array(");
 const addonMappings = block(policy, "'addonMappings', jsonb_build_array(", '),\n    ),');
 const evaluator = block(hardening, 'CREATE OR REPLACE FUNCTION public.crm_get_package_fit_assessment', 'COMMENT ON FUNCTION public.crm_get_package_fit_assessment');
-const addonEvaluation = block(evaluator, 'FOR v_mapping IN SELECT value FROM jsonb_array_elements(v_addon_mappings)', 'FOR v_custom IN');
+const addonEvaluation = lastBlock(evaluator, 'FOR v_mapping IN SELECT value FROM jsonb_array_elements(v_addon_mappings)', 'FOR v_custom IN');
 
 type Case = [string, () => void];
 const cases: Case[] = [

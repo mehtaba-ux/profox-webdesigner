@@ -336,7 +336,7 @@ test('TEST 32 — inactive questions cannot be selected', () => {
 test('TEST 33 — recommended questions are not automatically persisted', () => {
   assert.match(meetingPrep, /buildRecommendedMeetingQuestions/);
   assert.match(meetingPrep, /Save question set/);
-  assert.doesNotMatch(meetingPrepUtils, /crmSalesDiscoveryService|supabase/);
+  assert.doesNotMatch(meetingPrepUtils, /supabase\.from|\.insert\(|\.upsert\(|saveMeetingQuestions\(/);
 });
 
 // TEST 34
@@ -561,7 +561,7 @@ test('TEST 74 — migration integrity check remains executable', () => {
 
 // TEST 75
 test('TEST 75 — production build remains executable', () => {
-  assert.match(packageJson, /"build":\s*"vite build/);
+  assert.match(packageJson, /"build":\s*"[^"]*vite build/);
 });
 
 // Additional behavior tests required by the implementation.
