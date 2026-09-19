@@ -188,14 +188,51 @@ Part 10B.6 forward-convergence repository implementation completed in PR #117:
 - exact final-head GitHub CI / Cloudflare evidence is recorded in PR #117 body after the documentation commit because a file cannot self-record the commit that contains itself
 
 Production activation state:
-- finalQuotationSendGateActive=false
+- finalQuotationSendGateActive=true
 - policyVersion=2
 - snapshotSchemaVersion=2
-- migrations:apply=BLOCKED
-- custom-ledger convergence=BLOCKED
-- production activation=BLOCKED
+- activation migration=20260919142410_activate_part10b_final_quotation_send_gate.sql
+- activation checksum=77712b2f7c2918684e39971c37311f7228c5377b817e9d0df23084edd1bc236c
+- production applied_at=2026-09-19T14:42:48.405926Z
+- canonical migrations:apply=PASS (1 newly applied; no manual SQL/config/ledger write)
+- custom ledger=689 exact repository rows; pending 0; blocked 0; five historical rows SUPERSEDED_BY_FORWARD_RECONCILIATION
+- production activation=COMPLETE
 
-PART 11: BLOCKED
+Part 10B.8 final production closure:
+- PR #117 pre-merge head: 3c2037a1e3fe2f860641ade78a756308a0f2f239
+- PR #117 merge/main SHA: a36a5fcd1dc78de9484e5d96976bff96d6f34902
+- PR #117 trusted CI: run 35427211135 PASS before merge
+- merged-main trusted CI: run 35447486429 PASS
+- merged-main Cloudflare production deployment: run 35447594319 PASS
+- authenticated production Seller QA before activation: PASS
+- authenticated production Admin QA before activation: PASS
+- Requirements, Discovery, Package Fit, Sales Validation, Proposal Readiness, Scope Conditions, Promise Register, canonical quotation workspace, Sales Reconciliation, exact blockers/remediation contract and Admin approval workflow were reachable
+- no 403, 500 or page runtime error blocked the tested remediation workflow
+- only observed browser console noise was Cloudflare Web Analytics rejected by the existing CSP; it did not affect CRM/quotation operation and was not mixed into this controlled activation
+- activation PR: #118
+- CI-approved activation source SHA: cb624739674972d8c7ff6fdf0ecda75f9236f80e
+- activation trusted CI: run 35449254846 PASS with a real runner and all repository steps
+- Cloudflare activation-branch build: PASS
+- pre-activation dry-run: exactly 20260919142410 pending; unrelated pending migrations 0
+- official Supabase database lint reviewed; historical database-wide findings were not broadened into this focused activation
+- canonical production runner applied exactly one new migration
+- immediate post-activation production verifier: PASS, 0 failures, 0 warnings
+- authenticated Seller UI after activation: FINAL SEND GATE — ACTIVE, exact readiness shown, no force-send control, 0 blocking runtime errors
+- authenticated Admin UI after activation: FINAL SEND GATE — ACTIVE, exact readiness shown, no force-send control, 0 blocking runtime errors
+- post-activation inventory: Leads 6; Opportunities 2; Meetings 5; Activities 13; Requirements 0; Discovery Responses 0; Validations 0; Scope Conditions 0; Promises 0; Coverage 0; Quotations 6; Quotation Items 18; Payments 5; Clients 2; Client Onboardings 1
+- captured Part 10B snapshots immediately after activation: 0
+- legacy Sent quotations without a Part 10B snapshot after activation: 2
+- business-data mutation caused by activation: none
+- historical quotation backfill: none
+- real customer quotation sent for QA: no
+- fake CRM/customer/payment/quotation data created: no
+- canonical assertion/capture/reconciliation/snapshot-builder counts: 1/1/1/1
+- assertion/capture remains before Admin and atomic-RPC early returns
+- quotation approval remains separate and authoritative
+- create_quotation_revision remains the correction path
+- final PR head and final main/deployment evidence are recorded in PR #118 and the final developer report because this file cannot self-record the commit that contains itself
+
+PART 11: NOT STARTED
 
 Canonical release record:
 docs/crm-sales-final-quotation-send-gate-part-10b-release.md
@@ -204,4 +241,4 @@ Part 10B.3 audit record:
 docs/crm-sales-part10b3-migration-lineage-truth-audit.md
 
 Required status:
-PART 10B.6 FORWARD-CONVERGENCE REPOSITORY IMPLEMENTATION IS COMPLETE FOR REVIEW. THE FIVE HISTORICAL ROWS REMAIN TRUTHFULLY HISTORICALLY UNRESOLVED UNTIL THEIR EXACT FORWARD REPLACEMENTS ARE ACTUALLY EXECUTED, LEDGERED, AND POSTCONDITION-VERIFIED. PRODUCTION CONVERGENCE WAS NOT RUN. TRUSTED GITHUB CI, PRODUCTION CONVERGENCE REVIEW/EXECUTION, PART 10B ACTIVATION, MERGE, AND PART 11 REMAIN BLOCKED.
+PART 10B.8 FINAL PRODUCTION ACTIVATION IS VERIFIED. FINAL RELEASE CLOSURE REQUIRES ONLY THE DOCUMENTATION COMMIT, FINAL PR #118 TRUSTED CI, PR MERGE, AND FINAL MAIN DEPLOYMENT VERIFICATION. PART 11 IS NOT STARTED.
