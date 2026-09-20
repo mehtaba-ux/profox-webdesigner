@@ -160,7 +160,7 @@ Repository migration:
 - name: `crm_sales_payment_won_activation_part_12`
 - file: `supabase/migrations/20260920150000_crm_sales_payment_won_activation_part_12.sql`
 
-The exact production checksum is recorded in the final release evidence after canonical migration application.
+Production SHA-256: `ee75cd5c55250a278e2187a945cfa64f732343da08b6ecc674fb945c63375fcb`.
 
 ## Test and release gates
 
@@ -208,8 +208,147 @@ Before/after snapshots compare canonical Payment and Opportunity state plus Clie
 
 No real Payment is verified for QA. No real Opportunity is marked Won for QA. No fake customer/deal/payment/project/onboarding record is created.
 
-## Release evidence
+## Final release evidence
 
-Pending trusted exact-head CI, canonical migration application, normal production deployment, authenticated Seller/Admin production QA, read-only post-deploy verification, and final documentation closure.
+### Repository / PR
 
-Part 13 has not started.
+- implementation PR: `#125`
+- exact green PR head: `9dde884078882dc51d97b0d62e3b9c0d9a7fca08`
+- trusted PR CI: ProFox CRM CI `#890 / 35499841152` — PASS
+- merge method: squash
+- merged-main SHA: `a15c4e87e9630d68e9f9a8d3183dc82051260214`
+- trusted merged-main CI: ProFox CRM CI `#891 / 35499950557` — PASS
+
+The earlier red PR runs were not bypassed. CI #887 exposed four brittle idempotency assertions plus one UI-label assertion. Those tests were corrected to assert canonical behavior instead of literal constraint names. CI #889 then reduced the suite to one stale label assertion. That stale assertion was corrected, and a fresh exact-head CI #890 passed.
+
+### Trusted repository verification
+
+On the exact merged implementation:
+
+- TypeScript: PASS
+- migration integrity: PASS
+- full repository regression suite: PASS
+- Part 10A: PASS
+- Part 10B: PASS
+- Part 11: PASS
+- Part 12 focused suite: PASS
+- exact 87-case Part 12 matrix: PASS
+- authenticated-production-QA security contract: PASS
+- Chromium browser launch-readiness: PASS
+- verifier syntax: PASS
+- dependency audit: PASS
+- production build: PASS
+
+### Production migration
+
+Canonical Part 12 migration:
+
+- version: `20260920150000`
+- name: `crm_sales_payment_won_activation_part_12`
+- SHA-256: `ee75cd5c55250a278e2187a945cfa64f732343da08b6ecc674fb945c63375fcb`
+- production ledger row: exactly one, `baseline=false`
+
+Final custom migration ledger:
+- total: `691`
+- max version: `20260920150000`
+- migration lineage: `PENDING_NEW 0`, `BLOCKED_UNRESOLVED 0`
+
+### Production deployment
+
+- workflow: Deploy ProFox Production
+- run: `#362 / 35500046940`
+- deployed main SHA: `a15c4e87e9630d68e9f9a8d3183dc82051260214`
+- Cloudflare Worker: `profox-web-production`
+- Worker version: `0df9a0a2-6f07-447f-a18f-9d7316c3db76`
+- checksum-verified migration application: PASS
+- production database/integration readiness: PASS
+- authenticated payment administration functions: PASS
+- public checkout/signed payment webhooks: PASS
+- Client Portal / communication functions: PASS
+- production build: PASS
+- Worker deploy: PASS
+- Worker health: PASS
+- R2 payment assets: PASS
+- deployed frontend/public-content verification: PASS
+- real-browser production smoke: PASS
+- final production readiness: PASS
+
+### Part 12 release verifier
+
+`npm run production:verify-part12` completed with `0 failure(s)`.
+
+Verified production invariants:
+
+- Part 10B final quotation Send gate: ACTIVE
+- `policyVersion=2`
+- `snapshotSchemaVersion=2`
+- Part 12 canonical functions: exactly one each
+- payment/opportunity protection triggers: INSERT + UPDATE
+- RLS enabled for Payments, Clients, Projects, Client Onboarding and Opportunities
+- no anonymous/public business-table policies
+- sale-activation read RPCs: authenticated only
+- no duplicate Part 12 business tables
+- Project/Opportunity uniqueness: present
+- Client Onboarding/Project uniqueness: present
+- Commission/Payment uniqueness: present
+- Awaiting Payment without canonical acceptance: `0`
+- Won without qualifying verified payment: `0`
+- Project without Won: `0`
+- Onboarding without qualifying verified payment: `0`
+
+### Authenticated Seller/Admin production QA
+
+The existing authenticated production deploy gate executed Part 11 QA and then Part 12 QA.
+
+Seller QA:
+- real existing Awaiting Advance Payment opportunity visible: PASS
+- explicit overdue text: PASS
+- Accepted quotation route: PASS
+- Payment route: PASS
+- Seller Verify Payment action absent: PASS
+- manual Won action unavailable: PASS
+- Activities workflow reachable: PASS
+- desktop: PASS
+- mobile: PASS
+- keyboard focus: PASS
+
+Admin QA:
+- team Pipeline activation state visible: PASS
+- canonical protected Payment verification action reachable: PASS
+- verification was **not** executed
+
+Business-data before/after immutability:
+- payments: `5`
+- verified payments: `1`
+- opportunities: `2`
+- Awaiting Advance Payment: `1`
+- Won: `1`
+- clients: `2`
+- projects: `1`
+- client onboardings: `1`
+- commissions: `1`
+- activities: `13`
+
+No real Payment was verified for QA. No real Opportunity was marked Won for QA. No fake production business record was created.
+
+### Final external-wait truth
+
+The single production Awaiting Advance Payment opportunity remains a legitimate represented external wait:
+
+- same-opportunity Accepted quotation: present
+- qualifying payment type: Advance
+- payment status: Pending
+- due date: `2026-09-02`
+- secure request exists: yes
+- outstanding amount: `1061.50`
+- fabricated Payment Follow-Up activity: none
+
+The system surfaces the due/overdue customer-payment wait from canonical Payment truth instead of manufacturing CRM history.
+
+## Release status
+
+**PART 12 — Awaiting Advance Payment + Verified Payment → Won + Sale Activation Integrity: COMPLETE.**
+
+Repository implementation, exact 87-case security matrix, trusted PR CI, merged-main CI, canonical production migration, Cloudflare production deployment, Part 10B/Part 11 preservation, read-only Part 12 release verification, authenticated Seller/Admin production QA, mobile/keyboard validation, business-data immutability, idempotency and cross-lineage integrity are complete.
+
+**Part 13 has not started.**

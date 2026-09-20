@@ -1734,4 +1734,137 @@ Final evidence:
 
 No fake CRM customer/deal records were created to manufacture release evidence.
 
-Part 12+ remains out of scope and has not started.
+At the time Part 11 closed, Part 12+ had not started.
+
+---
+
+## 40. Part 12 — Awaiting Advance Payment + Verified Payment → Won + Sale Activation Integrity
+
+Part 12 is **COMPLETE in production**.
+
+It extends only the canonical commercial systems. No second payment, Won, Client, Project, Commission, onboarding or payment-follow-up system was created.
+
+### Canonical authority
+
+- Customer acceptance: existing `quotations` with `status='Accepted'` and non-null `accepted_at`
+- Payment request / settlement: existing `payments`
+- Opportunity lifecycle: existing `crm_opportunities`
+- Payment Follow-Up: existing `crm_activities`
+- Client: existing `clients`
+- Commission: existing `commission_entries`
+- Project activation: existing `projects`
+- Client Onboarding: existing `client_onboardings`
+
+The existing trusted chain remains:
+`verify_payment_atomic(...)` → Won → Client reuse/create → Commission → Project → Client Onboarding.
+
+### Server-authoritative gates
+
+- Awaiting Advance Payment requires a same-opportunity canonical Accepted quotation plus `accepted_at`.
+- Payment verification remains Admin/trusted-gateway controlled.
+- direct settlement-field forging is blocked for INSERT and UPDATE.
+- partial payment remains `Partially Paid` and cannot create Won.
+- Won can be created only inside protected qualifying Advance/Full Payment verification.
+- `stage='Won'`, `status='Won'`, and `won_at` are server-derived.
+- conflicting Opportunity/Quotation/Payment Client lineage fails closed.
+- historical Won records remain historical truth; no Un-Won model was added.
+
+### Idempotent sale activation
+
+Existing uniqueness remains authoritative:
+
+- one Project per source Opportunity;
+- one Client Onboarding per Project;
+- one Commission entry per Payment.
+
+Retry-safe existing functions are reused rather than replaced.
+
+### Derived operational read model
+
+No business-state table was added.
+
+Bounded authenticated RPCs:
+
+- `crm_get_sale_activation_state(uuid)`
+- `crm_get_sale_activation_queue()`
+
+derive accepted quotation, qualifying Payment state, paid/outstanding amount, due/overdue state, represented customer-payment wait, Payment Follow-Up where present, exact next action, blockers, Won, Client, Project, Onboarding and Commission state.
+
+Seller scope reuses `sales_crm_access_ready()` plus ownership. Admin/Project Manager team visibility reuses existing roles.
+
+Sensitive Payment links, provider ids and private tokens are not exposed by this read model.
+
+### Seller/Admin experience
+
+The existing Pipeline, Opportunity Drawer, Seller Command Center and Payments Manager now surface the same canonical Part 12 truth.
+
+Seller:
+- sees payment status, outstanding amount, due/overdue state and exact next action;
+- can navigate to the Accepted quotation, Payments and canonical Activity workflow;
+- cannot Verify Payment;
+- cannot manually Mark Won.
+
+Admin:
+- keeps the existing protected Payments verification workflow.
+
+The production Awaiting Payment record is represented as a legitimate external customer-payment wait. Because its accepted quotation, canonical payment request, secure request and due date already represent the wait, no fake `Payment Follow-Up` activity was manufactured.
+
+### Migration and verification
+
+Production migration:
+
+- `20260920150000_crm_sales_payment_won_activation_part_12.sql`
+- SHA-256: `ee75cd5c55250a278e2187a945cfa64f732343da08b6ecc674fb945c63375fcb`
+- custom ledger total after application: `691`
+- custom max version: `20260920150000`
+
+Focused coverage:
+
+- `tests/security/crm-sales-payment-won-activation-part-12.test.mjs`
+- `tests/security/crm-sales-payment-won-activation-part-12-matrix.test.mjs` — exactly 87 named SOP cases
+- `tests/security/part12-authenticated-production-ui.test.mjs`
+- `npm run test:crm-part12`
+- `npm run production:verify-part12`
+- `npm run production:verify-part12-ui`
+
+### Production closure evidence
+
+- implementation PR: `#125`
+- exact green PR head: `9dde884078882dc51d97b0d62e3b9c0d9a7fca08`
+- trusted PR CI: ProFox CRM CI `#890 / 35499841152` — PASS
+- merged-main SHA: `a15c4e87e9630d68e9f9a8d3183dc82051260214`
+- trusted merged-main CI: ProFox CRM CI `#891 / 35499950557` — PASS
+- production deploy: Deploy ProFox Production `#362 / 35500046940` — PASS
+- Cloudflare Worker version: `0df9a0a2-6f07-447f-a18f-9d7316c3db76`
+- migration lineage: `PENDING_NEW 0`, `BLOCKED_UNRESOLVED 0`
+- Part 12 release verifier: `0 failure(s)`
+- Part 10B final Send gate remains ACTIVE at policy/schema `2/2`
+- authenticated Seller Part 12 QA: PASS
+- authenticated Admin Part 12 QA: PASS
+- Seller desktop/mobile/keyboard: PASS
+- business-data before/after equality: PASS
+
+Final production business truth after QA:
+
+- payments: `5`
+- verified payments: `1`
+- opportunities: `2`
+- Awaiting Advance Payment: `1`
+- Won: `1`
+- clients: `2`
+- projects: `1`
+- client onboardings: `1`
+- commissions: `1`
+- activities: `13`
+
+Integrity violation counts are all zero for:
+- Awaiting Advance Payment without canonical acceptance;
+- Won without qualifying verified payment;
+- Project without Won;
+- Onboarding without qualifying verified payment.
+
+No real Payment was verified for QA, no real Opportunity was marked Won for QA, and no fake production business record was created.
+
+Detailed architecture and release evidence: `docs/crm-sales-payment-won-activation-part-12.md`.
+
+**PART 12: COMPLETE. PART 13: NOT STARTED.**
