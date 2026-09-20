@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import type { SaleActivationState } from './saleActivationTypes';
 
 export type SellerDashboardPeriod = 'today' | 'week' | 'month' | 'quarter' | 'custom';
 
@@ -194,6 +195,7 @@ export interface SellerCommandCenterData {
   attention: SellerAttentionItem[];
   careerProgression?: SellerCareerProgression | null;
   coreProducts: SellerCoreProduct[];
+  saleActivation: SaleActivationState[];
 }
 
 export interface SellerCommandCenterQuery {
@@ -332,7 +334,8 @@ function normalize(data: any): SellerCommandCenterData {
       scope: array(product.scope),
       paymentSchedule: array(product.paymentSchedule),
       managerApprovalRequired: product.managerApprovalRequired === true
-    }))
+    })),
+    saleActivation: array(data?.saleActivation) as SaleActivationState[]
   } as SellerCommandCenterData;
 }
 
@@ -343,13 +346,20 @@ export const sellerCommandCenterService = {
       : (query || {});
 
     const period = options.period || 'month';
-    const { data, error } = await supabase.rpc('get_seller_command_center', {
-      p_salesperson_id: options.salespersonId || null,
-      p_period: period,
-      p_start_date: period === 'custom' ? (options.startDate || null) : null,
-      p_end_date: period === 'custom' ? (options.endDate || null) : null
+    const [coreResult, activationResult] = await Promise.all([
+      supabase.rpc('get_seller_command_center', {
+        p_salesperson_id: options.salespersonId || null,
+        p_period: period,
+        p_start_date: period === 'custom' ? (options.startDate || null) : null,
+        p_end_date: period === 'custom' ? (options.endDate || null) : null
+      }),
+      supabase.rpc('crm_get_sale_activation_queue')
+    ]);
+    if (coreResult.error) throw coreResult.error;
+    if (activationResult.error) throw activationResult.error;
+    return normalize({
+      ...(coreResult.data || {}),
+      saleActivation: array(activationResult.data),
     });
-    if (error) throw error;
-    return normalize(data);
   }
 };
