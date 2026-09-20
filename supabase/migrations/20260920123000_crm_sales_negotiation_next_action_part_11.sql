@@ -221,7 +221,7 @@ as $$
         'Follow-Up','Meeting Follow-Up','Quotation Follow-Up'
       )
       and coalesce(a.outcome,'') not in (
-        'No Answer','Voicemail','Wrong Number','No Response','Bounced','Not Interested'
+        'No Answer','Voicemail','Wrong Number','No Response','Bounced'
       )
     union all
     select
@@ -417,6 +417,14 @@ begin
   end if;
   if v_opp.status<>'Open' then raise exception 'Closed opportunities cannot receive a next action.'; end if;
   if v_opp.salesperson_id is null then raise exception 'Assign an opportunity owner before scheduling the next action.'; end if;
+  if not exists(
+    select 1 from public.user_profiles up
+    where up.id=v_opp.salesperson_id
+      and up.status='active'
+      and up.role in ('sales','admin')
+  ) then
+    raise exception 'The opportunity owner must be an active authorized Sales/Admin user.';
+  end if;
   if p_due_at is null or p_due_at<=now() then raise exception 'Choose a future next-action date and time.'; end if;
   if char_length(v_subject) not between 2 and 180 then raise exception 'Next-action subject must be between 2 and 180 characters.'; end if;
 
@@ -470,6 +478,156 @@ $$;
 
 revoke all on function public.crm_schedule_opportunity_next_action(uuid,timestamptz,text,text,text) from public, anon;
 grant execute on function public.crm_schedule_opportunity_next_action(uuid,timestamptz,text,text,text) to authenticated, service_role;
+
+create or replace function public.crm_reschedule_activity(
+  p_activity_id uuid,
+  p_due_at timestamptz,
+  p_reason text default '',
+  p_snooze boolean default false
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path=public, pg_temp
+as $
+declare
+  a public.crm_activities%rowtype;
+  v_due timestamptz;
+  v_required_after int:=2;
+  v_cfg jsonb;
+  v_negotiation boolean:=false;
+begin
+  if not public.crm_can_manage_activity(p_activity_id) then raise exception 'Activity access denied.'; end if;
+  select * into a from public.crm_activities where id=p_activity_id for update;
+  if a.status<>'Scheduled' then raise exception 'Closed activities cannot be rescheduled.'; end if;
+  if p_due_at is null or p_due_at<=now() then raise exception 'Choose a future due date and time.'; end if;
+
+  v_negotiation:=a.opportunity_id is not null and exists(
+    select 1 from public.crm_opportunities o
+    where o.id=a.opportunity_id
+      and o.status='Open'
+      and o.stage='Negotiation / Decision Pending'
+      and o.archived_at is null
+  );
+
+  select config_value into v_cfg from public.system_configuration where config_key='crm_activity_execution_settings';
+  v_required_after:=coalesce((v_cfg#>>'{discipline,rescheduleReasonRequiredAfter}')::int,2);
+
+  if v_negotiation and char_length(btrim(coalesce(p_reason,'')))<3 then
+    raise exception 'A real reschedule reason is required for Negotiation next actions.';
+  elsif a.reschedule_count+1>v_required_after and char_length(btrim(coalesce(p_reason,'')))<3 then
+    raise exception 'A reason is required after repeated rescheduling.';
+  end if;
+
+  v_due:=public.crm_adjust_activity_due(coalesce(a.assigned_to,(select auth.uid())),p_due_at);
+  perform set_config('app.crm_activity_rpc','1',true);
+  update public.crm_activities set
+    original_due_at=coalesce(original_due_at,due_at),
+    due_at=v_due,
+    reschedule_count=reschedule_count+1,
+    last_rescheduled_at=now(),
+    last_rescheduled_by=(select auth.uid()),
+    last_reschedule_reason=left(btrim(coalesce(p_reason,'')),1000),
+    last_reschedule_kind=case when p_snooze then 'snooze' else 'reschedule' end,
+    updated_at=now()
+  where id=p_activity_id returning * into a;
+
+  if a.lead_id is not null then
+    update public.crm_leads
+    set next_follow_up_at=v_due,updated_at=now()
+    where id=a.lead_id
+      and (next_follow_up_at is null or next_follow_up_at<=a.original_due_at or next_follow_up_at<=now());
+  end if;
+
+  if a.opportunity_id is not null then
+    update public.crm_opportunities
+    set next_follow_up_at=(
+      select min(x.due_at)
+      from public.crm_activities x
+      where x.opportunity_id=a.opportunity_id and x.status='Scheduled'
+    ),updated_at=now()
+    where id=a.opportunity_id;
+  end if;
+
+  return jsonb_build_object(
+    'id',a.id,
+    'dueAt',a.due_at,
+    'originalDueAt',a.original_due_at,
+    'rescheduleCount',a.reschedule_count,
+    'calendarAdjusted',a.due_at is distinct from p_due_at
+  );
+end
+$;
+
+revoke all on function public.crm_reschedule_activity(uuid,timestamptz,text,boolean) from public, anon;
+grant execute on function public.crm_reschedule_activity(uuid,timestamptz,text,boolean) to authenticated, service_role;
+
+create or replace function public.crm_cancel_activity(
+  p_activity_id uuid,
+  p_reason text default ''
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path=public, pg_temp
+as $
+declare
+  a public.crm_activities%rowtype;
+  v_negotiation boolean:=false;
+begin
+  if not public.crm_can_manage_activity(p_activity_id) then raise exception 'Activity access denied.'; end if;
+  select * into a from public.crm_activities where id=p_activity_id for update;
+  if a.status<>'Scheduled' then raise exception 'Only scheduled activities can be cancelled.'; end if;
+
+  v_negotiation:=a.opportunity_id is not null and exists(
+    select 1 from public.crm_opportunities o
+    where o.id=a.opportunity_id
+      and o.status='Open'
+      and o.stage='Negotiation / Decision Pending'
+      and o.archived_at is null
+  );
+
+  if v_negotiation and char_length(btrim(coalesce(p_reason,'')))<3 then
+    raise exception 'A real cancellation reason is required for Negotiation next actions.';
+  end if;
+
+  if v_negotiation and not exists(
+    select 1 from public.crm_activities x
+    where x.opportunity_id=a.opportunity_id
+      and x.status='Scheduled'
+      and x.id<>a.id
+  ) then
+    raise exception 'Schedule a replacement opportunity-linked action before cancelling the current Negotiation next action.';
+  end if;
+
+  perform set_config('app.crm_activity_rpc','1',true);
+  update public.crm_activities
+  set status='Cancelled',
+      cancellation_reason=left(btrim(coalesce(p_reason,'')),1000),
+      updated_at=now()
+  where id=p_activity_id
+  returning * into a;
+
+  if a.opportunity_id is not null then
+    update public.crm_opportunities
+    set next_follow_up_at=(
+      select min(x.due_at)
+      from public.crm_activities x
+      where x.opportunity_id=a.opportunity_id and x.status='Scheduled'
+    ),updated_at=now()
+    where id=a.opportunity_id;
+  end if;
+
+  if a.lead_id is not null then
+    perform public.crm_refresh_lead_next_follow_up(a.lead_id);
+  end if;
+
+  return jsonb_build_object('id',a.id,'status',a.status,'cancellationReason',a.cancellation_reason);
+end
+$;
+
+revoke all on function public.crm_cancel_activity(uuid,text) from public, anon;
+grant execute on function public.crm_cancel_activity(uuid,text) to authenticated, service_role;
 
 create or replace function public.crm_transition_opportunity(p_opportunity_id uuid, p_target_stage text)
 returns jsonb
