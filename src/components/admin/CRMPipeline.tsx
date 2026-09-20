@@ -45,6 +45,8 @@ import {
 } from '../../types';
 import { useAuth } from '../../lib/AuthContext';
 import MonthlyWonSalesColumn from './MonthlyWonSalesColumn';
+import SellerGuidanceHelp from './crm/SellerGuidanceHelp';
+import { getSellerGuidance } from '../../lib/crmSellerGuidance';
 
 const VIEW_OPTIONS = [
   'All Open',
@@ -393,7 +395,10 @@ function OpportunityDrawer({ opportunity, stages, onClose, onUpdate, onNavigate 
         {['Quotation Sent','Negotiation / Decision Pending'].includes(opportunity.stage) && <section className="mt-5 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <div className="text-[9px] font-black uppercase tracking-widest text-[#000080]">Decision &amp; Next Action</div>
+              <div className="flex items-center gap-1">
+                <div className="text-[9px] font-black uppercase tracking-widest text-[#000080]">Decision &amp; Next Action</div>
+                <SellerGuidanceHelp guidance={getSellerGuidance('section.negotiation_next_action')} label="Help for Decision and Next Action" />
+              </div>
               <h3 className="mt-1 text-sm font-black text-slate-900">Negotiation is not a parking stage</h3>
               <p className="mt-1 text-[10px] leading-5 text-slate-500">Record what the customer actually said, then keep one explicit opportunity-linked action with an owner and due date.</p>
             </div>
