@@ -1837,4 +1837,33 @@ Follow-up settlement-evidence closure:
 - Part 12 production verifier: `0 failure(s)`
 - business inventory unchanged: payments `5`, verified `1`, Awaiting `1`, Won `1`, clients `2`, projects `1`, onboardings `1`, commissions `1`, activities `13`
 
-**Part 12 is COMPLETE. Part 13 has not started.**
+**Part 12 is COMPLETE. Part 13 implementation is in release verification. Part 14 has not started.**
+
+
+---
+
+## 41. Part 13 — Sales-to-Delivery Handoff Acceptance / Return / Resubmission
+
+Part 13 extends the existing Sales Handover Project stage, canonical Sales evidence, existing handoff tasks, Project Manager workspace and Seller lifecycle queue. It does not create a second commercial or delivery system.
+
+Canonical Delivery handoff truth continues to come from structured CRM Requirements, accepted quotation snapshots, verified Payment, completed Client Onboarding, Sales Validations, active Sales Promises, active Scope Conditions, the existing Project and the existing project_tasks workflow.
+
+A single additive lifecycle/history table, project_sales_handover_attempts, records only submit/review/version evidence. It does not copy editable Requirement, quotation, Payment, Onboarding, Promise, Validation or Scope truth.
+
+Server-authoritative lifecycle states are NOT_SUBMITTED, SUBMITTED, RETURNED_TO_SALES, RESUBMITTED and ACCEPTED. Only the source Seller can submit/resubmit. The assigned Project Manager or Administrator can Accept/Return. Return requires structured reasons, actionable missing items and reviewer notes. Reviewed attempts are immutable.
+
+project_get_sales_handoff_readiness(uuid) derives READY / WARNING / BLOCKED from canonical prerequisites. Hard blockers cannot be overridden by a score or frontend control. PM assignment is allowed to remain pending at Seller submission but is required for Delivery acceptance and Content activation.
+
+The existing Sales Handover → Content stage gate now additionally requires the latest handoff attempt to be ACCEPTED and its material canonical source digest to remain current. Direct generic task completion cannot bypass submit/review authority.
+
+The existing /admin/project-handover/:id route is expanded instead of replaced. It renders customer/business context, structured Requirements, accepted commercial agreement, timeline, Validations, Promise Register, Scope Conditions, Payment, safe Onboarding facts, outstanding dependencies, Seller notes, readiness, review history, Return remediation, Submit/Resubmit, Accept and Return controls.
+
+Part 13 migrations:
+- 20260920181000_crm_sales_delivery_handoff_part_13.sql
+- 20260920181100_crm_sales_delivery_handoff_lifecycle_visibility_part_13.sql
+
+Focused verification includes an exact 85-case specification matrix, release-readiness verifier and non-destructive authenticated production UI QA. The real production Sales Handover Project is never submitted, assigned a fake PM, accepted, returned or advanced merely for QA.
+
+Detailed architecture and release evidence: docs/crm-sales-delivery-handoff-part-13.md
+
+**Part 13 release closure is pending trusted PR/main CI and production deployment evidence. Part 14 has not started.**
