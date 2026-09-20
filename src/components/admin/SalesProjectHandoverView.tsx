@@ -96,6 +96,9 @@ export default function SalesProjectHandoverView() {
   const allowed = Boolean(active && profile && (isAdmin || VIEW_ROLES.includes(profile.role)));
   const [brief, setBrief] = useState<SalesHandoffBrief | null>(null);
   const [notes, setNotes] = useState('');
+  const [requirementsDraft, setRequirementsDraft] = useState('');
+  const [savingRequirements, setSavingRequirements] = useState(false);
+  const [requirementsSaved, setRequirementsSaved] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -112,6 +115,7 @@ export default function SalesProjectHandoverView() {
       const next = await salesHandoffService.getBrief(id);
       setBrief(next);
       setNotes(next.sellerNotes || '');
+      setRequirementsDraft(next.salesRequirements || '');
     } catch (err: any) {
       setError(err?.message || 'The protected Sales handoff brief could not be loaded.');
       setBrief(null);
@@ -127,6 +131,25 @@ export default function SalesProjectHandoverView() {
 
   const currentReturn = brief?.lifecycleStatus === 'RETURNED_TO_SALES' ? brief.currentAttempt : null;
   const isPendingReview = brief?.lifecycleStatus === 'SUBMITTED' || brief?.lifecycleStatus === 'RESUBMITTED';
+
+  const restoreRequirements = async () => {
+    if (!brief || savingRequirements || !isSeller) return;
+    setSavingRequirements(true);
+    setRequirementsSaved(false);
+    setError('');
+    setSuccess('');
+    try {
+      await salesHandoffService.restoreMissingRequirements(brief.projectId, requirementsDraft.trim());
+      const refreshed = await salesHandoffService.getBrief(brief.projectId);
+      setBrief(refreshed);
+      setRequirementsDraft(refreshed.salesRequirements || '');
+      setRequirementsSaved(true);
+    } catch (err: any) {
+      setError(err?.message || 'The missing legacy Sales requirements summary could not be restored.');
+    } finally {
+      setSavingRequirements(false);
+    }
+  };
 
   const submit = async () => {
     if (!brief || saving || !isSeller || !brief.canSubmit) return;
@@ -331,8 +354,8 @@ export default function SalesProjectHandoverView() {
                   </div>
                 </Section>
 
-                <Section title="Confirmed Structured Requirements" subtitle="Canonical crm_requirements records. Legacy requirements_summary is shown nowhere as authoritative Delivery truth.">
-                  {brief.requirements.length === 0 ? <Empty>Confirmed structured Sales Requirements are missing. Resolve them in the CRM Requirements workflow.</Empty> : (
+                <Section title="Confirmed Sales Requirements" subtitle="Confirmed Structured Requirements come from canonical crm_requirements records. Legacy requirements_summary remains non-authoritative Delivery context.">
+                  {brief.requirements.length === 0 ? <div className="space-y-4"><Empty>Confirmed structured Sales Requirements are missing. Resolve them in the CRM Requirements workflow.</Empty>{isSeller && <div className="rounded-xl border border-red-200 bg-red-50 p-4"><div className="text-xs font-black text-red-900">Legacy missing requirements remediation</div><p className="mt-1 text-[10px] leading-4 text-red-800">If this paid legacy project is missing its historical Sales summary, restore only factual requirements already gathered from the customer. This does not change the accepted quotation or add new commercial scope, and it does not replace the Part 13 structured Requirements blocker.</p><textarea value={requirementsDraft} onChange={event=>{setRequirementsDraft(event.target.value);setRequirementsSaved(false);}} rows={4} maxLength={10000} className="mt-3 w-full rounded-xl border border-red-200 bg-white p-3 text-xs leading-5 outline-none focus:border-red-400" placeholder="Restore the factual historical Sales requirements summary..." /><button type="button" onClick={()=>void restoreRequirements()} disabled={savingRequirements || requirementsDraft.trim().length < 20} className="mt-3 inline-flex items-center gap-2 rounded-xl bg-red-700 px-4 py-2.5 text-xs font-black text-white disabled:opacity-40">{savingRequirements ? <Loader2 className="h-4 w-4 animate-spin"/> : <FileText className="h-4 w-4"/>}Save Missing Sales Requirements</button>{requirementsSaved && <div className="mt-3 text-[10px] font-bold text-emerald-800">Legacy Sales summary restored. Resolve structured Requirements in CRM before Part 13 can become READY.</div>}</div>}</div> : (
                     <div className="grid gap-3 md:grid-cols-2">
                       {brief.requirements.map((item: any) => (
                         <EvidenceCard key={item.id} title={item.title || item.key} badge={item.certainty || item.recordState} actionUrl={item.sourceUrl} navigate={navigate}>
@@ -426,7 +449,7 @@ export default function SalesProjectHandoverView() {
                   )}
                 </Section>
 
-                <Section title="Seller Final Notes" subtitle="These notes supplement canonical facts; they cannot override Requirements, quotation, payment, onboarding, Validations, Promises or Scope Conditions.">
+                <Section title="Seller Final Notes" subtitle="Additional Sales commitments / exceptions — these notes supplement canonical facts; they cannot override Requirements, quotation, payment, onboarding, Validations, Promises or Scope Conditions. Sales confirms requirements before the quotation, and after Delivery acceptance production starts directly with Content.">
                   <textarea
                     value={notes}
                     onChange={event => { setNotes(event.target.value); setError(''); setSuccess(''); }}
