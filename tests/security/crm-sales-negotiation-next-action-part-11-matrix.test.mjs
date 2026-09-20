@@ -23,8 +23,12 @@ function latestFunction(corpus, name) {
   const token = `create or replace function public.${name}`;
   const start = corpus.toLowerCase().lastIndexOf(token.toLowerCase());
   if (start < 0) return '';
-  const end = corpus.indexOf('\n$$;', start);
-  return end < 0 ? corpus.slice(start) : corpus.slice(start, end + 4);
+  const endings = ['\n$;', '\n$function$;']
+    .map(marker => corpus.indexOf(marker, start))
+    .filter(index => index >= 0);
+  const end = endings.length ? Math.min(...endings) : -1;
+  const suffixLength = end >= 0 && corpus.startsWith('\n$function$;', end) ? 12 : 4;
+  return end < 0 ? corpus.slice(start) : corpus.slice(start, end + suffixLength);
 }
 
 const transition = latestFunction(migration, 'crm_transition_opportunity');
@@ -94,7 +98,7 @@ const cases = [
   ['52 keyboard navigation uses native controls and guidance dialog traps Tab', () => /<select/.test(negotiationPanel) && /<button/.test(negotiationPanel) && /event\.key === 'Tab'/.test(sellerHelp)],
   ['53 visible focus state is retained', () => /focus-visible:outline/.test(sellerHelp) && !/outline-none/.test(negotiationPanel)],
   ['54 validation errors are associated with Part 11 fields', () => /id="pipeline-operation-error" role="alert"/.test(pipeline) && /aria-describedby=\{error \? 'pipeline-operation-error'/.test(negotiationPanel)],
-  ['55 mobile layout remains single-column usable', () => /flex flex-col/.test(negotiationPanel) && /w-full/.test(negotiationPanel)],
+  ['55 mobile layout remains single-column usable', () => /grid gap-3 sm:grid-cols-2/.test(negotiationPanel) && !/grid-cols-2 gap-3 sm:grid-cols-2/.test(negotiationPanel)],
   ['56 tablet layout has responsive Part 11 grids', () => /sm:grid-cols-2/.test(negotiationPanel)],
   ['57 desktop operational density remains bounded', () => /sm:grid-cols-\[1fr_210px_auto\]/.test(negotiationPanel) && /max-w-2xl/.test(pipeline)],
   ['58 Part 11 panel introduces no animation that can ignore reduced-motion preference', () => !/animate-|transition-transform|motion-/.test(negotiationPanel)],
