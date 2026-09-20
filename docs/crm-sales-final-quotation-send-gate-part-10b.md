@@ -2,15 +2,15 @@
 
 ## Status
 
-**IMPLEMENTATION COMPLETE / PRODUCTION ACTIVATION STAGED.**
+**IMPLEMENTATION COMPLETE / PRODUCTION ACTIVATION COMPLETE / FINAL VERIFICATION COMPLETE.**
 
-The Part 10B database, security, immutable snapshot, universal Sent-transition protection, CPQ integration, Seller UI, guidance, tests and repository documentation are implemented on PR #110.
+The Part 10B database, security, immutable snapshot, universal Sent-transition protection, CPQ integration, Seller UI, guidance and tests were implemented beginning with PR #110. Forward convergence completed in PR #117 and final activation completed in PR #118.
 
-Production activation is intentionally **not** marked complete because the source specification requires authenticated production browser verification of the blocker-resolution UI before `finalQuotationSendGateActive` may be changed to `true`. That authenticated browser verification is not available from this execution environment.
+Current production is **ACTIVE** under canonical policy `crm_quotation_sales_reconciliation_policy_v1` with `finalQuotationSendGateActive=true`, policy version `2`, and snapshot schema version `2`.
 
-**PART 10B ACTIVATION BLOCKED — PRODUCTION RESOLUTION UI NOT VERIFIED.**
+Authenticated Seller/Admin production remediation QA passed before activation and active-state UI verification passed afterward. Trusted final-main CI run `35450540745` and production deployment run `35450651806` passed for main `d2b6e2a54c7e0edbad11c55127d5e4dd42311041`.
 
-The canonical production policy remains `crm_quotation_sales_reconciliation_policy_v1`, policy version `2`, snapshot schema version `2`, with `finalQuotationSendGateActive=false`.
+**PART 10B: COMPLETE. PART 11: NOT STARTED.**
 
 ## Verified base and preservation
 
@@ -24,11 +24,11 @@ The canonical production policy remains `crm_quotation_sales_reconciliation_poli
 - Part 10B does not copy Seller-private `seller_guidance` or internal catalog playbook material into the quotation Sales-scope snapshot.
 - An accidental branch-only removal of `@dnd-kit/utilities` was detected during the duplication/regression audit and restored before merge consideration.
 
-## Production precondition result
+## Historical production precondition result — initial Part 10B checkpoint
 
-The repository, live database schema, canonical quotation editor, approval path, reconciliation panel and Send UI were audited. Authenticated production browser verification was not available in this execution environment. Per the rollout invariant, production gate activation was not performed.
+At the initial Part 10B checkpoint, the repository, live database schema, canonical quotation editor, approval path, reconciliation panel and Send UI were audited, but authenticated production browser verification was not yet available. Per the rollout invariant, production gate activation was correctly deferred at that checkpoint.
 
-This avoids a backend dead-end where the database could block Send before a Seller can reach the resolution UI.
+That historical blocker was subsequently resolved by compatible deployment and authenticated Seller/Admin production QA before the separate activation migration was applied.
 
 ## Current Send paths audited
 
@@ -245,11 +245,11 @@ A dedicated `crm-sales-final-quotation-send-gate-part-10b.test.mjs` contract/sec
 
 The Part 10A suites remain in the build. Only their UI boundary expectations were evolved from the intentionally inactive Part 10A label to the Part 10B dynamic ACTIVE/STAGED presentation; Part 10A database/security assertions remain intact.
 
-The canonical CI workflow is valid and defines checkout, Node 22, `npm ci`, TypeScript, migration integrity, full tests, Playwright launch-readiness, dependency audit and production build. During this rollout, GitHub Actions job attempts failed before the runner executed any step (`steps=null`/empty logs), including an explicit retry. This is recorded as CI runner infrastructure failure, not a green test result and not an application-test failure.
+The canonical CI workflow defines checkout, Node 22, `npm ci`, TypeScript, migration integrity, full tests, Playwright launch-readiness, dependency audit and production build. Earlier rollout attempts failed before a runner executed any step (`steps=null`/empty logs); those failures remain historical infrastructure evidence, not application-test failures. Hosted-runner execution was subsequently restored and trusted final-main CI run `35450540745` passed every repository step.
 
-The connected Cloudflare Workers check also returned failure without application build output available through the connected tools. Therefore production frontend deployment and authenticated browser QA are not claimed as verified.
+The earlier Cloudflare failure remains historical evidence. Final production deployment run `35450651806` subsequently passed, including the production build, Cloudflare Worker deployment, public health/configuration checks, real-browser smoke tests and final production-readiness verification. Authenticated Seller/Admin production QA is verified.
 
-## Deployment ordering
+## Deployment and activation ordering
 
 Completed safely:
 
@@ -261,19 +261,20 @@ Completed safely:
 6. Added Part 10B contract/security tests and build wiring.
 7. Opened PR #110 and performed changed-file/duplication review.
 8. Re-ran production read-only migration, policy, trigger, ACL and data-safety verification.
+9. Merged the reviewed forward-convergence implementation in PR #117 after trusted CI passed.
+10. Applied forward convergence through the canonical migration runner and verified zero pending/blocked lineage.
+11. Verified authenticated Seller/Admin canonical production remediation paths.
+12. Created and CI-verified the narrow activation migration in PR #118.
+13. Applied activation through the canonical migration runner.
+14. Verified the active policy, canonical functions, privileges and invariant ordering read-only with 0 failures and 0 warnings.
+15. Merged PR #118, passed final-main CI and completed the production deployment and real-browser smoke verification.
 
-Still required before production activation:
+No real customer quotation was sent and no fake production business fixture was created for this release QA.
 
-9. Obtain a successful application build/deployment of the compatible frontend.
-10. Verify authenticated canonical production UI and runtime health.
-11. Only then apply a separate activation update setting `finalQuotationSendGateActive=true`.
-12. Read-only verify active policy/functions/permissions.
-13. Exercise blocked/pass behavior only with an approved isolated non-customer fixture or non-production branch.
+## Final closure boundary
 
-Do not activate the backend gate before steps 9–10.
+Activation migration `20260919142410_activate_part10b_final_quotation_send_gate` with checksum `77712b2f7c2918684e39971c37311f7228c5377b817e9d0df23084edd1bc236c` is recorded in the 689-row custom ledger. Current lineage is 123 `APPLIED_EXACT`, 5 forward supersessions, 0 pending and 0 blocked. The final verifier reports 0 failures and 0 warnings.
 
-## Remaining limitation
+Historical Sent quotations were not backfilled. Immutable snapshot capture remains server-side and occurs only on a future legitimate successful Send transition. Existing quotation approval remains separate authority, Part 10A reconciliation remains authoritative, and `create_quotation_revision(...)` remains the correction path.
 
-The implementation work is complete, but the source document's production activation precondition is not satisfied because the CI/deployment runners did not execute successfully and authenticated production browser QA is unavailable from this tool environment. Therefore the system remains deliberately staged rather than creating a backend dead-end.
-
-The next SOP phases (negotiation/follow-up expansion, payment/Won, onboarding, Sales-to-Delivery handoff, Manager Exception Center, performance metrics, Academy/certification and AI workflow automation) are intentionally not started.
+Part 10B is fully closed. Part 11 — Negotiation / Decision Pending + Next-Action Discipline — has not started and requires a separate implementation instruction.

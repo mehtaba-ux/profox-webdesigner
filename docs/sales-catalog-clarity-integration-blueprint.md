@@ -1,5 +1,7 @@
 # Sales Catalog Clarity & Integration Blueprint
 
+> **Historical planning baseline:** Part 10B was still disabled when this blueprint was prepared on 2026-09-11. Part 10B is now active and complete. Instructions below not to activate Part 10B *as a side effect of Catalog work* remain valid safety boundaries, while statements that the gate “remains disabled” describe only this dated baseline.
+
 **Status:** Planning / handoff document only — implementation is **not started**  
 **Repository:** `mehtaba-ux/profox-webdesigner`  
 **Pre-document code baseline:** `c14cbfbbe9b58008f119c5d0ae67d592f0041c3b` (`fix(crm): complete Part 10A reconciliation hardening (#108)`)  
@@ -231,7 +233,7 @@ These are **deal-specific Sales controls**, not generic catalog-definition stora
 
 Do not put generic product benefits/inclusions into deal-specific scope-condition or promise tables.
 
-Part 10A has been hardened. **Part 10B final quotation-send enforcement remains disabled.** This catalog work must not activate it accidentally.
+At this blueprint's 2026-09-11 baseline, Part 10A had been hardened and **Part 10B final quotation-send enforcement remained disabled**. Part 10B was activated later through its separate reviewed release; Catalog work must still never change that gate accidentally.
 
 ---
 
@@ -1350,5 +1352,5 @@ Only mark an item `✅ Complete` after direct verification.
 - Confirmed `quotation_presentation_payload()` returns frozen quotation data rather than current live catalog records.
 - Confirmed current product IDs/codes are referenced by quotation and multiple downstream systems and therefore must remain stable.
 - Confirmed existing Seller Guidance and Package Fit architectures should be reused rather than duplicated.
-- Confirmed Part 10A is current and Part 10B final quotation-send enforcement remains disabled.
+- Confirmed at the 2026-09-11 blueprint baseline that Part 10A was current and Part 10B final quotation-send enforcement remained disabled; Part 10B was activated later through its separate reviewed release.
 - No catalog data, database schema, RPC behavior, pricing UI, seller UI, quotation behavior, or public customer behavior was changed as part of creating this planning document.

@@ -1,5 +1,7 @@
 # CRM Sales SOP Part 10B.2 — Production Release Recovery + Final Gate Activation
 
+> **Historical recovery checkpoint:** This document preserves the blocked runner/deployment/activation state observed on 2026-09-16. Those blockers were subsequently resolved; Part 10B is now active and complete under PR #118. See `docs/crm-sales-final-quotation-send-gate-part-10b-release.md` for current production status.
+
 **Recovery date:** 2026-09-16  
 **Repository:** `mehtaba-ux/profox-webdesigner`  
 **Starting main:** `97734d94d96169ad5861090e11b4ec635d54c102`
@@ -108,7 +110,7 @@ No fake Lead, Opportunity, Requirement, Discovery response, Meeting, Scope Condi
 
 Activation is **BLOCKED**. No activation branch/PR/migration was created because trusted full verification, migration-ledger reconciliation, compatible frontend deployment, exact production health, and authenticated Seller/Admin QA are not all proven.
 
-Production remains `finalQuotationSendGateActive=false`.
+At this historical recovery checkpoint, production remained `finalQuotationSendGateActive=false`.
 
 ## Required final report — items 1–59
 
@@ -169,11 +171,11 @@ Production remains `finalQuotationSendGateActive=false`.
 55. **Resend behavior:** historical resend design remains preserved; production resend QA NOT PERFORMED.
 56. **No fake production data:** CONFIRMED; audited business counts remained unchanged.
 57. **Rollback plan:** controlled repository/migration policy change `true → false` only if a future verified activation requires emergency deactivation; do not remove Part 10 foundations/history/data.
-58. **Remaining risks:** GitHub-hosted runner/account restriction unresolved; full current-main test/build verification unavailable; trusted `migrations:apply` has not reconciled the 30 aliases; current-main compatible deployment unverified; exact production health unverified; authenticated Seller/Admin production QA unavailable.
+58. **Historical remaining risks at this checkpoint:** GitHub-hosted runner/account restriction unresolved; full then-current-main test/build verification unavailable; trusted `migrations:apply` had not reconciled the 30 aliases; the then-current-main compatible deployment was unverified; exact production health was unverified; authenticated Seller/Admin production QA was unavailable.
 59. **PART 11 STATUS:** **BLOCKED**.
 
 ## Stop condition
 
 Do not start Part 11 Negotiation / Decision Pending, payment/Won changes, Client Onboarding, Sales-to-Delivery Handoff, Manager Exception Workspace, Performance/Audit scoring, Academy or AI automation.
 
-**PART 10B IMPLEMENTATION IS COMPLETE, BUT PRODUCTION ACTIVATION REMAINS BLOCKED. PART 11 MUST NOT BEGIN.**
+**HISTORICAL PART 10B.2 CHECKPOINT: IMPLEMENTATION WAS COMPLETE, BUT PRODUCTION ACTIVATION REMAINED BLOCKED AND PART 11 COULD NOT BEGIN AT THAT TIME.**

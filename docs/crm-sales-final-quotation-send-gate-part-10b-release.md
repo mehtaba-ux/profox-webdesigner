@@ -11,7 +11,29 @@
 **PR #112 head:** `108048bdde9042b3e0c4a8bbeb6325dbb4a7f212`  
 **Main after PR #112 / before this final documentation PR:** `fb2257e031555a601a5640f007c06f540621f887`
 
-## Release status
+## Current final release status — 2026-09-19
+
+**PART 10B IMPLEMENTATION AND PRODUCTION ACTIVATION: COMPLETE.**
+
+**PART 11: NOT STARTED.**
+
+- PR #117 merged as `a36a5fcd1dc78de9484e5d96976bff96d6f34902`.
+- PR #118 merged as final main `d2b6e2a54c7e0edbad11c55127d5e4dd42311041`; its final activation head was `188104e0dcc42c8a94c1edb1e1313ad48c6e5ba6`.
+- Trusted final-main CI run `35450540745` passed on a real runner with Checkout and all repository steps.
+- Production deployment run `35450651806`, professional mailbox deployment run `35450651725`, and WhatsApp deployment run `35450651705` passed.
+- Authenticated Seller and Admin production remediation QA passed before activation; active-state UI verification passed afterward.
+- Activation migration `20260919142410_activate_part10b_final_quotation_send_gate` was applied through the canonical runner with checksum `77712b2f7c2918684e39971c37311f7228c5377b817e9d0df23084edd1bc236c`.
+- The custom migration ledger contains 689 exact repository rows; current post-baseline lineage is 123 `APPLIED_EXACT`, 5 forward supersessions, 0 pending and 0 blocked.
+- Canonical policy `crm_quotation_sales_reconciliation_policy_v1` has `policyVersion=2`, `snapshotSchemaVersion=2`, and `finalQuotationSendGateActive=true`.
+- The final production verifier passed with 0 failures and 0 warnings.
+- No real customer quotation was sent for QA, no fake production data was created, and historical Sent quotations were not backfilled.
+- One shared server-side Send assertion remains authoritative; Admin and atomic-RPC paths cannot silently bypass it; snapshot capture remains server-built; existing quotation approval and Part 10A reconciliation remain separate canonical authorities; `create_quotation_revision(...)` remains the correction path.
+
+Direct read-only privilege verification also confirms `anon` and `authenticated` have no `USAGE` on schema `profox_migrations` and no `SELECT`, `INSERT`, `UPDATE` or `DELETE` privilege on `profox_migrations.applied_migrations` or `profox_migrations.state`. The generic no-RLS advisory is therefore recorded as reviewed; this documentation-only closure does not change migration-control security.
+
+All blocker, `gate=false`, unverified-QA and zero-runner statements below describe their explicitly dated historical checkpoint. They are preserved as audit history and are not the current production state.
+
+## Historical Part 10B.1 release status — 2026-09-16
 
 **PART 10B IMPLEMENTATION: COMPLETE.**  
 **PART 10B.1 RELEASE/ACTIVATION: BLOCKED.**
@@ -212,7 +234,7 @@ They contain broader pre-existing project findings. No Part 10B-specific finding
 
 No unrelated advisor backlog was mixed into Part 10B.1.
 
-## Activation decision
+## Historical Part 10B.1 activation decision — 2026-09-16
 
 Activation prerequisites are **BLOCKED** because all of the following have not been proven:
 
@@ -296,25 +318,27 @@ Rollback must **not** remove or rewrite:
 50. **Resend behavior:** implementation preserves historical resend semantics; no real production resend test was performed.
 51. **Rollback plan:** documented as controlled policy deactivation only; no destructive rollback.
 52. **Remaining risk:** compatible canonical-production frontend deployment and authenticated Seller/Admin runtime QA remain unavailable; GitHub runner allocation remains broken.
-53. **NEXT SOP STATUS:** **PART 11 BLOCKED**.
+53. **Historical checkpoint next-SOP status:** **PART 11 BLOCKED at that time**.
 
-## Remaining blocker
+## Historical blocker at the Part 10B.1 checkpoint
 
 The external release blocker is the failed/unverified compatible frontend deployment plus unavailable authenticated canonical-production QA. Until those are resolved, activating the final Send gate would violate the Part 10B.1 release invariant and could create a backend dead-end for Sellers.
 
 The Part 10B.1 source instruction explicitly defines this state as **ACTIVATION BLOCKED**, not fully complete. No safe repository or database action remaining in this release can substitute for a successful compatible canonical deployment plus authenticated production QA.
 
-## Next SOP status
+## Historical next-SOP status at the Part 10B.1 checkpoint
 
-**PART 11 BLOCKED.**
+**HISTORICAL PART 10B.1 CHECKPOINT: PART 11 WAS BLOCKED AT THAT TIME.**
 
 Do not begin Part 11, payment/Won changes, onboarding, handoff, manager exception workspace, performance metrics, Academy or AI automation as part of this release.
 
-**PART 10B IMPLEMENTATION REMAINS COMPLETE, BUT PRODUCTION ACTIVATION IS BLOCKED. PART 11 MUST NOT BEGIN UNTIL THE RELEASE PRECONDITION IS RESOLVED.**
+**HISTORICAL PART 10B.1 CHECKPOINT: IMPLEMENTATION WAS COMPLETE, BUT PRODUCTION ACTIVATION WAS BLOCKED AND PART 11 COULD NOT BEGIN UNTIL THE RELEASE PRECONDITION WAS RESOLVED.**
 
 ---
 
 ## Part 10B.2 production release recovery — 2026-09-16
+
+This section preserves the Part 10B.2 checkpoint as it was observed on 2026-09-16. Its runner, deployment, migration-lineage and activation blockers were subsequently resolved; see **Current final release status — 2026-09-19** above.
 
 Part 10B.2 started from exact main `97734d94d96169ad5861090e11b4ec635d54c102`. No intervening application commit was present before recovery work.
 
@@ -338,4 +362,4 @@ The complete Part 10B.2 59-item recovery/activation report is preserved in:
 
 `docs/crm-sales-final-quotation-send-gate-part-10b2-recovery.md`
 
-**PART 10B IMPLEMENTATION IS COMPLETE, BUT PRODUCTION ACTIVATION REMAINS BLOCKED. PART 11 MUST NOT BEGIN.**
+**HISTORICAL PART 10B.2 CHECKPOINT: IMPLEMENTATION WAS COMPLETE, BUT PRODUCTION ACTIVATION REMAINED BLOCKED AND PART 11 COULD NOT BEGIN AT THAT TIME.**

@@ -1,5 +1,7 @@
 # CRM Sales Part 10B.6 — Forward-Migration Convergence Implementation
 
+> **Historical implementation checkpoint:** This document records repository state before PR #117 was merged and production convergence ran. PR #117 subsequently merged, canonical convergence completed with 0 pending/0 blocked, and PR #118 activated the final Send gate. See `docs/crm-sales-final-quotation-send-gate-part-10b-release.md` for current production status.
+
 Date: 2026-09-18  
 Repository: `mehtaba-ux/profox-webdesigner`  
 PR: #117  
@@ -335,4 +337,4 @@ Cloudflare preview success, when present, is useful build evidence only; it is n
 
 ## Confirmation
 
-**Production convergence was NOT RUN. Production `migrations:apply` was NOT RUN. No old migration was replayed or falsely ledgered. No production business data was written. The final Send gate remains false.**
+**HISTORICAL PART 10B.6 CHECKPOINT: production convergence and `migrations:apply` had not run; no old migration was replayed or falsely ledgered, no production business data was written, and the final Send gate remained false at that time.**

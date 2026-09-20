@@ -1,6 +1,14 @@
 # Production Migration Ledger Reconciliation
 
-## Status
+## Current final status — 2026-09-19
+
+Production forward convergence and Part 10B activation are complete. The canonical custom ledger contains 689 exact repository rows with max version `20260919142410`; activation row `20260919142410_activate_part10b_final_quotation_send_gate` has checksum `77712b2f7c2918684e39971c37311f7228c5377b817e9d0df23084edd1bc236c`. Current post-baseline lineage is 123 `APPLIED_EXACT`, 5 `SUPERSEDED_BY_FORWARD_RECONCILIATION`, 0 pending and 0 blocked. The canonical policy has `finalQuotationSendGateActive=true`, policy version `2`, and snapshot schema version `2`.
+
+Direct read-only privilege verification confirms both `anon` and `authenticated` have no `USAGE` on schema `profox_migrations` and no `SELECT`, `INSERT`, `UPDATE` or `DELETE` privilege on either `profox_migrations.applied_migrations` or `profox_migrations.state`. The generic RLS-disabled advisory is reviewed in that privilege context; this documentation closure does not alter the established migration-control architecture.
+
+The remainder of this document preserves the earlier migration-ledger safety and provenance checkpoints. Statements that the custom ledger ended at `20260908100000`, CI was unavailable, the gate was false or activation was blocked were true at those dated checkpoints and are not the current production state.
+
+## Historical reconciliation status — 2026-09-16
 
 Release-safety reconciliation was introduced after the Part 10B.1 audit discovered that production has two migration histories:
 
@@ -86,16 +94,16 @@ The focused missing-evidence fail-closed suite was executed independently from t
 
 Full repository CI remains unavailable because GitHub-hosted jobs continue to fail before runner allocation.
 
-## Production safety boundary
+## Historical production safety boundary at that checkpoint
 
 This hardening changes migration-runner safety logic, focused tests, and documentation only. It does **not** modify any existing SQL migration file, Sales business table, quotation, Scope Condition, Promise, coverage row, snapshot, policy value, or Send state.
 
 The production custom ledger must not be manually backfilled from chat. Any future reconciliation of the 27 unproven aliases requires authoritative evidence and repository-reviewed logic before rows are recorded.
 
-Part 10B activation remains unchanged:
+At that historical checkpoint, Part 10B activation remained unchanged:
 
 - `finalQuotationSendGateActive=false` until trusted full verification, safe migration-ledger reconciliation, compatible production deployment, exact health verification, and authenticated Seller/Admin production resolution QA succeed.
 - No activation migration is created by this reconciliation safety patch.
 - Part 11 remains blocked until the Part 10B activation precondition is satisfied.
 
-`PART 10B ACTIVATION BLOCKED — PRODUCTION RESOLUTION UI AND MIGRATION-LEDGER COMPLETION NOT VERIFIED.`
+`HISTORICAL PART 10B CHECKPOINT — PRODUCTION RESOLUTION UI AND MIGRATION-LEDGER COMPLETION WERE NOT YET VERIFIED.`

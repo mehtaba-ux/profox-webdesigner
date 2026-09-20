@@ -1,5 +1,7 @@
 # CRM Sales Part 10B.3 — Migration Lineage Truth Audit
 
+> **Historical checkpoint record:** This document preserves the migration-lineage state observed during Part 10B.3/10B.4 on 2026-09-17/18. Its five blockers, draft PR #117 state, disabled gate and Part 11 block were subsequently resolved through reviewed forward convergence, PR #117, PR #118 and final production verification. See `docs/crm-sales-final-quotation-send-gate-part-10b-release.md` for current production status.
+
 Audit date: 2026-09-17
 
 Status: **REPOSITORY AUDIT / FAIL-CLOSED HARDENING COMPLETE; PRODUCTION MIGRATION CONVERGENCE BLOCKED**
@@ -467,5 +469,5 @@ Source presence is not a runtime pass. Trusted CI must execute repository steps 
 29. **Confirmation PR #117 remains draft/unmerged:** **REQUIRED and rechecked after final documentation**.
 30. **Exact next release step:** obtain a trustworthy PostgreSQL/PLpgSQL token-aware equivalence method or other authoritative provenance evidence for the five blockers; then re-audit. Even if all five later resolve, trusted GitHub CI must execute successfully before merge, production `migrations:apply`, Part 10B activation, or Part 11.
 
-**CURRENT MIGRATION PROVENANCE STILL CONTAINS UNRESOLVED BLOCKERS. PR #117 MUST REMAIN DRAFT. PRODUCTION migrations:apply, PART 10B ACTIVATION, AND PART 11 MUST NOT BEGIN.**
+**HISTORICAL PART 10B.4 CHECKPOINT: MIGRATION PROVENANCE STILL CONTAINED UNRESOLVED BLOCKERS, PR #117 HAD TO REMAIN DRAFT, AND PRODUCTION migrations:apply, PART 10B ACTIVATION AND PART 11 COULD NOT BEGIN AT THAT TIME.**
 

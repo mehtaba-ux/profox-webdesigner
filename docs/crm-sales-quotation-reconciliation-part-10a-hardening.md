@@ -1,5 +1,7 @@
 # ProfoxCRM Sales SOP — Part 10A Hardening Closure
 
+> **Part 10A historical boundary:** This document records the Part 10A hardening checkpoint. Its `gate=false` statements describe Part 10A's deliberately non-blocking release state; Part 10B subsequently activated the final Send gate. See the canonical Part 10B final release record for current production status.
+
 ## Purpose
 
 This record closes the gaps found during the post-implementation Part 10A recheck. It is additive to `docs/crm-sales-quotation-reconciliation-part-10a.md` and does not activate Part 10B final quotation-send enforcement.
@@ -52,7 +54,7 @@ Production verification confirmed:
 - the public reconciliation, review, and snapshot RPCs remain `SECURITY DEFINER`, use an empty `search_path`, and are not executable by `anon`;
 - the Timeline Promise parser is not executable by `anon` or authenticated clients;
 - the reconciliation evaluator contains the Timeline conflict and Commercial Promise approval-dependency paths while containing no `UPDATE public.quotations` write path;
-- `finalQuotationSendGateActive=false` remains authoritative in policy and evaluator output.
+- At the Part 10A hardening checkpoint, `finalQuotationSendGateActive=false` was authoritative in policy and evaluator output; Part 10B subsequently activated the same canonical policy.
 
 The hardening acceptance suite is additive to the original 169 Part 10A checks and is included in `npm run test:crm-part10a` and therefore in the normal production build.
 
