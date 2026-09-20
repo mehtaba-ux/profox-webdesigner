@@ -232,3 +232,12 @@ test('seller guidance reinforces truth, follow-up discipline and commercial boun
   assert.match(guidance, /Waiting externally is not permission to leave the opportunity without a next action/i);
   assert.match(guidance, /Part 11 Decision & Next Action/);
 });
+
+
+test('Part 11 migration uses valid PostgreSQL dollar-quote delimiters', () => {
+  assert.doesNotMatch(migration, /\nas \$\n/);
+  assert.doesNotMatch(migration, /\n\$;\n/);
+  const open = (migration.match(/\nas \$\$\n/g) || []).length;
+  const close = (migration.match(/\n\$\$;\n/g) || []).length;
+  assert.equal(open, close, 'anonymous dollar-quoted function bodies must be balanced');
+});

@@ -122,7 +122,7 @@ Part 11 is implemented on this branch by extending the canonical systems only.
 
 - version: `20260920123000`
 - name: `crm_sales_negotiation_next_action_part_11`
-- SHA-256: `334194a102719370909a8701d80c794773553e1902fd53ae7cbc41a2edb9629d`
+- SHA-256: `e9b7496ef2561641d9e873534a465cc9fc6a487bcf38908348ab30ee9e9971ab`
 
 The migration is nullable/backward-compatible and does not backfill decision state, objections, waiting state or next actions for historical production rows.
 
@@ -178,3 +178,16 @@ Because this evidence update changes the PR head, trusted CI must pass again on 
 ## Release status
 
 Repository implementation is complete and awaiting final exact-head trusted CI plus production preflight/migration/deployment/authenticated non-destructive Seller/Admin QA. Part 12+ remains out of scope.
+
+
+## Production deploy hotfix evidence
+
+The first merged-main deployment attempt for Part 11 (Deploy ProFox Production run #357 / 35492735727) stopped safely at the canonical `migrations:apply` step. The migration transaction rolled back and no Part 11 custom-ledger row or schema change persisted.
+
+Root cause: the two Part 11 overrides of `crm_reschedule_activity(...)` and `crm_cancel_activity(...)` contained malformed single-dollar PostgreSQL function delimiters (`as $ ... $;`).
+
+The unapplied migration was corrected before any successful production application. Its corrected exact SHA-256 is:
+
+`e9b7496ef2561641d9e873534a465cc9fc6a487bcf38908348ab30ee9e9971ab`
+
+A focused regression now rejects the malformed single-dollar delimiter form so this failure mode cannot silently return.
