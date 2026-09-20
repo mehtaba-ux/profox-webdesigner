@@ -1699,7 +1699,7 @@ Negotiation decision mutations are trusted server RPCs. Actor identity and decis
 Repository migration:
 
 - `20260920123000_crm_sales_negotiation_next_action_part_11.sql`
-- SHA-256: `334194a102719370909a8701d80c794773553e1902fd53ae7cbc41a2edb9629d`
+- SHA-256: `e9b7496ef2561641d9e873534a465cc9fc6a487bcf38908348ab30ee9e9971ab`
 
 The migration is backward compatible, nullable for historical rows, creates no fake business data, does not backfill Negotiation state, and asserts before/after that the Part 10B Send gate remains active under policy version 2 and snapshot schema version 2.
 
