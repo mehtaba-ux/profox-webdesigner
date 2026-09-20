@@ -60,7 +60,7 @@ const cases = [
   ['18 unrelated quotation rejected', () => /The Payment is linked to a different quotation\/opportunity/.test(verify)],
   ['19 server derives verified_at', () => /verified_at=now\(\)/.test(verify)],
   ['20 server derives verified_by for Admin path', () => /verified_by=case when v_gateway then null else auth\.uid\(\) end/.test(verify)],
-  ['21 browser cannot forge verification fields', () => /Payment settlement evidence is server-derived/.test(paymentGuard) && /before insert or update on public\.payments/.test(migration)],
+  ['21 browser cannot forge verification fields', () => /Payment settlement\/provider evidence is server-derived/.test(paymentGuard) && /new\.provider_payment_id is distinct from old\.provider_payment_id/.test(paymentGuard) && /new\.paid_at is distinct from old\.paid_at/.test(paymentGuard) && /before insert or update on public\.payments/.test(corpus)],
 
   ['22 Seller cannot mark Won', () => /markWon\(_id: string\)[\s\S]*only become Won through Admin-verified/.test(crmService) && /stage\.name === 'Won'/.test(pipeline)],
   ['23 ordinary browser direct update cannot mark Won without qualifying verified Payment', () => /v_verified_won<>'1'/.test(wonGuard)],
@@ -112,7 +112,7 @@ const cases = [
   ['66 duplicate Admin verification does not duplicate activation', () => /if v_payment\.status='Verified' then/.test(verify) && /select id into v_existing from public\.commission_entries where payment_id=p_payment_id/.test(commission) && /select id into v_project from public\.projects where source_opportunity_id=p_opportunity_id/.test(project)],
   ['67 browser cannot forge verified_by', () => /new\.verified_by is distinct from old\.verified_by/.test(paymentGuard)],
   ['68 browser cannot forge verified_at', () => /new\.verified_at is distinct from old\.verified_at/.test(paymentGuard)],
-  ['69 browser cannot forge gateway-settlement context', () => /revoke all on function public\.service_finalize_payment_gateway_attempt[^;]* from public,anon,authenticated/i.test(corpus) && /grant execute on function public\.service_finalize_payment_gateway_attempt[^;]* to service_role/i.test(corpus)],
+  ['69 browser cannot forge gateway-settlement context', () => /revoke all on function public\.service_finalize_payment_gateway_attempt[^;]* from public,anon,authenticated/i.test(corpus) && /grant execute on function public\.service_finalize_payment_gateway_attempt[^;]* to service_role/i.test(corpus) && /profox\.gateway_settlement/.test(paymentGuard) && /new\.provider_payment_id is distinct from old\.provider_payment_id/.test(paymentGuard)],
   ['70 internal Payment tokens are not exposed to Seller read model', () => !/paymentLink|public_payment_token_hash|provider_payment_id/i.test(readModel) && /requestAvailable/.test(readModel)],
   ['71 service-role secrets are absent from frontend bundle', () => !/service_role|sb_secret_/i.test(crmService + sellerService + pipeline + sellerWorkspace + paymentsUi + salesService)],
   ['72 payment verification rollback does not leave half-Won state', () => /exception when others[\s\S]*raise/.test(verify) && /status='Verified'[\s\S]*set status='Won'/.test(verify)],

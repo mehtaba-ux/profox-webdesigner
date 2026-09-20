@@ -12,6 +12,8 @@ dotenv.config({ path: '.env.local', quiet: true });
 
 const PART12_VERSION = '20260920150000';
 const PART12_NAME = 'crm_sales_payment_won_activation_part_12';
+const PART12_HARDENING_VERSION = '20260920164600';
+const PART12_HARDENING_NAME = 'crm_sales_payment_settlement_evidence_part_12_hardening';
 const connectionString = String(process.env.SUPABASE_DB_URL || '').trim();
 if (!/^postgres(?:ql)?:\/\//i.test(connectionString)) {
   throw new Error('SUPABASE_DB_URL is required for Part 12 production release verification.');
@@ -33,7 +35,9 @@ const fail = (label, detail) => {
 try {
   const migrations = await loadMigrationManifest();
   const part12Migration = migrations.find(item => item.version === PART12_VERSION && item.name === PART12_NAME);
+  const part12HardeningMigration = migrations.find(item => item.version === PART12_HARDENING_VERSION && item.name === PART12_HARDENING_NAME);
   if (!part12Migration) throw new Error(`Repository migration ${PART12_VERSION}_${PART12_NAME} is missing.`);
+  if (!part12HardeningMigration) throw new Error(`Repository migration ${PART12_HARDENING_VERSION}_${PART12_HARDENING_NAME} is missing.`);
 
   await client.connect();
   await client.query('begin read only');
@@ -64,6 +68,16 @@ try {
     pass('Part 12 migration identity', `${PART12_VERSION}_${PART12_NAME} · ${part12Migration.checksum}`);
   } else {
     fail('Part 12 migration identity', `expected one exact non-baseline ledger row; found ${JSON.stringify(ledger)}`);
+  }
+
+  const hardeningLedger = appliedRows.filter(row => String(row.version) === PART12_HARDENING_VERSION);
+  if (hardeningLedger.length === 1
+      && hardeningLedger[0].name === PART12_HARDENING_NAME
+      && hardeningLedger[0].checksum === part12HardeningMigration.checksum
+      && hardeningLedger[0].baseline === false) {
+    pass('Part 12 settlement hardening migration identity', `${PART12_HARDENING_VERSION}_${PART12_HARDENING_NAME} · ${part12HardeningMigration.checksum}`);
+  } else {
+    fail('Part 12 settlement hardening migration identity', `expected one exact non-baseline ledger row; found ${JSON.stringify(hardeningLedger)}`);
   }
 
   validateForwardMigrationSupersessionRegistry({ migrations });
@@ -172,6 +186,27 @@ try {
     .map(([key, expected]) => `${key}=${state[key]} expected ${expected}`);
   if (badFunctions.length) fail('Part 12 canonical functions', badFunctions.join('; '));
   else pass('Part 12 canonical functions', 'verification, guards, read model and canonical activation functions exist exactly once');
+
+  const paymentGuardRows = (await client.query(`
+    select pg_get_functiondef(p.oid) as definition
+    from pg_proc p
+    join pg_namespace n on n.oid=p.pronamespace
+    where n.nspname='public'
+      and p.proname='protect_payment_verification_fields'
+      and pg_get_function_identity_arguments(p.oid)=''
+  `)).rows;
+  const paymentGuardDefinition = String(paymentGuardRows[0]?.definition || '');
+  const providerEvidenceProtected =
+    paymentGuardRows.length === 1
+    && /new\.provider_payment_id\s+is\s+distinct\s+from\s+old\.provider_payment_id/i.test(paymentGuardDefinition)
+    && /new\.paid_at\s+is\s+distinct\s+from\s+old\.paid_at/i.test(paymentGuardDefinition)
+    && /profox\.gateway_settlement/i.test(paymentGuardDefinition)
+    && /profox\.payment_verification_rpc/i.test(paymentGuardDefinition);
+  if (providerEvidenceProtected) {
+    pass('Part 12 settlement/provider evidence guard', 'provider_payment_id and paid_at are server-controlled outside trusted verification/gateway contexts');
+  } else {
+    fail('Part 12 settlement/provider evidence guard', 'provider_payment_id / paid_at direct-write protection is incomplete');
+  }
 
   if (state.payments_rls && state.clients_rls && state.projects_rls && state.onboarding_rls && state.opportunity_rls && Number(state.public_policy_count) === 0) {
     pass('Part 12 RLS boundary', 'payments/clients/projects/onboarding/opportunities protected; no anon/public table policies');

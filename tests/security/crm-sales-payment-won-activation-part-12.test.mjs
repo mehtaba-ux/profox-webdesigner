@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 const migration = await readFile('supabase/migrations/20260920150000_crm_sales_payment_won_activation_part_12.sql', 'utf8');
+const settlementHardening = await readFile('supabase/migrations/20260920164600_crm_sales_payment_settlement_evidence_part_12_hardening.sql', 'utf8');
 const crmService = await readFile('src/lib/crmService.ts', 'utf8');
 const sellerService = await readFile('src/lib/sellerCommandCenterService.ts', 'utf8');
 const pipeline = await readFile('src/components/admin/CRMPipeline.tsx', 'utf8');
@@ -30,13 +31,24 @@ test('payment verification is restricted to Admin or protected gateway settlemen
   assert.match(migration, /profox\.gateway_settlement/);
 });
 
-test('browser cannot forge payment settlement evidence including through Admin direct table update', () => {
-  assert.match(migration, /profox\.payment_verification_rpc/);
-  assert.match(migration, /Payment settlement evidence is server-derived/i);
+test('browser cannot forge payment settlement or provider evidence including through direct table update', () => {
+  assert.match(settlementHardening, /profox\.payment_verification_rpc/);
+  assert.match(settlementHardening, /profox\.gateway_settlement/);
+  assert.match(settlementHardening, /Payment settlement\/provider evidence is server-derived/i);
   assert.match(migration, /before insert or update on public\.payments/i);
-  assert.match(migration, /new\.verified_at is distinct from old\.verified_at/i);
-  assert.match(migration, /new\.verified_by is distinct from old\.verified_by/i);
-  assert.match(migration, /new\.amount_paid is distinct from old\.amount_paid/i);
+  assert.match(settlementHardening, /new\.verified_at is distinct from old\.verified_at/i);
+  assert.match(settlementHardening, /new\.verified_by is distinct from old\.verified_by/i);
+  assert.match(settlementHardening, /new\.amount_paid is distinct from old\.amount_paid/i);
+  assert.match(settlementHardening, /new\.paid_at is distinct from old\.paid_at/i);
+  assert.match(settlementHardening, /new\.provider_payment_id is distinct from old\.provider_payment_id/i);
+});
+
+test('Part 12 settlement hardening is additive and performs no business-data backfill', () => {
+  assert.doesNotMatch(settlementHardening, /create\s+table/i);
+  assert.doesNotMatch(settlementHardening, /insert\s+into\s+public\.(payments|clients|projects|client_onboardings|crm_activities)/i);
+  assert.doesNotMatch(settlementHardening, /update\s+public\.(payments|quotations|crm_opportunities|clients|projects|client_onboardings)/i);
+  assert.match(settlementHardening, /provider_payment_id/i);
+  assert.match(settlementHardening, /paid_at/i);
 });
 
 test('partial payment stays Partially Paid and returns before Won activation', () => {

@@ -333,10 +333,28 @@ Read-only verification after deployment confirms:
 - anon/public RLS policies on protected Part 12 tables: `0`
 - RLS enabled on Payments, Opportunities, Clients, Projects and Client Onboarding
 
+## Post-release independent settlement-evidence hardening
+
+A deeper independent security audit performed after the original Part 12 closure found one genuine gap in the direct-write boundary.
+
+A rollback-only production probe using the existing approved synthetic Seller identity proved that the Seller's existing `payments_update` RLS path could change `payments.provider_payment_id` and `payments.paid_at` on the Seller's own pending Payment. The transaction was rolled back immediately; the post-rollback row remained unchanged and no production business truth was mutated.
+
+The canonical verification fields (`status=Verified`, `amount_paid`, `verified_at`, `verified_by`) were already protected. The missing protection was specifically provider settlement identity / paid-at evidence, which PF-SOP Part 12 also requires to remain server-controlled.
+
+Focused hardening:
+- additive migration `20260920164600_crm_sales_payment_settlement_evidence_part_12_hardening.sql`;
+- reuses `protect_payment_verification_fields()` rather than adding a second payment guard;
+- blocks direct INSERT/UPDATE of `provider_payment_id` and `paid_at` outside the existing trusted gateway / verification transaction contexts;
+- preserves the existing Admin verification flow and service-role gateway finalization flow;
+- creates no business table and performs no business-data backfill;
+- extends focused Part 12 tests, the exact 87-case matrix, and the production readiness verifier so this boundary cannot silently regress.
+
+This hardening is still Part 12. Part 13 has not started.
+
 ## Release status
 
-**PART 12 — Awaiting Advance Payment + Verified Payment → Won + Sale Activation Integrity: COMPLETE.**
+**PART 12 HARDENING IN PROGRESS — settlement/provider evidence boundary is being re-verified.**
 
-Repository implementation, trusted CI, canonical migration, production deployment, authenticated Seller/Admin QA, Part 10B/11 preservation, direct-write protection, idempotency, production activation integrity and business-data immutability are all complete.
+The original Part 12 release evidence remains historical evidence, but final completion is withheld until the follow-up migration passes trusted CI, canonical production migration/deployment, rollback-safe Seller verification, and post-deploy integrity checks.
 
 **Part 13 has not started.**

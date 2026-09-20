@@ -1794,9 +1794,11 @@ Admin verification remains in the canonical Payments workspace.
 
 ### Part 12 production closure
 
-Part 12 is **COMPLETE** in production.
+The original Part 12 release completed in production, but a subsequent independent rollback-only security audit found that an authenticated Seller could directly change `payments.provider_payment_id` and `payments.paid_at` on an owned pending Payment. The probe was rolled back and changed no production business data.
 
-Final evidence:
+Follow-up Part 12 hardening uses `20260920164600_crm_sales_payment_settlement_evidence_part_12_hardening.sql` to extend the existing `protect_payment_verification_fields()` trigger function so provider settlement identity and paid-at evidence are server-controlled outside canonical verification / trusted gateway contexts. No new business table or backfill is introduced. Final COMPLETE status is withheld until this follow-up passes trusted CI, canonical production migration/deploy, rollback-safe Seller verification, and post-deploy integrity checks.
+
+Final evidence from the original release:
 - implementation PR: `#125`
 - exact PR head: `9dde884078882dc51d97b0d62e3b9c0d9a7fca08`
 - trusted PR CI: ProFox CRM CI `#890 / 35499841152` — PASS
@@ -1819,4 +1821,4 @@ No fake production customer/deal/payment/project/onboarding records were created
 
 Detailed release evidence is maintained in `docs/crm-sales-payment-won-activation-part-12.md`.
 
-**Part 13 has not started.**
+**Part 12 settlement-evidence hardening is in progress. Part 13 has not started.**
