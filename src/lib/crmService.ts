@@ -15,6 +15,7 @@ import {
   NegotiationObjectionCategory,
   NegotiationWaitingOn,
 } from '../types';
+import type { SaleActivationState } from './saleActivationTypes';
 
 const asArray = <T>(value: unknown): T[] => Array.isArray(value) ? value as T[] : [];
 
@@ -64,6 +65,7 @@ export interface PipelineOpportunity extends CRMOpportunity {
   negotiationAttentionReason?: string;
   meeting?: { id: string; status: string; startAt: string; outcome?: string };
   quotation?: { id: string; status: string; sentAt?: string; viewedAt?: string; viewCount: number };
+  saleActivation?: SaleActivationState;
   health: { status: 'Healthy' | 'Needs Attention' | 'At Risk'; reasons: string[] };
   nextBestAction?: { label: string; actionKey: string; url: string; reason: string; quick?: boolean; requiresInput?: boolean };
 }
@@ -231,14 +233,40 @@ export const crmService = {
   },
 
   async getPipelineCommandCenter(): Promise<PipelineCommandCenter> {
-    const { data, error } = await supabase.rpc('crm_get_pipeline_command_center');
-    if (error) throw error;
+    const [pipelineResult, activationResult] = await Promise.all([
+      supabase.rpc('crm_get_pipeline_command_center'),
+      supabase.rpc('crm_get_sale_activation_queue'),
+    ]);
+    if (pipelineResult.error) throw pipelineResult.error;
+    if (activationResult.error) throw activationResult.error;
+
+    const activationByOpportunity = new Map(
+      asArray<SaleActivationState>(activationResult.data).map(item => [item.opportunityId, item]),
+    );
+
     return {
-      generatedAt: data?.generatedAt || new Date().toISOString(),
-      scope: data?.scope === 'team' ? 'team' : 'individual',
-      config: data?.config as PipelineConfiguration,
-      opportunities: asArray<PipelineOpportunity>(data?.opportunities),
+      generatedAt: pipelineResult.data?.generatedAt || new Date().toISOString(),
+      scope: pipelineResult.data?.scope === 'team' ? 'team' : 'individual',
+      config: pipelineResult.data?.config as PipelineConfiguration,
+      opportunities: asArray<PipelineOpportunity>(pipelineResult.data?.opportunities).map(opportunity => ({
+        ...opportunity,
+        saleActivation: activationByOpportunity.get(opportunity.id),
+      })),
     };
+  },
+
+  async getSaleActivationState(opportunityId: string): Promise<SaleActivationState> {
+    const { data, error } = await supabase.rpc('crm_get_sale_activation_state', {
+      p_opportunity_id: opportunityId,
+    });
+    if (error) throw error;
+    return data as SaleActivationState;
+  },
+
+  async getSaleActivationQueue(): Promise<SaleActivationState[]> {
+    const { data, error } = await supabase.rpc('crm_get_sale_activation_queue');
+    if (error) throw error;
+    return asArray<SaleActivationState>(data);
   },
 
   async getPipelineConfiguration(): Promise<PipelineConfiguration> {

@@ -102,6 +102,14 @@ function hoursLabel(hours: number) {
   return `${days < 10 ? days.toFixed(1) : Math.round(days)}d`;
 }
 
+function paymentMoney(value: number, currency = 'USD') {
+  try {
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(Number(value || 0));
+  } catch {
+    return `${currency} ${Number(value || 0).toFixed(2)}`;
+  }
+}
+
 function healthClass(status: PipelineOpportunity['health']['status']) {
   if (status === 'At Risk') return 'border-red-200 bg-red-50 text-red-700';
   if (status === 'Needs Attention') return 'border-amber-200 bg-amber-50 text-amber-700';
@@ -278,6 +286,7 @@ function PipelineCard({ opportunity, onOpen, overlay = false }: { opportunity: P
         {opportunity.nextActivity?.dueAt ? `${opportunity.nextActivity.overdue ? 'OVERDUE · ' : 'Due · '}${new Date(opportunity.nextActivity.dueAt).toLocaleString()}` : 'Due date missing'}
       </div>
     </div>}
+    {opportunity.saleActivation && <SaleActivationSummary opportunity={opportunity} compact />}
     <div className="mt-3 rounded-xl border border-blue-100 bg-blue-50/60 p-2.5"><div className="text-[8px] font-black uppercase tracking-widest text-[#000080]/60">Next best action</div><div className="mt-1 flex items-center gap-1 text-[10px] font-black text-[#000080]">{opportunity.nextBestAction?.label || 'Review opportunity'}<ArrowRight className="h-3 w-3" /></div></div>
     <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-3 text-[9px] font-semibold text-slate-400"><span>{opportunity.lastMeaningfulActivity?.at ? `Last ${new Date(opportunity.lastMeaningfulActivity.at).toLocaleDateString()}` : 'No recent timeline event'}</span><div className="flex gap-1">{opportunity.quotation && <Receipt className="h-3.5 w-3.5 text-cyan-600" />}{opportunity.nextActivity?.overdue && <Clock3 className="h-3.5 w-3.5 text-red-600" />}</div></div>
   </article>;
@@ -285,6 +294,23 @@ function PipelineCard({ opportunity, onOpen, overlay = false }: { opportunity: P
 
 function Chip({ icon: Icon, text, danger = false }: { icon: any; text: string; danger?: boolean }) {
   return <div className={`flex items-center gap-1 rounded-lg border px-2 py-1.5 font-bold ${danger ? 'border-red-200 bg-red-50 text-red-700' : 'border-slate-100 bg-slate-50 text-slate-500'}`}><Icon className="h-3 w-3 shrink-0" /><span className="truncate">{text}</span></div>;
+}
+
+function SaleActivationSummary({ opportunity, compact = false }: { opportunity: PipelineOpportunity; compact?: boolean }) {
+  const state = opportunity.saleActivation;
+  if (!state) return null;
+  const payment = state.payment;
+  const overdue = payment?.overdue === true;
+  return <section className={`${compact ? 'mt-3 p-2.5 text-[9px]' : 'mt-5 p-4 text-xs'} rounded-xl border ${overdue ? 'border-red-200 bg-red-50/60' : 'border-emerald-100 bg-emerald-50/40'}`}>
+    <div className="flex items-center justify-between gap-2">
+      <div className="font-black text-slate-800">{state.operationalLabel.replaceAll('_',' ')}</div>
+      {overdue && <span className="rounded-full bg-red-100 px-2 py-1 font-black text-red-700">OVERDUE</span>}
+    </div>
+    {payment && <div className="mt-1 font-semibold text-slate-600">{payment.paymentType} · {payment.status} · {paymentMoney(payment.outstandingAmount,payment.currency)} outstanding</div>}
+    {payment?.dueDate && <div className={`mt-1 font-bold ${overdue ? 'text-red-700' : 'text-slate-500'}`}>Due {new Date(`${payment.dueDate}T00:00:00`).toLocaleDateString()}</div>}
+    {state.nextAction && <div className="mt-2 rounded-lg border border-white/80 bg-white/80 p-2"><span className="font-black">Next:</span> {state.nextAction.label}</div>}
+    {!compact && state.blockers.length > 0 && <div className="mt-2 space-y-1">{state.blockers.map(blocker => <div key={blocker.code} className="font-semibold leading-5 text-amber-800">{blocker.message}</div>)}</div>}
+  </section>;
 }
 
 function OpportunityDrawer({ opportunity, stages, onClose, onUpdate, onNavigate }: { opportunity: PipelineOpportunity; stages: PipelineStageConfig[]; onClose: () => void; onUpdate: () => void; onNavigate?: (tab: string) => void }) {
@@ -472,6 +498,17 @@ function OpportunityDrawer({ opportunity, stages, onClose, onUpdate, onNavigate 
               <button type="button" onClick={() => navigate(opportunity.quotation?.id ? `/admin/quotation-approvals/${opportunity.quotation.id}` : '/admin/quotation-approvals')} className="min-h-10 rounded-xl border border-blue-200 bg-white px-3 text-[10px] font-black text-[#000080]">Open quotation approval</button>
             </div>
           </div>
+        </section>}
+
+        {opportunity.saleActivation && <section className="mt-6 rounded-2xl border border-emerald-100 bg-emerald-50/30 p-4 shadow-sm">
+          <div className="flex items-start gap-3"><div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-700 text-white"><DollarSign className="h-5 w-5" /></div><div className="min-w-0 flex-1"><div className="text-[9px] font-black uppercase tracking-widest text-emerald-700">Payment & sale activation</div><h3 className="mt-1 text-sm font-black text-slate-900">Canonical commercial activation state</h3><p className="mt-1 text-[10px] leading-5 text-slate-600">Derived from the accepted quotation, canonical Payment, Client, Project, Commission and Client Onboarding records. No second payment state is stored.</p></div></div>
+          <SaleActivationSummary opportunity={opportunity} />
+          <div className="mt-4 grid gap-2 sm:grid-cols-2">
+            {opportunity.saleActivation.acceptedQuotation && <button type="button" onClick={() => navigate(opportunity.saleActivation!.acceptedQuotation!.url)} className="min-h-10 rounded-xl border border-slate-200 bg-white px-3 text-[10px] font-black text-slate-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">Accepted quotation</button>}
+            <button type="button" onClick={() => navigate(opportunity.saleActivation!.paymentWorkspaceUrl)} className="min-h-10 rounded-xl border border-slate-200 bg-white px-3 text-[10px] font-black text-slate-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">{opportunity.saleActivation.canVerifyPayment && opportunity.saleActivation.operationalLabel === 'VERIFICATION REQUIRED' ? 'Review payment verification' : 'Open payments'}</button>
+            {opportunity.saleActivation.nextAction?.kind === 'activity' && <button type="button" onClick={() => navigate(opportunity.saleActivation!.activityWorkspaceUrl)} className="min-h-10 rounded-xl border border-slate-200 bg-white px-3 text-[10px] font-black text-slate-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">Open Payment Follow-Up</button>}
+          </div>
+          {opportunity.status === 'Won' && <div className="mt-4 grid grid-cols-3 gap-2 text-center text-[9px] font-black"><div className="rounded-xl border border-slate-100 bg-white p-3">Client<br/><span className="text-emerald-700">{opportunity.saleActivation.client.linked ? 'ACTIVE' : 'PENDING'}</span></div><div className="rounded-xl border border-slate-100 bg-white p-3">Project<br/><span className="text-emerald-700">{opportunity.saleActivation.project.created ? 'CREATED' : 'PENDING'}</span></div><div className="rounded-xl border border-slate-100 bg-white p-3">Onboarding<br/><span className="text-emerald-700">{opportunity.saleActivation.onboarding.status || (opportunity.saleActivation.onboarding.created ? 'CREATED' : 'PENDING')}</span></div></div>}
         </section>}
 
         <section className="mt-6"><h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Pipeline controls</h3><div className="mt-3 flex flex-wrap gap-2">{stages.map(stage => <button key={stage.name} disabled={loading || stage.name === opportunity.stage || stage.name === 'Won'} onClick={() => void transition(stage.name)} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-[10px] font-black text-slate-700 disabled:cursor-not-allowed disabled:opacity-40 hover:border-[#000080]/30">{stage.name}</button>)}</div><p className="mt-2 text-[10px] font-semibold text-slate-400"><ShieldCheck className="mr-1 inline h-3 w-3" />Won remains controlled by verified payment. Buttons and drag-and-drop cannot bypass it.</p></section>
