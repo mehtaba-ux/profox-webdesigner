@@ -9,6 +9,9 @@ const ui = await readFile('src/components/admin/SalesProjectHandoverView.tsx', '
 const projectUi = await readFile('src/components/admin/ProjectManager.tsx', 'utf8');
 const sellerUi = await readFile('src/components/admin/SellerLifecyclePanel.tsx', 'utf8');
 const corpus = [core,lifecycle,service,ui,projectUi,sellerUi].join('\n');
+const lifecycleTableMatch = core.match(/create table public\.project_sales_handover_attempts \(([\s\S]*?)\n\);/i);
+assert.ok(lifecycleTableMatch, 'Part 13 lifecycle table definition must exist');
+const lifecycleTable = lifecycleTableMatch[1];
 
 const cases = [
   ['01 handoff requires authenticated user', () => /Authentication required\./.test(core)],
@@ -73,7 +76,7 @@ const cases = [
   ['57 promises from crm_sales_promises', () => /from public\.crm_sales_promises/.test(core)],
   ['58 scope conditions from crm_sales_scope_conditions', () => /from public\.crm_sales_scope_conditions/.test(core)],
   ['59 Seller notes cannot overwrite canonical facts', () => /seller_notes_snapshot/.test(core) && /source_refs/.test(core)],
-  ['60 lifecycle does not duplicate payment commercial truth', () => /create table public\.project_sales_handover_attempts/.test(core) && !/payment_verified boolean|quotation_total|requirements jsonb/.test(core)],
+  ['60 lifecycle does not duplicate payment commercial truth', () => /create table public\.project_sales_handover_attempts/.test(core) && !/payment_verified|quotation_total|\brequirements\b|\bpromises\b|scope_conditions/.test(lifecycleTable)],
 
   ['61 Seller cannot forge Accepted', () => /revoke all on table public\.project_sales_handover_attempts from public,anon,authenticated/.test(core)],
   ['62 PM cannot forge Seller submission actor', () => /submitted_by is distinct from old\.submitted_by/.test(core) && /Only the source Seller may submit/.test(core)],
