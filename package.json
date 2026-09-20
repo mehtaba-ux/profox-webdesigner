@@ -15,7 +15,7 @@
     "production:verify": "node scripts/verify-production-readiness.mjs && npm run production:verify-part10b && node scripts/verify-project-chat-readiness.mjs && node scripts/verify-professional-mailbox-readiness.mjs",
     "production:verify-part10b": "node scripts/verify-part10b-release-readiness.mjs",
     "production:activate-privacy": "node scripts/activate-production-privacy-consent.mjs",
-    "test": "npm run test:talent-partner && npm run test:security && npm run test:migration-reconciliation && npm run test:crm-part10a && npm run test:crm-part10b",
+    "test": "npm run test:talent-partner && npm run test:security && npm run test:migration-reconciliation && npm run test:crm-part10a && npm run test:crm-part10b && npm run test:crm-part11",
     "test:talent-partner": "tsx --test tests/talent-partner/*.test.ts",
     "test:security": "tsx --test tests/security/*.test.ts",
     "test:migration-reconciliation": "node --test tests/security/production-migration-native-reconciliation.test.mjs tests/security/production-migration-ledger-audit.test.mjs tests/security/production-migration-forward-convergence.test.mjs tests/security/part10b6-forward-reconciliation-migrations.test.mjs",
@@ -24,7 +24,8 @@
     "test:e2e": "playwright test",
     "deploy": "npm run build && wrangler deploy",
     "pages:deploy": "npm run build && wrangler pages deploy dist",
-    "migrations:converge-part10b6": "node scripts/migrate-production.mjs --converge-part10b6"
+    "migrations:converge-part10b6": "node scripts/migrate-production.mjs --converge-part10b6",
+    "test:crm-part11": "node --test tests/security/crm-sales-negotiation-next-action-part-11.test.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
