@@ -8,6 +8,9 @@ const service = await readFile('src/lib/salesHandoffService.ts', 'utf8');
 const ui = await readFile('src/components/admin/SalesProjectHandoverView.tsx', 'utf8');
 const projectUi = await readFile('src/components/admin/ProjectManager.tsx', 'utf8');
 const sellerUi = await readFile('src/components/admin/SellerLifecyclePanel.tsx', 'utf8');
+const lifecycleTableMatch = core.match(/create table public\.project_sales_handover_attempts \(([\s\S]*?)\n\);/i);
+assert.ok(lifecycleTableMatch, 'Part 13 lifecycle table definition must exist');
+const lifecycleTable = lifecycleTableMatch[1];
 
 test('Part 13 creates exactly one lifecycle/review table and no duplicate commercial truth table', () => {
   const creates = [...core.matchAll(/create table public\.([a-z0-9_]+)/gi)].map(match => match[1]);
@@ -23,7 +26,7 @@ test('Part 13 lifecycle table stores review/version evidence rather than duplica
   assert.match(core, /reviewed_by uuid/);
   assert.match(core, /return_reason_codes text\[\]/);
   assert.match(core, /missing_items jsonb/);
-  assert.doesNotMatch(core, /quotation_items_snapshot|payment_verified boolean|requirements jsonb|promises jsonb|scope_conditions jsonb/i);
+  assert.doesNotMatch(lifecycleTable, /quotation_items_snapshot|payment_verified|quotation_total|\brequirements\b|\bpromises\b|scope_conditions/i);
 });
 
 test('Part 13 migration fabricates no production handoff attempt', () => {
