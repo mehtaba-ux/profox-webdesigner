@@ -346,7 +346,14 @@ export default function SellerExperienceClosure() {
       </section>
 
       <section className="grid gap-5 xl:grid-cols-2">
-        <Panel title="Quotations & Payments" subtitle="Current commercial follow-through from the existing sales workflow. Verified counts follow the selected performance period." icon={<CreditCard className="h-5 w-5 text-emerald-700" />}><div className="grid grid-cols-2 gap-3 sm:grid-cols-4"><MiniStat label="Draft Quotes" value={String(core.quotations.draft)} /><MiniStat label="Ready for Approval" value={String(core.quotations.readyForApproval)} /><MiniStat label="Sent" value={String(core.quotations.sent)} /><MiniStat label="Accepted" value={String(core.quotations.accepted)} /><MiniStat label="Expired" value={String(core.quotations.expired)} danger={core.quotations.expired > 0} /><MiniStat label="Awaiting Customer" value={String(core.payments.awaitingCustomer)} /><MiniStat label="Verification Pending" value={String(core.payments.verificationPending)} danger={core.payments.verificationPending > 0} /><MiniStat label="Verified in Period" value={String(core.payments.verifiedInPeriod)} /></div><div className="mt-4 flex gap-2"><button onClick={() => navigate('/admin/app/sales?tab=quotations')} className="rounded-xl bg-[#000080] px-4 py-2.5 text-xs font-black text-white">Open quotations</button><button onClick={() => navigate('/admin/app/sales?tab=payments')} className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-black">Open payments</button></div></Panel>
+        <Panel title="Quotations & Payments" subtitle="Canonical quotation, payment wait and verified-sale activation truth. No second payment state is stored here." icon={<CreditCard className="h-5 w-5 text-emerald-700" />}>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4"><MiniStat label="Draft Quotes" value={String(core.quotations.draft)} /><MiniStat label="Ready for Approval" value={String(core.quotations.readyForApproval)} /><MiniStat label="Sent" value={String(core.quotations.sent)} /><MiniStat label="Accepted" value={String(core.quotations.accepted)} /><MiniStat label="Expired" value={String(core.quotations.expired)} danger={core.quotations.expired > 0} /><MiniStat label="Awaiting Customer" value={String(core.payments.awaitingCustomer)} /><MiniStat label="Verification Pending" value={String(core.payments.verificationPending)} danger={core.payments.verificationPending > 0} /><MiniStat label="Verified in Period" value={String(core.payments.verifiedInPeriod)} /></div>
+          <div className="mt-5">
+            <div className="mb-2 text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Payment / sale activation</div>
+            {core.saleActivation.length === 0 ? <Empty text="No Awaiting Payment or Won opportunities are in your current scope." /> : <div className="space-y-3">{core.saleActivation.map(item => <SaleActivationCard key={item.opportunityId} item={item} navigate={navigate} />)}</div>}
+          </div>
+          <div className="mt-4 flex flex-wrap gap-2"><button onClick={() => navigate('/admin/app/sales?tab=quotations')} className="rounded-xl bg-[#000080] px-4 py-2.5 text-xs font-black text-white">Open quotations</button><button onClick={() => navigate('/admin/app/sales?tab=payments')} className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-black">Open payments</button></div>
+        </Panel>
         <Panel title="Upcoming Meetings" subtitle="Prepare, open CRM, join, or reschedule/manage from the canonical Calendar record." icon={<Video className="h-5 w-5 text-rose-700" />}>
           {closure.upcomingMeetings.length === 0 ? <Empty text="No meetings are scheduled in the next seven days." /> : <div className="space-y-3">{closure.upcomingMeetings.slice(0, 6).map(meeting => <MeetingActions key={meeting.id} meeting={meeting} navigate={navigate} />)}</div>}
         </Panel>
@@ -370,6 +377,27 @@ export default function SellerExperienceClosure() {
       </section>
     </main>
   </div>;
+}
+
+function SaleActivationCard({ item, navigate }: { item: SellerCommandCenterData['saleActivation'][number]; navigate: ReturnType<typeof useNavigate> }) {
+  const payment = item.payment;
+  const quote = item.acceptedQuotation;
+  const overdue = payment?.overdue === true;
+  return <article className={`rounded-2xl border p-4 ${overdue ? 'border-red-200 bg-red-50/50' : 'border-slate-200 bg-slate-50'}`}>
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+      <div>
+        <div className="text-[9px] font-black uppercase tracking-widest text-slate-400">{item.opportunityStage}</div>
+        <div className="mt-1 text-sm font-black text-slate-900">{item.operationalLabel.replaceAll('_',' ')}</div>
+        {payment && <div className="mt-2 text-xs font-semibold text-slate-600">{payment.paymentType} · {payment.status} · {money(payment.amountDue,payment.currency)} due{payment.amountPaid > 0 ? ` · ${money(payment.amountPaid,payment.currency)} received` : ''}</div>}
+        {payment && <div className={`mt-1 text-[10px] font-black ${overdue ? 'text-red-700' : 'text-slate-500'}`}>{overdue ? 'OVERDUE · ' : ''}{payment.dueDate ? `Due ${shortDate(payment.dueDate)}` : 'Due date not recorded'} · Outstanding {money(payment.outstandingAmount,payment.currency)}</div>}
+      </div>
+      <span className={`rounded-full border px-2.5 py-1 text-[9px] font-black ${overdue ? 'border-red-200 bg-white text-red-700' : item.opportunityStatus === 'Won' ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-blue-200 bg-blue-50 text-blue-700'}`}>{item.opportunityStatus === 'Won' ? 'WON' : 'OPEN'}</span>
+    </div>
+    {item.nextAction && <div className="mt-3 rounded-xl border border-slate-200 bg-white p-3"><div className="text-[9px] font-black uppercase tracking-widest text-slate-400">Next action</div><div className="mt-1 text-xs font-black text-slate-800">{item.nextAction.label}</div>{item.nextAction.dueAt && <div className="mt-1 text-[10px] font-semibold text-slate-500">Due {shortDateTime(item.nextAction.dueAt)}</div>}</div>}
+    {item.blockers.length > 0 && <div className="mt-3 space-y-1">{item.blockers.slice(0,2).map(blocker => <div key={blocker.code} className="text-[10px] font-semibold leading-4 text-amber-800">{blocker.message}</div>)}</div>}
+    {item.opportunityStatus === 'Won' && <div className="mt-3 grid grid-cols-3 gap-2 text-center text-[9px] font-black"><span className="rounded-lg bg-white px-2 py-2">Client {item.client.linked ? 'ACTIVE' : 'PENDING'}</span><span className="rounded-lg bg-white px-2 py-2">Project {item.project.created ? 'CREATED' : 'PENDING'}</span><span className="rounded-lg bg-white px-2 py-2">Onboarding {item.onboarding.status || (item.onboarding.created ? 'CREATED' : 'PENDING')}</span></div>}
+    <div className="mt-3 flex flex-wrap gap-2">{quote && <button onClick={() => navigate(quote.url)} className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-[10px] font-black">Accepted quotation</button>}<button onClick={() => navigate(item.paymentWorkspaceUrl)} className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-[10px] font-black">Open payments</button>{item.nextAction?.kind === 'activity' && <button onClick={() => navigate(item.activityWorkspaceUrl)} className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-[10px] font-black">Payment Follow-Up</button>}{item.canVerifyPayment && item.operationalLabel === 'VERIFICATION REQUIRED' && <button onClick={() => navigate(item.paymentWorkspaceUrl)} className="rounded-lg bg-emerald-700 px-3 py-2 text-[10px] font-black text-white">Review verification</button>}</div>
+  </article>;
 }
 
 function MeetingActions({ meeting, navigate }: { meeting: SellerEnhancedMeeting; navigate: ReturnType<typeof useNavigate> }) {
