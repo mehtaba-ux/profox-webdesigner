@@ -176,6 +176,32 @@ export type OpportunityStage =
 
 export type OpportunityStatus = 'Open' | 'Won' | 'Lost';
 
+export type NegotiationDecisionStatus =
+  | 'AWAITING_CLIENT_RESPONSE'
+  | 'CLIENT_REVIEWING'
+  | 'QUESTIONS_OR_OBJECTIONS'
+  | 'REVISION_REQUESTED'
+  | 'COMMERCIAL_REVIEW_REQUIRED'
+  | 'INTERNAL_CLIENT_APPROVAL'
+  | 'DECISION_DATE_CONFIRMED'
+  | 'PAUSED_BY_CLIENT';
+
+export type NegotiationObjectionCategory =
+  | 'PRICE'
+  | 'BUDGET'
+  | 'SCOPE'
+  | 'TIMELINE'
+  | 'TRUST'
+  | 'AUTHORITY'
+  | 'INTERNAL_APPROVAL'
+  | 'PROCUREMENT'
+  | 'COMPETITOR'
+  | 'PRIORITY'
+  | 'NO_RESPONSE'
+  | 'OTHER';
+
+export type NegotiationWaitingOn = 'CLIENT' | 'PROFOX' | 'SPECIALIST' | 'PROCUREMENT' | 'THIRD_PARTY';
+
 export type ActivityType =
   | 'Lead Research'
   | 'Cold Call'
@@ -299,6 +325,11 @@ export interface CRMOpportunity {
   meetingUrl?: string;
   requirementsSummary?: string;
   nextFollowUpAt?: string;
+  decisionStatus?: NegotiationDecisionStatus;
+  primaryObjectionCategory?: NegotiationObjectionCategory;
+  waitingOn?: NegotiationWaitingOn;
+  decisionExpectedAt?: string;
+  decisionRecordedAt?: string;
   notes?: string;
   lostReason?: string;
   wonAt?: string;
@@ -318,6 +349,17 @@ export interface CRMActivity {
   dueAt: string;
   completedAt?: string;
   status: ActivityStatus;
+  outcome?: string;
+  outcomeRecordedAt?: string;
+  startedAt?: string;
+  originalDueAt?: string;
+  rescheduleCount?: number;
+  lastRescheduledAt?: string;
+  lastRescheduledBy?: string;
+  lastRescheduleReason?: string;
+  lastRescheduleKind?: string;
+  cancellationReason?: string;
+  nextActivityId?: string;
   channel?: string;
   loomVideoUrl?: string;
   notes?: string;
