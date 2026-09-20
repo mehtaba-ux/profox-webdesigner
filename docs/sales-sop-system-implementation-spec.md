@@ -1699,13 +1699,16 @@ Negotiation decision mutations are trusted server RPCs. Actor identity and decis
 Repository migration:
 
 - `20260920123000_crm_sales_negotiation_next_action_part_11.sql`
+- SHA-256: `334194a102719370909a8701d80c794773553e1902fd53ae7cbc41a2edb9629d`
 
 The migration is backward compatible, nullable for historical rows, creates no fake business data, does not backfill Negotiation state, and asserts before/after that the Part 10B Send gate remains active under policy version 2 and snapshot schema version 2.
 
 Focused regression/security coverage is maintained in:
 
 - `tests/security/crm-sales-negotiation-next-action-part-11.test.mjs`
+- `tests/security/crm-sales-negotiation-next-action-part-11-matrix.test.mjs` — exactly 60 named SOP matrix cases
 - `npm run test:crm-part11`
+- `npm run production:verify-part11` — read-only production release verifier wired into canonical `production:verify`
 
 Detailed architecture, source-of-truth and release evidence is maintained in `docs/crm-sales-negotiation-next-action-part-11.md`.
 
