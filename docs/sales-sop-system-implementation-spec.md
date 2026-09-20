@@ -1796,7 +1796,7 @@ Admin verification remains in the canonical Payments workspace.
 
 The original Part 12 release completed in production, but a subsequent independent rollback-only security audit found that an authenticated Seller could directly change `payments.provider_payment_id` and `payments.paid_at` on an owned pending Payment. The probe was rolled back and changed no production business data.
 
-Follow-up Part 12 hardening uses `20260920164600_crm_sales_payment_settlement_evidence_part_12_hardening.sql` to extend the existing `protect_payment_verification_fields()` trigger function so provider settlement identity and paid-at evidence are server-controlled outside canonical verification / trusted gateway contexts. No new business table or backfill is introduced. Final COMPLETE status is withheld until this follow-up passes trusted CI, canonical production migration/deploy, rollback-safe Seller verification, and post-deploy integrity checks.
+Follow-up Part 12 hardening uses `20260920164600_crm_sales_payment_settlement_evidence_part_12_hardening.sql` to extend the existing `protect_payment_verification_fields()` trigger function so provider settlement identity and paid-at evidence are server-controlled outside canonical verification / trusted gateway contexts. No new business table or backfill is introduced. The follow-up passed trusted PR/main CI, canonical production migration/deploy, rollback-safe Seller verification, authenticated Seller/Admin QA, and post-deploy integrity checks.
 
 Final evidence from the original release:
 - implementation PR: `#125`
@@ -1821,4 +1821,20 @@ No fake production customer/deal/payment/project/onboarding records were created
 
 Detailed release evidence is maintained in `docs/crm-sales-payment-won-activation-part-12.md`.
 
-**Part 12 settlement-evidence hardening is in progress. Part 13 has not started.**
+Follow-up settlement-evidence closure:
+- PR `#128`; exact head `c7ab82d4762d448f491ff54bb95e66ea326265de`
+- trusted PR CI `#895 / 35508012546`: PASS
+- merged-main SHA `8963d4ff36f2ac4ecd5fd4da3736bf87a9f12faa`
+- trusted merged-main CI `#896 / 35508149468`: PASS
+- production deploy `#364 / 35508215901`: PASS
+- Worker version `dd6ec35a-5d4f-47cb-9acc-3071089705ee`
+- hardening migration checksum `48c3d60025168ab0843fda3b9a485a4f09a62591facddefb3085a3276c5e31a7`
+- production ledger `692`; latest `20260920164600`; pending `0`; blocked `0`
+- Part 12 focused suite `113/113`: PASS
+- full `npm test`, `npm run lint`, `npm run build`: PASS
+- rollback-safe Seller direct-write probe for `provider_payment_id` / `paid_at`: BLOCKED as required
+- authenticated Seller/Admin QA and business-data immutability: PASS
+- Part 12 production verifier: `0 failure(s)`
+- business inventory unchanged: payments `5`, verified `1`, Awaiting `1`, Won `1`, clients `2`, projects `1`, onboardings `1`, commissions `1`, activities `13`
+
+**Part 12 is COMPLETE. Part 13 has not started.**
