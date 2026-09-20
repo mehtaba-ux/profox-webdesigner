@@ -53,8 +53,9 @@ test('cross-opportunity and cross-lead activity linking is rejected', () => {
   assert.match(migration, /You may link activities only to your assigned opportunity/i);
 });
 
-test('Negotiation decision changes are server-authoritative and browser actor/time cannot be forged', () => {
+test('Negotiation decision changes are server-authoritative, context-scoped, and browser actor/time cannot be forged', () => {
   assert.match(migration, /crm_protect_part11_negotiation_fields/);
+  assert.match(migration, /stage not in \('Quotation Sent','Negotiation \/ Decision Pending'\)/);
   assert.match(migration, /app\.crm_negotiation_rpc/);
   assert.match(migration, /decision_recorded_at=now\(\)/i);
   assert.match(migration, /decision_recorded_by=v_uid/i);
@@ -110,6 +111,7 @@ test('last meaningful interaction is derived from canonical evidence and exclude
   assert.match(migration, /automated/);
   assert.match(migration, /sales_meetings/);
   assert.match(migration, /crm_activities/);
+  assert.match(migration, /'No Answer','Voicemail','Wrong Number','No Response','Bounced','Not Interested'/);
   assert.doesNotMatch(migration, /add column if not exists last_meaningful/i);
 });
 
