@@ -489,7 +489,7 @@ returns jsonb
 language plpgsql
 security definer
 set search_path=public, pg_temp
-as $
+as $$
 declare
   a public.crm_activities%rowtype;
   v_due timestamptz;
@@ -557,7 +557,7 @@ begin
     'calendarAdjusted',a.due_at is distinct from p_due_at
   );
 end
-$;
+$$;
 
 revoke all on function public.crm_reschedule_activity(uuid,timestamptz,text,boolean) from public, anon;
 grant execute on function public.crm_reschedule_activity(uuid,timestamptz,text,boolean) to authenticated, service_role;
@@ -570,7 +570,7 @@ returns jsonb
 language plpgsql
 security definer
 set search_path=public, pg_temp
-as $
+as $$
 declare
   a public.crm_activities%rowtype;
   v_negotiation boolean:=false;
@@ -624,7 +624,7 @@ begin
 
   return jsonb_build_object('id',a.id,'status',a.status,'cancellationReason',a.cancellation_reason);
 end
-$;
+$$;
 
 revoke all on function public.crm_cancel_activity(uuid,text) from public, anon;
 grant execute on function public.crm_cancel_activity(uuid,text) to authenticated, service_role;
