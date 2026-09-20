@@ -36,7 +36,13 @@ import {
   PipelineOpportunity,
   PipelineStageConfig,
 } from '../../lib/crmService';
-import { CRMLeadDetail, OpportunityStage } from '../../types';
+import {
+  CRMLeadDetail,
+  OpportunityStage,
+  NegotiationDecisionStatus,
+  NegotiationObjectionCategory,
+  NegotiationWaitingOn,
+} from '../../types';
 import { useAuth } from '../../lib/AuthContext';
 import MonthlyWonSalesColumn from './MonthlyWonSalesColumn';
 
@@ -55,6 +61,37 @@ type PipelineView = typeof VIEW_OPTIONS[number];
 type TimelineFilter = 'All' | 'Stage Changes' | 'Emails' | 'Activities' | 'Meetings' | 'Quotations' | 'Payments' | 'Notes' | 'Automation' | 'System';
 
 const timelineFilters: TimelineFilter[] = ['All', 'Stage Changes', 'Emails', 'Activities', 'Meetings', 'Quotations', 'Payments', 'Notes', 'Automation', 'System'];
+
+const DECISION_OPTIONS: NegotiationDecisionStatus[] = [
+  'AWAITING_CLIENT_RESPONSE',
+  'CLIENT_REVIEWING',
+  'QUESTIONS_OR_OBJECTIONS',
+  'REVISION_REQUESTED',
+  'COMMERCIAL_REVIEW_REQUIRED',
+  'INTERNAL_CLIENT_APPROVAL',
+  'DECISION_DATE_CONFIRMED',
+  'PAUSED_BY_CLIENT',
+];
+
+const OBJECTION_OPTIONS: NegotiationObjectionCategory[] = [
+  'PRICE','BUDGET','SCOPE','TIMELINE','TRUST','AUTHORITY',
+  'INTERNAL_APPROVAL','PROCUREMENT','COMPETITOR','PRIORITY','NO_RESPONSE','OTHER',
+];
+
+const WAITING_OPTIONS: NegotiationWaitingOn[] = ['CLIENT','PROFOX','SPECIALIST','PROCUREMENT','THIRD_PARTY'];
+
+function enumLabel(value?: string) {
+  if (!value) return 'Not recorded';
+  return value.toLowerCase().split('_').map(part => part.charAt(0).toUpperCase() + part.slice(1)).join(' ');
+}
+
+function toLocalInput(value?: string) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  const offset = date.getTimezoneOffset();
+  return new Date(date.getTime() - offset * 60000).toISOString().slice(0, 16);
+}
 
 function hoursLabel(hours: number) {
   if (!Number.isFinite(hours)) return '—';
@@ -232,6 +269,13 @@ function PipelineCard({ opportunity, onOpen, overlay = false }: { opportunity: P
     <div className="mt-3 flex items-center justify-between gap-2"><span className="text-xs font-black text-emerald-700">{opportunity.currency} {opportunity.expectedValue.toLocaleString()}</span><span className="text-[10px] font-black text-slate-500">{opportunity.probability || 0}%</span></div>
     <div className="mt-3 grid grid-cols-2 gap-2 text-[9px]"><Chip icon={UserRound} text={opportunity.ownerName || 'Unassigned'} /><Chip icon={Target} text={`${opportunity.leadQuality} · ${opportunity.leadScore}`} /><Chip icon={Clock3} text={`${hoursLabel(opportunity.stageAgeHours)} in stage`} danger={slaExceeded} /><Chip icon={Calendar} text={opportunity.meeting?.status || 'No meeting'} /></div>
     {opportunity.health.reasons[0] && <div className={`mt-3 flex items-start gap-1.5 rounded-xl p-2 text-[9px] font-bold ${opportunity.health.status === 'At Risk' ? 'bg-red-50 text-red-700' : 'bg-amber-50 text-amber-700'}`}><AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />{opportunity.health.reasons[0]}</div>}
+    {['Quotation Sent','Negotiation / Decision Pending'].includes(opportunity.stage) && <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-[9px]">
+      <div className="font-black text-slate-700">Decision: {enumLabel(opportunity.decisionStatus)}</div>
+      <div className="mt-1 truncate font-semibold text-slate-500">Next: {opportunity.nextActivity?.subject || 'No opportunity-linked action scheduled'}</div>
+      <div className={`mt-1 font-bold ${opportunity.nextActivity?.overdue ? 'text-red-700' : 'text-slate-500'}`}>
+        {opportunity.nextActivity?.dueAt ? `${opportunity.nextActivity.overdue ? 'OVERDUE · ' : 'Due · '}${new Date(opportunity.nextActivity.dueAt).toLocaleString()}` : 'Due date missing'}
+      </div>
+    </div>}
     <div className="mt-3 rounded-xl border border-blue-100 bg-blue-50/60 p-2.5"><div className="text-[8px] font-black uppercase tracking-widest text-[#000080]/60">Next best action</div><div className="mt-1 flex items-center gap-1 text-[10px] font-black text-[#000080]">{opportunity.nextBestAction?.label || 'Review opportunity'}<ArrowRight className="h-3 w-3" /></div></div>
     <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-3 text-[9px] font-semibold text-slate-400"><span>{opportunity.lastMeaningfulActivity?.at ? `Last ${new Date(opportunity.lastMeaningfulActivity.at).toLocaleDateString()}` : 'No recent timeline event'}</span><div className="flex gap-1">{opportunity.quotation && <Receipt className="h-3.5 w-3.5 text-cyan-600" />}{opportunity.nextActivity?.overdue && <Clock3 className="h-3.5 w-3.5 text-red-600" />}</div></div>
   </article>;
@@ -250,12 +294,24 @@ function OpportunityDrawer({ opportunity, stages, onClose, onUpdate, onNavigate 
   const [timelineFilter, setTimelineFilter] = useState<TimelineFilter>('All');
   const [isMarkingLost, setIsMarkingLost] = useState(false);
   const [lostReason, setLostReason] = useState('Price / Budget');
+  const [decisionStatus, setDecisionStatus] = useState<NegotiationDecisionStatus | ''>(opportunity.decisionStatus || '');
+  const [objectionCategory, setObjectionCategory] = useState<NegotiationObjectionCategory | ''>(opportunity.primaryObjectionCategory || '');
+  const [waitingOn, setWaitingOn] = useState<NegotiationWaitingOn | ''>(opportunity.waitingOn || '');
+  const [decisionExpectedAt, setDecisionExpectedAt] = useState(toLocalInput(opportunity.decisionExpectedAt));
+  const [nextActionSubject, setNextActionSubject] = useState('Quotation follow-up');
+  const [nextActionDueAt, setNextActionDueAt] = useState('');
 
   const loadDetail = async () => {
     if (!opportunity.leadId) return;
     try { setDetail(await crmService.getLeadDetail(opportunity.leadId)); } catch (e: any) { setError(e?.message || 'Timeline could not be loaded.'); }
   };
   useEffect(() => { void loadDetail(); }, [opportunity.id]);
+  useEffect(() => {
+    setDecisionStatus(opportunity.decisionStatus || '');
+    setObjectionCategory(opportunity.primaryObjectionCategory || '');
+    setWaitingOn(opportunity.waitingOn || '');
+    setDecisionExpectedAt(toLocalInput(opportunity.decisionExpectedAt));
+  }, [opportunity.id, opportunity.decisionStatus, opportunity.primaryObjectionCategory, opportunity.waitingOn, opportunity.decisionExpectedAt]);
 
   const transition = async (stage: string) => {
     setLoading(true); setError('');
@@ -279,6 +335,51 @@ function OpportunityDrawer({ opportunity, stages, onClose, onUpdate, onNavigate 
     finally { setLoading(false); }
   };
 
+  const saveDecisionState = async () => {
+    if (!decisionStatus) {
+      setError('Choose the customer decision status before saving.');
+      return;
+    }
+    setLoading(true); setError('');
+    try {
+      await crmService.recordNegotiationDecisionState(opportunity.id, {
+        decisionStatus,
+        primaryObjectionCategory: objectionCategory || null,
+        waitingOn: waitingOn || null,
+        decisionExpectedAt: decisionExpectedAt ? new Date(decisionExpectedAt).toISOString() : null,
+      });
+      await onUpdate();
+      await loadDetail();
+    } catch (e: any) {
+      setError(e?.message || 'Negotiation decision state could not be saved.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const scheduleNextAction = async () => {
+    if (!nextActionDueAt) {
+      setError('Choose a future due date and time for the next action.');
+      return;
+    }
+    setLoading(true); setError('');
+    try {
+      await crmService.scheduleOpportunityNextAction(opportunity.id, {
+        dueAt: new Date(nextActionDueAt).toISOString(),
+        subject: nextActionSubject.trim(),
+        activityType: 'Quotation Follow-Up',
+      });
+      setNextActionSubject('Quotation follow-up');
+      setNextActionDueAt('');
+      await onUpdate();
+      await loadDetail();
+    } catch (e: any) {
+      setError(e?.message || 'Next action could not be scheduled.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const events = (detail?.events || []).filter(event => timelineMatches(event.eventType, timelineFilter));
   return <div className="fixed inset-0 z-[100] bg-slate-900/35" onMouseDown={e => { if (e.target === e.currentTarget) onClose(); }}>
     <aside className="ml-auto flex h-full w-full max-w-2xl flex-col bg-white shadow-2xl">
@@ -288,6 +389,80 @@ function OpportunityDrawer({ opportunity, stages, onClose, onUpdate, onNavigate 
         <section className="grid grid-cols-2 gap-3 sm:grid-cols-4"><Metric label="Value" value={`${opportunity.currency} ${opportunity.expectedValue.toLocaleString()}`} /><Metric label="Probability" value={`${opportunity.probability || 0}%`} /><Metric label="Stage age" value={hoursLabel(opportunity.stageAgeHours)} alert={opportunity.stageSlaHours > 0 && opportunity.stageAgeHours > opportunity.stageSlaHours} /><Metric label="Lead quality" value={`${opportunity.leadQuality} · ${opportunity.leadScore}`} /></section>
         <section className="mt-5 rounded-2xl border border-blue-100 bg-blue-50/60 p-4"><div className="text-[9px] font-black uppercase tracking-widest text-[#000080]/60">Recommended next action</div><div className="mt-1 text-sm font-black text-[#000080]">{opportunity.nextBestAction?.label || 'Review opportunity'}</div><p className="mt-1 text-xs leading-5 text-slate-600">{opportunity.nextBestAction?.reason}</p>{opportunity.nextBestAction?.url && <a href={opportunity.nextBestAction.url} className="mt-3 inline-flex items-center gap-1 text-xs font-black text-[#000080]">Take action <ExternalLink className="h-3 w-3" /></a>}</section>
         {opportunity.health.reasons.length > 0 && <section className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-4"><h3 className="text-xs font-black text-amber-800">Why this deal needs attention</h3><ul className="mt-2 space-y-1 text-xs font-semibold text-amber-700">{opportunity.health.reasons.map(reason => <li key={reason}>• {reason}</li>)}</ul></section>}
+
+        {['Quotation Sent','Negotiation / Decision Pending'].includes(opportunity.stage) && <section className="mt-5 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <div className="text-[9px] font-black uppercase tracking-widest text-[#000080]">Decision &amp; Next Action</div>
+              <h3 className="mt-1 text-sm font-black text-slate-900">Negotiation is not a parking stage</h3>
+              <p className="mt-1 text-[10px] leading-5 text-slate-500">Record what the customer actually said, then keep one explicit opportunity-linked action with an owner and due date.</p>
+            </div>
+            <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-[9px] font-bold text-slate-600">
+              {opportunity.negotiationAttentionReason || 'Current Part 11 state is operationally complete.'}
+            </div>
+          </div>
+
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <label className="text-[9px] font-black uppercase tracking-wide text-slate-500">Decision status
+              <select value={decisionStatus} onChange={e => setDecisionStatus(e.target.value as NegotiationDecisionStatus | '')} className="mt-1.5 min-h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold normal-case">
+                <option value="">Not recorded</option>
+                {DECISION_OPTIONS.map(value => <option key={value} value={value}>{enumLabel(value)}</option>)}
+              </select>
+            </label>
+            <label className="text-[9px] font-black uppercase tracking-wide text-slate-500">Waiting on
+              <select value={waitingOn} onChange={e => setWaitingOn(e.target.value as NegotiationWaitingOn | '')} className="mt-1.5 min-h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold normal-case">
+                <option value="">Not applicable / not recorded</option>
+                {WAITING_OPTIONS.map(value => <option key={value} value={value}>{enumLabel(value)}</option>)}
+              </select>
+            </label>
+            <label className="text-[9px] font-black uppercase tracking-wide text-slate-500">Primary objection
+              <select value={objectionCategory} onChange={e => setObjectionCategory(e.target.value as NegotiationObjectionCategory | '')} className="mt-1.5 min-h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold normal-case">
+                <option value="">None known</option>
+                {OBJECTION_OPTIONS.map(value => <option key={value} value={value}>{enumLabel(value)}</option>)}
+              </select>
+            </label>
+            <label className="text-[9px] font-black uppercase tracking-wide text-slate-500">Expected decision date
+              <input type="datetime-local" value={decisionExpectedAt} onChange={e => setDecisionExpectedAt(e.target.value)} className="mt-1.5 min-h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold normal-case" />
+            </label>
+          </div>
+          <div className="mt-3 flex justify-end"><button disabled={loading || !decisionStatus} onClick={() => void saveDecisionState()} className="min-h-10 rounded-xl bg-[#000080] px-4 text-[10px] font-black text-white disabled:opacity-40">Save truthful decision state</button></div>
+
+          <div className="mt-4 grid gap-3 rounded-xl border border-slate-100 bg-slate-50 p-3 sm:grid-cols-2">
+            <div>
+              <div className="text-[9px] font-black uppercase tracking-wide text-slate-400">Last meaningful customer interaction</div>
+              <div className="mt-1 text-xs font-black text-slate-800">{opportunity.lastMeaningfulActivity?.title || 'No qualifying interaction recorded'}</div>
+              <div className="mt-1 text-[10px] font-semibold text-slate-500">{opportunity.lastMeaningfulActivity?.at ? new Date(opportunity.lastMeaningfulActivity.at).toLocaleString() : 'Derived from canonical communication/activity evidence only'}</div>
+            </div>
+            <div>
+              <div className="text-[9px] font-black uppercase tracking-wide text-slate-400">Latest completed outcome</div>
+              <div className="mt-1 text-xs font-black text-slate-800">{opportunity.latestCompletedOutcome?.outcome || 'No completed outcome recorded'}</div>
+              <div className="mt-1 text-[10px] font-semibold text-slate-500">{opportunity.latestCompletedOutcome?.at ? new Date(opportunity.latestCompletedOutcome.at).toLocaleString() : 'Activity outcomes remain canonical in CRM Activities'}</div>
+            </div>
+          </div>
+
+          {opportunity.nextActivity
+            ? <div className={`mt-4 rounded-xl border p-3 ${opportunity.nextActivity.overdue ? 'border-red-200 bg-red-50' : 'border-emerald-200 bg-emerald-50'}`}>
+                <div className="text-[9px] font-black uppercase tracking-wide text-slate-500">Current next action</div>
+                <div className="mt-1 text-xs font-black text-slate-900">{opportunity.nextActivity.subject}</div>
+                <div className="mt-1 text-[10px] font-semibold text-slate-600">Owner: {opportunity.nextActivity.ownerName || 'Unassigned'} · {opportunity.nextActivity.overdue ? 'OVERDUE · ' : 'Due · '}{new Date(opportunity.nextActivity.dueAt).toLocaleString()}</div>
+                <button type="button" onClick={() => onNavigate?.('activities')} className="mt-3 min-h-10 rounded-xl border border-slate-200 bg-white px-3 text-[10px] font-black text-slate-700">Open Activity Center to complete, reschedule or cancel</button>
+              </div>
+            : <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs font-bold text-amber-800">No opportunity-linked next action is scheduled.</div>}
+
+          <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_210px_auto]">
+            <label className="text-[9px] font-black uppercase tracking-wide text-slate-500">Next action
+              <input value={nextActionSubject} onChange={e => setNextActionSubject(e.target.value)} className="mt-1.5 min-h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold normal-case" placeholder="Follow up on quotation decision" />
+            </label>
+            <label className="text-[9px] font-black uppercase tracking-wide text-slate-500">Due
+              <input type="datetime-local" value={nextActionDueAt} onChange={e => setNextActionDueAt(e.target.value)} className="mt-1.5 min-h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold normal-case" />
+            </label>
+            <button disabled={loading || !nextActionSubject.trim() || !nextActionDueAt} onClick={() => void scheduleNextAction()} className="min-h-10 self-end rounded-xl bg-slate-900 px-4 text-[10px] font-black text-white disabled:opacity-40">Schedule action</button>
+          </div>
+
+          <div className="mt-4 rounded-xl border border-blue-100 bg-blue-50 p-3 text-[10px] leading-5 text-blue-900">
+            Commercial exceptions are not approved here. Use the existing Sales Validation or quotation approval/revision workflow. Customer acceptance remains quotation authority, and Part 10B protects every revised Send.
+          </div>
+        </section>
 
         <section className="mt-6"><h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Pipeline controls</h3><div className="mt-3 flex flex-wrap gap-2">{stages.map(stage => <button key={stage.name} disabled={loading || stage.name === opportunity.stage || stage.name === 'Won'} onClick={() => void transition(stage.name)} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-[10px] font-black text-slate-700 disabled:cursor-not-allowed disabled:opacity-40 hover:border-[#000080]/30">{stage.name}</button>)}</div><p className="mt-2 text-[10px] font-semibold text-slate-400"><ShieldCheck className="mr-1 inline h-3 w-3" />Won remains controlled by verified payment. Buttons and drag-and-drop cannot bypass it.</p></section>
 
