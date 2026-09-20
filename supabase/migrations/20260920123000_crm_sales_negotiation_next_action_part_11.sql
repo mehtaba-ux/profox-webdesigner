@@ -220,6 +220,9 @@ as $$
         'Cold Call','Cold Email','LinkedIn / Social Outreach','Loom Outreach',
         'Follow-Up','Meeting Follow-Up','Quotation Follow-Up'
       )
+      and coalesce(a.outcome,'') not in (
+        'No Answer','Voicemail','Wrong Number','No Response','Bounced','Not Interested'
+      )
     union all
     select
       coalesce(m.completed_at,m.end_at,m.start_at),
@@ -287,6 +290,9 @@ begin
     raise exception 'You may update Negotiation state only for your assigned opportunity.';
   end if;
   if v_opp.status<>'Open' then raise exception 'Closed opportunities cannot change Negotiation state.'; end if;
+  if v_opp.stage not in ('Quotation Sent','Negotiation / Decision Pending') then
+    raise exception 'Negotiation decision state is available only after the opportunity reaches Quotation Sent.';
+  end if;
 
   if v_status is null or v_status not in (
     'AWAITING_CLIENT_RESPONSE','CLIENT_REVIEWING','QUESTIONS_OR_OBJECTIONS',
