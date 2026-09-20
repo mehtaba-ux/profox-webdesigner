@@ -12,7 +12,7 @@ const QUEUES: Array<{ key: SellerLifecycleQueueKey; label: string; countKey: key
   { key: 'deals_quotations', label: 'Deals & Quotations', countKey: 'dealsQuotations', icon: FileText, note: 'Qualified commercial work moving toward acceptance.' },
   { key: 'awaiting_payment', label: 'Awaiting Payment', countKey: 'awaitingPayment', icon: CreditCard, note: 'Accepted work waiting for qualifying payment.' },
   { key: 'onboarding', label: 'Client Onboarding', countKey: 'onboarding', icon: ClipboardList, note: 'Paid customers completing the secure onboarding brief.' },
-  { key: 'ready_for_handoff', label: 'Sales Handoff', countKey: 'readyForHandoff', icon: Send, note: 'Prepare, submit, resolve returns, or monitor Delivery review until the handoff is accepted.' },
+  { key: 'ready_for_handoff', label: 'Ready for Handoff', countKey: 'readyForHandoff', icon: Send, note: 'Sales Handoff lifecycle: prepare, submit, resolve returns, or monitor Delivery review until the handoff is accepted.' },
   { key: 'closed_customers', label: 'Closed Customers', countKey: 'closedCustomers', icon: CheckCircle2, note: 'Permanent searchable Sales history after ownership is complete.' }
 ];
 
