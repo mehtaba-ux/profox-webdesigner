@@ -36,6 +36,8 @@ export interface SellerLifecycleItem {
   nextActionLabel: string;
   actionUrl: string;
   blocker?: string | null;
+  handoffStatus?: string | null;
+  handoffAttempt?: number | null;
   currentOwnerRole?: string | null;
   currentOwnerName?: string | null;
   updatedAt?: string | null;
