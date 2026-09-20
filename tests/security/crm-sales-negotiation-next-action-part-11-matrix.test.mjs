@@ -23,12 +23,12 @@ function latestFunction(corpus, name) {
   const token = `create or replace function public.${name}`;
   const start = corpus.toLowerCase().lastIndexOf(token.toLowerCase());
   if (start < 0) return '';
-  const endings = ['\n$;', '\n$function$;']
-    .map(marker => corpus.indexOf(marker, start))
-    .filter(index => index >= 0);
-  const end = endings.length ? Math.min(...endings) : -1;
-  const suffixLength = end >= 0 && corpus.startsWith('\n$function$;', end) ? 12 : 4;
-  return end < 0 ? corpus.slice(start) : corpus.slice(start, end + suffixLength);
+  const endings = ['$$;', '$function$;']
+    .map(marker => ({ marker, index: corpus.indexOf(marker, start) }))
+    .filter(item => item.index >= 0)
+    .sort((a, b) => a.index - b.index);
+  const ending = endings[0];
+  return !ending ? corpus.slice(start) : corpus.slice(start, ending.index + ending.marker.length);
 }
 
 const transition = latestFunction(migration, 'crm_transition_opportunity');
