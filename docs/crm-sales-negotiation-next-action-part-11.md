@@ -112,3 +112,44 @@ Part 11 will:
 8. update the master implementation spec.
 
 It will not implement Part 12+.
+
+
+## Repository implementation
+
+Part 11 is implemented on this branch by extending the canonical systems only.
+
+### Migration
+
+- version: `20260920123000`
+- name: `crm_sales_negotiation_next_action_part_11`
+- SHA-256: `334d085aee38c55c1e33fc1387d866a44ea567f30e80f4057ae67912593b8ff3`
+
+The migration is nullable/backward-compatible and does not backfill decision state, objections, waiting state or next actions for historical production rows.
+
+### Server authority
+
+- `crm_record_negotiation_decision_state(...)` owns structured decision-state mutation.
+- `crm_schedule_opportunity_next_action(...)` schedules an opportunity-linked action in canonical `crm_activities`.
+- `crm_transition_opportunity(...)` remains the only Pipeline transition authority and now enforces the Negotiation entry gate.
+- `crm_get_pipeline_command_center()` remains the canonical operational Pipeline read model.
+- `crm_get_last_meaningful_customer_interaction(...)` derives recent customer-facing interaction from existing evidence and excludes internal notes, automated email/reminders and failed-contact outcomes.
+- `crm_guard_activity_opportunity_link()` rejects cross-Lead/cross-opportunity activity linkage and preserves Seller ownership scope.
+- protected Part 11 fields cannot be directly rewritten outside the trusted decision RPC.
+
+### UI/service integration
+
+The existing Pipeline opportunity card/drawer now surfaces **Decision & Next Action** context for Quotation Sent and Negotiation stages. The UI records controlled decision state through the trusted RPC and schedules the next action into `crm_activities`. Existing Activity Center RPCs remain authoritative for completion, outcome recording, rescheduling and cancellation.
+
+No new top-level Negotiation application, task system, communication system, approval table or quotation workflow was created.
+
+### Focused tests
+
+- file: `tests/security/crm-sales-negotiation-next-action-part-11.test.mjs`
+- command: `npm run test:crm-part11`
+- included in repository-wide `npm test`
+
+The suite covers source reuse, historical compatibility, decision semantics, no silence inference, same-opportunity next-action selection, server-derived actor/time, transition authority, quotation acceptance/payment boundaries, Part 10B preservation, meaningful-interaction derivation, Pipeline/UI integration, security grants and absence of duplicate systems.
+
+## Release status
+
+Repository implementation is ready for trusted CI review. Production migration/deployment and authenticated non-destructive Seller/Admin QA must still pass before Part 11 can be marked production COMPLETE. Part 12+ remains out of scope.
