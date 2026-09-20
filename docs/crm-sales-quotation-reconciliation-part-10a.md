@@ -1,5 +1,7 @@
 # CRM Sales Quotation Reconciliation — Part 10A
 
+> **Part 10A historical boundary:** This document accurately records that Part 10A itself did not activate the final Send gate. Part 10B subsequently activated the shared universal Send invariant in production. Current status is maintained in `docs/crm-sales-final-quotation-send-gate-part-10b-release.md`.
+
 ## Status
 
 Part 10A is the **non-blocking preview phase** that connects Parts 1–9 to the existing quotation system. It adds quotation-context reconciliation and a future send-time snapshot builder, but it does **not** activate a new quotation-send blocker.
@@ -123,7 +125,7 @@ The panel shows Proposal Readiness, quoted package alignment, active Scope Condi
 
 ## Non-blocking release boundary
 
-Authoritative Part 10A result always keeps:
+At the Part 10A release checkpoint, the authoritative Part 10A result kept:
 
 `finalQuotationSendGateActive = false`
 
@@ -145,7 +147,7 @@ Part 10A implementation is **COMPLETE as the non-blocking reconciliation foundat
 - `quotation_sales_coverage` has RLS enabled and no direct `anon` or `authenticated` table privileges. Part 10A RPCs are not anonymously executable. Reviewer identity/time and target fingerprints remain server-controlled.
 - The checked-in coverage-review migration was corrected before merge so the authenticated `GRANT EXECUTE` signature exactly matches the production eight-argument RPC: `(uuid,text,uuid,text,text,text,uuid,text)`.
 - The reconciliation evaluator and snapshot builder are read-only with respect to quotation rows. Production verification confirmed no quotation-write path was added by either function.
-- `finalQuotationSendGateActive = false` remains authoritative in production. Part 10A does not activate the final quotation-send gate.
+- At the Part 10A release checkpoint, `finalQuotationSendGateActive = false` was authoritative in production. Part 10A itself does not activate the final quotation-send gate; Part 10B subsequently did so through its separately reviewed activation migration.
 - The dedicated acceptance/security suite contains exactly **169 checks** and is wired into both `npm test` and the normal production `npm run build` path.
 - Cloudflare successfully built/deployed the final feature head and subsequently reported a successful Workers build/deployment for merged `main` runtime SHA `2ee3e78bca39fdcadcc4948aac54ae62804c6e55`.
 - GitHub Actions `ProFox CRM CI` did not execute repository steps because the hosted runner failed before step allocation. A single controlled retry behaved the same. This is recorded as an external CI-runner infrastructure failure, **not** as a passing test run and **not** as an application test failure.
@@ -154,4 +156,4 @@ Part 10A implementation is **COMPLETE as the non-blocking reconciliation foundat
 
 ### Release boundary after verification
 
-Part 10A is complete and production-deployed as a **non-blocking** reconciliation/readiness layer. Part 10B remains intentionally deferred. No Part 10B send blocker, immutable final Sales-scope persistence point, Pipeline/payment/Won behavior, onboarding behavior, or Sales-to-Delivery handoff enforcement is activated by this release.
+Part 10A is complete and production-deployed as a **non-blocking** reconciliation/readiness layer. At this release checkpoint, Part 10B remained intentionally deferred. No Part 10B send blocker, immutable final Sales-scope persistence point, Pipeline/payment/Won behavior, onboarding behavior, or Sales-to-Delivery handoff enforcement was activated by the Part 10A release itself; Part 10B was activated later through its separate reviewed release.

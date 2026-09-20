@@ -1,5 +1,7 @@
 # CRM Sales SOP Part 10B.2 — Production Readiness Hardening
 
+> **Historical hardening checkpoint:** This document records the fail-closed prerequisites as they existed on 2026-09-16. They were subsequently satisfied through reviewed forward convergence, trusted CI, authenticated QA, PR #118 activation and final production verification. See the canonical Part 10B final release record for current production status.
+
 **Date:** 2026-09-16  
 **Starting main:** `e24a6e03660c0d2b35d8f0f930057e24237ee0fa`
 
@@ -87,4 +89,4 @@ The production Send gate must remain OFF until all of the following are genuinel
 
 No activation migration is created by this hardening.
 
-**PART 10B IMPLEMENTATION IS COMPLETE, BUT PRODUCTION ACTIVATION REMAINS BLOCKED. PART 11 MUST NOT BEGIN.**
+**HISTORICAL PART 10B.2 HARDENING CHECKPOINT: IMPLEMENTATION WAS COMPLETE, BUT ACTIVATION REMAINED BLOCKED AND PART 11 COULD NOT BEGIN AT THAT TIME.**

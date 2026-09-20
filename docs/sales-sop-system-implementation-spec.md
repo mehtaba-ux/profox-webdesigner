@@ -1508,11 +1508,11 @@ The reusable **Sales Reconciliation** panel is mounted in the existing `Quotatio
 
 ### Non-blocking send boundary
 
-Part 10A intentionally keeps:
+At the Part 10A release checkpoint, Part 10A intentionally kept:
 
 `finalQuotationSendGateActive = false`
 
-It does not modify `send_quotation_professional`, `update_quotation_atomic` Sent behavior, `protect_quotation_transition`, or `get_quotation_cpq_summary.readiness.readyToSend` to enforce Sales reconciliation. Final send enforcement and the minimal immutable persisted Sales-scope snapshot belong to Part 10B after authenticated production acceptance.
+Part 10A itself does not modify `send_quotation_professional`, `update_quotation_atomic` Sent behavior, `protect_quotation_transition`, or `get_quotation_cpq_summary.readiness.readyToSend` to enforce Sales reconciliation. Final send enforcement and the minimal immutable persisted Sales-scope snapshot were deliberately deferred to Part 10B and were subsequently activated after authenticated production acceptance.
 
 ### Migration lineage and verification record
 
@@ -1529,7 +1529,7 @@ Detailed implementation, production verification, release SHAs, security finding
 
 ## 38. Implemented Part 10B — Immutable Send-Time Sales Snapshot + Universal Quotation Send Gate
 
-Part 10B implementation is complete as a **production-compatible staged gate**. The existing `quotations` / `quotation_items` system remains canonical, Part 10A remains the authoritative Sales reconciliation engine, and no duplicate quotation, approval, product, Promise, Scope Condition, validation, readiness or handoff system was introduced.
+Part 10B is **implemented, production-activated and verified complete**. The existing `quotations` / `quotation_items` system remains canonical, Part 10A remains the authoritative Sales reconciliation engine, and no duplicate quotation, approval, product, Promise, Scope Condition, validation, readiness or handoff system was introduced.
 
 ### Universal Send invariant
 
@@ -1563,7 +1563,7 @@ The existing `QuotationSalesReconciliationPanel` was evolved in place. It shows 
 
 The assertion/capture primitives are internal server primitives: direct execution is revoked from `public`, `anon` and `authenticated` and retained for `service_role`. Snapshot fields are server-controlled even for Admin/atomic callers. No service-role secret is introduced into browser code.
 
-Production migration verification on 2026-09-16 showed:
+Historical pre-activation verification on 2026-09-16 showed:
 
 - policy key: `crm_quotation_sales_reconciliation_policy_v1`
 - policy version: `2`
@@ -1589,12 +1589,24 @@ The Part 10B production changes were applied additively through:
 
 Repository migration files are maintained under `supabase/migrations/` and the dedicated Part 10B contract/security suite is wired into both `npm test` and `npm run build`.
 
-### Activation boundary
+### Final production activation and closure
 
-The implementation is intentionally staged in production with `finalQuotationSendGateActive=false`. The Part 10B source instruction requires the compatible frontend to be successfully deployed and the blocker-resolution path to be verified in an authenticated production browser before activation. During the implementation run, GitHub Actions repeatedly failed before executing any repository step (`steps=null`), and the connected Cloudflare build check also failed without usable application build output. Authenticated production browser verification therefore was not proven.
+The earlier staged `finalQuotationSendGateActive=false` state and its CI/deployment blockers are preserved as dated rollout history in the Part 10B release records. Those prerequisites were subsequently satisfied: PR #117 and PR #118 merged, authenticated Seller/Admin production remediation QA passed, trusted final-main CI run `35450540745` passed on a real runner, and production deployment run `35450651806` passed for final main `d2b6e2a54c7e0edbad11c55127d5e4dd42311041`.
 
-Required current activation status:
+Activation migration `20260919142410_activate_part10b_final_quotation_send_gate` was applied through the canonical migration runner with checksum `77712b2f7c2918684e39971c37311f7228c5377b817e9d0df23084edd1bc236c`. Current production is:
 
-**PART 10B ACTIVATION BLOCKED — PRODUCTION RESOLUTION UI NOT VERIFIED.**
+- `finalQuotationSendGateActive=true`;
+- `policyVersion=2`;
+- `snapshotSchemaVersion=2`;
+- one shared server-side Sales Send assertion remains authoritative;
+- the universal Sent-transition invariant executes before Admin and atomic-RPC early returns;
+- immutable snapshot capture remains server-built and occurs only on a successful Send transition;
+- existing quotation approval remains the separate quote-specific commercial authority;
+- Part 10A reconciliation remains authoritative;
+- historical Sent quotations were not backfilled;
+- `create_quotation_revision(...)` remains the correction path;
+- no fake production data was created and no real customer quotation was sent for QA.
 
-Do not flip `finalQuotationSendGateActive=true` until compatible deployment and authenticated production resolution UI verification succeed. Detailed implementation, security, production verification and rollout evidence are maintained in `docs/crm-sales-final-quotation-send-gate-part-10b.md`.
+**PART 10B: COMPLETE. PRODUCTION SEND GATE: ACTIVE. PART 11: NOT STARTED.**
+
+Detailed implementation, security, production verification, historical rollout evidence and final activation evidence are maintained in `docs/crm-sales-final-quotation-send-gate-part-10b.md` and `docs/crm-sales-final-quotation-send-gate-part-10b-release.md`.

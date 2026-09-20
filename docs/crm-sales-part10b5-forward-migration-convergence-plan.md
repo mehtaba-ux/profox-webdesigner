@@ -1,5 +1,7 @@
 # CRM Sales Part 10B.5 — Forward-only migration convergence plan
 
+> **Historical design record:** This document records the 2026-09-18 pre-implementation design checkpoint. The proposed forward convergence was subsequently implemented and verified in PR #117, production lineage reached 0 pending/0 blocked, and the final Send gate was activated by PR #118. See the canonical Part 10B final release record for current production status.
+
 Audit date: 2026-09-18
 
 Status: **DESIGN COMPLETE / IMPLEMENTATION NOT STARTED**
@@ -338,4 +340,4 @@ This recommendation does not make PR #117 merge-ready today. CI runner recovery 
 22. Recommendation: **IMPLEMENT FORWARD CONVERGENCE**.
 23. Exact next reviewed implementation step: after the owner confirms GitHub billing is fixed and one normal CI run actually executes, refetch latest main and create a separately reviewed implementation commit containing the four proposed forward migrations, exact supersession registry/runner extension, shared postcondition verifier, and tests—without applying production migrations or activating Part 10B.
 
-PART 10B.5 IS A FORWARD-CONVERGENCE DESIGN ONLY. NO HISTORICAL MIGRATION WAS REPLAYED OR FALSELY MARKED APPLIED, THE FINAL SEND GATE REMAINS OFF, PR #117 REMAINS DRAFT, AND PART 11 HAS NOT STARTED.
+HISTORICAL PART 10B.5 DESIGN CHECKPOINT: NO HISTORICAL MIGRATION WAS REPLAYED OR FALSELY MARKED APPLIED; THE FINAL SEND GATE REMAINED OFF, PR #117 REMAINED DRAFT, AND PART 11 HAD NOT STARTED AT THAT TIME.
