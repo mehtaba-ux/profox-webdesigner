@@ -1837,7 +1837,7 @@ Follow-up settlement-evidence closure:
 - Part 12 production verifier: `0 failure(s)`
 - business inventory unchanged: payments `5`, verified `1`, Awaiting `1`, Won `1`, clients `2`, projects `1`, onboardings `1`, commissions `1`, activities `13`
 
-**Part 12 is COMPLETE. Part 13 implementation is in release verification. Part 14 has not started.**
+**Part 12 is COMPLETE. Part 13 is COMPLETE. Part 14 has not started.**
 
 
 ---
@@ -1866,4 +1866,34 @@ Focused verification includes an exact 85-case specification matrix, release-rea
 
 Detailed architecture and release evidence: docs/crm-sales-delivery-handoff-part-13.md
 
-**Part 13 release closure is pending trusted PR/main CI and production deployment evidence. Part 14 has not started.**
+### Part 13 production closure
+
+Part 13 completed the full trusted release chain:
+
+- implementation PR #130; exact final head 69a00dc33f964d924d528e7853ab3113e69cb801
+- trusted PR CI #907 / 35514434198: PASS
+- implementation merge SHA 6e0c96304211e28c98d3f94277abff1dcb83ca47
+- trusted merged-main CI #908 / 35514571045: PASS
+- verifier-only production-QA heading correction PR #131; exact head 8eef062593d6d831d253126919bcb35cf748ef52
+- trusted correction PR CI #909 / 35515013368: PASS
+- final runtime/main SHA b3effbbbce97225bfa5145a1c60538a3037d1d82
+- trusted final merged-main CI #910 / 35515772813: PASS
+- final production deploy #367 / 35515862068: PASS
+- Worker version ceaacc8a-c6b3-4152-a740-14b17f14046f
+- core migration checksum fd9427c22e1318c479e45cbc30494004cabe4d7a014736f7ebb1c3672a2abe5e
+- lifecycle visibility migration checksum 72f8edcdc0f29394f761caa4d1fdffc21723f0b2d4486e588c8cf028c95ebca0
+- production ledger 694; latest 20260920181100; PENDING_NEW 0; BLOCKED_UNRESOLVED 0
+- Part 10B gate remains ACTIVE at policy/schema 2/2
+- exact 85-case Part 13 specification matrix retained; focused Part 13 suite 122/122 PASS
+- Part 13 production release verifier: 0 failure(s)
+- authenticated Seller/Admin production QA: PASS
+- Seller mobile/keyboard validation: PASS
+- real production Sales Handover Project remained Not Submitted/BLOCKED, PM unassigned, both handoff tasks To Do and lifecycle attempts 0
+- no fake production business/handoff record and no real submit/accept/return/PM assignment/stage advance solely for QA
+- final business inventory remains payments 5, verified 1, Awaiting Advance 1, Won 1, clients 2, projects 1, onboardings 1, commissions 1, activities 13
+
+Detailed closure evidence is maintained in docs/crm-sales-delivery-handoff-part-13.md.
+
+**PART 13 — SALES-TO-DELIVERY HANDOFF ACCEPTANCE / RETURN / RESUBMISSION: COMPLETE.**
+
+**Part 14 has not started.**
