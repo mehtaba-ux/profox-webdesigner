@@ -136,6 +136,14 @@ export interface SalesHandoffBrief {
   sourceLinks: Record<string, string>;
 }
 
+export interface SalesRequirementsRestoration {
+  projectId: string;
+  opportunityId: string;
+  requirements: string;
+  alreadyCaptured: boolean;
+  restored: boolean;
+}
+
 export interface SalesHandoffSubmission {
   projectId: string;
   attemptId?: string;
@@ -187,6 +195,16 @@ export const salesHandoffService = {
     if (error) throw error;
     if (!data) throw new Error('Sales handoff brief is unavailable.');
     return data as SalesHandoffBrief;
+  },
+
+  async restoreMissingRequirements(projectId: string, requirements: string): Promise<SalesRequirementsRestoration> {
+    const { data, error } = await supabase.rpc('record_missing_sales_project_requirements', {
+      p_project_id: projectId,
+      p_requirements: requirements
+    });
+    if (error) throw error;
+    if (!data) throw new Error('Missing Sales requirements could not be restored.');
+    return data as SalesRequirementsRestoration;
   },
 
   async submit(projectId: string, notes: string): Promise<SalesHandoffSubmission> {
