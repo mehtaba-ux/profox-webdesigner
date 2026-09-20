@@ -122,7 +122,7 @@ Part 11 is implemented on this branch by extending the canonical systems only.
 
 - version: `20260920123000`
 - name: `crm_sales_negotiation_next_action_part_11`
-- SHA-256: `334d085aee38c55c1e33fc1387d866a44ea567f30e80f4057ae67912593b8ff3`
+- SHA-256: `334194a102719370909a8701d80c794773553e1902fd53ae7cbc41a2edb9629d`
 
 The migration is nullable/backward-compatible and does not backfill decision state, objections, waiting state or next actions for historical production rows.
 
@@ -148,8 +148,33 @@ No new top-level Negotiation application, task system, communication system, app
 - command: `npm run test:crm-part11`
 - included in repository-wide `npm test`
 
-The suite covers source reuse, historical compatibility, decision semantics, no silence inference, same-opportunity next-action selection, server-derived actor/time, transition authority, quotation acceptance/payment boundaries, Part 10B preservation, meaningful-interaction derivation, Pipeline/UI integration, security grants and absence of duplicate systems.
+The focused suite covers source reuse, historical compatibility, decision semantics, no silence inference, same-opportunity next-action selection, server-derived actor/time, transition authority, quotation acceptance/payment boundaries, Part 10B preservation, meaningful-interaction derivation, Pipeline/UI integration, security grants and absence of duplicate systems.
+
+The executable source-spec matrix contains exactly 60 named Part 11 cases covering the SOP's Negotiation entry, activity lifecycle, decision/commercial, UI and accessibility requirements.
+
+Production verification is wired through `production:verify-part11`, which runs in the canonical production deployment after `migrations:apply` and again during final production verification.
+
+## Trusted CI evidence
+
+Exact reviewed implementation head before evidence-only documentation update:
+
+- `ffa847a6e9b158ae668f4c245e6912c4bcdde594`
+- GitHub Actions workflow: `ProFox CRM CI`
+- run: `#875 / 35492348146`
+- runner allocated and Checkout executed
+- TypeScript check: PASS
+- migration integrity: PASS
+- full `npm test`: PASS
+- Part 10A regression: PASS through `npm test`
+- Part 10B regression: PASS through `npm test`
+- Part 11 focused + exact 60-case matrix: PASS through `npm test`
+- Chromium/browser launch-readiness: PASS
+- verifier syntax: PASS
+- production dependency audit: PASS
+- production build: PASS
+
+Because this evidence update changes the PR head, trusted CI must pass again on the final documentation-inclusive head before production preflight.
 
 ## Release status
 
-Repository implementation is ready for trusted CI review. Production migration/deployment and authenticated non-destructive Seller/Admin QA must still pass before Part 11 can be marked production COMPLETE. Part 12+ remains out of scope.
+Repository implementation is complete and awaiting final exact-head trusted CI plus production preflight/migration/deployment/authenticated non-destructive Seller/Admin QA. Part 12+ remains out of scope.
