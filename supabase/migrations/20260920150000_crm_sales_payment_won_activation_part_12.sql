@@ -41,6 +41,16 @@ begin
     return new;
   end if;
 
+  if tg_op='INSERT' then
+    if new.status in ('Verified','Partially Paid')
+       or new.verified_at is not null
+       or new.verified_by is not null
+       or coalesce(new.amount_paid,0)<>0 then
+      raise exception 'Payment settlement evidence must be created through the protected verification workflow.';
+    end if;
+    return new;
+  end if;
+
   if new.status in ('Verified','Partially Paid')
      and new.status is distinct from old.status then
     raise exception 'Payment verification is restricted to Admin or trusted gateway settlement through the protected verification workflow.';
@@ -56,6 +66,11 @@ begin
 end;
 $part12$;
 
+drop trigger if exists trg_protect_payment_verification_fields on public.payments;
+create trigger trg_protect_payment_verification_fields
+before insert or update on public.payments
+for each row execute function public.protect_payment_verification_fields();
+
 create or replace function public.protect_opportunity_won_transition()
 returns trigger
 language plpgsql
@@ -65,6 +80,28 @@ as $part12$
 declare
   v_verified_won text:=coalesce(current_setting('profox.payment_verified_won_transition',true),'');
 begin
+  if tg_op='INSERT' then
+    if new.stage='Awaiting Advance Payment' then
+      raise exception 'Customer acceptance is required before moving this opportunity to Awaiting Advance Payment.';
+    end if;
+    if new.status='Won' or new.stage='Won' then
+      raise exception 'Won is created automatically when a qualifying payment is verified.';
+    end if;
+    return new;
+  end if;
+
+  if new.stage='Awaiting Advance Payment'
+     and old.stage is distinct from new.stage
+     and not exists (
+       select 1
+       from public.quotations q
+       where q.opportunity_id=new.id
+         and q.status='Accepted'
+         and q.accepted_at is not null
+     ) then
+    raise exception 'Customer acceptance is required before moving this opportunity to Awaiting Advance Payment.';
+  end if;
+
   if (new.status='Won' or new.stage='Won')
      and (old.status is distinct from new.status or old.stage is distinct from new.stage) then
     if v_verified_won<>'1' then
@@ -88,6 +125,11 @@ begin
   return new;
 end;
 $part12$;
+
+drop trigger if exists trg_protect_opportunity_won_transition on public.crm_opportunities;
+create trigger trg_protect_opportunity_won_transition
+before insert or update on public.crm_opportunities
+for each row execute function public.protect_opportunity_won_transition();
 
 create or replace function public.sync_quotation_payment_plan(p_quotation_id uuid)
 returns jsonb
