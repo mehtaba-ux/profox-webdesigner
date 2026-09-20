@@ -1712,4 +1712,26 @@ Focused regression/security coverage is maintained in:
 
 Detailed architecture, source-of-truth and release evidence is maintained in `docs/crm-sales-negotiation-next-action-part-11.md`.
 
-Production release completion requires trusted exact-head CI, canonical migration/deployment, non-destructive authenticated Seller/Admin production QA and post-deployment verification. No Part 12+ work may begin before that release closure.
+### Part 11 production closure
+
+Part 11 is **COMPLETE** in production.
+
+Final evidence:
+
+- merged-main SHA: `e54d022678a1eea473d61dd22990557389eb1d7d`
+- trusted merged-main CI: ProFox CRM CI `#884 / 35494715173` — PASS
+- final production deploy: Deploy ProFox Production `#360 / 35494800711` — PASS
+- Cloudflare Worker version: `cc3681a8-e92b-4600-9671-43b7ed9abccc`
+- Part 10B release verifier: `0 failure(s), 0 warning(s)`
+- Part 11 release verifier: `0 failure(s)`
+- migration lineage: `PENDING_NEW 0`, `BLOCKED_UNRESOLVED 0`
+- authenticated Seller production UI: PASS
+- authenticated Admin production UI: PASS
+- Seller mobile + keyboard validation: PASS
+- canonical Admin Quotation Approvals: PASS
+- CRM business-data before/after equality: PASS
+- final production truth after QA: opportunities `2`, activities `13`, Negotiation `0`, Part 11 decision-state rows `0`, Part 11-created activities `0`
+
+No fake CRM customer/deal records were created to manufacture release evidence.
+
+Part 12+ remains out of scope and has not started.
