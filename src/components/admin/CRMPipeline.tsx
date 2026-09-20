@@ -214,7 +214,7 @@ export default function CRMPipeline({ onNavigate }: { onNavigate?: (tab: string)
         </div>
       </div>
 
-      {error && <div className="flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-700"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /><div><div className="font-black">Stage change blocked</div><div className="mt-0.5 text-xs font-medium">{error}</div></div></div>}
+      {error && <div id="pipeline-operation-error" role="alert" className="flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-700"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /><div><div className="font-black">CRM action blocked</div><div className="mt-0.5 text-xs font-medium">{error}</div></div></div>}
 
       <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
         <Filter className="h-4 w-4 text-slate-400" />
@@ -409,25 +409,25 @@ function OpportunityDrawer({ opportunity, stages, onClose, onUpdate, onNavigate 
 
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             <label className="text-[9px] font-black uppercase tracking-wide text-slate-500">Decision status
-              <select value={decisionStatus} onChange={e => setDecisionStatus(e.target.value as NegotiationDecisionStatus | '')} className="mt-1.5 min-h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold normal-case">
+              <select aria-describedby={error ? 'pipeline-operation-error' : undefined} value={decisionStatus} onChange={e => setDecisionStatus(e.target.value as NegotiationDecisionStatus | '')} className="mt-1.5 min-h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold normal-case">
                 <option value="">Not recorded</option>
                 {DECISION_OPTIONS.map(value => <option key={value} value={value}>{enumLabel(value)}</option>)}
               </select>
             </label>
             <label className="text-[9px] font-black uppercase tracking-wide text-slate-500">Waiting on
-              <select value={waitingOn} onChange={e => setWaitingOn(e.target.value as NegotiationWaitingOn | '')} className="mt-1.5 min-h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold normal-case">
+              <select aria-describedby={error ? 'pipeline-operation-error' : undefined} value={waitingOn} onChange={e => setWaitingOn(e.target.value as NegotiationWaitingOn | '')} className="mt-1.5 min-h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold normal-case">
                 <option value="">Not applicable / not recorded</option>
                 {WAITING_OPTIONS.map(value => <option key={value} value={value}>{enumLabel(value)}</option>)}
               </select>
             </label>
             <label className="text-[9px] font-black uppercase tracking-wide text-slate-500">Primary objection
-              <select value={objectionCategory} onChange={e => setObjectionCategory(e.target.value as NegotiationObjectionCategory | '')} className="mt-1.5 min-h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold normal-case">
+              <select aria-describedby={error ? 'pipeline-operation-error' : undefined} value={objectionCategory} onChange={e => setObjectionCategory(e.target.value as NegotiationObjectionCategory | '')} className="mt-1.5 min-h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold normal-case">
                 <option value="">None known</option>
                 {OBJECTION_OPTIONS.map(value => <option key={value} value={value}>{enumLabel(value)}</option>)}
               </select>
             </label>
             <label className="text-[9px] font-black uppercase tracking-wide text-slate-500">Expected decision date
-              <input type="datetime-local" value={decisionExpectedAt} onChange={e => setDecisionExpectedAt(e.target.value)} className="mt-1.5 min-h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold normal-case" />
+              <input aria-describedby={error ? 'pipeline-operation-error' : undefined} type="datetime-local" value={decisionExpectedAt} onChange={e => setDecisionExpectedAt(e.target.value)} className="mt-1.5 min-h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold normal-case" />
             </label>
           </div>
           <div className="mt-3 flex justify-end"><button disabled={loading || !decisionStatus} onClick={() => void saveDecisionState()} className="min-h-10 rounded-xl bg-[#000080] px-4 text-[10px] font-black text-white disabled:opacity-40">Save truthful decision state</button></div>
@@ -456,10 +456,10 @@ function OpportunityDrawer({ opportunity, stages, onClose, onUpdate, onNavigate 
 
           <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_210px_auto]">
             <label className="text-[9px] font-black uppercase tracking-wide text-slate-500">Next action
-              <input value={nextActionSubject} onChange={e => setNextActionSubject(e.target.value)} className="mt-1.5 min-h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold normal-case" placeholder="Follow up on quotation decision" />
+              <input aria-describedby={error ? 'pipeline-operation-error' : undefined} value={nextActionSubject} onChange={e => setNextActionSubject(e.target.value)} className="mt-1.5 min-h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold normal-case" placeholder="Follow up on quotation decision" />
             </label>
             <label className="text-[9px] font-black uppercase tracking-wide text-slate-500">Due
-              <input type="datetime-local" value={nextActionDueAt} onChange={e => setNextActionDueAt(e.target.value)} className="mt-1.5 min-h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold normal-case" />
+              <input aria-describedby={error ? 'pipeline-operation-error' : undefined} type="datetime-local" value={nextActionDueAt} onChange={e => setNextActionDueAt(e.target.value)} className="mt-1.5 min-h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold normal-case" />
             </label>
             <button disabled={loading || !nextActionSubject.trim() || !nextActionDueAt} onClick={() => void scheduleNextAction()} className="min-h-10 self-end rounded-xl bg-slate-900 px-4 text-[10px] font-black text-white disabled:opacity-40">Schedule action</button>
           </div>
