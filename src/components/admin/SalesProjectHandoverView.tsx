@@ -449,7 +449,7 @@ export default function SalesProjectHandoverView() {
                   )}
                 </Section>
 
-                <Section title="Seller Final Notes" subtitle="Additional Sales commitments / exceptions — these notes supplement canonical facts; they cannot override Requirements, quotation, payment, onboarding, Validations, Promises or Scope Conditions. Leave blank when there is nothing additional. Sales confirms requirements before the quotation, and after Delivery acceptance production starts directly with Content.">
+                <Section title="Seller Final Notes" subtitle="Additional Sales commitments / exceptions — these notes supplement canonical facts; they cannot override Requirements, quotation, payment, onboarding, Validations, Promises or Scope Conditions. Requirements and client onboarding are not repeated in production. Leave blank when there is nothing additional. Sales confirms requirements before the quotation, and after Delivery acceptance production starts directly with Content.">
                   <textarea
                     value={notes}
                     onChange={event => { setNotes(event.target.value); setError(''); setSuccess(''); }}
