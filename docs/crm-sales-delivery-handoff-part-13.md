@@ -2,7 +2,7 @@
 
 ## Status
 
-Implementation is complete on the Part 13 branch. Production closure evidence is recorded only after trusted PR CI, merged-main CI, checksum-verified migrations, deployment, read-only release verification and non-destructive authenticated QA all pass.
+Part 13 is **COMPLETE** in production. Trusted PR/main CI, checksum-verified migrations, production deployment, read-only release verification and non-destructive authenticated Seller/Admin QA all pass.
 
 Part 14 has not started.
 
@@ -94,4 +94,53 @@ The QA script refuses to proceed if the real Project has legitimately changed in
 
 ## Production closure
 
-Pending trusted PR/main CI, production migrations/deploy, authenticated QA and final integrity verification. This section will be updated with immutable run IDs, merge SHA, migration checksums and final production counts before Part 13 is marked COMPLETE.
+Part 13 is **COMPLETE** in production.
+
+Final implementation and release evidence:
+
+- implementation PR: #130
+- exact implementation PR head: 69a00dc33f964d924d528e7853ab3113e69cb801
+- trusted final implementation PR CI: ProFox CRM CI #907 / 35514434198 — PASS
+- implementation merge SHA: 6e0c96304211e28c98d3f94277abff1dcb83ca47
+- trusted merged-main implementation CI: ProFox CRM CI #908 / 35514571045 — PASS
+- initial production deploy: Deploy ProFox Production #366 / 35514680043
+- initial deploy applied and verified both Part 13 migrations, passed the Part 13 release verifier, production build, Worker deploy and browser smoke, then stopped only because the read-only authenticated QA expected the stale draft heading "Confirmed Structured Requirements" while the approved UI correctly retained "Confirmed Sales Requirements"
+- verifier-only correction PR: #131
+- exact verifier-fix PR head: 8eef062593d6d831d253126919bcb35cf748ef52
+- trusted verifier-fix PR CI: ProFox CRM CI #909 / 35515013368 — PASS
+- final runtime/main SHA: b3effbbbce97225bfa5145a1c60538a3037d1d82
+- trusted final merged-main CI: ProFox CRM CI #910 / 35515772813 — PASS
+- final canonical production deploy: Deploy ProFox Production #367 / 35515862068 — PASS
+- Cloudflare Worker version: ceaacc8a-c6b3-4152-a740-14b17f14046f
+- core migration: 20260920181000_crm_sales_delivery_handoff_part_13.sql
+- core migration SHA-256: fd9427c22e1318c479e45cbc30494004cabe4d7a014736f7ebb1c3672a2abe5e
+- lifecycle visibility migration: 20260920181100_crm_sales_delivery_handoff_lifecycle_visibility_part_13.sql
+- lifecycle visibility SHA-256: 72f8edcdc0f29394f761caa4d1fdffc21723f0b2d4486e588c8cf028c95ebca0
+- production custom migration ledger: 694 rows; latest version 20260920181100
+- current migration lineage: APPLIED_EXACT 128, SUPERSEDED_BY_FORWARD_RECONCILIATION 5, PENDING_NEW 0, BLOCKED_UNRESOLVED 0
+- Part 10B quotation Send gate: ACTIVE; policyVersion 2; snapshotSchemaVersion 2
+- Part 13 focused suite: 122/122 PASS, including the exact 85-case specification matrix and production-QA safety contract
+- security suite: 928/928 PASS
+- Part 10A regression: 228/228 PASS
+- Part 10B regression: 303/303 PASS
+- Part 11 regression: 94/94 PASS
+- Part 12 regression: 113/113 PASS
+- TypeScript, migration integrity, browser launch-readiness, verifier syntax, dependency audit and production build: PASS
+- Part 13 release readiness: 0 failure(s)
+- authenticated Seller Part 13 QA: PASS — real handoff rendered Not Submitted/BLOCKED, canonical sections rendered, PM remained unassigned, no Accept/Return authority, no mutation, mobile/keyboard PASS
+- authenticated Admin Part 13 QA: PASS — authoritative review route rendered truthful unassigned-PM state, no Accept/Return before submission, no Seller impersonation and no mutation
+- production handoff immutability: projects 1; Sales Handover projects 1; lifecycle attempts 0; Seller task To Do; PM review task To Do; PM assigned false
+- lifecycle integrity: duplicate pending attempts 0; reviewed rows without evidence 0; invalid source evidence 0; review task Done without acceptance 0
+- RLS: enabled on project_sales_handover_attempts with one authenticated staff SELECT policy and zero public/anon policies
+- duplicate prohibited handoff truth tables: 0
+- Part 12 settlement-evidence guard remains preserved for provider_payment_id and paid_at
+- business inventory unchanged: payments 5; verified payments 1; Awaiting Advance Payment 1; Won 1; clients 2; projects 1; onboardings 1; commissions 1; CRM activities 13
+- no fake Client, Opportunity, Payment, Project, Onboarding or Handoff record was created for QA
+- no real handoff was submitted, accepted, returned, assigned a fake PM or advanced solely for QA
+- the existing real Sales Handover Project remains Active / Sales Handover, PM unassigned, Seller handoff task To Do, PM review task To Do, sales_handover_notes null and lifecycle attempts 0
+
+General production readiness reports 0 failures and 4 pre-existing broader-environment warnings; those warnings are outside Part 13 scope and were not changed.
+
+**PART 13 — SALES-TO-DELIVERY HANDOFF ACCEPTANCE / RETURN / RESUBMISSION: COMPLETE.**
+
+**Part 14 has not started.**
