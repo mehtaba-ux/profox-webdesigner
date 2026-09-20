@@ -1734,4 +1734,89 @@ Final evidence:
 
 No fake CRM customer/deal records were created to manufacture release evidence.
 
-Part 12+ remains out of scope and has not started.
+Part 12 is implemented and closed below. Part 13+ remains out of scope and has not started.
+
+
+---
+
+## 40. Part 12 — Awaiting Advance Payment + Verified Payment → Won + Sale Activation Integrity
+
+Part 12 extends the existing Payment, Quotation, CRM Opportunity, Activity, Client, Commission, Project and Client Onboarding architecture. It does not create a second commercial activation system.
+
+### Canonical authority
+
+- Customer acceptance remains canonical quotation truth: `status='Accepted'` plus non-null `accepted_at`.
+- Payment truth remains `payments`.
+- Payment verification remains Admin/trusted-gateway controlled through `verify_payment_atomic(...)`.
+- Won is produced only inside qualifying verified-payment processing.
+- Payment Follow-Up remains canonical `crm_activities`.
+- Client remains `clients`.
+- Commission remains `commission_entries`.
+- Delivery activation remains `projects`.
+- Client onboarding remains `client_onboardings`.
+
+### Integrity hardening
+
+Part 12 protects direct Payment INSERT/UPDATE settlement evidence, prevents direct/manual Won, requires canonical acceptance before Awaiting Advance Payment, rejects cross-opportunity/cross-client activation conflicts, and preserves existing Project/Onboarding/Commission idempotency.
+
+Partial payment remains `Partially Paid` and cannot create Won.
+
+Historical Won remains historical truth; no Un-Won model is introduced.
+
+### Derived activation model
+
+No business table is added. The bounded staff RPCs `crm_get_sale_activation_state(uuid)` and `crm_get_sale_activation_queue()` derive accepted quotation, payment, outstanding amount, due/overdue state, external customer wait, Payment Follow-Up, exact next action, blockers, Client, Project, Onboarding and Commission state.
+
+Seller access reuses canonical Sales CRM readiness and salesperson ownership. Team/Admin visibility reuses existing authority helpers.
+
+### UI
+
+Existing CRM Pipeline, opportunity drawer, Seller Command Center and Payments Manager surface the derived activation truth.
+
+Seller has no Verify Payment control and no enabled manual Won action.
+
+Admin verification remains in the canonical Payments workspace.
+
+### Migration
+
+- `20260920150000_crm_sales_payment_won_activation_part_12.sql`
+- SHA-256: `ee75cd5c55250a278e2187a945cfa64f732343da08b6ecc674fb945c63375fcb`
+
+### Tests / release gates
+
+- focused Part 12 security tests
+- exact 87-case SOP matrix
+- authenticated production-QA safety contract
+- `npm run test:crm-part12`
+- `npm run production:verify-part12`
+- `npm run production:verify-part12-ui`
+- Part 12 authenticated QA is chained into the canonical production authenticated-QA deploy gate
+
+### Part 12 production closure
+
+Part 12 is **COMPLETE** in production.
+
+Final evidence:
+- implementation PR: `#125`
+- exact PR head: `9dde884078882dc51d97b0d62e3b9c0d9a7fca08`
+- trusted PR CI: ProFox CRM CI `#890 / 35499841152` — PASS
+- merged-main SHA: `a15c4e87e9630d68e9f9a8d3183dc82051260214`
+- trusted merged-main CI: ProFox CRM CI `#891 / 35499950557` — PASS
+- production deploy: Deploy ProFox Production `#362 / 35500046940` — PASS
+- Cloudflare Worker version: `0df9a0a2-6f07-447f-a18f-9d7316c3db76`
+- Part 10B verifier: `0 failure(s), 0 warning(s)`
+- Part 11 verifier: `0 failure(s)`
+- Part 12 verifier: `0 failure(s)`
+- migration lineage: `PENDING_NEW 0`, `BLOCKED_UNRESOLVED 0`
+- authenticated Seller Part 12 QA: PASS
+- authenticated Admin Part 12 QA: PASS
+- mobile/keyboard Seller QA: PASS
+- business-data immutability: PASS
+- production activation integrity: PASS
+- final production counts: payments `5`, verified `1`, Awaiting Advance `1`, Won `1`, clients `2`, projects `1`, onboardings `1`, commissions `1`, activities `13`
+
+No fake production customer/deal/payment/project/onboarding records were created for Part 12 release evidence, and no real payment was verified merely for QA.
+
+Detailed release evidence is maintained in `docs/crm-sales-payment-won-activation-part-12.md`.
+
+**Part 13 has not started.**
