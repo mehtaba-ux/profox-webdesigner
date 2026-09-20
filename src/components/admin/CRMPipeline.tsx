@@ -467,7 +467,7 @@ function OpportunityDrawer({ opportunity, stages, onClose, onUpdate, onNavigate 
           <div className="mt-4 rounded-xl border border-blue-100 bg-blue-50 p-3 text-[10px] leading-5 text-blue-900">
             Commercial exceptions are not approved here. Use the existing Sales Validation or quotation approval/revision workflow. Customer acceptance remains quotation authority, and Part 10B protects every revised Send.
           </div>
-        </section>
+        </section>}
 
         <section className="mt-6"><h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Pipeline controls</h3><div className="mt-3 flex flex-wrap gap-2">{stages.map(stage => <button key={stage.name} disabled={loading || stage.name === opportunity.stage || stage.name === 'Won'} onClick={() => void transition(stage.name)} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-[10px] font-black text-slate-700 disabled:cursor-not-allowed disabled:opacity-40 hover:border-[#000080]/30">{stage.name}</button>)}</div><p className="mt-2 text-[10px] font-semibold text-slate-400"><ShieldCheck className="mr-1 inline h-3 w-3" />Won remains controlled by verified payment. Buttons and drag-and-drop cannot bypass it.</p></section>
 
