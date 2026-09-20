@@ -1610,3 +1610,106 @@ Activation migration `20260919142410_activate_part10b_final_quotation_send_gate`
 **PART 10B: COMPLETE. PRODUCTION SEND GATE: ACTIVE. PART 11: NOT STARTED.**
 
 Detailed implementation, security, production verification, historical rollout evidence and final activation evidence are maintained in `docs/crm-sales-final-quotation-send-gate-part-10b.md` and `docs/crm-sales-final-quotation-send-gate-part-10b-release.md`.
+
+
+---
+
+## 39. Part 11 — Negotiation / Decision Pending + Next-Action Discipline
+
+Part 11 extends the existing ProFox CRM, Pipeline, activity execution, communication, quotation and approval architecture. It does not create a second negotiation application, follow-up/task system, customer timeline, quotation workflow or commercial approval authority.
+
+### Canonical current-state model
+
+- Current opportunity/lifecycle state remains `crm_opportunities`.
+- Current next action remains the earliest valid `Scheduled` `crm_activities` row explicitly linked to the opportunity.
+- Next-action owner remains `crm_activities.assigned_to`.
+- Next-action due date remains `crm_activities.due_at`.
+- Outcomes, completion, rescheduling and cancellation reuse the existing CRM Activity lifecycle fields and trusted activity RPCs.
+- Audit history remains `crm_lead_events` through `crm_write_lead_event(...)`.
+- Last meaningful customer interaction is derived from existing customer-facing communication/activity/meeting evidence; it is not stored as manually editable duplicate truth.
+- Customer communication remains the existing unified communication architecture.
+- Customer acceptance remains the canonical quotation/customer-decision workflow.
+- Payment and Won authority are unchanged.
+
+### Minimal Negotiation state
+
+The existing opportunity record is extended only with the structured current-state facts that were genuinely missing:
+
+- `decision_status`
+- `primary_objection_category`
+- `waiting_on`
+- `decision_expected_at`
+- server-derived decision audit actor/time
+
+Existing rows are not backfilled with guessed decision state, objections, waiting state or next actions. Historical null Part 11 state remains truthful.
+
+Controlled decision semantics distinguish states such as awaiting client response, client reviewing, questions/objections, revision requested, commercial review required, internal client approval, confirmed decision date and client pause. Silence is not automatically treated as a price/budget objection.
+
+### Server-authoritative Negotiation gate
+
+The existing `crm_transition_opportunity(...)` remains the only Pipeline transition authority. Entry into `Negotiation / Decision Pending` additionally requires:
+
+1. a canonical sent quotation context;
+2. structured decision state;
+3. objection category only where the selected status requires it;
+4. an opportunity-linked `Scheduled` CRM Activity;
+5. an authorized assigned owner;
+6. a meaningful action subject;
+7. a future due date.
+
+Forward/backward transition permissions continue to come from canonical Pipeline configuration. Completed, Cancelled, unrelated Lead or cross-opportunity activities cannot satisfy the Negotiation gate. Precise blocker messages tell the Seller what must be resolved.
+
+### Activity discipline and interaction truth
+
+Part 11 adds no new activity type because the existing configuration already includes `Quotation Follow-Up` and the activity lifecycle already supports outcomes, original due date, reschedule count/reason/actor, cancellation reason and next-activity lineage.
+
+A narrow opportunity-next-action scheduler creates the action in `crm_activities` with the opportunity owner and canonical activity configuration. Completion/reschedule/cancel remain with the existing Activity Center and trusted RPCs.
+
+The most recent meaningful customer interaction is derived from canonical events and completed customer-facing work. Internal notes, automated internal/customer reminders, page views, stage-only changes and failed contact outcomes such as No Answer/No Response/Bounced/Voicemail are not treated as meaningful customer interaction.
+
+### Pipeline and workspace integration
+
+The existing `crm_get_pipeline_command_center()` is extended rather than replaced. It exposes:
+
+- derived last meaningful customer interaction;
+- deterministic current next action;
+- next-action owner;
+- due/overdue state;
+- latest completed activity outcome;
+- current decision status;
+- objection/waiting state;
+- Negotiation attention reason.
+
+The existing Pipeline opportunity drawer/card receives a contextual **Decision & Next Action** section for Quotation Sent and Negotiation. It surfaces truthful decision state, last meaningful interaction, current next action, owner/due/overdue state and routes activity completion/rescheduling/cancellation back to the canonical Activity Center.
+
+Seller guidance reuses `SellerGuidanceHelp` and reinforces that Negotiation is not a parking stage, silence is not an invented objection, external waiting still needs a re-check, commercial exceptions require existing approval, customer acceptance remains quotation truth and Won remains payment controlled.
+
+### Commercial and lifecycle boundaries
+
+Part 11 does not approve discounts, payment terms, scope changes, guarantees or delivery exceptions. Specialist/commercial feasibility continues through `crm_sales_validations`; quote-specific commercial approval continues through the existing quotation approval/revision workflow. Revised quotations still flow through Part 10A reconciliation and the active Part 10B universal Send gate.
+
+Part 12 payment/Won expansion, onboarding, Sales-to-Delivery handoff, Manager Exception, Academy and AI authority are explicitly outside Part 11.
+
+### Security
+
+Negotiation decision mutations are trusted server RPCs. Actor identity and decision timestamps come from authentication/server time. A protection trigger prevents direct rewriting of protected Part 11 fields outside the canonical RPC path. Opportunity-linked activity writes reject cross-Lead and cross-opportunity references and preserve Seller ownership scope. Security-definer functions use fixed `public, pg_temp` search paths and narrow execution grants.
+
+### Migration and verification
+
+Repository migration:
+
+- `20260920123000_crm_sales_negotiation_next_action_part_11.sql`
+- SHA-256: `334194a102719370909a8701d80c794773553e1902fd53ae7cbc41a2edb9629d`
+
+The migration is backward compatible, nullable for historical rows, creates no fake business data, does not backfill Negotiation state, and asserts before/after that the Part 10B Send gate remains active under policy version 2 and snapshot schema version 2.
+
+Focused regression/security coverage is maintained in:
+
+- `tests/security/crm-sales-negotiation-next-action-part-11.test.mjs`
+- `tests/security/crm-sales-negotiation-next-action-part-11-matrix.test.mjs` — exactly 60 named SOP matrix cases
+- `npm run test:crm-part11`
+- `npm run production:verify-part11` — read-only production release verifier wired into canonical `production:verify`
+
+Detailed architecture, source-of-truth and release evidence is maintained in `docs/crm-sales-negotiation-next-action-part-11.md`.
+
+Production release completion requires trusted exact-head CI, canonical migration/deployment, non-destructive authenticated Seller/Admin production QA and post-deployment verification. No Part 12+ work may begin before that release closure.
