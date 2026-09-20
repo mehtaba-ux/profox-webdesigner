@@ -226,7 +226,7 @@ async function verifySeller(browser, session, truth) {
     await expectText(page, 'Authoritative Client Brief & Delivery Review');
     await expectText(page, 'Not Submitted');
     await expectText(page, 'Handoff Readiness: BLOCKED');
-    await expectText(page, 'Confirmed Structured Requirements');
+    await expectText(page, 'Confirmed Sales Requirements');
     await expectText(page, 'Accepted Commercial Agreement');
     await expectText(page, 'Payment & Client Onboarding');
     await expectText(page, 'Review History');
