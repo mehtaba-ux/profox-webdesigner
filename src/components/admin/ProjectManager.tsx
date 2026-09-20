@@ -33,6 +33,7 @@ import { projectService } from '../../lib/projectService';
 import { useAuth } from '../../lib/AuthContext';
 import { format } from 'date-fns';
 import { supabase } from '../../lib/supabase';
+import { useNavigate } from 'react-router-dom';
 
 const USER_ROLE_TO_PROJECT_ROLE: Record<string, string> = {
   admin: 'Administrator',
@@ -65,8 +66,10 @@ const nextStageAfter = (stage?: ProjectStage) => {
 };
 const CLIENT_CONTROLLED_STAGES = new Set<ProjectStage>(['Client Design Approval', 'Client Review']);
 const CONTROLLED_TASK_DEPARTMENTS = new Set(['Content', 'UI/UX Design', 'Design', 'Development', 'Quality Assurance', 'QA']);
+const CONTROLLED_WORKFLOW_KEYS = new Set(['sales_handover_submission', 'sales_handover_review']);
 
 export default function ProjectManager() {
+  const navigate = useNavigate();
   const { user, isAdmin, role } = useAuth();
   const [projects, setProjects] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -531,6 +534,19 @@ export default function ProjectManager() {
                   <FileText className="w-4 h-4" /> Scope & Handover
                 </button>
 
+                {selectedProject.stage === 'Sales Handover' && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsDetailModalOpen(false);
+                      navigate(`/admin/project-handover/${selectedProject.id}`);
+                    }}
+                    className="flex w-full items-center gap-2.5 rounded-xl border border-emerald-200 bg-emerald-50 px-3.5 py-2.5 text-left text-xs font-bold text-emerald-800 transition-all hover:bg-emerald-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+                  >
+                    <ShieldAlert className="w-4 h-4" /> Sales Handoff Review
+                  </button>
+                )}
+
                 <button 
                   onClick={() => setActiveWorkspaceTab('tasks')}
                   className={`flex items-center gap-2.5 px-3.5 py-2.5 font-bold text-xs rounded-xl transition-all w-full text-left cursor-pointer justify-between ${
@@ -818,8 +834,8 @@ export default function ProjectManager() {
                         filteredTasks.map(task => (
                           <div key={task.id} className="bg-white border border-slate-200 p-4 rounded-2xl hover:border-blue-200 hover:shadow-sm transition-all flex items-center justify-between gap-4">
                             <div className="flex items-center gap-3 min-w-0">
-                              {CONTROLLED_TASK_DEPARTMENTS.has(task.department) ? (
-                                <span title="Status is controlled by the specialist evidence and review workspace." className="shrink-0 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-[10px] font-bold text-slate-700">{task.status}</span>
+                              {CONTROLLED_TASK_DEPARTMENTS.has(task.department) || CONTROLLED_WORKFLOW_KEYS.has(task.workflowKey || task.workflow_key) ? (
+                                <span title={CONTROLLED_WORKFLOW_KEYS.has(task.workflowKey || task.workflow_key) ? 'Status is controlled by the protected Sales Handoff submit / Accept / Return workflow.' : 'Status is controlled by the specialist evidence and review workspace.'} className="shrink-0 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-[10px] font-bold text-slate-700">{task.status}</span>
                               ) : (
                                 <select
                                   value={task.status}
