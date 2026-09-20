@@ -234,6 +234,9 @@ jobs:
           E2E_BASE_URL: ${{ env.PUBLIC_APP_URL }}
         run: npm run test:e2e
 
+      - name: Verify authenticated Part 11 Seller/Admin production UI
+        run: npm run production:verify-part11-ui
+
       - name: Activate mandatory public-form privacy consent
         env:
           ALLOW_PRODUCTION_ACTIVATION: 'true'
