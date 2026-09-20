@@ -78,6 +78,17 @@ test('Part 10B.6 registry has five explicit records and exactly four approved re
   ));
 });
 
+
+test('Part 10B.6 readiness transition postcondition accepts only reviewed transition successors', () => {
+  assert.match(convergenceSource, /P10B6_READINESS_TRANSITION_CURRENT/);
+  assert.match(convergenceSource, /a43508854e20f76c4a3966e8adf793d4/);
+  assert.match(convergenceSource, /e17a8eac1463f36beb6eaeb56da59227/);
+  assert.match(convergenceSource, /crm_get_sales_gate_assessment/);
+  assert.match(convergenceSource, /REQUIREMENTS_CONFIRMED/);
+  assert.match(convergenceSource, /Requirements Confirmed is blocked/);
+  assert.doesNotMatch(convergenceSource, /P10B6_READINESS_TRANSITION_CURRENT:[\s\S]{0,700}definition_md5 is not null/i);
+});
+
 test('Part 10B.8 activation keeps the legacy Send-gate postcondition fail-closed and rollout-aware', () => {
   assert.match(convergenceSource, /when gate_active=false then true/i);
   assert.match(convergenceSource, /when gate_active=true then \(select applied_exact from approved_activation\)/i);
