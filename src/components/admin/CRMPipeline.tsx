@@ -465,7 +465,12 @@ function OpportunityDrawer({ opportunity, stages, onClose, onUpdate, onNavigate 
           </div>
 
           <div className="mt-4 rounded-xl border border-blue-100 bg-blue-50 p-3 text-[10px] leading-5 text-blue-900">
-            Commercial exceptions are not approved here. Use the existing Sales Validation or quotation approval/revision workflow. Customer acceptance remains quotation authority, and Part 10B protects every revised Send.
+            <div>Commercial exceptions are not approved here. Use the existing Sales Validation or quotation approval/revision workflow. Customer acceptance remains quotation authority, and Part 10B protects every revised Send.</div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {opportunity.leadId && <button type="button" onClick={() => navigate('/admin/app/crm?tab=crm_leads')} className="min-h-10 rounded-xl border border-blue-200 bg-white px-3 text-[10px] font-black text-[#000080]">Open CRM commercial review</button>}
+              {opportunity.quotation?.id && <button type="button" onClick={() => navigate(`/admin/quotations/${opportunity.quotation?.id}`)} className="min-h-10 rounded-xl border border-blue-200 bg-white px-3 text-[10px] font-black text-[#000080]">Open quotation</button>}
+              <button type="button" onClick={() => navigate(opportunity.quotation?.id ? `/admin/quotation-approvals/${opportunity.quotation.id}` : '/admin/quotation-approvals')} className="min-h-10 rounded-xl border border-blue-200 bg-white px-3 text-[10px] font-black text-[#000080]">Open quotation approval</button>
+            </div>
           </div>
         </section>}
 
