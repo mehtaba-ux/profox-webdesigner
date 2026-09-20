@@ -5,6 +5,7 @@ import test from 'node:test';
 const migration = await readFile('supabase/migrations/20260920123000_crm_sales_negotiation_next_action_part_11.sql', 'utf8');
 const service = await readFile('src/lib/crmService.ts', 'utf8');
 const pipeline = await readFile('src/components/admin/CRMPipeline.tsx', 'utf8');
+const activityCenter = await readFile('src/components/admin/CRMActivitiesExecutionCenter.tsx', 'utf8');
 const types = await readFile('src/types.ts', 'utf8');
 const guidance = await readFile('src/lib/crmSellerGuidance.ts', 'utf8');
 
@@ -112,7 +113,8 @@ test('last meaningful interaction is derived from canonical evidence and exclude
   assert.match(migration, /automated/);
   assert.match(migration, /sales_meetings/);
   assert.match(migration, /crm_activities/);
-  assert.match(migration, /'No Answer','Voicemail','Wrong Number','No Response','Bounced','Not Interested'/);
+  assert.match(migration, /'No Answer','Voicemail','Wrong Number','No Response','Bounced'/);
+  assert.doesNotMatch(migration, /'No Answer','Voicemail','Wrong Number','No Response','Bounced','Not Interested'/);
   assert.doesNotMatch(migration, /add column if not exists last_meaningful/i);
 });
 
@@ -142,6 +144,33 @@ test('existing activity lifecycle is reused rather than duplicated', () => {
   assert.doesNotMatch(migration, /add column[^;]*activity_reschedule_history/i);
 });
 
+
+test('Negotiation reschedule requires reason and preserves server-derived history', () => {
+  assert.match(migration, /create or replace function public\.crm_reschedule_activity/);
+  assert.match(migration, /A real reschedule reason is required for Negotiation next actions/);
+  assert.match(migration, /original_due_at=coalesce\(original_due_at,due_at\)/);
+  assert.match(migration, /reschedule_count=reschedule_count\+1/);
+  assert.match(migration, /last_rescheduled_at=now\(\)/);
+  assert.match(migration, /last_rescheduled_by=\(select auth\.uid\(\)\)/);
+  assert.match(activityCenter, /Required for Negotiation next actions/);
+  assert.match(activityCenter, /required=\{reasonRequired\}/);
+});
+
+test('Negotiation cancellation requires reason and cannot silently leave no next action', () => {
+  assert.match(migration, /create or replace function public\.crm_cancel_activity/);
+  assert.match(migration, /A real cancellation reason is required for Negotiation next actions/);
+  assert.match(migration, /Schedule a replacement opportunity-linked action before cancelling the current Negotiation next action/);
+  assert.match(migration, /cancellation_reason=left\(btrim\(coalesce\(p_reason,''\)\),1000\)/);
+  assert.match(activityCenter, /Cancel with reason/);
+  assert.match(activityCenter, /An active Negotiation opportunity must keep a scheduled opportunity-linked next action/);
+  assert.match(activityCenter, /crmActivityExecutionService\.cancelActivity/);
+});
+
+test('Negotiation activity hardening keeps anonymous execution closed', () => {
+  assert.match(migration, /revoke all on function public\.crm_reschedule_activity\(uuid,timestamptz,text,boolean\) from public, anon/i);
+  assert.match(migration, /revoke all on function public\.crm_cancel_activity\(uuid,text\) from public, anon/i);
+});
+
 test('Part 11 UI is contextual and keeps activity lifecycle in the existing Activity Center', () => {
   assert.match(pipeline, /Decision &amp; Next Action/);
   assert.match(pipeline, /Negotiation is not a parking stage/);
@@ -164,6 +193,9 @@ test('Part 11 UI provides explicit owner and due date context', () => {
 
 test('commercial exceptions remain routed to existing authorities', () => {
   assert.match(pipeline, /existing Sales Validation or quotation approval\/revision workflow/i);
+  assert.match(pipeline, /Open CRM commercial review/);
+  assert.match(pipeline, /\/admin\/quotation-approvals/);
+  assert.match(pipeline, /Open quotation approval/);
   assert.doesNotMatch(migration, /crm_negotiation_approvals|negotiation_discount_approvals/i);
   assert.doesNotMatch(migration, /create table[^;]*approval/i);
 });
