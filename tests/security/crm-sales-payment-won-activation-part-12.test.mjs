@@ -109,7 +109,7 @@ test('Seller and Pipeline services reuse the same bounded read RPC', () => {
 });
 
 test('Seller surfaces operational payment truth but no verify action', () => {
-  assert.match(sellerWorkspace, /Payment \/ sale activation/);
+  assert.match(sellerWorkspace, /Payment & sale activation/);
   assert.match(sellerWorkspace, /Outstanding|outstanding/);
   assert.match(sellerWorkspace, /OVERDUE/);
   assert.match(sellerWorkspace, /Review verification/);
