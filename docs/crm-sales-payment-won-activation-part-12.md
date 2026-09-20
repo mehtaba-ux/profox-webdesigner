@@ -45,12 +45,14 @@ No business-state backfill is performed by the Part 12 migration.
 
 ### Payment verification authority
 
-The existing protected verification path remains authoritative. Part 12 additionally prevents direct browser/table writes from forging:
+The existing protected verification path remains authoritative. Part 12 prevents direct browser/table writes from forging:
 - `Verified`
 - `Partially Paid`
 - `amount_paid`
 - `verified_at`
 - `verified_by`
+- `paid_at`
+- `provider_payment_id`
 
 The protection trigger now covers INSERT and UPDATE. Admin verification remains through the canonical RPC; trusted gateway settlement remains the existing service path.
 
@@ -351,10 +353,39 @@ Focused hardening:
 
 This hardening is still Part 12. Part 13 has not started.
 
+## Settlement-evidence hardening closure evidence
+
+- hardening PR: `#128`
+- exact PR head: `c7ab82d4762d448f491ff54bb95e66ea326265de`
+- trusted PR CI: ProFox CRM CI `#895 / 35508012546` — SUCCESS
+- merged-main SHA: `8963d4ff36f2ac4ecd5fd4da3736bf87a9f12faa`
+- trusted merged-main CI: ProFox CRM CI `#896 / 35508149468` — SUCCESS
+- production deploy: Deploy ProFox Production `#364 / 35508215901` — SUCCESS
+- Cloudflare Worker version: `dd6ec35a-5d4f-47cb-9acc-3071089705ee`
+- hardening migration: `20260920164600_crm_sales_payment_settlement_evidence_part_12_hardening.sql`
+- hardening SHA-256: `48c3d60025168ab0843fda3b9a485a4f09a62591facddefb3085a3276c5e31a7`
+- production custom migration ledger: `692` exact rows; latest `20260920164600`
+- migration lineage: `PENDING_NEW 0`, `BLOCKED_UNRESOLVED 0`
+- Part 12 tests: `113/113` PASS, including the exact 87-case SOP matrix
+- full `npm test`: PASS
+- `npm run lint`: PASS
+- `npm run build`: PASS
+- Part 10B verifier: `0 failure(s), 0 warning(s)`
+- Part 11 verifier: `0 failure(s)`
+- Part 12 verifier: `0 failure(s)`
+- authenticated Seller Part 12 QA: PASS
+- authenticated Admin Part 12 QA: PASS
+- production business-data immutability: PASS
+- rollback-safe Seller provider-settlement probe: direct `provider_payment_id` and `paid_at` writes BLOCKED
+- final independent integrity audit: zero Awaiting/Won/Project/Onboarding/lineage violations
+- final counts: payments `5`, verified `1`, Awaiting Advance `1`, Won `1`, clients `2`, projects `1`, onboardings `1`, commissions `1`, activities `13`
+
+The rollback-safe security probe changed no production business data. No real Payment was verified for QA, no real Opportunity was marked Won for QA, and no fake production business record was created.
+
 ## Release status
 
-**PART 12 HARDENING IN PROGRESS — settlement/provider evidence boundary is being re-verified.**
+**PART 12 — AWAITING ADVANCE PAYMENT + VERIFIED PAYMENT → WON + SALE ACTIVATION INTEGRITY: COMPLETE.**
 
-The original Part 12 release evidence remains historical evidence, but final completion is withheld until the follow-up migration passes trusted CI, canonical production migration/deployment, rollback-safe Seller verification, and post-deploy integrity checks.
+The original implementation plus the settlement/provider-evidence follow-up now satisfy the Part 12 release gates. The canonical Payment, Quotation, CRM, Client, Commission, Project, Onboarding and Activity systems remain reused; no duplicate business system was introduced.
 
 **Part 13 has not started.**
