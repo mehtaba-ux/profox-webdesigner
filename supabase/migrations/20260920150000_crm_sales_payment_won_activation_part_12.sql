@@ -517,7 +517,7 @@ begin
   if not found then raise exception 'Opportunity not found.'; end if;
 
   if not v_team and (
-    not public.has_active_role(array['sales']::text[])
+    not public.sales_crm_access_ready()
     or v_opp.salesperson_id is distinct from v_uid
   ) then
     raise exception 'CRM access required.';
@@ -747,7 +747,7 @@ declare
 begin
   if v_uid is null then raise exception 'Authentication required.'; end if;
   v_team:=public.is_admin() or public.has_active_role(array['project_manager']::text[]);
-  if not v_team and not public.has_active_role(array['sales']::text[]) then
+  if not v_team and not public.sales_crm_access_ready() then
     raise exception 'CRM access required.';
   end if;
 
