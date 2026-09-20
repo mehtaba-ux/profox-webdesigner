@@ -250,21 +250,19 @@ begin
   return jsonb_build_object(
     'project',jsonb_build_object(
       'id',v_project.id,
-      'updatedAt',v_project.updated_at,
       'stage',v_project.stage,
       'status',v_project.status,
       'sellerNotesFingerprint',md5(coalesce(v_project.sales_handover_notes,''))
     ),
     'opportunity',jsonb_build_object(
       'id',v_opp.id,
-      'updatedAt',v_opp.updated_at,
       'stage',v_opp.stage,
-      'status',v_opp.status
+      'status',v_opp.status,
+      'salespersonId',v_opp.salesperson_id
     ),
     'quotation',jsonb_build_object(
       'id',v_quote.id,
       'revision',v_quote.revision_number,
-      'updatedAt',v_quote.updated_at,
       'acceptedAt',v_quote.accepted_at,
       'salesScopeSnapshotAt',v_quote.sales_scope_snapshot_at,
       'salesScopeSnapshotSchemaVersion',v_quote.sales_scope_snapshot_schema_version,
@@ -272,7 +270,6 @@ begin
     ),
     'payment',case when v_payment.id is null then null else jsonb_build_object(
       'id',v_payment.id,
-      'updatedAt',v_payment.updated_at,
       'verifiedAt',v_payment.verified_at,
       'status',v_payment.status,
       'paymentType',v_payment.payment_type,
@@ -280,7 +277,6 @@ begin
     ) end,
     'onboarding',case when v_onboarding.id is null then null else jsonb_build_object(
       'id',v_onboarding.id,
-      'updatedAt',v_onboarding.updated_at,
       'status',v_onboarding.status,
       'completedAt',v_onboarding.completed_at,
       'fingerprint',md5(concat_ws('|',v_onboarding.id::text,v_onboarding.status,coalesce(v_onboarding.completed_at::text,''),coalesce(v_onboarding.responses::text,'')))
