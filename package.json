@@ -27,7 +27,7 @@
     "migrations:converge-part10b6": "node scripts/migrate-production.mjs --converge-part10b6",
     "test:crm-part11": "node --test tests/security/crm-sales-negotiation-next-action-part-11.test.mjs tests/security/crm-sales-negotiation-next-action-part-11-matrix.test.mjs tests/security/part11-authenticated-production-ui.test.mjs",
     "production:verify-part11": "node scripts/verify-part11-release-readiness.mjs",
-    "production:verify-part11-ui": "node scripts/verify-part11-authenticated-production-ui.mjs",
+    "production:verify-part11-ui": "node scripts/verify-part11-authenticated-production-ui.mjs && npm run production:verify-part12-ui",
     "test:crm-part12": "node --test tests/security/crm-sales-payment-won-activation-part-12.test.mjs tests/security/crm-sales-payment-won-activation-part-12-matrix.test.mjs",
     "production:verify-part12": "node scripts/verify-part12-release-readiness.mjs",
     "production:verify-part12-ui": "node scripts/verify-part12-authenticated-production-ui.mjs"
