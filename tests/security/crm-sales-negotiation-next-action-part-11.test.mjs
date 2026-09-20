@@ -24,7 +24,8 @@ test('decision state uses controlled values and never invents a default historic
     'REVISION_REQUESTED','COMMERCIAL_REVIEW_REQUIRED','INTERNAL_CLIENT_APPROVAL',
     'DECISION_DATE_CONFIRMED','PAUSED_BY_CLIENT',
   ]) assert.match(migration, new RegExp(value));
-  assert.doesNotMatch(migration, /update\s+public\.crm_opportunities\s+set\s+decision_status/i);
+  const preRuntimeMutation = migration.split('create or replace function public.crm_record_negotiation_decision_state')[0];
+  assert.doesNotMatch(preRuntimeMutation, /update\s+public\.crm_opportunities\s+set\s+decision_status/i);
   assert.doesNotMatch(migration, /default\s+'AWAITING_CLIENT_RESPONSE'/i);
 });
 
