@@ -11,6 +11,9 @@ import {
   OpportunityStatus,
   ActivityStatus,
   ActivityType,
+  NegotiationDecisionStatus,
+  NegotiationObjectionCategory,
+  NegotiationWaitingOn,
 } from '../types';
 
 const asArray = <T>(value: unknown): T[] => Array.isArray(value) ? value as T[] : [];
@@ -50,8 +53,15 @@ export interface PipelineOpportunity extends CRMOpportunity {
   stageEnteredAt: string;
   stageAgeHours: number;
   stageSlaHours: number;
-  lastMeaningfulActivity?: { type?: string; title?: string; at?: string };
-  nextActivity?: { id: string; subject: string; type: string; dueAt: string; overdue: boolean };
+  lastMeaningfulActivity?: { type?: string; title?: string; at?: string; channel?: string; sourceType?: string; sourceId?: string };
+  nextActivity?: { id: string; subject: string; type: string; dueAt: string; assignedTo?: string; ownerName?: string; overdue: boolean };
+  latestCompletedOutcome?: { outcome?: string; at?: string };
+  decisionStatus?: NegotiationDecisionStatus;
+  primaryObjectionCategory?: NegotiationObjectionCategory;
+  waitingOn?: NegotiationWaitingOn;
+  decisionExpectedAt?: string;
+  decisionRecordedAt?: string;
+  negotiationAttentionReason?: string;
   meeting?: { id: string; status: string; startAt: string; outcome?: string };
   quotation?: { id: string; status: string; sentAt?: string; viewedAt?: string; viewCount: number };
   health: { status: 'Healthy' | 'Needs Attention' | 'At Risk'; reasons: string[] };
@@ -297,6 +307,41 @@ export const crmService = {
     return this.mapOpportunityFromDb(data);
   },
 
+  async recordNegotiationDecisionState(
+    id: string,
+    input: {
+      decisionStatus: NegotiationDecisionStatus;
+      primaryObjectionCategory?: NegotiationObjectionCategory | null;
+      waitingOn?: NegotiationWaitingOn | null;
+      decisionExpectedAt?: string | null;
+    },
+  ) {
+    const { data, error } = await supabase.rpc('crm_record_negotiation_decision_state', {
+      p_opportunity_id: id,
+      p_decision_status: input.decisionStatus,
+      p_primary_objection_category: input.primaryObjectionCategory || null,
+      p_waiting_on: input.waitingOn || null,
+      p_decision_expected_at: input.decisionExpectedAt || null,
+    });
+    if (error) throw error;
+    return data;
+  },
+
+  async scheduleOpportunityNextAction(
+    id: string,
+    input: { dueAt: string; subject: string; activityType?: ActivityType; notes?: string },
+  ) {
+    const { data, error } = await supabase.rpc('crm_schedule_opportunity_next_action', {
+      p_opportunity_id: id,
+      p_due_at: input.dueAt,
+      p_subject: input.subject,
+      p_activity_type: input.activityType || 'Quotation Follow-Up',
+      p_notes: input.notes || '',
+    });
+    if (error) throw error;
+    return data;
+  },
+
   async markWon(_id: string) {
     throw new Error('Opportunities may only become Won through Admin-verified advance/full payment.');
   },
@@ -384,7 +429,13 @@ export const crmService = {
       selfGenerated: db.self_generated, salespersonId: db.salesperson_id, serviceInterest: db.service_interest,
       expectedValue: Number(db.expected_value), currency: db.currency, stage: db.stage as OpportunityStage,
       status: db.status as OpportunityStatus, probability: db.probability, meetingAt: db.meeting_at, meetingUrl: db.meeting_url,
-      requirementsSummary: db.requirements_summary, nextFollowUpAt: db.next_follow_up_at, notes: db.notes,
+      requirementsSummary: db.requirements_summary, nextFollowUpAt: db.next_follow_up_at,
+      decisionStatus: db.decision_status || undefined,
+      primaryObjectionCategory: db.primary_objection_category || undefined,
+      waitingOn: db.waiting_on || undefined,
+      decisionExpectedAt: db.decision_expected_at || undefined,
+      decisionRecordedAt: db.decision_recorded_at || undefined,
+      notes: db.notes,
       lostReason: db.lost_reason, wonAt: db.won_at, lostAt: db.lost_at, createdBy: db.created_by,
       createdAt: db.created_at, updatedAt: db.updated_at
     };
@@ -424,7 +475,14 @@ export const crmService = {
     return {
       id: db.id, leadId: db.lead_id, opportunityId: db.opportunity_id, assignedTo: db.assigned_to,
       activityType: db.activity_type as ActivityType, subject: db.subject, dueAt: db.due_at,
-      completedAt: db.completed_at, status: db.status as ActivityStatus, channel: db.channel,
+      completedAt: db.completed_at, status: db.status as ActivityStatus,
+      outcome: db.outcome || undefined, outcomeRecordedAt: db.outcome_recorded_at || undefined,
+      startedAt: db.started_at || undefined, originalDueAt: db.original_due_at || undefined,
+      rescheduleCount: db.reschedule_count == null ? undefined : Number(db.reschedule_count),
+      lastRescheduledAt: db.last_rescheduled_at || undefined, lastRescheduledBy: db.last_rescheduled_by || undefined,
+      lastRescheduleReason: db.last_reschedule_reason || undefined, lastRescheduleKind: db.last_reschedule_kind || undefined,
+      cancellationReason: db.cancellation_reason || undefined, nextActivityId: db.next_activity_id || undefined,
+      channel: db.channel,
       loomVideoUrl: db.loom_video_url, notes: db.notes, createdBy: db.created_by, createdAt: db.created_at, updatedAt: db.updated_at
     };
   },
