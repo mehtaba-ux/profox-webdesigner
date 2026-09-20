@@ -208,8 +208,135 @@ Before/after snapshots compare canonical Payment and Opportunity state plus Clie
 
 No real Payment is verified for QA. No real Opportunity is marked Won for QA. No fake customer/deal/payment/project/onboarding record is created.
 
-## Release evidence
+## Final release evidence
 
-Pending trusted exact-head CI, canonical migration application, normal production deployment, authenticated Seller/Admin production QA, read-only post-deploy verification, and final documentation closure.
+### Repository / merge lineage
 
-Part 13 has not started.
+- Part 12 implementation PR: `#125`
+- exact PR head: `9dde884078882dc51d97b0d62e3b9c0d9a7fca08`
+- trusted PR CI: ProFox CRM CI `#890 / 35499841152` — SUCCESS
+- merge commit / production main: `a15c4e87e9630d68e9f9a8d3183dc82051260214`
+- trusted merged-main CI: ProFox CRM CI `#891 / 35499950557` — SUCCESS
+
+The merged-main pipeline passed:
+- TypeScript
+- migration integrity
+- Talent Partner/full security regression suite
+- exact 87-case Part 12 matrix
+- Part 10A / Part 10B / Part 11 regressions
+- browser launch-readiness
+- verifier syntax checks
+- production dependency audit
+- production build
+
+### Production migration
+
+Canonical Part 12 migration:
+- version: `20260920150000`
+- name: `crm_sales_payment_won_activation_part_12`
+- exact SHA-256: `ee75cd5c55250a278e2187a945cfa64f732343da08b6ecc674fb945c63375fcb`
+- production ledger row: present exactly once
+- baseline: `false`
+
+Production custom migration ledger after application:
+- total rows: `691`
+- max version: `20260920150000`
+- four approved Part 10B forward-reconciliation rows remain present
+- five superseded historical Part 10B rows remain absent
+- repository lineage: `PENDING_NEW 0`, `BLOCKED_UNRESOLVED 0`
+
+### Production deploy
+
+Final Part 12 implementation deploy:
+- workflow: `Deploy ProFox Production`
+- run: `#362 / 35500046940`
+- deployed SHA: `a15c4e87e9630d68e9f9a8d3183dc82051260214`
+- Cloudflare Worker version: `0df9a0a2-6f07-447f-a18f-9d7316c3db76`
+
+The deployment passed:
+- checksum-verified migration application
+- production database/integration readiness
+- authenticated payment administration functions
+- checkout/payment webhooks
+- production build
+- Cloudflare Worker deploy
+- public Worker health
+- deployed frontend/public-content verification
+- unauthenticated browser smoke
+- authenticated Part 11 Seller/Admin QA
+- authenticated Part 12 Seller/Admin QA
+- final production readiness
+
+### Production readiness
+
+Final production release verification reported:
+- Part 10B readiness: `0 failure(s), 0 warning(s)`
+- Part 11 readiness: `0 failure(s)`
+- Part 12 readiness: `0 failure(s)`
+- duplicate-system audit: PASS
+- protected direct-write triggers: PASS
+- Part 12 read-model ACLs: PASS
+- RLS boundary: PASS
+- activation idempotency constraints: PASS
+- activation integrity: PASS
+- Part 10B Send gate remains ACTIVE
+- `policyVersion=2`
+- `snapshotSchemaVersion=2`
+
+### Authenticated production UI QA
+
+Authenticated Part 12 QA completed in deploy #362.
+
+Seller:
+- Awaiting Payment state visible: PASS
+- overdue text visible: PASS
+- accepted quotation route present: PASS
+- Payments route present: PASS
+- no Verify Payment authority: PASS
+- no enabled manual Won action: PASS
+- Activities route reachable: PASS
+- mobile layout: PASS
+- keyboard focus: PASS
+
+Admin:
+- team Pipeline state: PASS
+- same sale-activation truth visible: PASS
+- canonical protected payment-verification route visible: PASS
+- no payment verification was executed during QA
+
+Production business-data immutability passed.
+
+Before/after truth remained:
+- payments: `5`
+- verified payments: `1`
+- opportunities: `2`
+- Awaiting Advance Payment: `1`
+- Won: `1`
+- clients: `2`
+- projects: `1`
+- onboardings: `1`
+- commissions: `1`
+- CRM activities: `13`
+
+No real Payment was verified for QA.
+No real Opportunity was marked Won for QA.
+No fake production business record was created.
+
+### Independent post-deploy production audit
+
+Read-only verification after deployment confirms:
+- Awaiting Advance Payment without canonical acceptance: `0`
+- Won without qualifying verified Advance/Full Payment: `0`
+- Project without Won: `0`
+- Onboarding without qualifying verified payment: `0`
+- duplicate Part 12 business tables: `0`
+- anon/public RLS policies on protected Part 12 tables: `0`
+- RLS enabled on Payments, Opportunities, Clients, Projects and Client Onboarding
+
+## Release status
+
+**PART 12 — Awaiting Advance Payment + Verified Payment → Won + Sale Activation Integrity: COMPLETE.**
+
+Repository implementation, trusted CI, canonical migration, production deployment, authenticated Seller/Admin QA, Part 10B/11 preservation, direct-write protection, idempotency, production activation integrity and business-data immutability are all complete.
+
+**Part 13 has not started.**
