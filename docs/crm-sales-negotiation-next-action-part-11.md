@@ -154,40 +154,120 @@ The executable source-spec matrix contains exactly 60 named Part 11 cases coveri
 
 Production verification is wired through `production:verify-part11`, which runs in the canonical production deployment after `migrations:apply` and again during final production verification.
 
-## Trusted CI evidence
+## Final release evidence
 
-Exact reviewed implementation head before evidence-only documentation update:
+### Repository / merge lineage
 
-- `ffa847a6e9b158ae668f4c245e6912c4bcdde594`
-- GitHub Actions workflow: `ProFox CRM CI`
-- run: `#875 / 35492348146`
-- runner allocated and Checkout executed
-- TypeScript check: PASS
+- Part 11 implementation PR: `#120`
+- Part 11 implementation merge SHA: `18464bfe3691fbf53632f2284f5b736a00cd048a`
+- migration quoting hotfix PR: `#121`
+- quoting hotfix merge SHA: `82c0bd705aed9c692c47bb78053bcfe6dd2adfab`
+- Part 10B transition-successor verifier hotfix PR: `#122`
+- verifier hotfix merge SHA: `ec25bd007896e7b3d11657a9ecaec4fd7594fdc3`
+- authenticated production UI QA PR: `#123`
+- authenticated QA merge SHA / deployed main SHA: `e54d022678a1eea473d61dd22990557389eb1d7d`
+
+Trusted merged-main CI:
+
+- workflow: `ProFox CRM CI`
+- run: `#884 / 35494715173`
+- exact head: `e54d022678a1eea473d61dd22990557389eb1d7d`
+- TypeScript: PASS
 - migration integrity: PASS
-- full `npm test`: PASS
-- Part 10A regression: PASS through `npm test`
-- Part 10B regression: PASS through `npm test`
-- Part 11 focused + exact 60-case matrix: PASS through `npm test`
-- Chromium/browser launch-readiness: PASS
+- full regression suite: PASS
+- Part 10A: PASS through `npm test`
+- Part 10B: PASS through `npm test`
+- Part 11 focused + exact 60-case matrix + authenticated-QA security contract: PASS
+- browser launch-readiness: PASS
 - verifier syntax: PASS
 - production dependency audit: PASS
 - production build: PASS
 
-Because this evidence update changes the PR head, trusted CI must pass again on the final documentation-inclusive head before production preflight.
+### Production migration
+
+Canonical Part 11 migration:
+
+- version: `20260920123000`
+- name: `crm_sales_negotiation_next_action_part_11`
+- SHA-256: `e9b7496ef2561641d9e873534a465cc9fc6a487bcf38908348ab30ee9e9971ab`
+- production ledger: exactly one row, `baseline=false`
+
+The first production deploy correctly rolled back the unapplied migration when malformed single-dollar PostgreSQL delimiters were discovered. PR #121 repaired only those delimiters and added a regression preventing recurrence.
+
+The next deploy successfully applied Part 11 but exposed a stale Part 10B.6 transition fingerprint in the release verifier. PR #122 evolved that postcondition fail-closed: only the original reviewed Part 10B transition or the exact reviewed Part 11 successor is accepted, while `crm_get_sales_gate_assessment`, `REQUIREMENTS_CONFIRMED` and the blocker path remain mandatory.
+
+### Final production deploy
+
+- workflow: `Deploy ProFox Production`
+- run: `#360 / 35494800711`
+- deployed SHA: `e54d022678a1eea473d61dd22990557389eb1d7d`
+- Cloudflare Worker version: `cc3681a8-e92b-4600-9671-43b7ed9abccc`
+- checksum-verified migration application: PASS
+- production database/integration readiness: PASS
+- Part 10B release readiness: `0 failure(s), 0 warning(s)`
+- Part 11 release readiness: `0 failure(s)`
+- migration lineage: `PENDING_NEW 0`, `BLOCKED_UNRESOLVED 0`
+- Cloudflare Worker deploy: PASS
+- public Worker health: PASS
+- deployed frontend/public-content verification: PASS
+- unauthenticated production browser smoke: PASS
+- final production readiness: PASS
+
+### Authenticated Seller/Admin production UI QA
+
+Part 11's remaining authenticated QA requirement is now executed by `scripts/verify-part11-authenticated-production-ui.mjs` inside the canonical production deploy.
+
+Security properties:
+
+- the trusted runner retrieves the project server API key through the Supabase Management API;
+- the server key never enters the browser context;
+- short-lived one-time user sessions are generated server-side;
+- Seller uses the already-approved synthetic Sales identity;
+- Admin uses an existing confirmed active Admin identity;
+- the test performs no CRM insert/update/upsert/delete;
+- CRM business counts are captured before and after and must remain identical.
+
+Deploy #360 produced:
+
+- Seller Pipeline desktop/mobile: PASS
+- Seller `individual` scope: PASS
+- Seller Activities & Follow-Up: PASS
+- Seller keyboard focus check: PASS
+- Seller Admin-only controls absent: PASS
+- Admin `team` Pipeline scope: PASS
+- Admin Pipeline settings: PASS
+- Admin Activities / Activity settings: PASS
+- Admin canonical Quotation Approvals: PASS
+- business-data immutability: PASS
+
+Before/after business truth remained:
+
+- opportunities: `2`
+- activities: `13`
+- Negotiation opportunities: `0`
+- Part 11 decision-state rows: `0`
+- Part 11-created activities: `0`
+
+No real deal was moved into Negotiation merely for testing. Because production currently has no legitimate Quotation Sent / Negotiation opportunity, the contextual **Decision & Next Action** panel is covered by the exact 60-case Part 11 contract rather than fabricated production data.
+
+### Final production truth
+
+Independent read-only verification after authenticated QA confirms:
+
+- custom migration ledger total: `690`
+- custom max migration: `20260920123000`
+- exact Part 11 checksum: present
+- Part 10B final Send gate: `true`
+- `policyVersion=2`
+- `snapshotSchemaVersion=2`
+- Part 11 production business counts remain unchanged as listed above
 
 ## Release status
 
-Repository implementation is complete and awaiting final exact-head trusted CI plus production preflight/migration/deployment/authenticated non-destructive Seller/Admin QA. Part 12+ remains out of scope.
+**PART 11 — Negotiation / Decision Pending + Next-Action Discipline: COMPLETE.**
 
+Repository implementation, trusted CI, canonical production migration, merged-main deployment, Part 10B preservation, Part 11 release verification, authenticated Seller/Admin production UI QA, mobile/keyboard Seller validation, canonical Admin quotation-approval validation and business-data immutability are all complete.
 
-## Production deploy hotfix evidence
+No fake CRM customer/deal data was created for release testing.
 
-The first merged-main deployment attempt for Part 11 (Deploy ProFox Production run #357 / 35492735727) stopped safely at the canonical `migrations:apply` step. The migration transaction rolled back and no Part 11 custom-ledger row or schema change persisted.
-
-Root cause: the two Part 11 overrides of `crm_reschedule_activity(...)` and `crm_cancel_activity(...)` contained malformed single-dollar PostgreSQL function delimiters (`as $ ... $;`).
-
-The unapplied migration was corrected before any successful production application. Its corrected exact SHA-256 is:
-
-`e9b7496ef2561641d9e873534a465cc9fc6a487bcf38908348ab30ee9e9971ab`
-
-A focused regression now rejects the malformed single-dollar delimiter form so this failure mode cannot silently return.
+**Part 12+ has not started.**
