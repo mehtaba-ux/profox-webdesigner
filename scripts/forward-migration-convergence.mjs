@@ -438,11 +438,21 @@ const checks = Object.freeze({
     ) as ok
   `,
   P10B6_READINESS_TRANSITION_CURRENT: `
+    with transition as (
+      select
+        pg_get_functiondef(to_regprocedure('public.crm_transition_opportunity(uuid,text)')) as definition,
+        md5(pg_get_functiondef(to_regprocedure('public.crm_transition_opportunity(uuid,text)'))) as definition_md5
+    )
     select (
-      md5(pg_get_functiondef(to_regprocedure('public.crm_transition_opportunity(uuid,text)')))
-        ='a43508854e20f76c4a3966e8adf793d4'
-      and position('crm_get_sales_gate_assessment' in pg_get_functiondef(to_regprocedure('public.crm_transition_opportunity(uuid,text)')))>0
+      definition_md5 in (
+        'a43508854e20f76c4a3966e8adf793d4',
+        'e17a8eac1463f36beb6eaeb56da59227'
+      )
+      and position('crm_get_sales_gate_assessment' in definition)>0
+      and position('REQUIREMENTS_CONFIRMED' in definition)>0
+      and position('Requirements Confirmed is blocked' in definition)>0
     ) as ok
+    from transition
   `,
   P10B6_READINESS_PIPELINE_INVARIANT: `
     with stages as (
