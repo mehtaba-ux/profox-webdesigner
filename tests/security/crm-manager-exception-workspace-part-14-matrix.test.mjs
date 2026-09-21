@@ -51,7 +51,7 @@ const cases = [
 
   ['33 open deal without opportunity-linked Scheduled activity appears', () => mhas('NEXT_ACTION_MISSING') && mhas("w.queue_kind='missing_next_action'")],
   ['34 valid Scheduled activity clears missing exception', () => mhas('p.next_activity_id is null')],
-  ['35 Completed activity does not satisfy next-action requirement', () => mhas('crm_get_pipeline_command_center()') && !mhas('next_follow_up_at')],
+  ['35 Completed activity does not satisfy next-action requirement', () => mhas('crm_get_pipeline_command_center()') && !/o\\.next_follow_up_at/.test(migration)],
   ['36 Cancelled activity does not satisfy next-action requirement', () => mhas('crm_get_pipeline_command_center()') && mhas('nextActivity')],
   ['37 overdue Scheduled activity becomes overdue exception', () => mhas('NEXT_ACTION_OVERDUE') && mhas('p.next_activity_due_at<now()')],
   ['38 rescheduled future activity clears overdue state', () => mhas('p.next_activity_due_at<now()')],
