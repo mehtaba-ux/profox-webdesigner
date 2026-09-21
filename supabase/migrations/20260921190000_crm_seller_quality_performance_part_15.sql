@@ -66,6 +66,7 @@ DECLARE
   v_first_late integer:=0;
   v_first_open_breaches integer:=0;
   v_first_unknown integer:=0;
+  v_first_measured integer:=0;
   v_first_unsafe_attribution integer:=0;
   v_first_median numeric;
 
@@ -186,6 +187,8 @@ BEGIN
       AND coalesce(l.accepted_at,l.assigned_at,l.created_at)>=v_start
       AND coalesce(l.accepted_at,l.assigned_at,l.created_at)<v_end_exclusive
   ) x;
+
+  v_first_measured:=v_first_responded+v_first_open_breaches+v_first_unknown;
 
   -- DISCOVERY + PROPOSAL READINESS: reuse the Part 8 gate engine. This is a
   -- current evaluation of opportunities whose lifecycle overlaps the review period;
@@ -500,11 +503,11 @@ BEGIN
     'qualityEvidence',jsonb_build_object(
       'firstResponseSla',jsonb_build_object(
         'key','firstResponseSla','label','First-response SLA',
-        'availability',case when v_first_eligible=0 then 'INSUFFICIENT_DATA' else 'AVAILABLE' end,
-        'value',case when v_first_eligible=0 then null else round(100.0*v_first_on_time/greatest(v_first_responded,1),1) end,
-        'numerator',v_first_on_time,'denominator',v_first_responded,'rate',
-          case when v_first_responded=0 then null else round(100.0*v_first_on_time/v_first_responded,1) end,
-        'sampleSize',v_first_eligible,'eligibleLeads',v_first_eligible,'respondedLeads',v_first_responded,
+        'availability',case when v_first_measured=0 then 'INSUFFICIENT_DATA' else 'AVAILABLE' end,
+        'value',case when v_first_measured=0 then null else round(100.0*v_first_on_time/v_first_measured,1) end,
+        'numerator',v_first_on_time,'denominator',v_first_measured,'rate',
+          case when v_first_measured=0 then null else round(100.0*v_first_on_time/v_first_measured,1) end,
+        'sampleSize',v_first_measured,'eligibleLeads',v_first_eligible,'measuredObligations',v_first_measured,'respondedLeads',v_first_responded,
         'onTimeResponses',v_first_on_time,'lateResponses',v_first_late,'openBreaches',v_first_open_breaches,
         'unknownIncompleteEvidence',v_first_unknown,'excludedUnsafeOwnershipAttribution',v_first_unsafe_attribution,
         'medianResponseMinutes',case when v_first_median is null then null else round(v_first_median,1) end,
@@ -788,6 +791,9 @@ BEGIN
   IF NOT FOUND THEN RAISE EXCEPTION 'Performance review not found'; END IF;
   IF v_review.status='Completed' THEN
     RAISE EXCEPTION 'Completed performance reviews are immutable';
+  END IF;
+  IF p_status='Completed' AND current_date<v_review.period_end THEN
+    RAISE EXCEPTION 'A performance review cannot be completed before its evidence period ends';
   END IF;
 
   v_quality:=coalesce(p_quality_evidence,v_review.quality_evidence,'{}'::jsonb);
