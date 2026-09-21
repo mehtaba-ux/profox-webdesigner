@@ -120,7 +120,7 @@ export default function SalesPerformanceManagement() {
       setReviewSnapshotLoading(false);
       return () => { active = false; };
     }
-    if (selectedReview.status === 'Completed') {
+    if (selectedReview.completedAt) {
       setSelectedReviewSnapshot(normalizeSalesPerformanceSnapshot(selectedReview.metricsSnapshot || {}));
       setReviewSnapshotLoading(false);
       return () => { active = false; };
@@ -133,7 +133,7 @@ export default function SalesPerformanceManagement() {
       .catch(() => { if (active) setSelectedReviewSnapshot(null); })
       .finally(() => { if (active) setReviewSnapshotLoading(false); });
     return () => { active = false; };
-  }, [selectedReview?.id, selectedReview?.status, isAdmin]);
+  }, [selectedReview?.id, selectedReview?.completedAt, isAdmin]);
 
   const saveSettings = async () => {
     if (!settings) return;
