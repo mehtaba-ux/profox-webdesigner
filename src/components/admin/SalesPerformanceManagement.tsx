@@ -17,13 +17,16 @@ import { useAuth } from '../../lib/AuthContext';
 import {
   SALES_PERFORMANCE_MANAGEMENT_ACTIONS,
   SALES_PERFORMANCE_QUALITY_AREAS,
+  normalizeSalesPerformanceSnapshot,
   salesPerformanceService,
   type SalesPerformanceAdminPayload,
   type SalesPerformanceAdminPerson,
   type SalesPerformanceDecision,
   type SalesPerformanceManagementAction,
   type SalesPerformanceQualityKey,
+  type SalesPerformanceQualityMetric,
   type SalesPerformanceReview,
+  type SalesPerformanceSnapshot,
   type SalesPerformanceReviewStatus,
   type SalesPerformanceSellerPayload,
   type SalesPerformanceSettings
@@ -84,6 +87,8 @@ export default function SalesPerformanceManagement() {
   const [settings, setSettings] = useState<SalesPerformanceSettings | null>(null);
   const [selectedPerson, setSelectedPerson] = useState<SalesPerformanceAdminPerson | null>(null);
   const [selectedReview, setSelectedReview] = useState<SalesPerformanceReview | null>(null);
+  const [selectedReviewSnapshot, setSelectedReviewSnapshot] = useState<SalesPerformanceSnapshot | null>(null);
+  const [reviewSnapshotLoading, setReviewSnapshotLoading] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -107,6 +112,28 @@ export default function SalesPerformanceManagement() {
   useEffect(() => {
     if (!authLoading && (isAdmin || isSeller)) void load();
   }, [authLoading, isAdmin, isSeller]);
+
+  useEffect(() => {
+    let active = true;
+    if (!selectedReview) {
+      setSelectedReviewSnapshot(null);
+      setReviewSnapshotLoading(false);
+      return () => { active = false; };
+    }
+    if (selectedReview.status === 'Completed') {
+      setSelectedReviewSnapshot(normalizeSalesPerformanceSnapshot(selectedReview.metricsSnapshot || {}));
+      setReviewSnapshotLoading(false);
+      return () => { active = false; };
+    }
+    if (!isAdmin) return () => { active = false; };
+
+    setReviewSnapshotLoading(true);
+    void salesPerformanceService.getPeriodSnapshot(selectedReview.salespersonId, selectedReview.periodStart, selectedReview.periodEnd)
+      .then(snapshot => { if (active) setSelectedReviewSnapshot(snapshot); })
+      .catch(() => { if (active) setSelectedReviewSnapshot(null); })
+      .finally(() => { if (active) setReviewSnapshotLoading(false); });
+    return () => { active = false; };
+  }, [selectedReview?.id, selectedReview?.status, isAdmin]);
 
   const saveSettings = async () => {
     if (!settings) return;
@@ -180,7 +207,7 @@ export default function SalesPerformanceManagement() {
     </main>
 
     {selectedPerson && !selectedReview && <PersonDrawer person={selectedPerson} onClose={() => setSelectedPerson(null)} onSelectReview={review => setSelectedReview({ ...review, qualityEvidence: { ...review.qualityEvidence }, requiredActions: [...review.requiredActions] })} />}
-    {selectedReview && <ReviewDrawer review={selectedReview} setReview={setSelectedReview} saving={saving} onClose={() => setSelectedReview(null)} onSave={saveReview} />}
+    {selectedReview && <ReviewDrawer review={selectedReview} setReview={setSelectedReview} snapshot={selectedReviewSnapshot} snapshotLoading={reviewSnapshotLoading} saving={saving} onClose={() => setSelectedReview(null)} onSave={saveReview} />}
   </div>;
 }
 
@@ -260,6 +287,8 @@ function SellerExperience({ data }: { data: SalesPerformanceSellerPayload }) {
       <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm"><div className="text-[10px] font-black uppercase tracking-wide text-[#000080]">Live operating evidence</div><div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4"><MiniMetric label="Interactions" value={data.snapshot.customerInteractions} /><MiniMetric label="CRM completed" value={data.snapshot.crmActivitiesCompleted} /><MiniMetric label="Meetings" value={data.snapshot.meetingsCompleted} /><MiniMetric label="Verified sales" value={data.snapshot.verifiedSales} /><MiniMetric label="Open pipeline" value={money(data.snapshot.pipelineValue)} /><MiniMetric label="Quotes sent" value={data.snapshot.quotationsSent} /><MiniMetric label="Overdue activities" value={data.snapshot.overdueActivities} danger={data.snapshot.overdueActivities > 0} /><MiniMetric label="Missing next step" value={data.snapshot.opportunitiesMissingNextFollowUp} danger={data.snapshot.opportunitiesMissingNextFollowUp > 0} /></div></div>
     </section>
 
+    <QualityEvidencePanel snapshot={data.snapshot} />
+
     <Journey settings={data.settings} />
 
     <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm"><div><div className="text-[10px] font-black uppercase tracking-wide text-[#FF0E0E]">Completed evidence</div><h2 className="mt-2 text-xl font-black">Review & coaching history</h2><p className="mt-1 text-xs text-slate-500">Completed reviews are locked historical evidence. Live CRM and sales facts continue to update independently.</p></div>{completed.length === 0 ? <Empty text="No performance review has been completed yet." /> : <div className="mt-5 space-y-4">{completed.map(review => <CompletedReviewCard key={review.id} review={review} />)}</div>}</section>
@@ -276,10 +305,10 @@ function Journey({ settings }: { settings: SalesPerformanceSettings }) {
 }
 
 function PersonDrawer({ person, onClose, onSelectReview }: { person: SalesPerformanceAdminPerson; onClose: () => void; onSelectReview: (review: SalesPerformanceReview) => void }) {
-  return <div className="fixed inset-0 z-[120] flex justify-end bg-slate-950/30" onMouseDown={onClose}><div className="h-full w-full max-w-2xl overflow-y-auto bg-white p-6 shadow-2xl sm:p-8" onMouseDown={e => e.stopPropagation()}><div className="flex items-start justify-between gap-4"><div><div className="text-[10px] font-black uppercase tracking-wide text-[#000080]">Seller performance record</div><h2 className="mt-1 text-2xl font-black">{person.name}</h2><p className="mt-1 text-xs text-slate-500">{person.email}</p></div><button onClick={onClose} className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-black">Close</button></div><div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4"><MiniMetric label="Interactions" value={person.snapshot.customerInteractions} /><MiniMetric label="Meetings" value={person.snapshot.meetingsCompleted} /><MiniMetric label="Pipeline" value={money(person.snapshot.pipelineValue)} /><MiniMetric label="Verified sales" value={person.snapshot.verifiedSales} /></div><div className="mt-7"><h3 className="font-black">Review schedule</h3><div className="mt-3 space-y-3">{person.reviews.map(review => <button key={review.id} onClick={() => onSelectReview(review)} className="flex w-full items-center gap-3 rounded-2xl border border-slate-200 p-4 text-left transition hover:border-[#000080]/30"><div className="min-w-0 flex-1"><div className="text-sm font-black">{reviewLabel(review)}</div><div className="mt-1 text-xs text-slate-500">{dateLabel(review.scheduledFor)} · {review.ownerId ? 'owner assigned' : 'unassigned'}</div></div><StatusPill status={review.status} /></button>)}</div></div></div></div>;
+  return <div className="fixed inset-0 z-[120] flex justify-end bg-slate-950/30" onMouseDown={onClose}><div className="h-full w-full max-w-2xl overflow-y-auto bg-white p-6 shadow-2xl sm:p-8" onMouseDown={e => e.stopPropagation()}><div className="flex items-start justify-between gap-4"><div><div className="text-[10px] font-black uppercase tracking-wide text-[#000080]">Seller performance record</div><h2 className="mt-1 text-2xl font-black">{person.name}</h2><p className="mt-1 text-xs text-slate-500">{person.email}</p></div><button onClick={onClose} className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-black">Close</button></div><div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4"><MiniMetric label="Interactions" value={person.snapshot.customerInteractions} /><MiniMetric label="Meetings" value={person.snapshot.meetingsCompleted} /><MiniMetric label="Pipeline" value={money(person.snapshot.pipelineValue)} /><MiniMetric label="Verified sales" value={person.snapshot.verifiedSales} /></div><div className="mt-7"><QualityEvidencePanel snapshot={person.snapshot} compact /></div><div className="mt-7"><h3 className="font-black">Review schedule</h3><div className="mt-3 space-y-3">{person.reviews.map(review => <button key={review.id} onClick={() => onSelectReview(review)} className="flex w-full items-center gap-3 rounded-2xl border border-slate-200 p-4 text-left transition hover:border-[#000080]/30"><div className="min-w-0 flex-1"><div className="text-sm font-black">{reviewLabel(review)}</div><div className="mt-1 text-xs text-slate-500">{dateLabel(review.scheduledFor)} · {review.ownerId ? 'owner assigned' : 'unassigned'}</div></div><StatusPill status={review.status} /></button>)}</div></div></div></div>;
 }
 
-function ReviewDrawer({ review, setReview, saving, onClose, onSave }: { review: SalesPerformanceReview; setReview: (review: SalesPerformanceReview | null) => void; saving: boolean; onClose: () => void; onSave: (review: SalesPerformanceReview) => Promise<void> }) {
+function ReviewDrawer({ review, setReview, snapshot, snapshotLoading, saving, onClose, onSave }: { review: SalesPerformanceReview; setReview: (review: SalesPerformanceReview | null) => void; snapshot: SalesPerformanceSnapshot | null; snapshotLoading: boolean; saving: boolean; onClose: () => void; onSave: (review: SalesPerformanceReview) => Promise<void> }) {
   const locked = review.status === 'Completed';
   const patch = (partial: Partial<SalesPerformanceReview>) => setReview({ ...review, ...partial });
   const patchQuality = (key: SalesPerformanceQualityKey, value: string) => patch({ qualityEvidence: { ...review.qualityEvidence, [key]: value } });
@@ -297,6 +326,16 @@ function ReviewDrawer({ review, setReview, saving, onClose, onSave }: { review: 
     {locked && <div className="mt-5 flex items-start gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-xs leading-5 text-emerald-800"><LockKeyhole className="mt-0.5 h-4 w-4 shrink-0" /><div><strong>Historical evidence locked.</strong> Completed performance reviews cannot be reopened or rewritten. Record any follow-up in the next coaching/review checkpoint.</div></div>}
 
     <div className="mt-6 grid gap-4 sm:grid-cols-2"><Field label="Review status"><select disabled={locked} className={inputClass} value={review.status} onChange={e => patch({ status: e.target.value as SalesPerformanceReviewStatus })}>{statuses.map(value => <option key={value}>{value}</option>)}</select></Field><Field label="Management decision"><select disabled={locked} className={inputClass} value={review.decision || ''} onChange={e => patch({ decision: (e.target.value || null) as SalesPerformanceDecision | null })}><option value="">Select when completing</option>{decisions.map(value => <option key={value}>{value}</option>)}</select></Field></div>
+
+    <section className="mt-6 rounded-3xl border border-blue-100 bg-blue-50/40 p-5">
+      <div className="text-[10px] font-black uppercase tracking-wide text-[#000080]">System evidence · read only</div>
+      <h3 className="mt-1 font-black">Quantitative evidence for this review period</h3>
+      <p className="mt-1 text-xs leading-5 text-slate-500">This evidence supports the human review. It never preselects a decision, required action, access restriction or employment outcome.</p>
+      {snapshotLoading ? <div className="mt-4 flex items-center gap-2 text-xs font-bold text-slate-500"><Loader2 className="h-4 w-4 animate-spin" />Loading period evidence…</div>
+        : snapshot && Object.keys(snapshot.qualityEvidence || {}).length > 0
+          ? <div className="mt-5"><QualityEvidencePanel snapshot={snapshot} compact /></div>
+          : <div className="mt-4 rounded-xl border border-dashed border-slate-200 bg-white p-4 text-xs text-slate-500">{locked ? 'This is a legacy completed snapshot without Part 15 quality metrics. Historical evidence was not backfilled.' : 'Period evidence is unavailable. The review may not infer missing quality data.'}</div>}
+    </section>
 
     <section className="mt-7 rounded-3xl border border-slate-200 bg-slate-50 p-5"><div className="text-[10px] font-black uppercase tracking-wide text-[#000080]">Approved quality evidence</div><h3 className="mt-1 font-black">Cover every required review area</h3><p className="mt-1 text-xs leading-5 text-slate-500">A review cannot be completed until evidence is recorded for all nine policy areas. Use factual observations; “not yet observed” is acceptable when that is the truthful evidence.</p><div className="mt-5 grid gap-4 md:grid-cols-2">{SALES_PERFORMANCE_QUALITY_AREAS.map(area => <Field key={area.key} label={area.label}><textarea disabled={locked} rows={3} className={inputClass} value={review.qualityEvidence?.[area.key] || ''} onChange={e => patchQuality(area.key, e.target.value)} placeholder={area.help} /><div className="mt-1 text-[10px] leading-4 text-slate-400">{area.help}</div></Field>)}</div></section>
 
