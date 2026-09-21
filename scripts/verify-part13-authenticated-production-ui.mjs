@@ -173,6 +173,36 @@ async function businessSnapshot(projectId) {
   };
 }
 
+async function part14BusinessInventory() {
+  const tables = [
+    'crm_leads',
+    'crm_opportunities',
+    'crm_activities',
+    'sales_meetings',
+    'crm_sales_validations',
+    'quotations',
+    'payments',
+    'clients',
+    'projects',
+    'client_onboardings',
+    'project_sales_handover_attempts',
+    'crm_sales_promises',
+    'crm_sales_scope_conditions',
+    'quotation_sales_coverage',
+    'crm_lead_events',
+  ];
+  const entries = [];
+  for (const table of tables) entries.push([table, await countRows(table)]);
+  return Object.fromEntries(entries);
+}
+
+function sessionScopedClient(session) {
+  return createClient(supabaseUrl, publishableKey, {
+    global: { headers: { Authorization: `Bearer ${session.access_token}` } },
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+  });
+}
+
 async function issueSession(profile, label) {
   const link = await server.auth.admin.generateLink({ type: 'magiclink', email: profile.email });
   if (link.error) throw link.error;
@@ -285,8 +315,128 @@ async function verifyAdmin(browser, session, truth) {
   }
 }
 
+async function verifyPart14Admin(browser, session) {
+  const client = sessionScopedClient(session);
+  const expectedResult = await client.rpc('crm_get_manager_exception_workspace', {
+    p_filter: 'all',
+    p_search: '',
+    p_owner_id: null,
+    p_limit: 100,
+    p_offset: 0,
+  });
+  if (expectedResult.error || !expectedResult.data) {
+    throw new Error(expectedResult.error?.message || 'Admin Part 14 aggregate RPC failed.');
+  }
+  const expected = expectedResult.data;
+
+  const context = await authenticatedContext(browser, session, { width: 1440, height: 1000 });
+  const page = await context.newPage();
+  const assertRuntime = runtimeGuard(page, 'Admin Part 14');
+  try {
+    await page.goto(`${baseUrl}/admin/manager-exceptions`, { waitUntil: 'domcontentloaded' });
+    await expectText(page, 'Manager Exceptions');
+    await page.getByText(/Only deals and handoffs that need intervention/).first().waitFor({ state: 'visible', timeout: 30_000 });
+    await expectText(page, 'Total Exceptions');
+    await expectText(page, 'Pending Review');
+    await page.getByRole('searchbox', { name: 'Search Manager Exceptions' }).waitFor({ state: 'visible' });
+    await page.getByRole('combobox', { name: 'Filter by Seller or owner' }).waitFor({ state: 'visible' });
+
+    if (Number(expected.total || 0) === 0) {
+      await expectText(page, 'No matching Sales exceptions.');
+    } else {
+      const first = expected.items[0];
+      await expectText(page, first.title);
+      await page.getByRole('button', { name: `Inspect ${first.title}` }).click();
+      await expectText(page, 'Exception Detail · Read-Only');
+      await expectText(page, 'Why it needs attention');
+      await page.getByRole('button', { name: 'Close exception detail' }).click();
+
+      const search = page.getByRole('searchbox', { name: 'Search Manager Exceptions' });
+      await search.fill(first.title.split(' ').slice(0, 2).join(' '));
+      await expectText(page, first.title);
+      await search.fill('');
+
+      if (Number(expected.counts?.overdue || 0) > 0) {
+        await page.getByRole('button', { name: 'Overdue', exact: true }).click();
+        await page.getByText(/matching$/).first().waitFor({ state: 'visible', timeout: 30_000 });
+        await page.getByRole('button', { name: 'All', exact: true }).click();
+      }
+
+      const action = page.getByRole('button', { name: first.actionLabel, exact: true }).first();
+      await action.waitFor({ state: 'visible' });
+      await action.click();
+      await page.waitForURL(url => `${url.pathname}${url.search}` === first.actionUrl, { timeout: 30_000 });
+      await page.goto(`${baseUrl}/admin/manager-exceptions`, { waitUntil: 'domcontentloaded' });
+      await expectText(page, 'Manager Exceptions');
+    }
+
+    for (const label of ['Resolve Exception', 'Ignore forever', 'Dismiss blocker', 'Hide exception permanently', 'Approve Quotation', 'Accept Handoff']) {
+      if (await page.getByRole('button', { name: label, exact: true }).count()) {
+        throw new Error(`Manager Exception Workspace exposed forbidden authority: ${label}`);
+      }
+    }
+    await assertNoSecretLabels(page);
+
+    await page.setViewportSize({ width: 768, height: 1024 });
+    await page.goto(`${baseUrl}/admin/manager-exceptions`, { waitUntil: 'domcontentloaded' });
+    await expectText(page, 'Manager Exceptions');
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto(`${baseUrl}/admin/manager-exceptions`, { waitUntil: 'domcontentloaded' });
+    await expectText(page, 'Manager Exceptions');
+    await page.keyboard.press('Tab');
+    const focused = await page.evaluate(() => {
+      const el = document.activeElement;
+      return Boolean(el && el !== document.body && el !== document.documentElement);
+    });
+    if (!focused) throw new Error('Part 14 mobile Manager Exceptions did not expose keyboard focus.');
+
+    assertRuntime();
+    console.log(`PASS  Part 14 authenticated Admin QA: Manager Exceptions loaded with ${expected.total} real source-derived item(s); filters/search/detail/source routing, desktop/tablet/mobile and keyboard checks PASS; no mutation authority exposed.`);
+  } finally {
+    await context.close();
+  }
+}
+
+async function verifyPart14Seller(browser, session) {
+  const client = sessionScopedClient(session);
+  const direct = await client.rpc('crm_get_manager_exception_workspace', {
+    p_filter: 'all',
+    p_search: '',
+    p_owner_id: null,
+    p_limit: 25,
+    p_offset: 0,
+  });
+  if (!direct.error) throw new Error('Seller unexpectedly invoked the team-wide Manager Exception RPC.');
+
+  const context = await authenticatedContext(browser, session, { width: 1280, height: 900 });
+  const page = await context.newPage();
+  const assertRuntime = runtimeGuard(page, 'Seller Part 14');
+  try {
+    await page.goto(`${baseUrl}/admin/manager-exceptions`, { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(1000);
+    if (await page.getByRole('heading', { name: 'Manager Exceptions', exact: true }).count()) {
+      throw new Error('Seller unexpectedly received the team-wide Manager Exception Workspace.');
+    }
+
+    await page.goto(`${baseUrl}/admin/seller-command-center`, { waitUntil: 'domcontentloaded' });
+    if (!page.url().includes('/admin/seller-command-center')) {
+      throw new Error('Seller did not retain the canonical Seller Command Center route.');
+    }
+    const body = await page.locator('body').innerText();
+    if (!body.trim()) throw new Error('Seller Command Center did not render.');
+    if (body.includes('Manager Exceptions')) throw new Error('Seller Command Center unexpectedly exposed team Manager Exceptions.');
+
+    assertRuntime();
+    console.log('PASS  Part 14 authenticated Seller negative-access QA: team workspace hidden/redirected, direct aggregate RPC rejected, canonical Seller Command Center retained, no team exception data exposed.');
+  } finally {
+    await context.close();
+  }
+}
+
 const truth = await loadQaTruth();
 const before = await businessSnapshot(truth.project.id);
+const part14Before = await part14BusinessInventory();
 const [sellerSession, adminSession] = await Promise.all([
   issueSession(truth.seller, 'Seller'),
   issueSession(truth.admin, 'Admin'),
@@ -296,6 +446,8 @@ const browser = await chromium.launch({ headless: true });
 try {
   await verifySeller(browser, sellerSession, truth);
   await verifyAdmin(browser, adminSession, truth);
+  await verifyPart14Admin(browser, adminSession);
+  await verifyPart14Seller(browser, sellerSession);
 } finally {
   await browser.close();
 }
@@ -308,3 +460,11 @@ if (JSON.stringify(before) !== JSON.stringify(after)) {
 console.log(`PASS  Part 13 production handoff immutability: projects=${after.projectCount}, Sales Handover projects=${after.handoffProjectCount}, lifecycle attempts=${after.lifecycleAttemptCount}, Seller task=${after.tasks.find(row => row.workflow_key==='sales_handover_submission')?.status}, PM review task=${after.tasks.find(row => row.workflow_key==='sales_handover_review')?.status}, PM assigned=${after.project.project_manager_id !== null}.`);
 console.log('PASS  No fake Client/Opportunity/Payment/Project/Onboarding/Handoff was created; no real handoff was submitted, accepted, returned, assigned a fake PM, or advanced solely for QA.');
 console.log('Authenticated Part 13 Seller/Admin production UI QA: COMPLETE (current Project has no assigned PM, so Admin routing/unassigned-PM behavior was verified instead of fabricating a PM identity).');
+
+const part14After = await part14BusinessInventory();
+if (JSON.stringify(part14Before) !== JSON.stringify(part14After)) {
+  throw new Error(`Part 14 authenticated production QA changed business inventory. Before=${JSON.stringify(part14Before)} After=${JSON.stringify(part14After)}`);
+}
+console.log(`PASS  Part 14 production business immutability: ${Object.entries(part14After).map(([key,value]) => `${key}=${value}`).join(', ')}.`);
+console.log('PASS  No fake Validation, quotation approval, activity, returned handoff, Promise conflict, SOP override, business record or exception record was created for Part 14 QA.');
+console.log('Authenticated Part 14 Admin/Seller production UI QA: COMPLETE.');

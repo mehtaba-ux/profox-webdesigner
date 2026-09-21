@@ -37,6 +37,7 @@ const DesignDeliverySettingsAdmin = lazy(() => import('./components/admin/Design
 const AcademyCertificationReviewQueue = lazy(() => import('./components/admin/AcademyCertificationReviewQueue'));
 const ProductivityCommandPalette = lazy(() => import('./components/admin/ProductivityCommandPalette'));
 const BusinessIntelligenceDashboard = lazy(() => import('./components/admin/BusinessIntelligenceDashboard'));
+const ManagerExceptionWorkspace = lazy(() => import('./components/admin/ManagerExceptionWorkspace'));
 const BusinessIntelligenceSettingsAdmin = lazy(() => import('./components/admin/BusinessIntelligenceSettingsAdmin'));
 const ManagementAiAdmin = lazy(() => import('./components/admin/ManagementAiAdmin'));
 const MeetingPrepView = lazy(() => import('./components/admin/MeetingPrepView'));
@@ -209,6 +210,7 @@ export default function App() {
       <Route path="/admin/public-pricing" element={<PublicPricingAdmin/>}/>
       <Route path="/admin/focus/:entityType/:entityId" element={<ProductivityRecordFocus/>}/>
       <Route path="/admin/intelligence" element={<BusinessIntelligenceDashboard/>}/>
+      <Route path="/admin/manager-exceptions" element={<ManagerExceptionWorkspace/>}/>
       <Route path="/admin/intelligence-ai" element={<ManagementAiAdmin/>}/>
       <Route path="/admin/intelligence-settings" element={<BusinessIntelligenceSettingsAdmin/>}/>
       <Route path="/admin/calendar" element={<CalendarHub/>}/>

@@ -1896,4 +1896,83 @@ Detailed closure evidence is maintained in docs/crm-sales-delivery-handoff-part-
 
 **PART 13 — SALES-TO-DELIVERY HANDOFF ACCEPTANCE / RETURN / RESUBMISSION: COMPLETE.**
 
-**Part 14 has not started.**
+**Part 14 implementation is in trusted release verification. Part 15 has not started.**
+
+---
+
+## 42. Part 14 — Manager Exception Workspace
+
+Part 14 adds one Admin-only, read-oriented Sales manager triage workspace without introducing a second exception truth system.
+
+### Architecture
+
+No new exception business table is created. The existing generic Business Intelligence exception feed remains unchanged because it spans Sales, Finance, Delivery and Recruitment. Part 14 instead adds one bounded aggregate RPC:
+
+- `crm_get_manager_exception_workspace(text,text,uuid,integer,integer)`
+
+It is `STABLE`, `SECURITY DEFINER`, fixed-search-path, anonymous-denied and internally active-Admin authorized.
+
+### Canonical exception sources
+
+The aggregate derives only from existing source truth:
+
+- Proposal Readiness → `crm_get_sales_gate_assessment(...,'PROPOSAL_READINESS')`
+- Sales Validation → `crm_sales_validations` + existing reviewer eligibility
+- Quotation Approval → existing approval state + reviewer authorization
+- Meeting close-out → completed Sales `sales_meetings`
+- Decision process → existing Proposal Readiness `DECISION_PROCESS` dimension
+- Missing / overdue next action → Part 11 Pipeline Command Center / Sales Work Queue / `crm_activities`
+- Stage SLA → Pipeline command-center stage age + SLA output
+- Returned handoff → latest Part 13 `RETURNED_TO_SALES`
+- Promise / quotation coverage → `crm_sales_promises` + `quotation_sales_coverage`
+- Repeated SOP override → actual quotation override timestamps / audited CRM override events only
+
+No exception can be manually resolved in Part 14. Deterministic source-derived keys are recomputed on every read; the exception disappears only when its authoritative source is corrected.
+
+### Authorization / boundaries
+
+The team workspace is Admin-only. Normal Sellers retain their existing Seller Command Center.
+
+Part 14 does not grant quotation approval, Sales Validation, Payment verification, Won, handoff Accept/Return, Project stage transition or bypass authority. Existing source-specific authorization remains authoritative.
+
+Part 15 Seller Quality & Performance Management is explicitly excluded.
+
+### UI
+
+The existing Founder Control shell gains `/admin/manager-exceptions` with:
+
+- Total Exceptions / Blocking / Overdue / Pending Review
+- type filters
+- search
+- Seller/owner filter
+- deterministic pagination
+- textual blocking/overdue states
+- source status/system, owner and age
+- read-only detail drawer
+- safe metadata allowlist
+- canonical `Open …` remediation routes
+
+There is no generic Resolve, Ignore, Dismiss or bypass action.
+
+### Migration / verification
+
+Repository migration:
+
+- `20260921110000_crm_manager_exception_workspace_part_14.sql`
+
+Focused verification:
+
+- `tests/security/crm-manager-exception-workspace-part-14.test.mjs`
+- `tests/security/crm-manager-exception-workspace-part-14-matrix.test.mjs` — exact 84-case matrix
+- `tests/security/part14-authenticated-production-ui.test.mjs`
+- `npm run test:crm-part14`
+- `npm run production:verify-part14`
+- authenticated production QA is extended through the existing trusted Part 13 Admin/Seller session harness
+
+A live-schema rollback probe created/exercised the RPC and Seller denial successfully, then rolled back with no production business change.
+
+Detailed architecture and release evidence: `docs/crm-manager-exception-workspace-part-14.md`.
+
+**PART 14 — MANAGER EXCEPTION WORKSPACE: RELEASE VERIFICATION IN PROGRESS.**
+
+**Part 15 has not started.**
