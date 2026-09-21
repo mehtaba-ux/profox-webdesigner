@@ -79,3 +79,14 @@ test('Part 10B and Part 16 boundaries are explicit',()=>{
   assert.match(migration,/snapshotSchemaVersion/);
   assert.doesNotMatch(migration+service+ui,/sales academy \/ certification permissions|auto.*certif|quality.*certification/i);
 });
+
+test('Part 15 first-response denominator includes unresolved or unverified obligations',()=>{
+  assert.match(migration,/v_first_measured:=v_first_responded\+v_first_open_breaches\+v_first_unknown/);
+  assert.match(migration,/'denominator',v_first_measured/);
+  assert.match(migration,/'measuredObligations',v_first_measured/);
+});
+
+test('Part 15 cannot freeze a review before its evidence period ends',()=>{
+  assert.match(migration,/current_date<v_review\.period_end/);
+  assert.match(migration,/cannot be completed before its evidence period ends/);
+});
