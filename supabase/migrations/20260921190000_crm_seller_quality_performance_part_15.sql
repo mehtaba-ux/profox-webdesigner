@@ -863,7 +863,8 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.get_sales_performance_period_snapshot(uuid,date,date) FROM PUBLIC,anon,authenticated;
+REVOKE ALL ON FUNCTION public.get_sales_performance_period_snapshot(uuid,date,date) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.get_sales_performance_period_snapshot(uuid,date,date) TO authenticated;
 REVOKE ALL ON FUNCTION public.get_sales_performance_snapshot(uuid) FROM PUBLIC,anon,authenticated;
 REVOKE ALL ON FUNCTION public.admin_update_sales_performance_review(uuid,text,text,text,text,text,text,text,text,jsonb,text[]) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.admin_update_sales_performance_review(uuid,text,text,text,text,text,text,text,text,jsonb,text[]) TO authenticated;
