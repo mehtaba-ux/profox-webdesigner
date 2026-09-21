@@ -39,6 +39,10 @@ test('Part 15 Admin QA verifies visible quality evidence and human-review bounda
   assert.match(qa,/visible:true/);
   assert.match(ui,/data-testid="part15-person-drawer"/);
   assert.match(ui,/data-testid="part15-quality-evidence"/);
+  assert.match(ui,/part15-quality-metric-\$\{metric\.key\}/);
+  assert.match(ui,/firstResponseSla: 'First-response SLA'/);
+  assert.match(ui,/commercialExceptions: 'Approval \/ exception frequency'/);
+  assert.match(ui,/dealValue: 'Won deal value'/);
   assert.match(ui,/data-testid="part15-review-drawer"/);
   assert.match(qa,/Seller Quality Score\|Failure score\|Bottom performer/);
 });
