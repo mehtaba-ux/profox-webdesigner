@@ -423,8 +423,8 @@ async function verifyPart14Seller(browser, session) {
     if (!page.url().includes('/admin/seller-command-center')) {
       throw new Error('Seller did not retain the canonical Seller Command Center route.');
     }
+    await expectText(page, 'Seller tools, performance & history');
     const body = await page.locator('body').innerText();
-    if (!body.trim()) throw new Error('Seller Command Center did not render.');
     if (body.includes('Manager Exceptions')) throw new Error('Seller Command Center unexpectedly exposed team Manager Exceptions.');
 
     assertRuntime();
