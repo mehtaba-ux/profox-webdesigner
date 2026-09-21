@@ -27,3 +27,20 @@ This implementation deliberately aggregates existing systems instead of creating
 ## Historical accuracy
 
 Quotations continue to snapshot product code, name, description and price when created. Later Sales Catalog edits therefore update future/public commercial guidance without rewriting historical quotations.
+
+
+## Part 15 performance evidence
+
+| Performance fact | Authoritative source | Part 15 behavior |
+| --- | --- | --- |
+| Review cadence / management review | sales_performance_settings / sales_performance_reviews | Existing persistence retained |
+| Review-period quantitative evidence | Existing CRM/Sales/Payment/Handoff truth via period snapshot RPC | Derived, not copied into a new business table |
+| Completed-review evidence | sales_performance_reviews.metrics_snapshot | Frozen only when human review completes |
+| Discovery / Proposal Readiness | Part 8 gate evaluator | Existing evaluator reused |
+| Next-action discipline | Part 11 opportunity-linked crm_activities | Legacy opportunity next-follow-up field is not performance truth |
+| Delivery first-pass / missing information | Part 13 project_sales_handover_attempts | Structured reviewed attempt/Return evidence only |
+| Revenue | Verified payments | Currency-separated; no invented FX normalization |
+| Sales-attributed post-sale scope changes | No explicit canonical Sales-attribution source | NOT_TRACKED_AUTHORITATIVELY |
+| Client expectation disputes | No explicit structured dispute source | NOT_TRACKED_AUTHORITATIVELY |
+
+Part 15 does not create an overall Seller score, ranking, automatic management decision, automatic access restriction, commission mutation, or certification mutation.
