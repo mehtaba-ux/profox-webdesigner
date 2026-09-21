@@ -347,8 +347,126 @@ function ReviewDrawer({ review, setReview, snapshot, snapshotLoading, saving, on
   </div></div>;
 }
 
+const QUALITY_METRIC_SECTIONS: Array<{ title: string; keys: string[] }> = [
+  { title: 'Performance outcomes', keys: ['verifiedRevenue', 'winRate', 'dealValue'] },
+  { title: 'Process quality', keys: ['firstResponseSla', 'discoveryCompleteness', 'proposalReadiness', 'nextActionDiscipline'] },
+  { title: 'Delivery quality', keys: ['firstPassHandoffAcceptance', 'missingInformationRate', 'postSaleSalesAttributedScopeChanges'] },
+  { title: 'Policy / commercial quality', keys: ['unauthorizedPromiseIncidents', 'discountFrequency', 'commercialExceptions', 'clientExpectationDisputes'] }
+];
+
+function metricNumber(metric: SalesPerformanceQualityMetric, key: string) {
+  const value = metric?.[key];
+  return typeof value === 'number' && Number.isFinite(value) ? value : null;
+}
+
+function metricArray(metric: SalesPerformanceQualityMetric, key: string) {
+  const value = metric?.[key];
+  return Array.isArray(value) ? value : [];
+}
+
+function moneyWithCurrency(currency: string, value: number) {
+  try {
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency, maximumFractionDigits: 2 }).format(value);
+  } catch {
+    return `${currency} ${Number(value || 0).toLocaleString()}`;
+  }
+}
+
+function metricDisplay(metric?: SalesPerformanceQualityMetric) {
+  if (!metric) return 'Not available';
+  if (metric.availability === 'INSUFFICIENT_DATA') return 'Insufficient data';
+  if (metric.availability === 'NOT_TRACKED_AUTHORITATIVELY') return 'Not tracked authoritatively';
+
+  const rate = metricNumber(metric, 'rate');
+  switch (metric.key) {
+    case 'firstResponseSla':
+      return rate == null ? `${metricNumber(metric, 'respondedLeads') ?? 0} responses` : `${rate}% on time`;
+    case 'discoveryCompleteness':
+      return rate == null ? 'Insufficient data' : `${rate}% resolved`;
+    case 'proposalReadiness':
+      return `${metricNumber(metric, 'readyCount') ?? 0} ready / ${metricNumber(metric, 'opportunitiesEvaluated') ?? 0}`;
+    case 'firstPassHandoffAcceptance':
+      return rate == null ? 'Insufficient data' : `${rate}% first pass`;
+    case 'missingInformationRate':
+      return rate == null ? 'Insufficient data' : `${rate}% returned for missing info`;
+    case 'unauthorizedPromiseIncidents':
+      return `${metricNumber(metric, 'incidentCount') ?? 0} incident${metricNumber(metric, 'incidentCount') === 1 ? '' : 's'}`;
+    case 'discountFrequency':
+      return rate == null ? 'Insufficient data' : `${rate}% of quotes`;
+    case 'commercialExceptions':
+      return `${metricNumber(metric, 'approvalRequests') ?? 0} approvals · ${metricNumber(metric, 'validationRequests') ?? 0} validations`;
+    case 'nextActionDiscipline':
+      return rate == null ? `${metricNumber(metric, 'activitiesDue') ?? 0} actions due` : `${rate}% on time`;
+    case 'verifiedRevenue': {
+      const rows = metricArray(metric, 'verifiedRevenueByCurrency') as Array<Record<string, unknown>>;
+      if (rows.length === 0) return 'No verified revenue';
+      if (rows.length > 1) return `${rows.length} currencies`;
+      return moneyWithCurrency(String(rows[0]?.currency || 'USD'), Number(rows[0]?.amount || 0));
+    }
+    case 'winRate':
+      return rate == null ? 'Insufficient data' : `${rate}%`;
+    case 'dealValue': {
+      const rows = metricArray(metric, 'byCurrency') as Array<Record<string, unknown>>;
+      if (rows.length === 0) return 'Insufficient data';
+      if (rows.length > 1) return `${rows.length} currencies`;
+      return `${moneyWithCurrency(String(rows[0]?.currency || 'USD'), Number(rows[0]?.averageWonDealValue || 0))} avg`;
+    }
+    default:
+      if (typeof metric.value === 'number') return String(metric.value);
+      return 'Available';
+  }
+}
+
+function QualityMetricCard({ metric }: { metric: SalesPerformanceQualityMetric }) {
+  const availabilityLabel = metric.availability === 'AVAILABLE'
+    ? 'Available'
+    : metric.availability === 'INSUFFICIENT_DATA'
+      ? 'Insufficient data'
+      : 'Not tracked authoritatively';
+  const period = metric.periodStart && metric.periodEnd ? `${dateLabel(metric.periodStart)}–${dateLabel(metric.periodEnd)}` : 'Current evidence';
+  return <div className="rounded-2xl border border-slate-200 bg-white p-4">
+    <div className="flex items-start justify-between gap-3">
+      <div className="min-w-0"><div className="text-[10px] font-black uppercase tracking-wide text-slate-400">{metric.label}</div><div className="mt-1 text-lg font-black text-slate-900">{metricDisplay(metric)}</div></div>
+      <span className={`shrink-0 rounded-full px-2.5 py-1 text-[9px] font-black uppercase tracking-wide ${metric.availability === 'AVAILABLE' ? 'bg-emerald-50 text-emerald-700' : metric.availability === 'INSUFFICIENT_DATA' ? 'bg-amber-50 text-amber-700' : 'bg-slate-100 text-slate-600'}`}>{availabilityLabel}</span>
+    </div>
+    <div className="mt-3 text-[10px] font-semibold text-slate-400">Sample {metric.sampleSize ?? 0} · {period}</div>
+    {metric.notes && <p className="mt-2 text-[10px] leading-4 text-slate-500">{metric.notes}</p>}
+  </div>;
+}
+
+function QualityEvidencePanel({ snapshot, compact = false }: { snapshot: SalesPerformanceSnapshot; compact?: boolean }) {
+  const evidence = snapshot.qualityEvidence || {};
+  const hasEvidence = Object.keys(evidence).length > 0;
+  const health = snapshot.currentOperationalHealth;
+  if (!hasEvidence) return <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-5 text-xs text-slate-500">Legacy performance evidence is still valid, but Part 15 quality indicators were not historically backfilled.</div>;
+
+  return <section className={compact ? '' : 'rounded-3xl border border-slate-200 bg-white p-6 shadow-sm'}>
+    <div>
+      <div className="text-[10px] font-black uppercase tracking-[0.18em] text-[#000080]">Quality revenue + clean delivery</div>
+      <h2 className="mt-2 text-xl font-black">System evidence, not an overall Seller score</h2>
+      <p className="mt-1 max-w-3xl text-xs leading-5 text-slate-500">Metrics show source-backed outcomes, process discipline, delivery quality and limitations. Human management review remains the decision authority.</p>
+    </div>
+    <div className="mt-5 space-y-6">
+      {QUALITY_METRIC_SECTIONS.map(section => <div key={section.title}>
+        <div className="mb-3 text-[10px] font-black uppercase tracking-wide text-slate-500">{section.title}</div>
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{section.keys.map(key => evidence[key] ? <QualityMetricCard key={key} metric={evidence[key]} /> : null)}</div>
+      </div>)}
+    </div>
+    {health && <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+      <div className="text-[10px] font-black uppercase tracking-wide text-slate-400">Current operational health · separate from period performance</div>
+      <div className="mt-3 grid grid-cols-3 gap-3">
+        <MiniMetric label="Open opportunities" value={health.currentOpenOpportunities} />
+        <MiniMetric label="Missing next action" value={health.currentMissingNextAction} danger={health.currentMissingNextAction > 0} />
+        <MiniMetric label="Overdue next action" value={health.currentOverdueNextAction} danger={health.currentOverdueNextAction > 0} />
+      </div>
+    </div>}
+  </section>;
+}
+
 function CompletedReviewCard({ review }: { review: SalesPerformanceReview }) {
-  return <div className="rounded-2xl border border-slate-200 p-5"><div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start"><div><div className="flex items-center gap-2 font-black"><LockKeyhole className="h-4 w-4 text-emerald-600" />{reviewLabel(review)}</div><div className="mt-1 text-xs text-slate-500">Scheduled {dateLabel(review.scheduledFor)}{review.completedAt ? ` · completed ${new Date(review.completedAt).toLocaleDateString()}` : ''} · owner recorded</div></div>{review.decision && <DecisionPill decision={review.decision} />}</div>{review.requiredActions.length > 0 && <div className="mt-4 flex flex-wrap gap-2">{review.requiredActions.map(action => <span key={action} className="rounded-full bg-blue-50 px-2.5 py-1 text-[9px] font-black uppercase tracking-wide text-[#000080]">{action}</span>)}</div>}<div className="mt-4 grid gap-3 md:grid-cols-2">{SALES_PERFORMANCE_QUALITY_AREAS.map(area => <div key={area.key} className="rounded-xl bg-slate-50 p-3"><div className="text-[9px] font-black uppercase tracking-wide text-slate-400">{area.label}</div><p className="mt-1 text-xs leading-5 text-slate-600">{review.qualityEvidence?.[area.key] || 'No evidence recorded'}</p></div>)}</div>{review.reviewNotes && <FeedbackLine label="Management notes" text={review.reviewNotes} />}{review.strengths && <FeedbackLine label="Strengths" text={review.strengths} />}{review.coachingActions && <FeedbackLine label="Coaching actions" text={review.coachingActions} />}{review.improvementPlan && <FeedbackLine label="Improvement plan" text={review.improvementPlan} />}{review.scopeRestrictions && <FeedbackLine label="Scope restrictions" text={review.scopeRestrictions} />}</div>;
+  const frozenSnapshot = normalizeSalesPerformanceSnapshot(review.metricsSnapshot || {});
+  const hasPart15Snapshot = Object.keys(frozenSnapshot.qualityEvidence || {}).length > 0;
+  return <div className="rounded-2xl border border-slate-200 p-5"><div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start"><div><div className="flex items-center gap-2 font-black"><LockKeyhole className="h-4 w-4 text-emerald-600" />{reviewLabel(review)}</div><div className="mt-1 text-xs text-slate-500">Scheduled {dateLabel(review.scheduledFor)}{review.completedAt ? ` · completed ${new Date(review.completedAt).toLocaleDateString()}` : ''} · owner recorded</div></div>{review.decision && <DecisionPill decision={review.decision} />}</div>{review.requiredActions.length > 0 && <div className="mt-4 flex flex-wrap gap-2">{review.requiredActions.map(action => <span key={action} className="rounded-full bg-blue-50 px-2.5 py-1 text-[9px] font-black uppercase tracking-wide text-[#000080]">{action}</span>)}</div>}{hasPart15Snapshot ? <div className="mt-5"><QualityEvidencePanel snapshot={frozenSnapshot} compact /></div> : <div className="mt-5 rounded-xl border border-dashed border-slate-200 bg-slate-50 p-4 text-xs text-slate-500">Legacy immutable snapshot — Part 15 metrics were not backfilled.</div>}<div className="mt-4 grid gap-3 md:grid-cols-2">{SALES_PERFORMANCE_QUALITY_AREAS.map(area => <div key={area.key} className="rounded-xl bg-slate-50 p-3"><div className="text-[9px] font-black uppercase tracking-wide text-slate-400">{area.label}</div><p className="mt-1 text-xs leading-5 text-slate-600">{review.qualityEvidence?.[area.key] || 'No evidence recorded'}</p></div>)}</div>{review.reviewNotes && <FeedbackLine label="Management notes" text={review.reviewNotes} />}{review.strengths && <FeedbackLine label="Strengths" text={review.strengths} />}{review.coachingActions && <FeedbackLine label="Coaching actions" text={review.coachingActions} />}{review.improvementPlan && <FeedbackLine label="Improvement plan" text={review.improvementPlan} />}{review.scopeRestrictions && <FeedbackLine label="Scope restrictions" text={review.scopeRestrictions} />}</div>;
 }
 
 function HeroStat({ label, value }: { label: string; value: string | number }) { return <div className="min-w-24 rounded-2xl bg-white/10 px-4 py-3"><div className="text-xl font-black">{value}</div><div className="mt-1 text-[9px] font-black uppercase tracking-wide text-blue-200">{label}</div></div>; }
