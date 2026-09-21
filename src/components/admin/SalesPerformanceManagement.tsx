@@ -426,7 +426,7 @@ function QualityMetricCard({ metric }: { metric: SalesPerformanceQualityMetric }
   const period = metric.periodStart && metric.periodEnd ? `${dateLabel(metric.periodStart)}–${dateLabel(metric.periodEnd)}` : 'Current evidence';
   return <div className="rounded-2xl border border-slate-200 bg-white p-4">
     <div className="flex items-start justify-between gap-3">
-      <div className="min-w-0"><div className="text-[10px] font-black uppercase tracking-wide text-slate-400">{metric.label}</div><div className="mt-1 text-lg font-black text-slate-900">{metricDisplay(metric)}</div></div>
+      <div className="min-w-0"><div data-testid={`part15-quality-metric-${metric.key}`} className="text-[10px] font-black uppercase tracking-wide text-slate-400">{metric.label}</div><div className="mt-1 text-lg font-black text-slate-900">{metricDisplay(metric)}</div></div>
       <span className={`shrink-0 rounded-full px-2.5 py-1 text-[9px] font-black uppercase tracking-wide ${metric.availability === 'AVAILABLE' ? 'bg-emerald-50 text-emerald-700' : metric.availability === 'INSUFFICIENT_DATA' ? 'bg-amber-50 text-amber-700' : 'bg-slate-100 text-slate-600'}`}>{availabilityLabel}</span>
     </div>
     <div className="mt-3 text-[10px] font-semibold text-slate-400">Sample {metric.sampleSize ?? 0} · {period}</div>
