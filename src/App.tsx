@@ -158,7 +158,14 @@ function HomePage() {
 }
 
 function RouteLoading() {
-  return <div className="flex min-h-[45vh] items-center justify-center bg-white"><div role="status" className="h-9 w-9 animate-spin rounded-full border-4 border-[#000080] border-t-transparent" aria-label="Loading screen" /></div>;
+  return (
+    <div className="flex min-h-[45vh] items-center justify-center bg-white">
+      <div role="status" className="flex flex-col items-center gap-3 text-center" aria-live="polite">
+        <div className="h-9 w-9 animate-spin rounded-full border-4 border-[#000080] border-t-transparent" aria-hidden="true" />
+        <p className="text-sm font-semibold text-slate-500">Loading ProFox workspace…</p>
+      </div>
+    </div>
+  );
 }
 
 export default function App() {

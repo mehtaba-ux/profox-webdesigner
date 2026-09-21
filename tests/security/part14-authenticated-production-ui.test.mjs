@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 const qa = await readFile('scripts/verify-part13-authenticated-production-ui.mjs','utf8');
+const app = await readFile('src/App.tsx','utf8');
 const packageJson = JSON.parse(await readFile('package.json','utf8'));
 
 test('Part 14 reuses the trusted authenticated Part 13 QA session harness', () => {
@@ -74,4 +75,10 @@ test('Part 14 production UI command uses the same trusted harness that deploymen
 test('Part 15 remains out of Part 14 QA and package wiring', () => {
   assert.doesNotMatch(qa,/Part 15|seller quality|first-pass handoff acceptance/i);
   assert.equal(packageJson.scripts['test:crm-part15'],undefined);
+});
+
+
+test('shared lazy workspace fallback has visible text for deterministic route readiness', () => {
+  assert.match(app,/Loading ProFox workspace…/);
+  assert.match(app,/aria-live="polite"/);
 });
