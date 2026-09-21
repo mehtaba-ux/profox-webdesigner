@@ -56,3 +56,14 @@ Changing the policy refreshes future Scheduled reviews only. Completed evidence 
 - Admin: team roll-up, cadence settings, due-review queue and review completion.
 - Anonymous access: none.
 - Review/table mutations: protected RPC only.
+
+
+## Part 15 — quality revenue + clean delivery
+
+Part 15 extends the same persistence and UI; it does not create a second performance system.
+
+Quantitative evidence is derived by get_sales_performance_period_snapshot(uuid,date,date) from canonical CRM, Sales, Payment and Handoff truth. Completed reviews freeze the exact review-period snapshot into the existing immutable sales_performance_reviews.metrics_snapshot.
+
+Post-sale Sales-attributed scope changes and client expectation disputes are reported as NOT_TRACKED_AUTHORITATIVELY because the audited source model does not explicitly prove those facts. Part 15 does not infer blame.
+
+There is no overall Seller score or automatic management consequence. Detailed architecture: docs/crm-seller-quality-performance-part-15.md.
