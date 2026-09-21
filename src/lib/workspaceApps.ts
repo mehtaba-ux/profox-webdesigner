@@ -95,6 +95,7 @@ export const WORKSPACE_APPS: WorkspaceAppDefinition[] = [
     launchPath: '/admin/intelligence',
     items: [
       { id: 'overview', label: 'Founder Control', path: '/admin/intelligence', section: 'Executive Control' },
+      { id: 'manager-exceptions', label: 'Manager Exceptions', path: '/admin/manager-exceptions', section: 'Executive Control', roles: ['admin'] },
       { id: 'ai-intelligence', label: 'AI Management Brief', path: '/admin/intelligence-ai', section: 'Executive Control' },
       { id: 'rules', label: 'KPI & Risk Rules', path: '/admin/intelligence-settings', section: 'Governance' }
     ]
