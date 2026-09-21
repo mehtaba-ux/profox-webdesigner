@@ -72,9 +72,11 @@ test('Part 14 production UI command uses the same trusted harness that deploymen
   assert.match(packageJson.scripts['production:verify-part12-ui'],/production:verify-part13-ui/);
 });
 
-test('Part 15 remains out of Part 14 QA and package wiring', () => {
-  assert.doesNotMatch(qa,/Part 15|seller quality|first-pass handoff acceptance/i);
-  assert.equal(packageJson.scripts['test:crm-part15'],undefined);
+test('Part 14 QA remains intact when later Parts extend the trusted shared harness', () => {
+  assert.match(qa,/verifyPart14Admin/);
+  assert.match(qa,/verifyPart14Seller/);
+  assert.match(packageJson.scripts['test:crm-part14'],/crm-manager-exception-workspace-part-14/);
+  assert.match(packageJson.scripts['test:crm-part15'],/crm-seller-quality-performance-part-15/);
 });
 
 
