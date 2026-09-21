@@ -55,7 +55,45 @@ export interface SalesPerformanceSettings {
   updatedAt?: string | null;
 }
 
+export type SalesPerformanceMetricAvailability = 'AVAILABLE' | 'INSUFFICIENT_DATA' | 'NOT_TRACKED_AUTHORITATIVELY';
+
+export interface SalesPerformanceQualityMetric {
+  key: string;
+  label: string;
+  availability: SalesPerformanceMetricAvailability;
+  value?: unknown;
+  numerator?: number | null;
+  denominator?: number | null;
+  rate?: number | null;
+  sampleSize: number;
+  periodStart?: string | null;
+  periodEnd?: string | null;
+  source?: string | null;
+  sourceVersion?: string | null;
+  notes?: string | null;
+  [key: string]: unknown;
+}
+
+export interface SalesPerformancePeriod {
+  start?: string | null;
+  end?: string | null;
+  days?: number | null;
+  timezone?: string | null;
+  boundary?: string | null;
+  effectiveThrough?: string | null;
+}
+
+export interface SalesPerformanceCurrentOperationalHealth {
+  asOf?: string | null;
+  currentOpenOpportunities: number;
+  currentMissingNextAction: number;
+  currentOverdueNextAction: number;
+  source?: string | null;
+}
+
 export interface SalesPerformanceSnapshot {
+  schemaVersion?: number;
+  period?: SalesPerformancePeriod;
   activationDate?: string | null;
   daysActive?: number | null;
   customerInteractions: number;
@@ -76,6 +114,10 @@ export interface SalesPerformanceSnapshot {
   verifiedPayments: number;
   verifiedSales: number;
   commissionEntries: number;
+  qualityEvidence: Record<string, SalesPerformanceQualityMetric>;
+  currentOperationalHealth: SalesPerformanceCurrentOperationalHealth;
+  supportingEvidence: Record<string, unknown>;
+  attribution: Record<string, unknown>;
 }
 
 export interface SalesPerformanceReview {
@@ -154,8 +196,21 @@ function mapSettings(raw: any): SalesPerformanceSettings {
   };
 }
 
-function mapSnapshot(raw: any): SalesPerformanceSnapshot {
+function mapMetric(raw: any): SalesPerformanceQualityMetric {
   return {
+    ...(raw && typeof raw === 'object' ? raw : {}),
+    key: String(raw?.key || ''),
+    label: String(raw?.label || raw?.key || 'Metric'),
+    availability: (raw?.availability || 'INSUFFICIENT_DATA') as SalesPerformanceMetricAvailability,
+    sampleSize: n(raw?.sampleSize)
+  };
+}
+
+function mapSnapshot(raw: any): SalesPerformanceSnapshot {
+  const qualityRaw = raw?.qualityEvidence && typeof raw.qualityEvidence === 'object' ? raw.qualityEvidence : {};
+  return {
+    schemaVersion: raw?.schemaVersion == null ? undefined : n(raw.schemaVersion),
+    period: raw?.period && typeof raw.period === 'object' ? raw.period : undefined,
     activationDate: raw?.activationDate ?? null,
     daysActive: raw?.daysActive == null ? null : n(raw.daysActive),
     customerInteractions: n(raw?.customerInteractions),
@@ -175,7 +230,17 @@ function mapSnapshot(raw: any): SalesPerformanceSnapshot {
     quotationsAccepted: n(raw?.quotationsAccepted),
     verifiedPayments: n(raw?.verifiedPayments),
     verifiedSales: n(raw?.verifiedSales),
-    commissionEntries: n(raw?.commissionEntries)
+    commissionEntries: n(raw?.commissionEntries),
+    qualityEvidence: Object.fromEntries(Object.entries(qualityRaw).map(([key, value]) => [key, mapMetric(value)])),
+    currentOperationalHealth: {
+      asOf: raw?.currentOperationalHealth?.asOf ?? null,
+      currentOpenOpportunities: n(raw?.currentOperationalHealth?.currentOpenOpportunities),
+      currentMissingNextAction: n(raw?.currentOperationalHealth?.currentMissingNextAction),
+      currentOverdueNextAction: n(raw?.currentOperationalHealth?.currentOverdueNextAction),
+      source: raw?.currentOperationalHealth?.source ?? null
+    },
+    supportingEvidence: raw?.supportingEvidence && typeof raw.supportingEvidence === 'object' ? raw.supportingEvidence : {},
+    attribution: raw?.attribution && typeof raw.attribution === 'object' ? raw.attribution : {}
   };
 }
 
@@ -254,6 +319,16 @@ export const salesPerformanceService = {
     const { data, error } = await supabase.rpc('admin_get_sales_performance');
     if (error) throw error;
     return mapAdminPayload(data || {});
+  },
+
+  async getPeriodSnapshot(salespersonId: string, periodStart: string, periodEnd: string): Promise<SalesPerformanceSnapshot> {
+    const { data, error } = await supabase.rpc('get_sales_performance_period_snapshot', {
+      p_salesperson_id: salespersonId,
+      p_period_start: periodStart,
+      p_period_end: periodEnd
+    });
+    if (error) throw error;
+    return mapSnapshot(data || {});
   },
 
   async saveSettings(settings: SalesPerformanceSettings): Promise<SalesPerformanceAdminPayload> {
