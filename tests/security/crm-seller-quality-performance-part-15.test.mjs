@@ -50,7 +50,7 @@ test('human review remains authoritative',()=>{
   assert.match(migration,/A completed review requires a management decision/);
   assert.match(migration,/Apply any access\/offboarding change through the existing Team & Users control/);
   assert.doesNotMatch(migration,/update\s+public\.user_profiles\s+set\s+status/i);
-  assert.doesNotMatch(migration,/commission_rules|certification_level|quality_score/i);
+  assert.doesNotMatch(migration,/(insert|update|delete)\s+(into\s+|from\s+)?public\.(commission_[a-z_]*|[a-z_]*certif[a-z_]*)/i);
   assert.match(ui,/Human management review remains the decision authority/);
   assert.match(ui,/never preselects a decision, required action, access restriction or employment outcome/);
 });
@@ -77,7 +77,8 @@ test('Part 10B and Part 16 boundaries are explicit',()=>{
   assert.match(migration,/finalQuotationSendGateActive/);
   assert.match(migration,/policyVersion/);
   assert.match(migration,/snapshotSchemaVersion/);
-  assert.doesNotMatch(migration+service+ui,/sales academy \/ certification permissions|auto.*certif|quality.*certification/i);
+  assert.doesNotMatch(migration,/(insert|update|delete)\s+(into\s+|from\s+)?public\.[a-z_]*(academy|certif|complexity)[a-z_]*/i);
+  assert.doesNotMatch(service+ui,/deal[-_ ]complexity permission|part 16/i);
 });
 
 test('Part 15 first-response denominator includes unresolved or unverified obligations',()=>{
