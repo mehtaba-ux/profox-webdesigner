@@ -2011,4 +2011,31 @@ A redundant QA-only PR #135 was closed unmerged because PR #134 had already solv
 
 **PART 14 — MANAGER EXCEPTION WORKSPACE: COMPLETE.**
 
-**Part 15 has not started.**
+**Part 15 implementation is a release candidate; production closure is pending. Part 16 has not started.**
+
+---
+
+## 43. Part 15 — Seller Quality + Performance
+
+Part 15 extends the existing post-activation Performance & Coaching architecture rather than creating a second scorecard or performance truth system.
+
+Existing sales_performance_settings and sales_performance_reviews remain authoritative. The period-aware get_sales_performance_period_snapshot(uuid,date,date) derives quantitative evidence from existing Sales systems. get_sales_performance_snapshot(uuid) remains the current/activation compatibility wrapper.
+
+When an Admin completes a review, exact period_start → period_end evidence is frozen into the existing immutable metrics_snapshot. Legacy completed snapshots are not backfilled. A review cannot be completed before its evidence period ends.
+
+Metrics cover verified revenue, win rate, Won deal value, first-response SLA, Discovery completeness, Proposal Readiness, Part 11 next-action discipline, Part 13 first-pass handoff acceptance, Part 13 missing-information Return rate, active canonical Promise conflicts, discount frequency and approval/validation/audited-override frequency.
+
+Every metric reports AVAILABLE, INSUFFICIENT_DATA, or NOT_TRACKED_AUTHORITATIVELY with source/sample/period limitations where applicable. Post-sale Sales-attributed scope changes and client expectation disputes fail closed as NOT_TRACKED_AUTHORITATIVELY because no audited canonical source explicitly proves those facts.
+
+There is no overall Seller score or automatic management verdict. Continue / Extend Review / Restrict Scope / Close Engagement remain human decisions. Part 15 does not automatically change Team & Users access, employment, commissions, certification, Sales Academy permissions, or Part 16 permissions.
+
+Migration: 20260921190000_crm_seller_quality_performance_part_15.sql
+Checksum: b810ff80cd93e3dfd1f2d288db7060ec02974e583487c715c5c00f1a4457f41b
+
+Verification includes an exact 77-case Part 15 matrix, production release-readiness verifier, authenticated non-destructive Admin/Seller production QA, and before/after performance review/settings immutability checks.
+
+Detailed architecture and release evidence: docs/crm-seller-quality-performance-part-15.md.
+
+**PART 15: RELEASE CANDIDATE — PRODUCTION CLOSURE PENDING.**
+
+**Part 16 has not started.**
