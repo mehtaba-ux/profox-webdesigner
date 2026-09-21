@@ -22,13 +22,20 @@ test('Part 15 production QA snapshots performance truth before and after',()=>{
   assert.match(qa,/no fake review\/business record was created/);
 });
 
-test('Part 15 Admin QA verifies quality evidence and human-review boundary',()=>{
+test('Part 15 Admin QA verifies visible quality evidence and human-review boundary',()=>{
   assert.match(qa,/\/admin\/sales-performance/);
   assert.match(qa,/Quality revenue \+ clean delivery/);
   assert.match(qa,/System evidence · read only/);
   assert.match(qa,/Quantitative evidence for this review period/);
   assert.match(qa,/Approved quality evidence/);
   assert.match(qa,/Management decision/);
+  assert.match(qa,/part15-person-drawer/);
+  assert.match(qa,/part15-quality-evidence/);
+  assert.match(qa,/part15-review-drawer/);
+  assert.match(qa,/visible:true/);
+  assert.match(ui,/data-testid="part15-person-drawer"/);
+  assert.match(ui,/data-testid="part15-quality-evidence"/);
+  assert.match(ui,/data-testid="part15-review-drawer"/);
   assert.match(qa,/Seller Quality Score\|Failure score\|Bottom performer/);
 });
 
