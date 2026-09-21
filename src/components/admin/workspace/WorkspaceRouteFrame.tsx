@@ -14,7 +14,7 @@ const SALES_SETUP_SUPPORT_PATHS = ['/admin/seller-profile', '/admin/booking-setu
 
 function activeWorkspaceForPath(pathname: string): WorkspaceAppId | 'workspace' | 'approvals' {
   if (pathname.startsWith('/admin/quotation-approvals')) return 'approvals';
-  if (pathname.startsWith('/admin/intelligence')) return 'intelligence';
+  if (pathname.startsWith('/admin/intelligence') || pathname.startsWith('/admin/manager-exceptions')) return 'intelligence';
   if (pathname.startsWith('/admin/internal-chat')) return 'internal_chat';
   if (pathname.startsWith('/admin/calendar') || pathname.startsWith('/admin/meeting') || pathname.startsWith('/admin/booking')) return 'calendar';
   if (pathname.startsWith('/admin/content-recruitment') || pathname.startsWith('/admin/uiux-recruitment') || pathname.startsWith('/admin/talent-partners') || pathname.startsWith('/admin/hiring') || pathname.startsWith('/admin/job-posts') || pathname.startsWith('/admin/agreements')) return 'recruitment';
