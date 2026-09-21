@@ -27,7 +27,7 @@ const cases=[
  ['13 forged/missing response evidence not successful',()=>m('first_response_evidence_type')&&m('first_response_evidence_id')&&m('unknownIncompleteEvidence')],
  ['14 first-response period boundary correct',()=>m('coalesce(l.accepted_at,l.assigned_at,l.created_at)>=v_start')&&m('<v_end_exclusive')],
  ['15 reassignment attribution handled safely',()=>m('excludedUnsafeOwnershipAttribution')&&m('accepted_at>=l.assigned_at')],
- ['16 zero response denominator gives insufficient data',()=>m("v_first_eligible=0 then 'INSUFFICIENT_DATA'")],
+ ['16 zero response denominator gives insufficient data',()=>m("v_first_measured=0 then 'INSUFFICIENT_DATA'")],
 
  ['17 confirmed required Requirement counts',()=>m('REQUIREMENTS_COMPLETENESS')&&m('confirmedRequirements')],
  ['18 Seller hypothesis does not get a new formula',()=>m("crm_get_sales_gate_assessment(v_opp.id,'REQUIREMENTS_CONFIRMED')")&&!m('SELLER_HYPOTHESIS=')],
