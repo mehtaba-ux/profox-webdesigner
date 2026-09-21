@@ -87,6 +87,7 @@ DECLARE
   v_resolved integer;
 
   v_reviewed_handoffs integer:=0;
+  v_all_reviewed_handoffs integer:=0;
   v_first_pass_accepted integer:=0;
   v_first_pass_returned integer:=0;
   v_missing_returns integer:=0;
@@ -239,6 +240,12 @@ BEGIN
   FROM public.project_sales_handover_attempts a
   WHERE a.attempt_number=1
     AND a.submitted_by=p_salesperson_id
+    AND a.reviewed_at>=v_start AND a.reviewed_at<v_end_exclusive
+    AND a.status IN ('ACCEPTED','RETURNED_TO_SALES');
+
+  SELECT count(*)::int INTO v_all_reviewed_handoffs
+  FROM public.project_sales_handover_attempts a
+  WHERE a.submitted_by=p_salesperson_id
     AND a.reviewed_at>=v_start AND a.reviewed_at<v_end_exclusive
     AND a.status IN ('ACCEPTED','RETURNED_TO_SALES');
 
@@ -416,8 +423,9 @@ BEGIN
 
   -- Supporting deterministic evidence for the existing human quality areas.
   SELECT
-    count(*)::int,
-    count(*) FILTER(WHERE nullif(btrim(coalesce(m.outcome,'')),'') IS NOT NULL
+    count(*) FILTER(WHERE m.completed_at>=v_start AND m.completed_at<v_end_exclusive)::int,
+    count(*) FILTER(WHERE m.completed_at>=v_start AND m.completed_at<v_end_exclusive
+                      AND nullif(btrim(coalesce(m.outcome,'')),'') IS NOT NULL
                       AND nullif(btrim(coalesce(m.next_step,'')),'') IS NOT NULL)::int,
     count(*) FILTER(WHERE m.start_at>=v_start AND m.start_at<v_end_exclusive)::int,
     count(*) FILTER(WHERE m.start_at>=v_start AND m.start_at<v_end_exclusive AND m.prep_reviewed_at IS NOT NULL)::int
@@ -453,7 +461,11 @@ BEGIN
     'customerInteractions',
       (SELECT count(*)::int FROM public.crm_activities a
        WHERE a.assigned_to=p_salesperson_id AND a.completed_at>=v_start AND a.completed_at<v_end_exclusive
-         AND (a.lead_id IS NOT NULL OR a.opportunity_id IS NOT NULL))
+         AND (a.lead_id IS NOT NULL OR a.opportunity_id IS NOT NULL)
+         AND NOT EXISTS(
+           SELECT 1 FROM public.sales_meetings sm
+           WHERE sm.activity_id=a.id AND sm.salesperson_id=p_salesperson_id
+         ))
       +(SELECT count(*)::int FROM public.sales_meetings m
         WHERE m.salesperson_id=p_salesperson_id AND m.completed_at>=v_start AND m.completed_at<v_end_exclusive),
     'crmActivitiesLogged',(SELECT count(*)::int FROM public.crm_activities a
@@ -540,11 +552,11 @@ BEGIN
       ),
       'missingInformationRate',jsonb_build_object(
         'key','missingInformationRate','label','Missing-information rate',
-        'availability',case when v_reviewed_handoffs=0 then 'INSUFFICIENT_DATA' else 'AVAILABLE' end,
-        'value',case when v_reviewed_handoffs=0 then null else round(100.0*v_missing_returns/v_reviewed_handoffs,1) end,
-        'numerator',v_missing_returns,'denominator',v_reviewed_handoffs,
-        'rate',case when v_reviewed_handoffs=0 then null else round(100.0*v_missing_returns/v_reviewed_handoffs,1) end,
-        'sampleSize',v_reviewed_handoffs,'reviewedHandoffs',v_reviewed_handoffs,
+        'availability',case when v_all_reviewed_handoffs=0 then 'INSUFFICIENT_DATA' else 'AVAILABLE' end,
+        'value',case when v_all_reviewed_handoffs=0 then null else round(100.0*v_missing_returns/v_all_reviewed_handoffs,1) end,
+        'numerator',v_missing_returns,'denominator',v_all_reviewed_handoffs,
+        'rate',case when v_all_reviewed_handoffs=0 then null else round(100.0*v_missing_returns/v_all_reviewed_handoffs,1) end,
+        'sampleSize',v_all_reviewed_handoffs,'reviewedHandoffs',v_all_reviewed_handoffs,
         'returnsForMissingInformation',v_missing_returns,'reasonBreakdown',v_missing_reasons,
         'periodStart',p_period_start,'periodEnd',p_period_end,'source','Part 13 structured Return reasons',
         'notes','Counts only MISSING_REQUIREMENT, UNCLEAR_REQUIREMENT, CLIENT_DEPENDENCY_MISSING and ONBOARDING_INFORMATION_INCOMPLETE. Commercial, scope and timeline returns are not relabeled as missing information.'
