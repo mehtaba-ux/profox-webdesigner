@@ -1837,7 +1837,7 @@ Follow-up settlement-evidence closure:
 - Part 12 production verifier: `0 failure(s)`
 - business inventory unchanged: payments `5`, verified `1`, Awaiting `1`, Won `1`, clients `2`, projects `1`, onboardings `1`, commissions `1`, activities `13`
 
-**Part 12 is COMPLETE. Part 13 is COMPLETE. Part 14 has not started.**
+**Part 12 is COMPLETE. Part 13 is COMPLETE. Part 14 is COMPLETE. Part 15 has not started.**
 
 
 ---
@@ -1896,7 +1896,7 @@ Detailed closure evidence is maintained in docs/crm-sales-delivery-handoff-part-
 
 **PART 13 — SALES-TO-DELIVERY HANDOFF ACCEPTANCE / RETURN / RESUBMISSION: COMPLETE.**
 
-**Part 14 implementation is in trusted release verification. Part 15 has not started.**
+**Part 14 is COMPLETE. Part 15 has not started.**
 
 ---
 
@@ -1973,6 +1973,42 @@ A live-schema rollback probe created/exercised the RPC and Seller denial success
 
 Detailed architecture and release evidence: `docs/crm-manager-exception-workspace-part-14.md`.
 
-**PART 14 — MANAGER EXCEPTION WORKSPACE: RELEASE VERIFICATION IN PROGRESS.**
+### Part 14 production closure
+
+Part 14 completed the full trusted release chain:
+
+- implementation PR #133; exact final head `477abd5cc667e9c5d77fb3fe49e2b82c677efdf4`
+- trusted implementation PR CI #916 / 35594204999: PASS
+- implementation merge SHA `27b9eecb10521cfd6b345c73bfe3dfce362820d7`
+- trusted merged-main implementation CI #917 / 35595138177: PASS
+- initial production deploy #369 / 35595342761 applied the migration and deployed the runtime successfully; its only failure was a lazy Seller-route QA timing assertion after Part 14 Admin QA had already passed
+- route-readiness follow-up PR #134; exact head `e85dde752f4d2aec6a6e45b8ec016044549ed347`
+- trusted follow-up PR CI #918 / 35596113750: PASS
+- final runtime/main SHA `6bb2fa47f8ffd2b665cef67d53737c59b8dba4cb`
+- trusted final merged-main CI #919 / 35596356718: PASS
+- final production deploy #370 / 35596528183: PASS
+- Worker version `957aaf4d-450e-4664-8e37-cadf61c8d21d`
+- Part 14 migration checksum `625706ef2f12ebf0fd2ed3c606d4b8f6e016ca5b27a4dc8999645d15d6f5ae7f`
+- production ledger 695; latest `20260921110000`; PENDING_NEW 0; BLOCKED_UNRESOLVED 0
+- Part 10B gate remains ACTIVE at policy/schema 2/2
+- exact 84-case Part 14 specification matrix retained
+- focused Part 14 suite 122/122 PASS
+- Part 14 production release verifier: 0 failure(s)
+- authenticated Admin Part 14 QA: PASS with 2 real source-derived exceptions
+- authenticated Seller negative-access QA: PASS
+- desktop/tablet/mobile/keyboard validation: PASS
+- team workspace remains Admin-only and direct Seller aggregate RPC access is rejected
+- no duplicate exception business table exists
+- production business immutability: PASS
+- no fake Validation, quotation approval, activity, returned handoff, Promise conflict, SOP override, business record or exception record was created for QA
+- final source-derived exceptions are one real `NEXT_ACTION_OVERDUE` and one real `STAGE_SLA_EXCEEDED` item
+- final production inventory: leads 6, opportunities 2, activities 13, Sales meetings 5, Sales Validations 0, quotations 6, payments 5, clients 2, projects 1, Client Onboardings 1, handoff attempts 0, Sales Promises 0, Scope Conditions 0, quotation Sales coverage 0, CRM lead events 123
+- general production readiness: 0 failures; 4 pre-existing broader-environment warnings outside Part 14 scope
+
+Detailed closure evidence is maintained in `docs/crm-manager-exception-workspace-part-14.md`.
+
+A redundant QA-only PR #135 was closed unmerged because PR #134 had already solved the route-readiness issue on `main`.
+
+**PART 14 — MANAGER EXCEPTION WORKSPACE: COMPLETE.**
 
 **Part 15 has not started.**

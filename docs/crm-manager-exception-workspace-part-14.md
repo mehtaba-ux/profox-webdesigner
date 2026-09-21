@@ -2,7 +2,7 @@
 
 ## Status
 
-Part 14 implementation is complete on PR #133 and is in trusted release verification. Production closure is not declared until PR/main CI, checksum-verified migration deployment, authenticated Admin/Seller QA and final production integrity verification pass.
+Part 14 is **COMPLETE** in production. Trusted PR/main CI, checksum-verified migration deployment, production Worker release, authenticated Admin/Seller QA, source-derived integrity checks and final production-readiness verification all pass.
 
 Part 15 has not started.
 
@@ -119,8 +119,73 @@ Seller Quality & Performance Management is not implemented here. No quality scor
 
 ## Release closure
 
-Production closure evidence will be appended only after trusted CI, merge, checksum-verified migration application, deployment, authenticated production QA and final integrity verification all pass.
+Part 14 is **COMPLETE** in production.
 
-**PART 14 — MANAGER EXCEPTION WORKSPACE: RELEASE VERIFICATION IN PROGRESS.**
+Final release evidence:
+
+- implementation PR: #133
+- exact implementation head: `477abd5cc667e9c5d77fb3fe49e2b82c677efdf4`
+- trusted implementation PR CI: ProFox CRM CI `#916 / 35594204999` — PASS
+- implementation merge SHA: `27b9eecb10521cfd6b345c73bfe3dfce362820d7`
+- trusted merged-main implementation CI: ProFox CRM CI `#917 / 35595138177` — PASS
+- initial production deploy: Deploy ProFox Production `#369 / 35595342761`
+  - checksum migration, database readiness, Supabase function deploys, production build, Worker deploy/health, public frontend checks and real-browser smoke all passed
+  - Part 14 Admin authenticated QA passed with 2 real source-derived exceptions
+  - only the Seller negative-access route-readiness assertion failed because the lazy Seller Command Center had not yet rendered text at DOMContentLoaded
+- route-readiness follow-up PR: #134
+- exact follow-up head: `e85dde752f4d2aec6a6e45b8ec016044549ed347`
+- trusted follow-up PR CI: ProFox CRM CI `#918 / 35596113750` — PASS
+- final runtime/main SHA: `6bb2fa47f8ffd2b665cef67d53737c59b8dba4cb`
+- trusted final merged-main CI: ProFox CRM CI `#919 / 35596356718` — PASS
+- final canonical production deploy: Deploy ProFox Production `#370 / 35596528183` — PASS
+- final Cloudflare Worker version: `957aaf4d-450e-4664-8e37-cadf61c8d21d`
+- migration: `20260921110000_crm_manager_exception_workspace_part_14.sql`
+- migration SHA-256: `625706ef2f12ebf0fd2ed3c606d4b8f6e016ca5b27a4dc8999645d15d6f5ae7f`
+- production custom migration ledger: 695 rows; latest version `20260921110000`
+- repository migration lineage: APPLIED_EXACT 129, SUPERSEDED_BY_FORWARD_RECONCILIATION 5, PENDING_NEW 0, BLOCKED_UNRESOLVED 0
+- Part 10B final quotation Send gate remains ACTIVE at policy/schema 2/2
+- Part 14 aggregate RPC exists exactly once
+- anonymous RPC execution remains denied
+- no prohibited duplicate exception truth table exists
+- exact 84-case Part 14 specification matrix retained
+- focused Part 14 suite: 122/122 PASS
+- Part 14 production release verifier: 0 failure(s)
+- authenticated Admin Part 14 QA: PASS
+  - Manager Exceptions loaded 2 real source-derived items
+  - filters, search, detail drawer, canonical source routing, desktop/tablet/mobile and keyboard checks passed
+  - no mutation authority exposed
+- authenticated Seller Part 14 negative-access QA: PASS
+  - team workspace hidden/redirected
+  - direct aggregate RPC rejected
+  - canonical Seller Command Center retained
+  - no team exception data exposed
+- production business immutability: PASS
+- no fake Validation, quotation approval, activity, returned handoff, Promise conflict, SOP override, business record or exception record was created for QA
+- final source-derived workspace truth: 2 exceptions
+  - `NEXT_ACTION_OVERDUE` for the real Northstar Roofing Demo opportunity
+  - `STAGE_SLA_EXCEEDED` for the same real opportunity
+- final production inventory after QA:
+  - CRM leads 6
+  - CRM opportunities 2
+  - CRM activities 13
+  - Sales meetings 5
+  - Sales Validations 0
+  - quotations 6
+  - payments 5
+  - clients 2
+  - projects 1
+  - Client Onboardings 1
+  - handoff attempts 0
+  - Sales Promises 0
+  - Sales Scope Conditions 0
+  - quotation Sales coverage rows 0
+  - CRM lead events 123
+- final production readiness: 0 failures; 4 pre-existing broader-environment warnings outside Part 14 scope
+
+The follow-up route-readiness fix adds visible lazy-workspace loading text and regression coverage only. It does not alter Part 14 authorization, source semantics, database truth or business data.
+
+A redundant later QA-only PR (#135) was closed unmerged after PR #134 had already solved the route-readiness issue on `main`.
+
+**PART 14 — MANAGER EXCEPTION WORKSPACE: COMPLETE.**
 
 **Part 15 has not started.**
