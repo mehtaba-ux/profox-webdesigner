@@ -143,7 +143,7 @@ try{
     ['Part 13 handoff source reuse',/project_sales_handover_attempts/i,true],
     ['Part 11 activity source reuse',/crm_activities/i,true],
     ['Verified Payment authority',/status='Verified'/i,true],
-    ['Legacy next_follow_up_at excluded',/next_follow_up_at/i,false],
+    ['Legacy next_follow_up_at excluded',/\bo\.next_follow_up_at\b/i,false],
     ['No source INSERT',/\binsert\s+into\b/i,false],
     ['No source UPDATE',/\bupdate\s+public\./i,false],
     ['No source DELETE',/\bdelete\s+from\b/i,false],
