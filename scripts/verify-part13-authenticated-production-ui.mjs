@@ -196,6 +196,28 @@ async function part14BusinessInventory() {
   return Object.fromEntries(entries);
 }
 
+async function part15PerformanceInventory() {
+  const reviews = await server.from('sales_performance_reviews')
+    .select('id,salesperson_id,review_key,review_type,scheduled_for,period_start,period_end,status,decision,metrics_snapshot,quality_evidence,required_actions,owner_id,completed_by,completed_at,updated_at')
+    .order('id');
+  if (reviews.error) throw reviews.error;
+  const settings = await server.from('sales_performance_settings')
+    .select('id,enabled,review_day_7,review_day_30,review_day_60,review_day_90,first_interaction_review_count,weekly_coaching_interval_days,crm_logging_target_percent,policy_version,updated_at')
+    .order('id');
+  if (settings.error) throw settings.error;
+  const rows=reviews.data || [];
+  const statusCounts=Object.fromEntries([...new Set(rows.map(row=>row.status))].sort().map(status=>[status,rows.filter(row=>row.status===status).length]));
+  const typeCounts=Object.fromEntries([...new Set(rows.map(row=>row.review_type))].sort().map(type=>[type,rows.filter(row=>row.review_type===type).length]));
+  return {
+    reviewCount: rows.length,
+    completedCount: rows.filter(row=>row.status==='Completed').length,
+    statusCounts,
+    typeCounts,
+    reviews: rows,
+    settings: settings.data || [],
+  };
+}
+
 function sessionScopedClient(session) {
   return createClient(supabaseUrl, publishableKey, {
     global: { headers: { Authorization: `Bearer ${session.access_token}` } },
@@ -398,6 +420,134 @@ async function verifyPart14Admin(browser, session) {
   }
 }
 
+async function verifyPart15Admin(browser, session, truth) {
+  const client=sessionScopedClient(session);
+  const adminPayload=await client.rpc('admin_get_sales_performance');
+  if(adminPayload.error || !adminPayload.data) throw new Error(adminPayload.error?.message || 'Admin Part 15 performance RPC failed.');
+  const seller=(adminPayload.data.salespeople || []).find(item=>item.userId===truth.seller.id);
+  if(!seller) throw new Error('Part 15 Admin payload does not include the active Seller.');
+  const reviews=Array.isArray(seller.reviews) ? seller.reviews : [];
+  if(!reviews.length) throw new Error('Part 15 Admin payload has no canonical review schedule.');
+  const review=reviews[0];
+  const period=await client.rpc('get_sales_performance_period_snapshot',{
+    p_salesperson_id:truth.seller.id,
+    p_period_start:review.period_start || review.periodStart,
+    p_period_end:review.period_end || review.periodEnd,
+  });
+  if(period.error || !period.data?.qualityEvidence) throw new Error(period.error?.message || 'Admin Part 15 period snapshot failed.');
+  const requiredKeys=['firstResponseSla','discoveryCompleteness','proposalReadiness','firstPassHandoffAcceptance','missingInformationRate','postSaleSalesAttributedScopeChanges','unauthorizedPromiseIncidents','discountFrequency','commercialExceptions','nextActionDiscipline','clientExpectationDisputes','verifiedRevenue','winRate','dealValue'];
+  for(const key of requiredKeys){
+    const metric=period.data.qualityEvidence[key];
+    if(!metric) throw new Error(`Part 15 Admin period evidence is missing ${key}.`);
+    if(!['AVAILABLE','INSUFFICIENT_DATA','NOT_TRACKED_AUTHORITATIVELY'].includes(metric.availability)) throw new Error(`Part 15 metric ${key} has invalid availability ${metric.availability}.`);
+  }
+
+  const context=await authenticatedContext(browser,session,{width:1440,height:1000});
+  const page=await context.newPage();
+  const assertRuntime=runtimeGuard(page,'Admin Part 15');
+  try{
+    await page.goto(`${baseUrl}/admin/sales-performance`,{waitUntil:'domcontentloaded'});
+    await expectText(page,'Performance & Coaching');
+    await expectText(page,'Supervise quality, not just volume.');
+    await expectText(page,truth.seller.email);
+    await page.getByText(truth.seller.email,{exact:true}).click();
+    await expectText(page,'Seller performance record');
+    await expectText(page,'Quality revenue + clean delivery');
+    await expectText(page,'System evidence, not an overall Seller score');
+    await expectText(page,'First-response SLA');
+    await expectText(page,'Discovery completeness');
+    await expectText(page,'Proposal readiness');
+    await expectText(page,'First-pass handoff acceptance');
+    await expectText(page,'Missing-information rate');
+    await expectText(page,'Post-sale Sales-attributed scope changes');
+    await expectText(page,'Unauthorized Promise incidents');
+    await expectText(page,'Discount frequency');
+    await expectText(page,'Approval / exception frequency');
+    await expectText(page,'Next-action discipline');
+    await expectText(page,'Client expectation disputes');
+    await expectText(page,'Verified revenue');
+    await expectText(page,'Win rate');
+    await expectText(page,'Won deal value');
+    await page.getByText(/Sample \d+/).first().waitFor({state:'visible',timeout:30_000});
+    await expectText(page,'Not tracked authoritatively');
+
+    const firstReviewButton=page.locator('button').filter({hasText:/Day 7 Check-In|Day 30 Review|Weekly Sales Coaching/}).first();
+    await firstReviewButton.waitFor({state:'visible',timeout:30_000});
+    await firstReviewButton.click();
+    await expectText(page,'Management review');
+    await expectText(page,'System evidence · read only');
+    await expectText(page,'Quantitative evidence for this review period');
+    await expectText(page,'Approved quality evidence');
+    await expectText(page,'Management decision');
+    if(await page.getByText(/Seller Quality Score|Failure score|Bottom performer/i).count()) throw new Error('Part 15 Admin UI exposed a prohibited overall/ranking judgment.');
+
+    await page.setViewportSize({width:390,height:844});
+    await page.keyboard.press('Tab');
+    const focused=await page.evaluate(()=>Boolean(document.activeElement && document.activeElement!==document.body && document.activeElement!==document.documentElement));
+    if(!focused) throw new Error('Part 15 Admin performance workspace did not expose keyboard focus on mobile.');
+
+    await assertNoSecretLabels(page);
+    assertRuntime();
+    console.log(`PASS  Part 15 authenticated Admin QA: active Seller + ${reviews.length} real scheduled review(s), quality metrics/sample/availability/period evidence, human review form, mobile/keyboard PASS; no automatic management authority exposed.`);
+  }finally{
+    await context.close();
+  }
+}
+
+async function verifyPart15Seller(browser, session, truth) {
+  const client=sessionScopedClient(session);
+  const mine=await client.rpc('get_my_sales_performance');
+  if(mine.error || !mine.data?.snapshot?.qualityEvidence) throw new Error(mine.error?.message || 'Seller Part 15 own-performance RPC failed.');
+  const reviews=Array.isArray(mine.data.reviews) ? mine.data.reviews : [];
+  if(!reviews.length) throw new Error('Seller Part 15 payload has no canonical review schedule.');
+  const review=reviews[0];
+  const ownPeriod=await client.rpc('get_sales_performance_period_snapshot',{
+    p_salesperson_id:truth.seller.id,
+    p_period_start:review.period_start || review.periodStart,
+    p_period_end:review.period_end || review.periodEnd,
+  });
+  if(ownPeriod.error || !ownPeriod.data?.qualityEvidence) throw new Error(ownPeriod.error?.message || 'Seller could not read own Part 15 period evidence.');
+
+  const crossUser=await client.rpc('get_sales_performance_period_snapshot',{
+    p_salesperson_id:truth.admin.id,
+    p_period_start:review.period_start || review.periodStart,
+    p_period_end:review.period_end || review.periodEnd,
+  });
+  if(!crossUser.error) throw new Error('Seller unexpectedly viewed another user performance snapshot.');
+
+  const context=await authenticatedContext(browser,session,{width:1280,height:900});
+  const page=await context.newPage();
+  const assertRuntime=runtimeGuard(page,'Seller Part 15');
+  try{
+    await page.goto(`${baseUrl}/admin/sales-performance`,{waitUntil:'domcontentloaded'});
+    await expectText(page,'Performance & Coaching');
+    await expectText(page,'Quality revenue + clean delivery');
+    await expectText(page,'System evidence, not an overall Seller score');
+    await expectText(page,'First-response SLA');
+    await expectText(page,'First-pass handoff acceptance');
+    await expectText(page,'Verified revenue');
+    if(await page.getByText('One policy source',{exact:true}).count()) throw new Error('Seller unexpectedly received Admin performance settings.');
+    if(await page.getByRole('button',{name:'Save performance policy',exact:true}).count()) throw new Error('Seller unexpectedly received performance-settings mutation authority.');
+    if(await page.getByText('Management review',{exact:true}).count()) throw new Error('Seller unexpectedly received the Admin management-review form.');
+
+    await page.setViewportSize({width:390,height:844});
+    await page.goto(`${baseUrl}/admin/sales-performance`,{waitUntil:'domcontentloaded'});
+    await expectText(page,'Quality revenue + clean delivery');
+    await page.keyboard.press('Tab');
+    const focused=await page.evaluate(()=>Boolean(document.activeElement && document.activeElement!==document.body && document.activeElement!==document.documentElement));
+    if(!focused) throw new Error('Part 15 Seller performance workspace did not expose keyboard focus on mobile.');
+
+    await page.goto(`${baseUrl}/admin/seller-command-center`,{waitUntil:'domcontentloaded'});
+    await page.getByText(/Seller tools, performance & history|Loading ProFox workspace…/).first().waitFor({state:'visible',timeout:30_000});
+
+    await assertNoSecretLabels(page);
+    assertRuntime();
+    console.log('PASS  Part 15 authenticated Seller QA: own quality evidence visible, cross-user period RPC rejected, Admin settings/review authority hidden, Seller Command Center retained, mobile/keyboard PASS.');
+  }finally{
+    await context.close();
+  }
+}
+
 async function verifyPart14Seller(browser, session) {
   const client = sessionScopedClient(session);
   const direct = await client.rpc('crm_get_manager_exception_workspace', {
@@ -437,6 +587,7 @@ async function verifyPart14Seller(browser, session) {
 const truth = await loadQaTruth();
 const before = await businessSnapshot(truth.project.id);
 const part14Before = await part14BusinessInventory();
+const part15Before = await part15PerformanceInventory();
 const [sellerSession, adminSession] = await Promise.all([
   issueSession(truth.seller, 'Seller'),
   issueSession(truth.admin, 'Admin'),
@@ -448,6 +599,8 @@ try {
   await verifyAdmin(browser, adminSession, truth);
   await verifyPart14Admin(browser, adminSession);
   await verifyPart14Seller(browser, sellerSession);
+  await verifyPart15Admin(browser, adminSession, truth);
+  await verifyPart15Seller(browser, sellerSession, truth);
 } finally {
   await browser.close();
 }
@@ -468,3 +621,11 @@ if (JSON.stringify(part14Before) !== JSON.stringify(part14After)) {
 console.log(`PASS  Part 14 production business immutability: ${Object.entries(part14After).map(([key,value]) => `${key}=${value}`).join(', ')}.`);
 console.log('PASS  No fake Validation, quotation approval, activity, returned handoff, Promise conflict, SOP override, business record or exception record was created for Part 14 QA.');
 console.log('Authenticated Part 14 Admin/Seller production UI QA: COMPLETE.');
+
+const part15After = await part15PerformanceInventory();
+if (JSON.stringify(part15Before) !== JSON.stringify(part15After)) {
+  throw new Error(`Part 15 authenticated production QA changed performance review/settings truth. Before=${JSON.stringify(part15Before)} After=${JSON.stringify(part15After)}`);
+}
+console.log(`PASS  Part 15 production performance immutability: reviews=${part15After.reviewCount}, completed=${part15After.completedCount}, statuses=${JSON.stringify(part15After.statusCounts)}, types=${JSON.stringify(part15After.typeCounts)}, settingsRows=${part15After.settings.length}.`);
+console.log('PASS  No real performance review was completed/edited, no settings were changed, no fake review/business record was created, and no access/commission/certification state was changed for Part 15 QA.');
+console.log('Authenticated Part 15 Admin/Seller production UI QA: COMPLETE.');
