@@ -206,7 +206,7 @@ function mapMetric(raw: any): SalesPerformanceQualityMetric {
   };
 }
 
-function mapSnapshot(raw: any): SalesPerformanceSnapshot {
+export function normalizeSalesPerformanceSnapshot(raw: any): SalesPerformanceSnapshot {
   const qualityRaw = raw?.qualityEvidence && typeof raw.qualityEvidence === 'object' ? raw.qualityEvidence : {};
   return {
     schemaVersion: raw?.schemaVersion == null ? undefined : n(raw.schemaVersion),
@@ -282,7 +282,7 @@ function mapPerson(person: any): SalesPerformanceAdminPerson {
     email: String(person?.email || ''),
     role: String(person?.role || ''),
     activation: person?.activation || {},
-    snapshot: mapSnapshot(person?.snapshot || {}),
+    snapshot: normalizeSalesPerformanceSnapshot(person?.snapshot || {}),
     nextReview: person?.nextReview?.id ? mapReview(person.nextReview) : null,
     reviews: Array.isArray(person?.reviews) ? person.reviews.map(mapReview) : []
   };
@@ -295,7 +295,7 @@ function mapSellerPayload(raw: any): SalesPerformanceSellerPayload {
     activation: raw?.activation || {},
     daysActive: raw?.daysActive == null ? null : n(raw.daysActive),
     phase: String(raw?.phase || ''),
-    snapshot: mapSnapshot(raw?.snapshot || {}),
+    snapshot: normalizeSalesPerformanceSnapshot(raw?.snapshot || {}),
     nextReview: nextRaw && nextRaw.id ? mapReview(nextRaw) : null,
     reviews: Array.isArray(raw?.reviews) ? raw.reviews.map(mapReview) : []
   };
@@ -328,7 +328,7 @@ export const salesPerformanceService = {
       p_period_end: periodEnd
     });
     if (error) throw error;
-    return mapSnapshot(data || {});
+    return normalizeSalesPerformanceSnapshot(data || {});
   },
 
   async saveSettings(settings: SalesPerformanceSettings): Promise<SalesPerformanceAdminPayload> {
