@@ -218,6 +218,50 @@ async function part15PerformanceInventory() {
   };
 }
 
+async function part16CertificationInventory(sellerId) {
+  const grants=await server.from('sales_certification_package_grants').select('*').order('id');
+  if(grants.error) throw grants.error;
+  const policy=await server.from('system_configuration')
+    .select('config_key,config_value,updated_at')
+    .eq('config_key','crm_sales_certification_deal_permission_policy_v1')
+    .single();
+  if(policy.error) throw policy.error;
+  const progress=await server.from('user_training_progress').select('*').eq('user_id',sellerId).order('id');
+  if(progress.error) throw progress.error;
+  const progressIds=(progress.data||[]).map(row=>row.id);
+  const reviews=progressIds.length
+    ? await server.from('training_reviews').select('*').in('progress_id',progressIds).order('id')
+    : {data:[],error:null};
+  if(reviews.error) throw reviews.error;
+  const finalState=await server.from('final_certification_state').select('*').eq('user_id',sellerId).order('id');
+  if(finalState.error) throw finalState.error;
+  const finalSessions=await server.from('final_certification_sessions').select('*').eq('trainee_id',sellerId).order('id');
+  if(finalSessions.error) throw finalSessions.error;
+  const applicants=await server.from('applicants').select('*').eq('linked_user_id',sellerId).order('id');
+  if(applicants.error) throw applicants.error;
+  const bypasses=await server.from('sales_academy_test_bypasses').select('*').eq('linked_user_id',sellerId).order('id');
+  if(bypasses.error) throw bypasses.error;
+  return {
+    grants:grants.data||[],
+    policy:policy.data,
+    progress:progress.data||[],
+    reviews:reviews.data||[],
+    finalState:finalState.data||[],
+    finalSessions:finalSessions.data||[],
+    applicants:applicants.data||[],
+    bypasses:bypasses.data||[],
+    activeSalesCount:await countRows('user_profiles',query=>query.eq('status','active').eq('role','sales')),
+    performanceReviewCount:await countRows('sales_performance_reviews'),
+    leads:await countRows('crm_leads'),
+    opportunities:await countRows('crm_opportunities'),
+    activities:await countRows('crm_activities'),
+    quotations:await countRows('quotations'),
+    payments:await countRows('payments'),
+    projects:await countRows('projects'),
+    handoffAttempts:await countRows('project_sales_handover_attempts'),
+  };
+}
+
 function sessionScopedClient(session) {
   return createClient(supabaseUrl, publishableKey, {
     global: { headers: { Authorization: `Bearer ${session.access_token}` } },
@@ -581,6 +625,148 @@ async function verifyPart15Seller(browser, session, truth) {
   }
 }
 
+async function verifyPart16Admin(browser, session, truth) {
+  const client=sessionScopedClient(session);
+  const payload=await client.rpc('admin_get_sales_certification_permissions');
+  if(payload.error || !payload.data) throw new Error(payload.error?.message || 'Admin Part 16 certification RPC failed.');
+  const policy=payload.data.policy || {};
+  if(Number(policy.schemaVersion)!==2) throw new Error(`Part 16 Admin policy schemaVersion must be 2; found ${policy.schemaVersion}.`);
+  if(policy.enforcementActive!==false || policy.grantingActive!==false || policy.criteriaApproved!==false) {
+    throw new Error('Part 16 production policy unexpectedly left the approved staged foundation state.');
+  }
+  if(Object.keys(policy.productRules || {}).length || Object.keys(policy.addonRules || {}).length) {
+    throw new Error('Part 16 production QA found product/add-on rules despite no approved product-policy decision.');
+  }
+  const seller=(payload.data.sellers||[]).find(item=>item.id===truth.seller.id);
+  if(!seller) throw new Error('Part 16 Admin payload does not include the approved synthetic Seller.');
+  if(seller.snapshot?.generalCertificationReady!==true) throw new Error('Part 16 Admin payload did not preserve genuine general Sales certification readiness.');
+  if(!Array.isArray(seller.snapshot?.products) || seller.snapshot.products.length<4) throw new Error('Part 16 Admin payload did not surface the active package catalog.');
+  if((payload.data.history||[]).length!==0) throw new Error('Part 16 staged production unexpectedly contains granular certification grants.');
+
+  const context=await authenticatedContext(browser,session,{width:1440,height:1000});
+  const page=await context.newPage();
+  const assertRuntime=runtimeGuard(page,'Admin Part 16');
+  try{
+    await page.goto(`${baseUrl}/admin/sales-certification-permissions`,{waitUntil:'domcontentloaded'});
+    await expectText(page,'Sales Certification + Deal Permissions');
+    await expectText(page,'Staged safely — no package criteria were invented');
+    await expectText(page,truth.seller.email);
+    await page.locator('[data-testid="part16-final-certification-evidence"]').first().waitFor({state:'visible',timeout:30_000});
+    await page.locator('[data-testid="part16-policy-admin"]').waitFor({state:'visible',timeout:30_000});
+    await page.locator('[data-testid="part16-policy-product-rules"]').waitFor({state:'visible',timeout:30_000});
+    await page.locator('[data-testid="part16-policy-addon-rules"]').waitFor({state:'visible',timeout:30_000});
+    await page.locator('[data-testid="part16-policy-protected-stages"]').waitFor({state:'visible',timeout:30_000});
+    const grantButton=page.locator('[data-testid="part16-grant-button"]');
+    await grantButton.waitFor({state:'visible',timeout:30_000});
+    if(await grantButton.isEnabled()) throw new Error('Part 16 staged Admin workspace unexpectedly enabled real certification granting.');
+    const savePolicy=page.locator('[data-testid="part16-save-policy"]');
+    await savePolicy.waitFor({state:'visible',timeout:30_000});
+    if(!(await savePolicy.isEnabled())) throw new Error('Part 16 Admin policy control is unexpectedly unavailable.');
+
+    await page.goto(`${baseUrl}/admin/final-certification-controls`,{waitUntil:'domcontentloaded'});
+    await expectText(page,'Final Certification Control Center');
+    await page.getByRole('button',{name:'Deal Permissions',exact:true}).waitFor({state:'visible',timeout:30_000});
+
+    await page.setViewportSize({width:390,height:844});
+    await page.goto(`${baseUrl}/admin/sales-certification-permissions`,{waitUntil:'domcontentloaded'});
+    await expectText(page,'Sales Certification + Deal Permissions');
+    await page.keyboard.press('Tab');
+    const focused=await page.evaluate(()=>Boolean(document.activeElement && document.activeElement!==document.body && document.activeElement!==document.documentElement));
+    if(!focused) throw new Error('Part 16 Admin workspace did not expose keyboard focus on mobile.');
+
+    await assertNoSecretLabels(page);
+    assertRuntime();
+    console.log('PASS  Part 16 authenticated Admin QA: existing Academy + Final Certification evidence, staged policy, Admin-only configuration controls, truthful zero-grant Seller status, Final Certification integration, mobile/keyboard PASS; no grant/revoke/policy mutation performed.');
+  }finally{
+    await context.close();
+  }
+}
+
+async function verifyPart16Seller(browser, session, truth) {
+  const client=sessionScopedClient(session);
+  const mine=await client.rpc('get_my_sales_certification_permissions');
+  if(mine.error || !mine.data) throw new Error(mine.error?.message || 'Seller Part 16 own certification RPC failed.');
+  if(mine.data.salespersonId!==truth.seller.id) throw new Error('Part 16 Seller self-view resolved to the wrong Seller.');
+  if(mine.data.generalCertificationReady!==true) throw new Error('Part 16 Seller self-view did not preserve genuine general certification readiness.');
+  if(!Array.isArray(mine.data.products) || mine.data.products.length<4) throw new Error('Part 16 Seller self-view did not surface current active packages.');
+  if(mine.data.products.some(item=>item.grantStatus==='ACTIVE')) throw new Error('Part 16 production QA found an active granular package certification that was not approved for this staged rollout.');
+
+  const deal=await client.rpc('crm_get_sales_certification_deal_permission',{
+    p_salesperson_id:null,
+    p_product_code:null,
+    p_opportunity_id:truth.project.source_opportunity_id,
+    p_quotation_id:null,
+  });
+  if(deal.error || !deal.data) throw new Error(deal.error?.message || 'Seller Part 16 deal-authority assessment failed.');
+  if(deal.data.status!=='STAGED_NOT_ENFORCED' || deal.data.allowed!==true || deal.data.canDraft!==true || deal.data.canSend!==true) {
+    throw new Error(`Part 16 staged deal authority changed current Seller behavior unexpectedly: ${JSON.stringify(deal.data)}`);
+  }
+  if(!/current deal authority is unchanged/i.test(String((deal.data.reasons||[]).join(' ')))) {
+    throw new Error('Part 16 staged deal assessment did not provide exact current-authority remediation context.');
+  }
+
+  const cross=await client.rpc('sales_get_certification_permission_snapshot',{p_salesperson_id:truth.admin.id});
+  if(!cross.error) throw new Error('Seller unexpectedly viewed another user Part 16 certification snapshot.');
+  const adminView=await client.rpc('admin_get_sales_certification_permissions');
+  if(!adminView.error) throw new Error('Seller unexpectedly invoked the Part 16 Admin certification workspace RPC.');
+  const firstProduct=mine.data.products[0];
+  const grantAttempt=await client.rpc('admin_grant_sales_package_certification',{
+    p_salesperson_id:truth.seller.id,
+    p_sales_product_id:firstProduct.productId,
+    p_authority_mode:'SUPERVISED',
+    p_evidence_type:'QA_DENIAL_CHECK',
+    p_evidence:{note:'must not write'},
+    p_reason:'QA verifies Seller cannot self-grant without performing a write.'
+  });
+  if(!grantAttempt.error) throw new Error('Seller unexpectedly received Part 16 package-certification grant authority.');
+  const policyAttempt=await client.rpc('admin_update_sales_certification_policy',{
+    p_product_rules:{},
+    p_addon_rules:{},
+    p_protected_commitment_stages:[],
+    p_criteria_approved:false,
+    p_granting_active:false,
+    p_enforcement_active:false,
+    p_reason:'QA verifies Seller cannot edit the Part 16 policy.'
+  });
+  if(!policyAttempt.error) throw new Error('Seller unexpectedly received Part 16 policy mutation authority.');
+
+  const context=await authenticatedContext(browser,session,{width:1280,height:900});
+  const page=await context.newPage();
+  const assertRuntime=runtimeGuard(page,'Seller Part 16');
+  try{
+    await page.goto(`${baseUrl}/admin/seller-command-center`,{waitUntil:'domcontentloaded'});
+    const panel=page.locator('[data-testid="part16-certification-panel"]');
+    await panel.waitFor({state:'visible',timeout:30_000});
+    await expectText(panel,'Sales Certification + Deal Permissions');
+    await expectText(panel,'Staged — package enforcement is not active');
+    await expectText(panel,'Current deal authority is unchanged. No package certification is being fabricated or backfilled while Management criteria remain unapproved.');
+    await page.getByRole('button',{name:'Open training / re-certification',exact:true}).waitFor({state:'visible',timeout:30_000});
+    for(const product of mine.data.products){
+      await panel.locator(`[data-testid="part16-package-${product.productCode}"]`).waitFor({state:'visible',timeout:30_000});
+    }
+    const body=await panel.innerText();
+    if(/Issue an evidence-backed package grant|Validate & save policy|Policy change reason/.test(body)) throw new Error('Seller Part 16 panel exposed Admin grant/policy controls.');
+    if(/evidence note|grant reason/i.test(body)) throw new Error('Seller Part 16 panel exposed private grant/evaluator evidence.');
+
+    await page.goto(`${baseUrl}/admin/sales-certification-permissions`,{waitUntil:'domcontentloaded'});
+    await page.waitForTimeout(800);
+    if(await page.getByTestId('part16-certification-admin').count()) throw new Error('Seller unexpectedly received the Part 16 Admin workspace.');
+
+    await page.setViewportSize({width:390,height:844});
+    await page.goto(`${baseUrl}/admin/seller-command-center`,{waitUntil:'domcontentloaded'});
+    await page.locator('[data-testid="part16-certification-panel"]').waitFor({state:'visible',timeout:30_000});
+    await page.keyboard.press('Tab');
+    const focused=await page.evaluate(()=>Boolean(document.activeElement && document.activeElement!==document.body && document.activeElement!==document.documentElement));
+    if(!focused) throw new Error('Part 16 Seller certification panel did not expose keyboard focus on mobile.');
+
+    await assertNoSecretLabels(page);
+    assertRuntime();
+    console.log('PASS  Part 16 authenticated Seller QA: own certification truth + staged deal authority visible, exact remediation/training action present, self-grant/policy/Admin/cross-user/private-evidence access denied, Seller Command Center retained, mobile/keyboard PASS.');
+  }finally{
+    await context.close();
+  }
+}
+
 async function verifyPart14Seller(browser, session) {
   const client = sessionScopedClient(session);
   const direct = await client.rpc('crm_get_manager_exception_workspace', {
@@ -621,6 +807,7 @@ const truth = await loadQaTruth();
 const before = await businessSnapshot(truth.project.id);
 const part14Before = await part14BusinessInventory();
 const part15Before = await part15PerformanceInventory();
+const part16Before = await part16CertificationInventory(truth.seller.id);
 const [sellerSession, adminSession] = await Promise.all([
   issueSession(truth.seller, 'Seller'),
   issueSession(truth.admin, 'Admin'),
@@ -634,6 +821,8 @@ try {
   await verifyPart14Seller(browser, sellerSession);
   await verifyPart15Admin(browser, adminSession, truth);
   await verifyPart15Seller(browser, sellerSession, truth);
+  await verifyPart16Admin(browser, adminSession, truth);
+  await verifyPart16Seller(browser, sellerSession, truth);
 } finally {
   await browser.close();
 }
@@ -662,3 +851,11 @@ if (JSON.stringify(part15Before) !== JSON.stringify(part15After)) {
 console.log(`PASS  Part 15 production performance immutability: reviews=${part15After.reviewCount}, completed=${part15After.completedCount}, statuses=${JSON.stringify(part15After.statusCounts)}, types=${JSON.stringify(part15After.typeCounts)}, settingsRows=${part15After.settings.length}.`);
 console.log('PASS  No real performance review was completed/edited, no settings were changed, no fake review/business record was created, and no access/commission/certification state was changed for Part 15 QA.');
 console.log('Authenticated Part 15 Admin/Seller production UI QA: COMPLETE.');
+
+const part16After = await part16CertificationInventory(truth.seller.id);
+if (JSON.stringify(part16Before) !== JSON.stringify(part16After)) {
+  throw new Error(`Part 16 authenticated production QA changed certification/Academy/applicant/business truth. Before=${JSON.stringify(part16Before)} After=${JSON.stringify(part16After)}`);
+}
+console.log(`PASS  Part 16 production immutability: grants=${part16After.grants.length}, Academy progress=${part16After.progress.length}, training reviews=${part16After.reviews.length}, Final Certification state=${part16After.finalState.length}, sessions=${part16After.finalSessions.length}, applicants=${part16After.applicants.length}, active Sales=${part16After.activeSalesCount}, performance reviews=${part16After.performanceReviewCount}, Leads=${part16After.leads}, Opportunities=${part16After.opportunities}, Activities=${part16After.activities}, Quotations=${part16After.quotations}, Payments=${part16After.payments}, Projects=${part16After.projects}, Handoff attempts=${part16After.handoffAttempts}.`);
+console.log('PASS  No real package certification, Academy progress, Final Certification, applicant stage, performance review, opportunity, quotation, payment, project or handoff record was changed solely for Part 16 QA; no fake production business data was created.');
+console.log('Authenticated Part 16 Admin/Seller production UI QA: COMPLETE.');
