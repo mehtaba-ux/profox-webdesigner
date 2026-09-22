@@ -256,13 +256,12 @@ try{
     pass('Test-bypass isolation','production evaluator/grant authority does not read Academy test bypasses');
   else fail('Test-bypass isolation','Academy test bypass leaked into production Part 16 authority');
 
-  for(const [label,pattern,expected] of [
-    ['No evaluator quotation mutation',/\bupdate\s+public\.(quotations|quotation_items)/i,false],
-    ['No evaluator grant mutation',/\binsert\s+into\s+public\.sales_certification_package_grants/i,false],
-    ['No policy employment mutation',/\bupdate\s+public\.(user_profiles|applicants)/i,false],
-    ['No commission mutation',/(insert|update|delete)\s+(into\s+|from\s+)?public\.[a-z_]*commission/i,false],
+  for(const [label,pattern,expected,source] of [
+    ['No evaluator quotation mutation',/\bupdate\s+public\.(quotations|quotation_items)/i,false,evaluatorDef],
+    ['No evaluator grant mutation',/\binsert\s+into\s+public\.sales_certification_package_grants/i,false,evaluatorDef],
+    ['No policy employment mutation',/\bupdate\s+public\.(user_profiles|applicants)/i,false,policyDef],
+    ['No commission mutation',/(insert|update|delete)\s+(into\s+|from\s+)?public\.[a-z_]*commission/i,false,evaluatorDef+grantDef],
   ]){
-    const source=label.startsWith('No policy')?policyDef:evaluatorDef+grantDef;
     const found=pattern.test(source);
     if(found===expected) pass(label,expected?'present':'absent as required');
     else fail(label,expected?'required behavior missing':'forbidden mutation found');
