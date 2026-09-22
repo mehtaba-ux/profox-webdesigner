@@ -6,8 +6,10 @@ const qa=await readFile('scripts/verify-part13-authenticated-production-ui.mjs',
 const ui=await readFile('src/components/admin/SalesPerformanceManagement.tsx','utf8');
 const packageJson=JSON.parse(await readFile('package.json','utf8'));
 
-test('shared authenticated QA resolves visible text before first-match waits',()=>{
-  assert.match(qa,/getByText\(text, \{ exact: true \}\)\.filter\(\{ visible: true \}\)\.first\(\)\.waitFor/);
+test('shared authenticated QA scrolls exact text into view before visibility waits',()=>{
+  assert.match(qa,/getByText\(text, \{ exact: true \}\)\.first\(\)/);
+  assert.match(qa,/scrollIntoViewIfNeeded\(\)/);
+  assert.match(qa,/waitFor\(\{ state: 'visible', timeout \}\)/);
 });
 
 test('Part 15 reuses the trusted authenticated Part 13/14 session harness',()=>{

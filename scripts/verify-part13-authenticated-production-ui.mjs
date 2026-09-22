@@ -259,7 +259,9 @@ function runtimeGuard(page, label) {
 }
 
 async function expectText(page, text, timeout = 30_000) {
-  await page.getByText(text, { exact: true }).filter({ visible: true }).first().waitFor({ state: 'visible', timeout });
+  const target = page.getByText(text, { exact: true }).first();
+  await target.scrollIntoViewIfNeeded();
+  await target.waitFor({ state: 'visible', timeout });
 }
 
 async function assertNoSecretLabels(page) {
