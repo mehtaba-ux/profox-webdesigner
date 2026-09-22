@@ -441,7 +441,7 @@ function QualityMetricCard({ metric, label }: { metric: SalesPerformanceQualityM
       ? 'Insufficient data'
       : 'Not tracked authoritatively';
   const period = metric.periodStart && metric.periodEnd ? `${dateLabel(metric.periodStart)}–${dateLabel(metric.periodEnd)}` : 'Current evidence';
-  return <div className="rounded-2xl border border-slate-200 bg-white p-4">
+  return <div data-testid={`part15-quality-metric-card-${metric.key}`} className="rounded-2xl border border-slate-200 bg-white p-4">
     <div className="flex items-start justify-between gap-3">
       <div className="min-w-0"><div data-testid={`part15-quality-metric-${metric.key}`} className="text-[10px] font-black uppercase tracking-wide text-slate-400">{label}</div><div className="mt-1 text-lg font-black text-slate-900">{metricDisplay(metric)}</div></div>
       <span className={`shrink-0 rounded-full px-2.5 py-1 text-[9px] font-black uppercase tracking-wide ${metric.availability === 'AVAILABLE' ? 'bg-emerald-50 text-emerald-700' : metric.availability === 'INSUFFICIENT_DATA' ? 'bg-amber-50 text-amber-700' : 'bg-slate-100 text-slate-600'}`}>{availabilityLabel}</span>

@@ -460,20 +460,32 @@ async function verifyPart15Admin(browser, session, truth) {
     await qualityPanel.waitFor({state:'visible',timeout:30_000});
     await expectText(qualityPanel,'Quality revenue + clean delivery');
     await expectText(qualityPanel,'System evidence, not an overall Seller score');
-    await expectText(qualityPanel,'First-response SLA');
-    await expectText(qualityPanel,'Discovery completeness');
-    await expectText(qualityPanel,'Proposal readiness');
-    await expectText(qualityPanel,'First-pass handoff acceptance');
-    await expectText(qualityPanel,'Missing-information rate');
-    await expectText(qualityPanel,'Post-sale Sales-attributed scope changes');
-    await expectText(qualityPanel,'Unauthorized Promise incidents');
-    await expectText(qualityPanel,'Discount frequency');
-    await expectText(qualityPanel,'Approval / exception frequency');
-    await expectText(qualityPanel,'Next-action discipline');
-    await expectText(qualityPanel,'Client expectation disputes');
-    await expectText(qualityPanel,'Verified revenue');
-    await expectText(qualityPanel,'Win rate');
-    await expectText(qualityPanel,'Won deal value');
+    const expectedMetricLabels=[
+      ['firstResponseSla','First-response SLA'],
+      ['discoveryCompleteness','Discovery completeness'],
+      ['proposalReadiness','Proposal readiness'],
+      ['firstPassHandoffAcceptance','First-pass handoff acceptance'],
+      ['missingInformationRate','Missing-information rate'],
+      ['postSaleSalesAttributedScopeChanges','Post-sale Sales-attributed scope changes'],
+      ['unauthorizedPromiseIncidents','Unauthorized Promise incidents'],
+      ['discountFrequency','Discount frequency'],
+      ['commercialExceptions','Approval / exception frequency'],
+      ['nextActionDiscipline','Next-action discipline'],
+      ['clientExpectationDisputes','Client expectation disputes'],
+      ['verifiedRevenue','Verified revenue'],
+      ['winRate','Win rate'],
+      ['dealValue','Won deal value'],
+    ];
+    for(const [key,label] of expectedMetricLabels){
+      const card=qualityPanel.locator(`[data-testid="part15-quality-metric-card-${key}"]`);
+      await card.scrollIntoViewIfNeeded();
+      await card.waitFor({state:'visible',timeout:30_000});
+      const labelNode=card.locator(`[data-testid="part15-quality-metric-${key}"]`);
+      const rawLabel=String(await labelNode.textContent() || '').trim();
+      if(rawLabel!==label) throw new Error(`Part 15 metric ${key} rendered label "${rawLabel}" instead of "${label}".`);
+      const renderedText=String(await card.innerText() || '').replace(/\s+/g,' ').trim().toLowerCase();
+      if(!renderedText.includes(label.toLowerCase())) throw new Error(`Part 15 visible metric card ${key} did not render its expected label text.`);
+    }
     await qualityPanel.getByText(/Sample \d+/).first().waitFor({state:'visible',timeout:30_000});
     await expectText(qualityPanel,'Not tracked authoritatively');
 
