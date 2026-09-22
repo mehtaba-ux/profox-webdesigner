@@ -261,3 +261,11 @@ test('activation does not widen care-plan certification scope or alter catalog p
   assert.doesNotMatch(activation,/ALTER TABLE public\.sales_products/i);
   assert.doesNotMatch(activation,/UPDATE public\.sales_products/i);
 });
+
+
+test('Scale escalation stays supervised without inventing unconditional Sales Validation',()=>{
+  assert.match(activation,/ELSIF v_escalation_required AND EXISTS\(/);
+  assert.match(activation,/'validationRequired',v_validation_required/);
+  assert.match(activation,/'escalationRequired',v_escalation_required/);
+  assert.doesNotMatch(activation,/'validationRequired',\(v_validation_required OR v_escalation_required\)/);
+});
