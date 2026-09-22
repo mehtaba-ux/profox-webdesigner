@@ -71,7 +71,7 @@ export default function SalesCertificationPermissionsPanel() {
             {!data.enforcementActive && (
               <div className="mt-4 flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4" data-testid="part16-staged-rollout">
                 <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
-                <div><div className="text-xs font-black text-amber-900">Staged — package enforcement is not active</div><p className="mt-1 text-[11px] leading-5 text-amber-800">Current deal authority is unchanged. No package certification is being fabricated or backfilled while Management criteria remain unapproved.</p></div>
+                <div><div className="text-xs font-black text-amber-900">{data.criteriaApproved ? 'Approved policy — enforcement is not active' : 'Staged — package enforcement is not active'}</div><p className="mt-1 text-[11px] leading-5 text-amber-800">{data.criteriaApproved ? 'Current deal authority is unchanged while authoritative non-test Launch certification evidence is still required for final enforcement activation.' : 'Current deal authority is unchanged. No package certification is being fabricated or backfilled while Management criteria remain unapproved.'}</p></div>
               </div>
             )}
 
@@ -81,7 +81,8 @@ export default function SalesCertificationPermissionsPanel() {
                   {data.generalCertificationReady ? <CheckCircle2 className="h-4 w-4 text-emerald-700" /> : <LockKeyhole className="h-4 w-4 text-rose-700" />}
                   <div className="text-xs font-black text-slate-900">General Sales Certification</div>
                 </div>
-                <div className="mt-2 text-[11px] font-bold text-slate-600">{data.generalCertificationReady ? 'Verified passed' : 'Not currently verified'}</div>
+                <div className="mt-2 text-[11px] font-bold text-slate-600">{data.generalCertificationReady ? 'Academy readiness passed' : 'Not currently verified'}</div>
+                <div className="mt-1 text-[10px] text-slate-500">{data.authoritativeGrantEvidenceReady ? 'Production grant evidence verified' : 'Production grant evidence not verified'}</div>
                 {data.finalCertification?.status && <div className="mt-1 text-[10px] text-slate-500">Final: {String(data.finalCertification.status).replaceAll('_', ' ')}{data.finalCertification.score != null ? ` · ${data.finalCertification.score}%` : ''}</div>}
               </div>
 
