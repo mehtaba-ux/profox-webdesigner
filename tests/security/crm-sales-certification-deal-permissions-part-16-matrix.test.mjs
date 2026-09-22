@@ -20,7 +20,7 @@ const every=(...checks)=>()=>checks.forEach(check=>check());
 const matrix=[
   ['001 unauthenticated assessment rejected',match(evaluator,/IF v_actor IS NULL THEN\s+RAISE EXCEPTION 'Authentication required\.'/)],
   ['002 Seller can view own permission',match(evaluator,/v_actor IS DISTINCT FROM v_salesperson_id/)],
-  ['003 Seller cannot view another Seller private certification evidence',match(policy,/You can only view your own Sales certification permissions/)],
+  ['003 Seller cannot view another Seller private certification evidence',match(evaluator,/You can only view your own Sales certification permissions/)],
   ['004 Admin can view team certification status',match(evaluator,/public\.is_admin\(\)/)],
   ['005 inactive Sales user receives no active independent permission',match(evaluator,/Inactive or non-Sales users do not receive active deal authority/)],
   ['006 general Academy incomplete fails certification prerequisite',match(evaluator,/GENERAL_CERTIFICATION_NOT_READY/)],
@@ -62,7 +62,7 @@ const matrix=[
   ['039 Part 8 readiness remains separate',match(evaluator,/Certification authority does not replace Package Fit, specialist validation/)],
   ['040 Part 10B Send gate preserved',match(base,/crm_assert_quotation_send_ready/)],
   ['041 direct quotation-item write cannot bypass certification',match(base,/BEFORE INSERT OR UPDATE OF sales_product_id\s+ON public\.quotation_items/i)],
-  ['042 frontend-only bypass cannot bypass server',match(evaluator,/trg_crm_enforce_sales_certification_package_item/)],
+  ['042 frontend-only bypass cannot bypass server',match(base,/trg_crm_enforce_sales_certification_package_item/)],
 
   ['043 early discovery is not unnecessarily blocked',match(evaluator,/protectedCommitmentStages/)],
   ['044 higher-complexity warning is surfaced in UI',match(packageFitUi,/Required supervision \/ escalation/)],
