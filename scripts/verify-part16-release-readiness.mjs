@@ -6,6 +6,8 @@ dotenv.config({ path: '.env.local', quiet: true });
 
 const VERSION='20260922150000';
 const NAME='crm_sales_certification_deal_permissions_part_16';
+const HARDENING_VERSION='20260922151000';
+const HARDENING_NAME='crm_sales_certification_deal_permissions_part_16_performance_hardening';
 
 const connectionString=String(process.env.SUPABASE_DB_URL||'').trim();
 if(!/^postgres(?:ql)?:\/\//i.test(connectionString)){
@@ -26,6 +28,8 @@ try{
   const migrations=await loadMigrationManifest();
   const migration=migrations.find(item=>item.version===VERSION&&item.name===NAME);
   if(!migration) throw new Error(`Repository migration ${VERSION}_${NAME} is missing.`);
+  const hardeningMigration=migrations.find(item=>item.version===HARDENING_VERSION&&item.name===HARDENING_NAME);
+  if(!hardeningMigration) throw new Error(`Repository migration ${HARDENING_VERSION}_${HARDENING_NAME} is missing.`);
 
   await client.connect();
   await client.query('begin read only');
@@ -43,6 +47,11 @@ try{
   if(rows.length===1&&rows[0].name===NAME&&rows[0].checksum===migration.checksum&&rows[0].baseline===false){
     pass('Part 16 migration identity',`${VERSION}_${NAME} · ${migration.checksum}`);
   }else fail('Part 16 migration identity',`expected one exact non-baseline row matching repository checksum; found ${JSON.stringify(rows)}`);
+
+  const hardeningRows=appliedRows.filter(row=>String(row.version)===HARDENING_VERSION);
+  if(hardeningRows.length===1&&hardeningRows[0].name===HARDENING_NAME&&hardeningRows[0].checksum===hardeningMigration.checksum&&hardeningRows[0].baseline===false){
+    pass('Part 16 performance hardening migration identity',`${HARDENING_VERSION}_${HARDENING_NAME} · ${hardeningMigration.checksum}`);
+  }else fail('Part 16 performance hardening migration identity',`expected one exact non-baseline row matching repository checksum; found ${JSON.stringify(hardeningRows)}`);
 
   const state=(await client.query(`
     with part16_policy as (
@@ -88,7 +97,13 @@ try{
       has_table_privilege('authenticated','public.sales_certification_package_grants','SELECT') auth_select,
       has_table_privilege('authenticated','public.sales_certification_package_grants','INSERT') auth_insert,
       has_table_privilege('authenticated','public.sales_certification_package_grants','UPDATE') auth_update,
-      has_table_privilege('authenticated','public.sales_certification_package_grants','DELETE') auth_delete
+      has_table_privilege('authenticated','public.sales_certification_package_grants','DELETE') auth_delete,
+      to_regclass('public.sales_certification_package_grants_granted_by_idx') is not null granted_by_index,
+      to_regclass('public.sales_certification_package_grants_revoked_by_idx') is not null revoked_by_index,
+      (select qual from pg_policies
+       where schemaname='public'
+         and tablename='sales_certification_package_grants'
+         and policyname='sales_certification_package_grants_read_self_or_admin') rls_qual
     from funcs
   `)).rows[0];
 
@@ -114,6 +129,15 @@ try{
   else fail('Grant table browser privileges',JSON.stringify({
     rls:state.rls_enabled,select:state.auth_select,insert:state.auth_insert,update:state.auth_update,delete:state.auth_delete
   }));
+
+  const rlsQual=String(state.rls_qual||'');
+  if(state.granted_by_index===true&&state.revoked_by_index===true)
+    pass('Part 16 actor foreign-key indexes','granted_by and revoked_by are covered');
+  else fail('Part 16 actor foreign-key indexes',JSON.stringify({grantedBy:state.granted_by_index,revokedBy:state.revoked_by_index}));
+
+  if(/SELECT\s+auth\.uid\(\)/i.test(rlsQual)&&/SELECT\s+(?:public\.)?is_admin\(\)/i.test(rlsQual))
+    pass('Part 16 RLS init-plan hardening','self/Admin policy evaluates auth/admin helpers through SELECT init plans');
+  else fail('Part 16 RLS init-plan hardening',rlsQual);
 
   if(state.granting_active===false&&state.enforcement_active===false&&state.criteria_approved===false){
     if(Number(state.active_grant_count)===0&&JSON.stringify(state.package_criteria||{})==='{}')
