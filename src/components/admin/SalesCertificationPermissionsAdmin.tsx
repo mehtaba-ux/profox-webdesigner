@@ -51,7 +51,7 @@ export default function SalesCertificationPermissionsAdmin() {
       applyPolicyDraft(next.policy || {});
       const firstSeller = next.sellers[0];
       if (!sellerId && firstSeller) setSellerId(firstSeller.id);
-      const firstProduct = firstSeller?.snapshot.products[0];
+      const firstProduct = firstSeller?.snapshot.products.find(product => product.productType !== 'discovery');
       if (!productId && firstProduct) setProductId(firstProduct.productId);
     } catch (err: any) {
       setError(err?.message || 'Sales certification controls could not be loaded.');
@@ -213,7 +213,7 @@ export default function SalesCertificationPermissionsAdmin() {
 
         <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6" data-testid="part16-policy-admin">
           <div className="flex items-center gap-2"><Save className="h-5 w-5 text-[#000080]" /><h2 className="text-lg font-black">Certification policy</h2></div>
-          <p className="mt-1 max-w-4xl text-xs leading-5 text-slate-500">Admin-only, validated, versioned and audited through <code>system_configuration</code>. Rules must reference current <code>sales_products.code</code>. Approval requires an explicit rule for every active package and add-on; Custom stays qualification-only with Sales Validation, and Scale must preserve escalation.</p>
+          <p className="mt-1 max-w-4xl text-xs leading-5 text-slate-500">Admin-only, validated, versioned and audited through <code>system_configuration</code>. Rules must reference current <code>sales_products.code</code>. Approval requires an explicit rule for every active package, the approved Discovery product, and every active add-on; Custom stays qualification-only with Sales Validation, and Scale must preserve escalation.</p>
           <div className="mt-4 rounded-2xl border border-blue-100 bg-blue-50 p-4 text-[10px] leading-5 text-slate-700">
             Allowed certification keys: {(policy.allowedCertificationKeys || []).join(', ') || 'LAUNCH_CERTIFIED, GROWTH_CERTIFIED, SCALE_CERTIFIED, CUSTOM_QUALIFICATION_CERTIFIED'}<br />
             Permission modes: {(policy.permissionModes || []).join(', ') || 'INDEPENDENT, SUPERVISED, QUALIFY_ONLY, BLOCKED'}<br />
@@ -274,7 +274,7 @@ export default function SalesCertificationPermissionsAdmin() {
             {!selectedSeller?.snapshot.authoritativeGrantEvidenceReady && <div className="mt-1 leading-5">{(selectedSeller?.snapshot.authoritativeEvidence?.blockers || ['Authoritative non-test certification evidence is required.']).join(' ')}</div>}
           </div>
           <div className="mt-5 grid gap-4 lg:grid-cols-2">
-            <Field label="Seller"><select className={inputClass} value={sellerId} onChange={event => { setSellerId(event.target.value); const seller = data?.sellers.find(item => item.id === event.target.value); setProductId(seller?.snapshot.products[0]?.productId || ''); }}>{(data?.sellers || []).map(seller => <option key={seller.id} value={seller.id}>{seller.name} · {seller.email}</option>)}</select></Field>
+            <Field label="Seller"><select className={inputClass} value={sellerId} onChange={event => { setSellerId(event.target.value); const seller = data?.sellers.find(item => item.id === event.target.value); setProductId(seller?.snapshot.products.find(product => product.productType !== 'discovery')?.productId || ''); }}>{(data?.sellers || []).map(seller => <option key={seller.id} value={seller.id}>{seller.name} · {seller.email}</option>)}</select></Field>
             <Field label="Protected product"><select className={inputClass} value={productId} onChange={event => { setProductId(event.target.value); setQualificationBoundaryConfirmed(false); }}>{(selectedSeller?.snapshot.products || []).filter(product => product.productType !== 'discovery').map(product => <option key={product.productId} value={product.productId}>{product.productName} · {product.productCode}</option>)}</select></Field>
             <Field label="Configured authority mode"><input className={inputClass} readOnly value={grantMode || configuredMode || 'Not configured'} /></Field>
             <Field label="Required certification"><input className={inputClass} readOnly value={selectedProduct?.requiredCertification || 'Not configured'} /></Field>
