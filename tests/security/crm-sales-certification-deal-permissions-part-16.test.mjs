@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 const migration = await readFile('supabase/migrations/20260922150000_crm_sales_certification_deal_permissions_part_16.sql','utf8');
+const part16Performance = await readFile('supabase/migrations/20260922151000_crm_sales_certification_deal_permissions_part_16_performance_hardening.sql','utf8');
 const service = await readFile('src/lib/salesCertificationService.ts','utf8');
 const sellerUi = await readFile('src/components/admin/SalesCertificationPermissionsPanel.tsx','utf8');
 const adminUi = await readFile('src/components/admin/SalesCertificationPermissionsAdmin.tsx','utf8');
@@ -90,4 +91,19 @@ test('staged UI says current deal authority is unchanged',()=>{
   assert.match(sellerUi,/Current deal authority is unchanged/);
   assert.match(packageFitUi,/current deal authority is unchanged/i);
   assert.match(adminUi,/Staged safely/);
+});
+
+
+test('Part 16 forward hardening covers actor foreign keys without changing staged behavior',()=>{
+  assert.match(part16Performance,/sales_certification_package_grants_granted_by_idx/);
+  assert.match(part16Performance,/ON public\.sales_certification_package_grants\(granted_by\)/);
+  assert.match(part16Performance,/sales_certification_package_grants_revoked_by_idx/);
+  assert.match(part16Performance,/ON public\.sales_certification_package_grants\(revoked_by\)/);
+  assert.match(part16Performance,/salesperson_id=\(SELECT auth\.uid\(\)\)/);
+  assert.match(part16Performance,/OR \(SELECT public\.is_admin\(\)\)/);
+  assert.match(part16Performance,/performance hardening must not create or mutate certification grants/);
+  assert.match(part16Performance,/Part 16 staged rollout state changed unexpectedly during performance hardening/);
+  assert.match(part16Performance,/Part 16 performance hardening must preserve Part 10B at policy\/schema 2\/2/);
+  assert.doesNotMatch(part16Performance,/\bINSERT\s+INTO\s+public\.sales_certification_package_grants/i);
+  assert.doesNotMatch(part16Performance,/\bUPDATE\s+public\.sales_certification_package_grants/i);
 });
