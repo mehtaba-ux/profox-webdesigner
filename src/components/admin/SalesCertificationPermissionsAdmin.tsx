@@ -222,7 +222,10 @@ export default function SalesCertificationPermissionsAdmin() {
               <article key={seller.id} className="rounded-2xl border border-slate-200 p-4">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div><div className="text-sm font-black">{seller.name}</div><div className="text-[10px] text-slate-500">{seller.email}</div></div>
-                  <span className={`inline-flex w-fit rounded-full border px-2.5 py-1 text-[9px] font-black ${seller.snapshot.generalCertificationReady ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-rose-200 bg-rose-50 text-rose-700'}`}>{seller.snapshot.generalCertificationReady ? 'GENERAL CERTIFICATION PASSED' : 'GENERAL CERTIFICATION NOT READY'}</span>
+                  <div className="flex flex-col items-start gap-1 sm:items-end">
+                    <span className={`inline-flex w-fit rounded-full border px-2.5 py-1 text-[9px] font-black ${seller.snapshot.generalCertificationReady ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-rose-200 bg-rose-50 text-rose-700'}`}>{seller.snapshot.generalCertificationReady ? 'GENERAL CERTIFICATION PASSED' : 'GENERAL CERTIFICATION NOT READY'}</span>
+                    <span data-testid="part16-final-certification-evidence" className="text-[9px] font-bold text-slate-500">Final Certification: {String(seller.snapshot.finalCertification?.status || 'not verified').replaceAll('_', ' ')}{seller.snapshot.finalCertification?.score != null ? ` · ${seller.snapshot.finalCertification.score}%` : ''}</span>
+                  </div>
                 </div>
                 <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
                   {seller.snapshot.products.map(product => {
