@@ -1397,8 +1397,8 @@ BEGIN
      OR coalesce((v_policy->>'grantingActive')::boolean,false) IS DISTINCT FROM true
      OR coalesce((v_policy->>'enforcementActive')::boolean,false) IS DISTINCT FROM false
      OR v_policy->>'rolloutState' IS DISTINCT FROM 'GRANTING_ONLY'
-     OR jsonb_object_length(v_policy->'productRules')<>5
-     OR jsonb_object_length(v_policy->'addonRules')<>37
+     OR (SELECT count(*) FROM jsonb_object_keys(coalesce(v_policy->'productRules','{}'::jsonb)))<>5
+     OR (SELECT count(*) FROM jsonb_object_keys(coalesce(v_policy->'addonRules','{}'::jsonb)))<>37
      OR jsonb_array_length(v_policy->'protectedCommitmentStages')<>3 THEN
     RAISE EXCEPTION 'Part 16 approved policy did not converge to the expected granting-only activation state.';
   END IF;
