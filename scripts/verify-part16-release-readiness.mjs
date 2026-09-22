@@ -9,10 +9,20 @@ const REQUIRED_MIGRATIONS=[
   ['20260922151000','crm_sales_certification_deal_permissions_part_16_performance_hardening'],
   ['20260922170000','crm_sales_certification_deal_permissions_part_16_policy_completion'],
   ['20260922171000','crm_sales_certification_deal_permissions_part_16_evaluator_completion'],
+  ['20260922180000','crm_sales_certification_deal_permission_policy_activation_part_16'],
 ];
 const CERT_KEYS=['LAUNCH_CERTIFIED','GROWTH_CERTIFIED','SCALE_CERTIFIED','CUSTOM_QUALIFICATION_CERTIFIED'];
 const MODES=['INDEPENDENT','SUPERVISED','QUALIFY_ONLY','BLOCKED'];
 const ADDON_BEHAVIORS=['INHERIT_BASE_PACKAGE','REQUIRE_GROWTH','REQUIRE_SCALE','REQUIRE_SPECIALIST_VALIDATION','CUSTOM_QUALIFICATION_ONLY'];
+const APPROVED_PRODUCTS=['PF-WEB-LAUNCH','PF-WEB-GROWTH','PF-WEB-SCALE','PF-CUSTOM','PF-DISCOVERY'];
+const APPROVED_ADDONS=[
+  'PF-ADD-PAGE','PF-ADD-CUSTOM-PAGE','PF-ADD-LANDING','PF-ADD-COPY','PF-ADD-BLOG','PF-ADD-MIGRATION20',
+  'PF-ADD-LEADFORM','PF-ADD-BOOKING','PF-ADD-CHAT','PF-ADD-REVIEWS','PF-ADD-TRACKING','PF-ADD-CRO',
+  'PF-ADD-LOCALSEO','PF-ADD-SEOAUDIT','PF-ADD-LOGOREFRESH','PF-ADD-MINIBRAND','PF-ADD-ICONS','PF-ADD-ANIMATION','PF-ADD-ILLUSTRATION',
+  'PF-ADD-CRM','PF-ADD-ADVSEO','PF-ADD-AIDISCOVERY','PF-ADD-SEOMIGRATION','PF-ADD-COMMERCE25','PF-ADD-COMMERCEADD25',
+  'PF-ADD-FILTERS','PF-ADD-INT-SIMPLE','PF-ADD-EMAIL','PF-ADD-LEADROUTE','PF-ADD-3D',
+  'PF-ADD-SUBSCRIPTION','PF-ADD-PAYGATEWAY','PF-ADD-CHECKOUT','PF-ADD-INT-ADV','PF-ADD-API','PF-ADD-PAYMENT','PF-ADD-BPA'
+];
 
 const connectionString=String(process.env.SUPABASE_DB_URL||'').trim();
 if(!/^postgres(?:ql)?:\/\//i.test(connectionString)){
@@ -71,6 +81,7 @@ try{
     ),
     funcs as (
       select
+        count(*) filter(where p.proname='sales_certification_authoritative_evidence')::int authoritative_evidence_count,
         count(*) filter(where p.proname='sales_get_certification_permission_snapshot')::int snapshot_count,
         count(*) filter(where p.proname='get_my_sales_certification_permissions')::int seller_count,
         count(*) filter(where p.proname='admin_get_sales_certification_permissions')::int admin_count,
@@ -106,6 +117,7 @@ try{
       (select count(*)::int from public.user_profiles where status='active' and lower(role) in ('sales','sales_rep','sales_team')) active_sales_count,
       (select count(*)::int from public.sales_products where active=true and lower(coalesce(product_type,''))='package') active_package_count,
       (select count(*)::int from public.sales_products where active=true and lower(coalesce(product_type,''))='addon') active_addon_count,
+      (select count(*)::int from public.sales_products where active=true and lower(coalesce(product_type,''))='discovery') active_discovery_count,
       (select count(*)::int from information_schema.tables where table_schema='public'
         and table_name in ('seller_certifications','sales_package_permissions','deal_permissions','sales_academy_v2','final_certification_v2','sales_products_v2')) duplicate_truth_tables,
       (select relrowsecurity from pg_class c join pg_namespace n on n.oid=c.relnamespace
@@ -150,6 +162,7 @@ try{
   else fail('Part 10B preservation',JSON.stringify(state));
 
   const canonical={
+    authoritativeEvidence:state.authoritative_evidence_count,
     snapshot:state.snapshot_count,seller:state.seller_count,admin:state.admin_count,policyUpdate:state.policy_update_count,
     grant:state.grant_count,revoke:state.revoke_count,deal:state.deal_count,assert:state.assert_count,
     academy:state.academy_count,productTraining:state.product_training_count,packageFit:state.package_fit_count,
@@ -183,15 +196,48 @@ try{
     pass('Part 16 RLS init-plan hardening','self/Admin policy uses init-plan helpers');
   else fail('Part 16 RLS init-plan hardening',rlsQual);
 
-  if(policy.criteriaApproved===false&&policy.grantingActive===false&&policy.enforcementActive===false
-     &&Object.keys(policy.productRules||{}).length===0&&Object.keys(policy.addonRules||{}).length===0
-     &&Array.isArray(policy.protectedCommitmentStages)&&policy.protectedCommitmentStages.length===0
-     &&Number(state.grant_history_count)===0&&Number(state.active_grant_count)===0)
-    pass('Safe staged rollout','criteria/granting/enforcement=false · zero product/add-on mappings · zero grants');
-  else fail('Safe staged rollout',JSON.stringify({
+  const productCodes=Object.keys(policy.productRules||{}).sort();
+  const addonCodes=Object.keys(policy.addonRules||{}).sort();
+  const expectedProducts=[...APPROVED_PRODUCTS].sort();
+  const expectedAddons=[...APPROVED_ADDONS].sort();
+  const protectedStages=policy.protectedCommitmentStages||[];
+  const policyExact=
+    policy.criteriaApproved===true
+    &&policy.grantingActive===true
+    &&policy.enforcementActive===false
+    &&Number(policy.policyVersion)===2
+    &&Number(policy.criteriaVersion)===1
+    &&policy.rolloutState==='GRANTING_ONLY'
+    &&JSON.stringify(productCodes)===JSON.stringify(expectedProducts)
+    &&JSON.stringify(addonCodes)===JSON.stringify(expectedAddons)
+    &&JSON.stringify(protectedStages)===JSON.stringify(['Quotation Sent','Negotiation / Decision Pending','Awaiting Advance Payment'])
+    &&policy.productRules?.['PF-WEB-LAUNCH']?.requiredCertificationKey==='LAUNCH_CERTIFIED'
+    &&policy.productRules?.['PF-WEB-LAUNCH']?.permissionMode==='INDEPENDENT'
+    &&JSON.stringify(policy.productRules?.['PF-WEB-LAUNCH']?.inheritedCertificationKeys||[])===JSON.stringify(['GROWTH_CERTIFIED','SCALE_CERTIFIED'])
+    &&policy.productRules?.['PF-WEB-GROWTH']?.requiredCertificationKey==='GROWTH_CERTIFIED'
+    &&policy.productRules?.['PF-WEB-GROWTH']?.permissionMode==='INDEPENDENT'
+    &&JSON.stringify(policy.productRules?.['PF-WEB-GROWTH']?.inheritedCertificationKeys||[])===JSON.stringify(['SCALE_CERTIFIED'])
+    &&policy.productRules?.['PF-WEB-SCALE']?.requiredCertificationKey==='SCALE_CERTIFIED'
+    &&policy.productRules?.['PF-WEB-SCALE']?.permissionMode==='SUPERVISED'
+    &&policy.productRules?.['PF-WEB-SCALE']?.escalationRequired===true
+    &&policy.productRules?.['PF-CUSTOM']?.requiredCertificationKey==='CUSTOM_QUALIFICATION_CERTIFIED'
+    &&policy.productRules?.['PF-CUSTOM']?.permissionMode==='QUALIFY_ONLY'
+    &&policy.productRules?.['PF-CUSTOM']?.validationRequired===true
+    &&policy.productRules?.['PF-DISCOVERY']?.requiredCertificationKey==='GROWTH_CERTIFIED'
+    &&policy.productRules?.['PF-DISCOVERY']?.permissionMode==='SUPERVISED'
+    &&Number(state.grant_history_count)===0
+    &&Number(state.active_grant_count)===0
+    &&Number(state.active_package_count)===4
+    &&Number(state.active_addon_count)===37
+    &&Number(state.active_discovery_count)===1;
+
+  if(policyExact)
+    pass('Approved granting-only rollout','criteriaApproved=true · criteriaVersion=1 · grantingActive=true · enforcementActive=false · 5 protected products · 37 add-ons · 3 protected stages · zero grants');
+  else fail('Approved granting-only rollout',JSON.stringify({
+    policyVersion:policy.policyVersion,criteriaVersion:policy.criteriaVersion,rolloutState:policy.rolloutState,
     criteriaApproved:policy.criteriaApproved,grantingActive:policy.grantingActive,enforcementActive:policy.enforcementActive,
-    productRules:policy.productRules,addonRules:policy.addonRules,protectedCommitmentStages:policy.protectedCommitmentStages,
-    grantHistory:state.grant_history_count,activeGrants:state.active_grant_count
+    productCodes,addonCodes,protectedStages,grantHistory:state.grant_history_count,activeGrants:state.active_grant_count,
+    activePackages:state.active_package_count,activeAddons:state.active_addon_count,activeDiscovery:state.active_discovery_count
   }));
 
   const fnRows=(await client.query(`
@@ -202,6 +248,7 @@ try{
     from pg_proc p join pg_namespace n on n.oid=p.pronamespace
     where n.nspname='public'
       and p.proname in (
+        'sales_certification_authoritative_evidence',
         'sales_get_certification_permission_snapshot',
         'get_my_sales_certification_permissions',
         'admin_get_sales_certification_permissions',
@@ -214,6 +261,11 @@ try{
     order by p.proname
   `)).rows;
   const byName=Object.fromEntries(fnRows.map(row=>[row.proname,row]));
+  const evidenceFn=byName.sales_certification_authoritative_evidence;
+  const evidenceFixedPath=Array.isArray(evidenceFn?.proconfig)&&evidenceFn.proconfig.some(v=>String(v).startsWith('search_path='));
+  if(evidenceFn?.prosecdef===true&&evidenceFn.anon_exec===false&&evidenceFn.auth_exec===false&&evidenceFixedPath)
+    pass('Authoritative evidence helper security','internal SECURITY DEFINER · fixed search_path · direct browser execution denied');
+  else fail('Authoritative evidence helper security',JSON.stringify(evidenceFn));
 
   for(const name of [
     'sales_get_certification_permission_snapshot','get_my_sales_certification_permissions',
@@ -247,13 +299,16 @@ try{
     ['Custom qualification boundary',/QUALIFY_ONLY/is,evaluatorDef],
     ['Server-derived grant actor',/auth\.uid\(\)/i,grantDef],
     ['Admin policy authorization',/Admin access required/i,policyDef],
+    ['Discovery product compatibility',/package','addon','discovery'/i,evaluatorDef],
+    ['Synthetic evidence rejection',/synthetic\/test-tagged evidence cannot create commercial authority/i,grantDef],
   ]){
     if(pattern.test(source)) pass(label,'present');
     else fail(label,'required contract missing');
   }
 
-  if(!/sales_academy_test_bypasses/i.test(evaluatorDef)&&!/sales_academy_test_bypasses/i.test(grantDef))
-    pass('Test-bypass isolation','production evaluator/grant authority does not read Academy test bypasses');
+  if(!/sales_academy_test_bypasses/i.test(evaluatorDef)&&!/sales_academy_test_bypasses/i.test(grantDef)
+     &&!/sales_academy_test_bypasses/i.test(String(evidenceFn?.definition||'')))
+    pass('Test-bypass isolation','production evaluator/grant/evidence authority does not read Academy test bypasses');
   else fail('Test-bypass isolation','Academy test bypass leaked into production Part 16 authority');
 
   for(const [label,pattern,expected] of [
@@ -305,15 +360,20 @@ try{
 
   await client.query(`select set_config('request.jwt.claims',jsonb_build_object('sub',$1::text,'role','authenticated')::text,true)`,[admin.id]);
   const adminPayload=(await client.query(`select public.admin_get_sales_certification_permissions() result`)).rows[0]?.result;
-  if(Array.isArray(adminPayload?.sellers)&&adminPayload.sellers.some(row=>row.id===seller.id)
-     &&Number(adminPayload?.policy?.schemaVersion)===2)
-    pass('Admin certification visibility','active Seller + schema-v2 policy appear in canonical Admin payload');
+  const adminSeller=Array.isArray(adminPayload?.sellers)?adminPayload.sellers.find(row=>row.id===seller.id):null;
+  if(adminSeller&&Number(adminPayload?.policy?.schemaVersion)===2
+     &&adminSeller.snapshot?.authoritativeGrantEvidenceReady===false
+     &&adminSeller.snapshot?.authoritativeEvidence?.syntheticEvidenceDetected===true
+     &&Array.isArray(adminSeller.snapshot?.products)&&adminSeller.snapshot.products.length>=5)
+    pass('Admin certification visibility','active Seller + approved schema-v2 policy + test-evidence blocker + four packages/PF-DISCOVERY appear in canonical Admin payload');
   else fail('Admin certification visibility',JSON.stringify(adminPayload));
 
   await client.query(`select set_config('request.jwt.claims',jsonb_build_object('sub',$1::text,'role','authenticated')::text,true)`,[seller.id]);
   const sellerPayload=(await client.query(`select public.get_my_sales_certification_permissions() result`)).rows[0]?.result;
-  if(sellerPayload?.salespersonId===seller.id&&Array.isArray(sellerPayload?.products))
-    pass('Seller self-scope certification visibility',`${sellerPayload.products.length} active package(s) surfaced`);
+  if(sellerPayload?.salespersonId===seller.id&&Array.isArray(sellerPayload?.products)&&sellerPayload.products.length>=5
+     &&sellerPayload.authoritativeGrantEvidenceReady===false
+     &&sellerPayload.authoritativeEvidence?.syntheticEvidenceDetected===true)
+    pass('Seller self-scope certification visibility',String(sellerPayload.products.length)+' protected product(s) surfaced; synthetic evidence is not production-grant eligible');
   else fail('Seller self-scope certification visibility',JSON.stringify(sellerPayload));
 
   await client.query('savepoint part16_cross_scope');
@@ -373,7 +433,7 @@ try{
     pass('Staged deal-authority live opportunity check','no Seller opportunity exists; self-scope permission snapshot still verified');
   }
 
-  pass('Part 16 production inventory',`grant history ${state.grant_history_count}; active grants ${state.active_grant_count}; active Sales ${state.active_sales_count}; active packages ${state.active_package_count}; active add-ons ${state.active_addon_count}`);
+  pass('Part 16 production inventory',`grant history ${state.grant_history_count}; active grants ${state.active_grant_count}; active Sales ${state.active_sales_count}; active packages ${state.active_package_count}; active add-ons ${state.active_addon_count}; active discovery ${state.active_discovery_count}`);
 
   await client.query('rollback');
 }catch(error){

@@ -6,12 +6,13 @@ const base=await readFile('supabase/migrations/20260922150000_crm_sales_certific
 const perf=await readFile('supabase/migrations/20260922151000_crm_sales_certification_deal_permissions_part_16_performance_hardening.sql','utf8');
 const policy=await readFile('supabase/migrations/20260922170000_crm_sales_certification_deal_permissions_part_16_policy_completion.sql','utf8');
 const evaluator=await readFile('supabase/migrations/20260922171000_crm_sales_certification_deal_permissions_part_16_evaluator_completion.sql','utf8');
+const activation=await readFile('supabase/migrations/20260922180000_crm_sales_certification_deal_permission_policy_activation_part_16.sql','utf8');
 const service=await readFile('src/lib/salesCertificationService.ts','utf8');
 const sellerUi=await readFile('src/components/admin/SalesCertificationPermissionsPanel.tsx','utf8');
 const adminUi=await readFile('src/components/admin/SalesCertificationPermissionsAdmin.tsx','utf8');
 const packageFitUi=await readFile('src/components/admin/crm/CRMPackageFitPanel.tsx','utf8');
 const qa=await readFile('scripts/verify-part13-authenticated-production-ui.mjs','utf8');
-const allSql=[base,perf,policy,evaluator].join('\n');
+const allSql=[base,perf,policy,evaluator,activation].join('\n');
 
 const match=(source,pattern)=>()=>assert.match(source,pattern);
 const notMatch=(source,pattern)=>()=>assert.doesNotMatch(source,pattern);
@@ -116,9 +117,22 @@ const matrix=[
   ['088 visible focus styles are present',match(adminUi,/focus:ring-4/)],
   ['089 Seller cannot see Admin grant control',match(qa,/Seller Part 16 panel exposed Admin grant\/policy controls/)],
   ['090 Seller cannot see another Seller private evaluator evidence',match(qa,/Seller unexpectedly viewed another user Part 16 certification snapshot/)],
+
+  ['091 approved Product Owner policy activates criteria v1',every(match(activation,/'criteriaApproved',true/),match(activation,/'criteriaVersion',1/))],
+  ['092 grant issuance activates before enforcement',every(match(activation,/'grantingActive',true/),match(activation,/'enforcementActive',false/),match(activation,/'rolloutState','GRANTING_ONLY'/))],
+  ['093 discovery is first-class protected product without catalog reclassification',every(match(activation,/PF-DISCOVERY/),match(activation,/package','addon','discovery'/),notMatch(activation,/UPDATE\s+public\.sales_products/i))],
+  ['094 discovery requires Growth and supervision',every(match(activation,/PF-DISCOVERY.*GROWTH_CERTIFIED/is),match(activation,/PF-DISCOVERY.*SUPERVISED/is))],
+  ['095 Growth inherits Launch deal permission only by explicit configuration',match(activation,/PF-WEB-LAUNCH.*GROWTH_CERTIFIED.*SCALE_CERTIFIED/is)],
+  ['096 Scale inherits Growth and Launch deal permission without auto-granting',every(match(activation,/PF-WEB-GROWTH.*SCALE_CERTIFIED/is),match(activation,/inheritance never auto-issues certification/))],
+  ['097 Custom remains separate qualify-only capability',every(match(activation,/PF-CUSTOM.*CUSTOM_QUALIFICATION_CERTIFIED/is),match(activation,/PF-CUSTOM.*QUALIFY_ONLY/is),match(activation,/qualificationBoundaryConfirmed/))],
+  ['098 all approved add-on behaviors remain explicit',every(match(activation,/INHERIT_BASE_PACKAGE/),match(activation,/REQUIRE_GROWTH/),match(activation,/REQUIRE_SCALE/),match(activation,/REQUIRE_SPECIALIST_VALIDATION/))],
+  ['099 synthetic canonical evidence cannot create production authority',every(match(activation,/syntheticEvidenceDetected/),match(activation,/synthetic\/test-tagged evidence cannot create commercial authority/),notMatch(activation,/sales_academy_test_bypasses/))],
+  ['100 Launch grant requires canonical Product Training and Final Certification IDs',every(match(activation,/productTrainingProgressId/),match(activation,/finalCertificationProgressId/),match(activation,/finalCertificationSessionId/))],
+  ['101 protected commitment stages are the approved three stages',every(match(activation,/Quotation Sent/),match(activation,/Negotiation \/ Decision Pending/),match(activation,/Awaiting Advance Payment/))],
+  ['102 Part 10B remains required at policy and snapshot schema 2\/2',match(activation,/Part 10B final Send gate active at policy\/schema 2\/2/)],
 ];
 
-if(matrix.length!==90) throw new Error(`Part 16 matrix must contain exactly 90 cases; found ${matrix.length}.`);
+if(matrix.length!==102) throw new Error(`Part 16 matrix must contain exactly 102 cases; found ${matrix.length}.`);
 matrix.forEach(([name,check],index)=>{
   const expected=String(index+1).padStart(3,'0');
   if(!String(name).startsWith(expected)) throw new Error(`Part 16 matrix numbering drift at index ${index+1}: ${name}`);

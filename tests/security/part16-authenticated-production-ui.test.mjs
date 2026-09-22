@@ -34,22 +34,24 @@ test('Seller QA denies self-grant, policy mutation, Admin view and cross-user sc
   assert.match(qa,/sales_get_certification_permission_snapshot/);
 });
 
-test('Seller UI QA verifies staged authority, remediation, training route, mobile and keyboard',()=>{
+test('Seller UI QA verifies approved granting-only authority, remediation, training route, mobile and keyboard',()=>{
   assert.match(qa,/part16-certification-panel/);
-  assert.match(qa,/Staged — package enforcement is not active/);
+  assert.match(qa,/Approved policy — enforcement is not active/);
   assert.match(qa,/Current deal authority is unchanged/);
   assert.match(qa,/Open training \/ re-certification/);
   assert.match(qa,/setViewportSize\(\{width:390,height:844\}\)/);
   assert.match(qa,/Part 16 Seller certification panel did not expose keyboard focus on mobile/);
 });
 
-test('Admin UI QA verifies evidence, policy controls and staged grant protection',()=>{
+test('Admin UI QA verifies approved policy, authoritative evidence and grant protection',()=>{
   assert.match(qa,/part16-final-certification-evidence/);
   assert.match(qa,/part16-policy-admin/);
   assert.match(qa,/part16-policy-product-rules/);
   assert.match(qa,/part16-policy-addon-rules/);
   assert.match(qa,/part16-policy-protected-stages/);
-  assert.match(qa,/Part 16 staged Admin workspace unexpectedly enabled real certification granting/);
+  assert.match(qa,/Part 16 Admin workspace unexpectedly enabled a production grant for test-tagged evidence/);
+  assert.match(qa,/authoritativeGrantEvidenceReady/);
+  assert.match(qa,/syntheticEvidenceDetected/);
   assert.match(qa,/Final Certification Control Center/);
 });
 
