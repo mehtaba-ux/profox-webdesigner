@@ -233,7 +233,7 @@ async function part16CertificationInventory(sellerId) {
     ? await server.from('training_reviews').select('*').in('progress_id',progressIds).order('id')
     : {data:[],error:null};
   if(reviews.error) throw reviews.error;
-  const finalState=await server.from('final_certification_state').select('*').eq('user_id',sellerId).order('id');
+  const finalState=await server.from('final_certification_state').select('*').eq('user_id',sellerId).order('progress_id');
   if(finalState.error) throw finalState.error;
   const finalSessions=await server.from('final_certification_sessions').select('*').eq('trainee_id',sellerId).order('id');
   if(finalSessions.error) throw finalSessions.error;

@@ -57,3 +57,9 @@ test('existing deployment QA chain will execute the extended shared script',()=>
   assert.match(pkg.scripts['production:verify-part13-ui'],/verify-part13-authenticated-production-ui\.mjs/);
   assert.match(pkg.scripts['production:verify-part15-ui'],/verify-part13-authenticated-production-ui\.mjs/);
 });
+
+
+test('Part 16 immutability snapshot uses the canonical Final Certification state key',()=>{
+  assert.match(qa,/from\('final_certification_state'\)\.select\('\*'\)\.eq\('user_id',sellerId\)\.order\('progress_id'\)/);
+  assert.doesNotMatch(qa,/from\('final_certification_state'\)[^\n]*\.order\('id'\)/);
+});
