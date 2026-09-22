@@ -2059,7 +2059,7 @@ Detailed architecture and release evidence: docs/crm-seller-quality-performance-
 
 **PART 15 — SELLER QUALITY + PERFORMANCE: COMPLETE.**
 
-**PART 16 IMPLEMENTATION FOUNDATION COMPLETE — POLICY ACTIVATION REQUIRES EXPLICIT PRODUCT DECISION.**
+**PART 16 PRODUCT POLICY APPROVED + GRANTING-ONLY DEPLOYED — FINAL ENFORCEMENT AWAITS AUTHORITATIVE NON-TEST LAUNCH CERTIFICATION EVIDENCE.**
 
 ---
 
@@ -2076,13 +2076,15 @@ Policy key:
 Current production policy:
 
 - schemaVersion `2`
-- policyVersion `1`
-- `criteriaApproved=false`
-- `grantingActive=false`
+- policyVersion `2`
+- `criteriaApproved=true`
+- criteriaVersion `1`
+- `grantingActive=true`
 - `enforcementActive=false`
-- `productRules={}`
-- `addonRules={}`
-- `protectedCommitmentStages=[]`
+- rolloutState `GRANTING_ONLY`
+- protected product rules: `5`
+- add-on rules: `37`
+- protected stages: `Quotation Sent`, `Negotiation / Decision Pending`, `Awaiting Advance Payment`
 
 Canonical certification keys:
 
@@ -2106,7 +2108,7 @@ Canonical add-on behaviors:
 - `REQUIRE_SPECIALIST_VALIDATION`
 - `CUSTOM_QUALIFICATION_ONLY`
 
-Exact product/add-on mappings remain intentionally unapproved. The policy validator requires explicit rules for every active package/add-on before activation, forces Custom to remain qualification-only with Sales Validation, and requires Scale to preserve escalation.
+The Product Owner-approved mapping is deployed. Launch is `LAUNCH_CERTIFIED + INDEPENDENT`; Growth is `GROWTH_CERTIFIED + INDEPENDENT` with explicit Launch inheritance; Scale is `SCALE_CERTIFIED + SUPERVISED` with explicit escalation; Custom is separate `CUSTOM_QUALIFICATION_CERTIFIED + QUALIFY_ONLY + Sales Validation`; `PF-DISCOVERY` is `GROWTH_CERTIFIED + SUPERVISED`. All 37 active add-ons are explicitly classified. Care plans remain outside protected Part 16 package/add-on enforcement.
 
 ### Persistence
 
@@ -2166,7 +2168,7 @@ Admin route:
 
 - `/admin/sales-certification-permissions`
 
-Admin can inspect certification status/history and manage versioned policy through validated Admin-only RPCs. Grant issuance remains disabled until approved criteria activate it.
+Admin can inspect certification status/history and manage versioned policy through validated Admin-only RPCs. Grant issuance is globally enabled by the approved policy, but the Admin grant path requires authoritative non-test Academy/Product Training/Final Certification evidence and rejects the current synthetic/test-tagged Seller evidence.
 
 Seller Command Center shows general certification, package-level certification status, required certification, configured mode and remediation/training actions.
 
@@ -2188,11 +2190,13 @@ The final advisor review found no Part 16-specific anonymous SECURITY DEFINER wa
   - checksum `0eb8d030c8925ecd2ae30cb7ddccc444a263731ae7721aee4695ca6fb35c5666`
 - `20260922171000_crm_sales_certification_deal_permissions_part_16_evaluator_completion.sql`
   - checksum `7d69adcccc4156dde2170d2b38ca0967db6150df0f72613322dbcc7af8092747`
+- `20260922180000_crm_sales_certification_deal_permission_policy_activation_part_16.sql`
+  - checksum `8f552abc1000f1bddbc82d860d9d5153a7b81c74268e05da0f20913e2d2b948f`
 
-Final production ledger:
+Final production ledger after approved policy activation:
 
-- 700 rows
-- max migration `20260922171000`
+- 701 rows
+- max migration `20260922180000`
 - `PENDING_NEW=0`
 - `BLOCKED_UNRESOLVED=0`
 
@@ -2200,18 +2204,21 @@ Final production ledger:
 
 Required matrix:
 
-- Part 16 exact matrix: 90 / 90 PASS
+- Part 16 exact matrix: 102 / 102 PASS
 
 Focused suite:
 
-- 117 / 117 PASS
+- 136 / 136 PASS
 
-Final runtime release:
+Latest approved policy release:
 
-- runtime main SHA `2897f98553d5e5792e581d740c1d6f7f72e44b5f`
-- trusted merged-main CI #960 / run `35699050245`: SUCCESS
-- production deploy #386 / run `35699204714`: SUCCESS
-- Cloudflare Worker version `1f266f7d-c7b1-4640-8081-fe11755e988e`
+- Product Owner activation PR #153
+- exact trusted PR head `2f97fcd2e3d3e1a1a21f9cd17f97079b3e2174e3`
+- trusted PR CI #964 / run `35734911224`: SUCCESS
+- merged main SHA `962fbd0160004977f99bfbf136b41008f54273a5`
+- merged-main CI #965 / run `35735447385`: SUCCESS
+- production deploy #388 / run `35735727025`: SUCCESS
+- Cloudflare Worker version `a6ac83b9-ceb1-4499-afd2-f50ae76fa438`
 - Part 16 release verifier: 0 failures
 - authenticated Admin Part 16 QA: PASS
 - authenticated Seller Part 16 QA: PASS
@@ -2246,16 +2253,28 @@ Historical fail-closed corrections are retained:
 - PR #149 schema-v2 policy/evaluator/UI/matrix/QA completion
 - PR #150 release-verifier scope correction after deploy #384 stopped on a verifier false positive
 - PR #151 authenticated-QA Final Certification key correction after deploy #385 stopped on the QA snapshot schema mismatch
-- deploy #386 passed the full production chain
+- deploy #386 passed the staged-foundation production chain
+- PR #153 encoded the Product Owner-approved policy and bounded PF-DISCOVERY compatibility extension
+- deploy #388 passed the granting-only production activation chain with zero grants and authoritative synthetic-evidence rejection
 
-Detailed architecture, chronology and the complete 95-item developer report are maintained in:
+Detailed architecture, staged-history chronology, approved-policy activation evidence, and the current 102-item activation report are maintained in:
 
 - `docs/crm-sales-certification-deal-permissions-part-16.md`
+
+### Product Owner approval / granting-only activation status
+
+The approved production policy has been encoded and deployed under policy version `2` / criteria version `1`. The current rollout state is `GRANTING_ONLY`: criteria and grant issuance are active, but enforcement is intentionally off.
+
+The current active Seller's Academy readiness, Product & Package Training (`100`), and Final Certification (`100`, zero critical failures/misses) technically pass. However, the canonical records are explicitly synthetic/test-tagged. `sales_certification_authoritative_evidence(uuid)` therefore returns `syntheticEvidenceDetected=true` and `grantEligible=false`.
+
+No Launch grant was issued. Growth, Scale, and Custom grants remain zero. This is the exact fail-closed behavior required by the Product Owner activation instruction. Final enforcement may activate only after a genuine active Seller has authoritative non-test Launch certification evidence and a canonical Admin grant is legitimately issued.
+
+Part 10B remains active at policy/schema `2/2`; Parts 11–15 remain intact; no fake CRM/commercial data was created and no real quotation or Opportunity was mutated solely for QA.
 
 ### Future-phase boundary
 
 No AI Seller assistance, AI package selection authority, AI certification decision, AI Sales Validation, AI performance judgment, automatic employment decision, automatic commission change or unrelated Academy redesign was started.
 
-**PART 16 IMPLEMENTATION FOUNDATION COMPLETE — POLICY ACTIVATION REQUIRES EXPLICIT PRODUCT DECISION.**
+**PART 16 PRODUCT POLICY APPROVED + GRANTING-ONLY DEPLOYED — FINAL ENFORCEMENT AWAITS AUTHORITATIVE NON-TEST LAUNCH CERTIFICATION EVIDENCE.**
 
-**PART 16 POLICY ACTIVATION BLOCKED — CONFIGURABLE CERTIFICATION INFRASTRUCTURE IS READY, BUT EXACT PRODUCTION DEAL-PERMISSION POLICY REQUIRES EXPLICIT PRODUCT APPROVAL.**
+**PART 16 POLICY APPROVED — ENFORCEMENT ACTIVATION BLOCKED BECAUSE THE CURRENT SELLER DOES NOT YET HAVE AUTHORITATIVE LAUNCH CERTIFICATION EVIDENCE.**
