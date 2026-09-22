@@ -16,7 +16,8 @@ test('Part 16 starts staged and refuses fabricated package policy',()=>{
   assert.match(migration,/'criteriaApproved',false/);
   assert.match(migration,/'packageCriteria','\{\}'::jsonb/);
   assert.match(migration,/must not backfill or fabricate package certification grants/);
-  assert.doesNotMatch(migration,/insert\s+into\s+public\.sales_certification_package_grants/i);
+  assert.match(migration,/SELECT count\(\*\)::integer INTO v_grant_count\s+FROM public\.sales_certification_package_grants/);
+  assert.match(migration,/IF v_grant_count<>0 THEN\s+RAISE EXCEPTION 'Part 16 must not backfill or fabricate package certification grants\.'/);
 });
 
 test('one granular grant model preserves evidence and revocation history',()=>{
