@@ -2059,4 +2059,203 @@ Detailed architecture and release evidence: docs/crm-seller-quality-performance-
 
 **PART 15 — SELLER QUALITY + PERFORMANCE: COMPLETE.**
 
-**PART 16: READY FOR SEPARATE IMPLEMENTATION INSTRUCTION. NOT STARTED.**
+**PART 16 IMPLEMENTATION FOUNDATION COMPLETE — POLICY ACTIVATION REQUIRES EXPLICIT PRODUCT DECISION.**
+
+---
+
+## 44. Part 16 — Sales Academy / Certification + Deal-Complexity Permissions
+
+Part 16 reuses the existing Sales Academy, training progress, Management review, Final Certification, applicant progression, Sales Catalog, Package Fit, Sales Validation, quotation approval, Pipeline, Part 10B final Send gate and Parts 11–15. No duplicate Academy, Final Certification, product catalog, quotation system or permission subsystem was created.
+
+### Canonical policy and certification model
+
+Policy key:
+
+- `crm_sales_certification_deal_permission_policy_v1`
+
+Current production policy:
+
+- schemaVersion `2`
+- policyVersion `1`
+- `criteriaApproved=false`
+- `grantingActive=false`
+- `enforcementActive=false`
+- `productRules={}`
+- `addonRules={}`
+- `protectedCommitmentStages=[]`
+
+Canonical certification keys:
+
+- `LAUNCH_CERTIFIED`
+- `GROWTH_CERTIFIED`
+- `SCALE_CERTIFIED`
+- `CUSTOM_QUALIFICATION_CERTIFIED`
+
+Canonical permission modes:
+
+- `INDEPENDENT`
+- `SUPERVISED`
+- `QUALIFY_ONLY`
+- `BLOCKED`
+
+Canonical add-on behaviors:
+
+- `INHERIT_BASE_PACKAGE`
+- `REQUIRE_GROWTH`
+- `REQUIRE_SCALE`
+- `REQUIRE_SPECIALIST_VALIDATION`
+- `CUSTOM_QUALIFICATION_ONLY`
+
+Exact product/add-on mappings remain intentionally unapproved. The policy validator requires explicit rules for every active package/add-on before activation, forces Custom to remain qualification-only with Sales Validation, and requires Scale to preserve escalation.
+
+### Persistence
+
+No prior canonical granular package-certification grant truth existed, so Part 16 adds one bounded evidence/history model:
+
+- `sales_certification_package_grants`
+
+It records certification key, package, authority mode, lifecycle state, expiry, evidence, policy version, grant actor/time and revocation evidence. It does not replace Academy/Final Certification truth.
+
+Production granular grants after release: `0`. No backfill was performed.
+
+### Evaluator and integration
+
+Canonical evaluator:
+
+- `crm_get_sales_certification_deal_permission(uuid,text,uuid,uuid)`
+
+The evaluator derives from existing Academy readiness, explicit grant evidence, current `sales_products`, versioned policy, existing Sales Validation and existing quotation approval.
+
+Progressive server hooks cover:
+
+- package/add-on quotation items
+- pre-Send certification assertion
+- configured protected Pipeline stages
+- policy validation
+
+The hooks remain inert while `enforcementActive=false`.
+
+Package Fit remains the commercial recommendation authority. Certification controls who may handle a deal independently; it does not alter the customer’s real package need.
+
+`SUPERVISED` reuses canonical quotation approval evidence. No second supervisor system was introduced.
+
+Part 10B remains the final quotation Send authority at:
+
+- `finalQuotationSendGateActive=true`
+- policyVersion `2`
+- snapshotSchemaVersion `2`
+
+### Existing Academy reuse
+
+Production architecture after release:
+
+- core `sales` track: 20 track modules
+- `sales_assessment_prep` track: 10 track modules
+- Sales Academy modules: 47 active / 47 total
+- Sales lessons: 447
+- canonical `get_product_package_training`: exactly 1
+- active Sales Final Certification module: exactly 1
+- Final Certification state rows: 1
+- Final Certification sessions: 1
+
+`workforce_capability_profiles` was audited but is not used as package-certification truth.
+
+### Admin and Seller UX
+
+Admin route:
+
+- `/admin/sales-certification-permissions`
+
+Admin can inspect certification status/history and manage versioned policy through validated Admin-only RPCs. Grant issuance remains disabled until approved criteria activate it.
+
+Seller Command Center shows general certification, package-level certification status, required certification, configured mode and remediation/training actions.
+
+Seller self-grant, cross-user private certification access, Admin policy mutation and Admin workspace access are server-denied.
+
+### Security
+
+The grant table has RLS enabled. Authenticated browser access is SELECT-only; writes are RPC-only. Part 16 RPCs use fixed search paths and internal Admin/self authorization.
+
+The final advisor review found no Part 16-specific anonymous SECURITY DEFINER warning and no Part 16 missing-RLS-policy warning. Authenticated SECURITY DEFINER notices for intended Part 16 RPC surfaces are expected because those RPCs must be callable by authenticated users and authorize internally. The new FK indexes currently appear as unused because the production staged state contains zero grants.
+
+### Migration series
+
+- `20260922150000_crm_sales_certification_deal_permissions_part_16.sql`
+  - checksum `b6ea5ddba97c5b6018ecf77b0d788203c07ce0093f05ad2ac67b15aa6d2adbd7`
+- `20260922151000_crm_sales_certification_deal_permissions_part_16_performance_hardening.sql`
+  - checksum `9acada8a8ed1da6a97afbc949faef7ab40d1695dc7349cd43447eeab1585ee93`
+- `20260922170000_crm_sales_certification_deal_permissions_part_16_policy_completion.sql`
+  - checksum `0eb8d030c8925ecd2ae30cb7ddccc444a263731ae7721aee4695ca6fb35c5666`
+- `20260922171000_crm_sales_certification_deal_permissions_part_16_evaluator_completion.sql`
+  - checksum `7d69adcccc4156dde2170d2b38ca0967db6150df0f72613322dbcc7af8092747`
+
+Final production ledger:
+
+- 700 rows
+- max migration `20260922171000`
+- `PENDING_NEW=0`
+- `BLOCKED_UNRESOLVED=0`
+
+### Tests and production release evidence
+
+Required matrix:
+
+- Part 16 exact matrix: 90 / 90 PASS
+
+Focused suite:
+
+- 117 / 117 PASS
+
+Final runtime release:
+
+- runtime main SHA `2897f98553d5e5792e581d740c1d6f7f72e44b5f`
+- trusted merged-main CI #960 / run `35699050245`: SUCCESS
+- production deploy #386 / run `35699204714`: SUCCESS
+- Cloudflare Worker version `1f266f7d-c7b1-4640-8081-fe11755e988e`
+- Part 16 release verifier: 0 failures
+- authenticated Admin Part 16 QA: PASS
+- authenticated Seller Part 16 QA: PASS
+- mobile/keyboard QA: PASS
+- production immutability: PASS
+
+Part 16 authenticated QA preserved:
+
+- granular grants 0
+- Academy progress 54
+- training reviews 8
+- Final Certification state 1
+- Final Certification sessions 1
+- linked Sales applicant 1, stage `Activated`
+- active Sales 1
+- performance reviews 16
+- Leads 6
+- Opportunities 2
+- Activities 13
+- Quotations 6
+- Payments 5
+- Clients 2
+- Projects 1
+- handoff attempts 0
+
+No real certification, Academy progress, Final Certification, applicant stage, performance review, CRM commercial record or handoff record was changed solely for QA. No fake production business data was created.
+
+Historical fail-closed corrections are retained:
+
+- PR #147 initial Part 16 foundation
+- PR #148 grant/RLS/index performance hardening
+- PR #149 schema-v2 policy/evaluator/UI/matrix/QA completion
+- PR #150 release-verifier scope correction after deploy #384 stopped on a verifier false positive
+- PR #151 authenticated-QA Final Certification key correction after deploy #385 stopped on the QA snapshot schema mismatch
+- deploy #386 passed the full production chain
+
+Detailed architecture, chronology and the complete 95-item developer report are maintained in:
+
+- `docs/crm-sales-certification-deal-permissions-part-16.md`
+
+### Future-phase boundary
+
+No AI Seller assistance, AI package selection authority, AI certification decision, AI Sales Validation, AI performance judgment, automatic employment decision, automatic commission change or unrelated Academy redesign was started.
+
+**PART 16 IMPLEMENTATION FOUNDATION COMPLETE — POLICY ACTIVATION REQUIRES EXPLICIT PRODUCT DECISION.**
+
+**PART 16 POLICY ACTIVATION BLOCKED — CONFIGURABLE CERTIFICATION INFRASTRUCTURE IS READY, BUT EXACT PRODUCTION DEAL-PERMISSION POLICY REQUIRES EXPLICIT PRODUCT APPROVAL.**
