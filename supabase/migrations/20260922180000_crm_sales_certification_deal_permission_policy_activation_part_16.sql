@@ -1195,7 +1195,7 @@ BEGIN
         v_item_allowed:=false; v_item_can_draft:=false; v_item_can_send:=false;
       END IF;
 
-      IF (v_validation_required OR v_escalation_required) AND NOT v_validation_satisfied THEN
+      IF v_validation_required AND NOT v_validation_satisfied THEN
         v_item_can_send:=false;
         v_blockers:=v_blockers||jsonb_build_array(jsonb_build_object(
           'code','SALES_VALIDATION_REQUIRED',
@@ -1225,7 +1225,7 @@ BEGIN
         'canSend',v_item_can_send,
         'supervisionRequired',(v_mode='SUPERVISED' OR v_manager_required),
         'supervisionSatisfied',v_supervision_satisfied,
-        'validationRequired',(v_validation_required OR v_escalation_required),
+        'validationRequired',v_validation_required,
         'validationSatisfied',v_validation_satisfied,
         'managerReviewRequired',v_manager_required,
         'escalationRequired',v_escalation_required,
@@ -1237,7 +1237,7 @@ BEGIN
       v_can_draft:=v_can_draft AND v_item_can_draft;
       v_can_send:=v_can_send AND v_item_can_send;
       v_any_supervision:=v_any_supervision OR v_mode='SUPERVISED' OR v_manager_required;
-      v_any_validation:=v_any_validation OR v_validation_required OR v_escalation_required;
+      v_any_validation:=v_any_validation OR v_validation_required;
       v_any_manager:=v_any_manager OR v_manager_required;
 
       IF v_mode='BLOCKED' OR NOT v_item_allowed THEN
