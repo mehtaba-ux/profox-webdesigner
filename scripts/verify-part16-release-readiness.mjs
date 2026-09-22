@@ -262,7 +262,11 @@ try{
     ['No policy employment mutation',/\bupdate\s+public\.(user_profiles|applicants)/i,false],
     ['No commission mutation',/(insert|update|delete)\s+(into\s+|from\s+)?public\.[a-z_]*commission/i,false],
   ]){
-    const source=label.startsWith('No policy')?policyDef:evaluatorDef+grantDef;
+    const source=label.startsWith('No policy')
+      ? policyDef
+      : label.startsWith('No evaluator')
+        ? evaluatorDef
+        : evaluatorDef+grantDef;
     const found=pattern.test(source);
     if(found===expected) pass(label,expected?'present':'absent as required');
     else fail(label,expected?'required behavior missing':'forbidden mutation found');

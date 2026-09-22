@@ -6,6 +6,7 @@ const migration = await readFile('supabase/migrations/20260922150000_crm_sales_c
 const part16Performance = await readFile('supabase/migrations/20260922151000_crm_sales_certification_deal_permissions_part_16_performance_hardening.sql','utf8');
 const policyCompletion = await readFile('supabase/migrations/20260922170000_crm_sales_certification_deal_permissions_part_16_policy_completion.sql','utf8');
 const evaluatorCompletion = await readFile('supabase/migrations/20260922171000_crm_sales_certification_deal_permissions_part_16_evaluator_completion.sql','utf8');
+const releaseVerifier = await readFile('scripts/verify-part16-release-readiness.mjs','utf8');
 const service = await readFile('src/lib/salesCertificationService.ts','utf8');
 const sellerUi = await readFile('src/components/admin/SalesCertificationPermissionsPanel.tsx','utf8');
 const adminUi = await readFile('src/components/admin/SalesCertificationPermissionsAdmin.tsx','utf8');
@@ -172,4 +173,11 @@ test('Part 16 completion remains free of automatic employment commission or perf
   assert.doesNotMatch(policyCompletion+evaluatorCompletion,/UPDATE\s+public\.(user_profiles|applicants)/i);
   assert.doesNotMatch(policyCompletion+evaluatorCompletion,/(insert|update|delete)\s+(into\s+|from\s+)?public\.[a-z_]*commission/i);
   assert.doesNotMatch(policyCompletion+evaluatorCompletion,/sales_performance_reviews\s+SET/i);
+});
+
+
+test('Part 16 release verifier scopes evaluator mutation checks to evaluator definition only',()=>{
+  assert.match(releaseVerifier,/label\.startsWith\('No evaluator'\)\s*\? evaluatorDef/);
+  assert.match(releaseVerifier,/\['No evaluator grant mutation'/);
+  assert.match(releaseVerifier,/\['No evaluator quotation mutation'/);
 });
