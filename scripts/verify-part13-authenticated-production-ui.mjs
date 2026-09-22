@@ -631,17 +631,29 @@ async function verifyPart16Admin(browser, session, truth) {
   if(payload.error || !payload.data) throw new Error(payload.error?.message || 'Admin Part 16 certification RPC failed.');
   const policy=payload.data.policy || {};
   if(Number(policy.schemaVersion)!==2) throw new Error(`Part 16 Admin policy schemaVersion must be 2; found ${policy.schemaVersion}.`);
-  if(policy.enforcementActive!==false || policy.grantingActive!==false || policy.criteriaApproved!==false) {
-    throw new Error('Part 16 production policy unexpectedly left the approved staged foundation state.');
+  if(policy.enforcementActive!==false || policy.grantingActive!==true || policy.criteriaApproved!==true) {
+    throw new Error('Part 16 production policy must be in approved granting-only state before authoritative Launch evidence exists.');
   }
-  if(Object.keys(policy.productRules || {}).length || Object.keys(policy.addonRules || {}).length) {
-    throw new Error('Part 16 production QA found product/add-on rules despite no approved product-policy decision.');
+  if(Number(policy.policyVersion)!==2 || Number(policy.criteriaVersion)!==1 || policy.rolloutState!=='GRANTING_ONLY') {
+    throw new Error(`Part 16 approved granting-only policy identity drifted: ${JSON.stringify({policyVersion:policy.policyVersion,criteriaVersion:policy.criteriaVersion,rolloutState:policy.rolloutState})}`);
+  }
+  if(Object.keys(policy.productRules || {}).length!==5 || Object.keys(policy.addonRules || {}).length!==37) {
+    throw new Error('Part 16 production QA did not find the complete approved 5-product / 37-add-on policy.');
+  }
+  if(policy.productRules?.['PF-DISCOVERY']?.requiredCertificationKey!=='GROWTH_CERTIFIED'
+     || policy.productRules?.['PF-DISCOVERY']?.permissionMode!=='SUPERVISED'
+     || policy.productRules?.['PF-WEB-SCALE']?.permissionMode!=='SUPERVISED'
+     || policy.productRules?.['PF-CUSTOM']?.permissionMode!=='QUALIFY_ONLY') {
+    throw new Error('Part 16 approved Discovery/Scale/Custom policy semantics drifted.');
   }
   const seller=(payload.data.sellers||[]).find(item=>item.id===truth.seller.id);
-  if(!seller) throw new Error('Part 16 Admin payload does not include the approved synthetic Seller.');
-  if(seller.snapshot?.generalCertificationReady!==true) throw new Error('Part 16 Admin payload did not preserve genuine general Sales certification readiness.');
-  if(!Array.isArray(seller.snapshot?.products) || seller.snapshot.products.length<4) throw new Error('Part 16 Admin payload did not surface the active package catalog.');
-  if((payload.data.history||[]).length!==0) throw new Error('Part 16 staged production unexpectedly contains granular certification grants.');
+  if(!seller) throw new Error('Part 16 Admin payload does not include the current active Seller.');
+  if(seller.snapshot?.generalCertificationReady!==true) throw new Error('Part 16 Admin payload did not preserve existing Sales Academy readiness.');
+  if(seller.snapshot?.authoritativeGrantEvidenceReady!==false || seller.snapshot?.authoritativeEvidence?.syntheticEvidenceDetected!==true) {
+    throw new Error('Part 16 Admin payload must identify the current test-tagged Seller as ineligible for a production certification grant.');
+  }
+  if(!Array.isArray(seller.snapshot?.products) || seller.snapshot.products.length<5) throw new Error('Part 16 Admin payload did not surface the four packages plus PF-DISCOVERY.');
+  if((payload.data.history||[]).length!==0) throw new Error('Part 16 granting-only production unexpectedly contains granular certification grants.');
 
   const context=await authenticatedContext(browser,session,{width:1440,height:1000});
   const page=await context.newPage();
@@ -649,7 +661,7 @@ async function verifyPart16Admin(browser, session, truth) {
   try{
     await page.goto(`${baseUrl}/admin/sales-certification-permissions`,{waitUntil:'domcontentloaded'});
     await expectText(page,'Sales Certification + Deal Permissions');
-    await expectText(page,'Staged safely — no package criteria were invented');
+    await expectText(page,'Approved policy — enforcement staged for authoritative Launch evidence');
     await expectText(page,truth.seller.email);
     await page.locator('[data-testid="part16-final-certification-evidence"]').first().waitFor({state:'visible',timeout:30_000});
     await page.locator('[data-testid="part16-policy-admin"]').waitFor({state:'visible',timeout:30_000});
@@ -658,7 +670,7 @@ async function verifyPart16Admin(browser, session, truth) {
     await page.locator('[data-testid="part16-policy-protected-stages"]').waitFor({state:'visible',timeout:30_000});
     const grantButton=page.locator('[data-testid="part16-grant-button"]');
     await grantButton.waitFor({state:'visible',timeout:30_000});
-    if(await grantButton.isEnabled()) throw new Error('Part 16 staged Admin workspace unexpectedly enabled real certification granting.');
+    if(await grantButton.isEnabled()) throw new Error('Part 16 Admin workspace unexpectedly enabled a production grant for test-tagged evidence.');
     const savePolicy=page.locator('[data-testid="part16-save-policy"]');
     await savePolicy.waitFor({state:'visible',timeout:30_000});
     if(!(await savePolicy.isEnabled())) throw new Error('Part 16 Admin policy control is unexpectedly unavailable.');
@@ -676,7 +688,7 @@ async function verifyPart16Admin(browser, session, truth) {
 
     await assertNoSecretLabels(page);
     assertRuntime();
-    console.log('PASS  Part 16 authenticated Admin QA: existing Academy + Final Certification evidence, staged policy, Admin-only configuration controls, truthful zero-grant Seller status, Final Certification integration, mobile/keyboard PASS; no grant/revoke/policy mutation performed.');
+    console.log('PASS  Part 16 authenticated Admin QA: Product Owner-approved granting-only policy, complete package/discovery/add-on mappings, synthetic/test evidence correctly blocks production grant issuance, zero grant history, Admin-only controls, Final Certification integration, mobile/keyboard PASS; no grant/revoke/policy mutation performed.');
   }finally{
     await context.close();
   }
@@ -687,9 +699,12 @@ async function verifyPart16Seller(browser, session, truth) {
   const mine=await client.rpc('get_my_sales_certification_permissions');
   if(mine.error || !mine.data) throw new Error(mine.error?.message || 'Seller Part 16 own certification RPC failed.');
   if(mine.data.salespersonId!==truth.seller.id) throw new Error('Part 16 Seller self-view resolved to the wrong Seller.');
-  if(mine.data.generalCertificationReady!==true) throw new Error('Part 16 Seller self-view did not preserve genuine general certification readiness.');
-  if(!Array.isArray(mine.data.products) || mine.data.products.length<4) throw new Error('Part 16 Seller self-view did not surface current active packages.');
-  if(mine.data.products.some(item=>item.grantStatus==='ACTIVE')) throw new Error('Part 16 production QA found an active granular package certification that was not approved for this staged rollout.');
+  if(mine.data.generalCertificationReady!==true) throw new Error('Part 16 Seller self-view did not preserve existing Sales Academy readiness.');
+  if(mine.data.authoritativeGrantEvidenceReady!==false || mine.data.authoritativeEvidence?.syntheticEvidenceDetected!==true) {
+    throw new Error('Part 16 Seller self-view must distinguish test-tagged Academy/Final evidence from production grant eligibility.');
+  }
+  if(!Array.isArray(mine.data.products) || mine.data.products.length<5) throw new Error('Part 16 Seller self-view did not surface the four packages plus PF-DISCOVERY.');
+  if(mine.data.products.some(item=>item.grantStatus==='ACTIVE')) throw new Error('Part 16 production QA found an active granular certification without authoritative production evidence.');
 
   const deal=await client.rpc('crm_get_sales_certification_deal_permission',{
     p_salesperson_id:null,
@@ -738,8 +753,8 @@ async function verifyPart16Seller(browser, session, truth) {
     const panel=page.locator('[data-testid="part16-certification-panel"]');
     await panel.waitFor({state:'visible',timeout:30_000});
     await expectText(panel,'Sales Certification + Deal Permissions');
-    await expectText(panel,'Staged — package enforcement is not active');
-    await expectText(panel,'Current deal authority is unchanged. No package certification is being fabricated or backfilled while Management criteria remain unapproved.');
+    await expectText(panel,'Approved policy — enforcement is not active');
+    await expectText(panel,'Current deal authority is unchanged while authoritative non-test Launch certification evidence is still required for final enforcement activation.');
     await page.getByRole('button',{name:'Open training / re-certification',exact:true}).waitFor({state:'visible',timeout:30_000});
     for(const product of mine.data.products){
       await panel.locator(`[data-testid="part16-package-${product.productCode}"]`).waitFor({state:'visible',timeout:30_000});
@@ -761,7 +776,7 @@ async function verifyPart16Seller(browser, session, truth) {
 
     await assertNoSecretLabels(page);
     assertRuntime();
-    console.log('PASS  Part 16 authenticated Seller QA: own certification truth + staged deal authority visible, exact remediation/training action present, self-grant/policy/Admin/cross-user/private-evidence access denied, Seller Command Center retained, mobile/keyboard PASS.');
+    console.log('PASS  Part 16 authenticated Seller QA: own approved-policy requirements visible, test-tagged evidence is not treated as production authority, deal enforcement remains staged, remediation/training action present, self-grant/policy/Admin/cross-user/private-evidence access denied, Seller Command Center retained, mobile/keyboard PASS.');
   }finally{
     await context.close();
   }
