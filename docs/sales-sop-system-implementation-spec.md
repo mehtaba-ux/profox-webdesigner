@@ -2011,7 +2011,7 @@ A redundant QA-only PR #135 was closed unmerged because PR #134 had already solv
 
 **PART 14 — MANAGER EXCEPTION WORKSPACE: COMPLETE.**
 
-**Part 15 implementation is a release candidate; production closure is pending. Part 16 has not started.**
+**PART 15 — SELLER QUALITY + PERFORMANCE: COMPLETE. Part 16 is ready only for separate implementation instruction and has not started.**
 
 ---
 
@@ -2023,9 +2023,9 @@ Existing sales_performance_settings and sales_performance_reviews remain authori
 
 When an Admin completes a review, exact period_start → period_end evidence is frozen into the existing immutable metrics_snapshot. Legacy completed snapshots are not backfilled. A review cannot be completed before its evidence period ends.
 
-Metrics cover verified revenue, win rate, Won deal value, first-response SLA, Discovery completeness, Proposal Readiness, Part 11 next-action discipline, Part 13 first-pass handoff acceptance, Part 13 missing-information Return rate, active canonical Promise conflicts, discount frequency and approval/validation/audited-override frequency.
+The exact 14-metric contract covers verified revenue, win rate, Won deal value, first-response SLA, Discovery completeness, Proposal Readiness, Part 11 next-action discipline, Part 13 first-pass handoff acceptance, Part 13 missing-information Return rate, post-sale Sales-attributed scope changes, active canonical Promise conflicts, discount frequency, approval/validation/audited-override frequency, and client expectation disputes.
 
-Every metric reports AVAILABLE, INSUFFICIENT_DATA, or NOT_TRACKED_AUTHORITATIVELY with source/sample/period limitations where applicable. Post-sale Sales-attributed scope changes and client expectation disputes fail closed as NOT_TRACKED_AUTHORITATIVELY because no audited canonical source explicitly proves those facts.
+Every metric reports AVAILABLE, INSUFFICIENT_DATA, or NOT_TRACKED_AUTHORITATIVELY with source/sample/period limitations where applicable. Post-sale Sales-attributed scope changes and client expectation disputes fail closed as NOT_TRACKED_AUTHORITATIVELY because no audited canonical source explicitly proves those facts. Part 11 `crm_activities` remains next-action authority; legacy opportunity `next_follow_up_at` is not performance truth. Part 13 remains handoff-quality authority. Verified Payment remains revenue authority, and payment-controlled Won remains win authority.
 
 There is no overall Seller score or automatic management verdict. Continue / Extend Review / Restrict Scope / Close Engagement remain human decisions. Part 15 does not automatically change Team & Users access, employment, commissions, certification, Sales Academy permissions, or Part 16 permissions.
 
@@ -2034,8 +2034,29 @@ Checksum: b810ff80cd93e3dfd1f2d288db7060ec02974e583487c715c5c00f1a4457f41b
 
 Verification includes an exact 77-case Part 15 matrix, production release-readiness verifier, authenticated non-destructive Admin/Seller production QA, and before/after performance review/settings immutability checks.
 
+Production closure evidence:
+
+- final runtime source: `add3066abb9da77e3bf5cf306a0a6106695db7dd`;
+- trusted final runtime main CI #944 / run `35685557074`: SUCCESS;
+- final runtime production deploy #380 / run `35685672695`: SUCCESS;
+- deployed Cloudflare Worker version: `e048614f-b4d4-4c90-84c4-3918dd8782e1`;
+- Part 15 release-readiness verifier: 0 failures;
+- authenticated Admin Part 15 QA: PASS;
+- authenticated Seller Part 15 QA: PASS;
+- review/settings/business immutability: PASS;
+- production database ledger 696; max migration `20260921190000`; Part 15 exact once/checksum exact;
+- `PENDING_NEW=0`; `BLOCKED_UNRESOLVED=0`;
+- Part 10B Send gate active with policy/schema `2/2`;
+- period/current performance snapshot functions each exist exactly once; prohibited duplicate performance tables = 0;
+- 16 reviews remain Scheduled, 0 Completed, one settings row remains unchanged, one active Sales user remains;
+- no real review/settings/access/commission/certification state was mutated and no fake production business record was created.
+
+Historical failed deployment/QA evidence and the complete correction chronology through PRs #137–#145 are preserved in `docs/crm-seller-quality-performance-part-15.md`; the release record does not erase verifier, selector, visibility, availability, runner-provisioning, or current-vs-period QA corrections.
+
+There is no overall Seller quality score, automatic employment decision, automatic access restriction, commission mutation, or certification mutation. Human management review remains authoritative.
+
 Detailed architecture and release evidence: docs/crm-seller-quality-performance-part-15.md.
 
-**PART 15: RELEASE CANDIDATE — PRODUCTION CLOSURE PENDING.**
+**PART 15 — SELLER QUALITY + PERFORMANCE: COMPLETE.**
 
-**Part 16 has not started.**
+**PART 16: READY FOR SEPARATE IMPLEMENTATION INSTRUCTION. NOT STARTED.**
