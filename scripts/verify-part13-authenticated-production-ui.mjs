@@ -438,10 +438,15 @@ async function verifyPart15Admin(browser, session, truth) {
   });
   if(period.error || !period.data?.qualityEvidence) throw new Error(period.error?.message || 'Admin Part 15 period snapshot failed.');
   const requiredKeys=['firstResponseSla','discoveryCompleteness','proposalReadiness','firstPassHandoffAcceptance','missingInformationRate','postSaleSalesAttributedScopeChanges','unauthorizedPromiseIncidents','discountFrequency','commercialExceptions','nextActionDiscipline','clientExpectationDisputes','verifiedRevenue','winRate','dealValue'];
+  const currentEvidence=seller.snapshot?.qualityEvidence;
+  if(!currentEvidence) throw new Error('Part 15 Admin current snapshot has no quality evidence.');
   for(const key of requiredKeys){
-    const metric=period.data.qualityEvidence[key];
-    if(!metric) throw new Error(`Part 15 Admin period evidence is missing ${key}.`);
-    if(!['AVAILABLE','INSUFFICIENT_DATA','NOT_TRACKED_AUTHORITATIVELY'].includes(metric.availability)) throw new Error(`Part 15 metric ${key} has invalid availability ${metric.availability}.`);
+    const periodMetric=period.data.qualityEvidence[key];
+    if(!periodMetric) throw new Error(`Part 15 Admin period evidence is missing ${key}.`);
+    if(!['AVAILABLE','INSUFFICIENT_DATA','NOT_TRACKED_AUTHORITATIVELY'].includes(periodMetric.availability)) throw new Error(`Part 15 period metric ${key} has invalid availability ${periodMetric.availability}.`);
+    const currentMetric=currentEvidence[key];
+    if(!currentMetric) throw new Error(`Part 15 Admin current evidence is missing ${key}.`);
+    if(!['AVAILABLE','INSUFFICIENT_DATA','NOT_TRACKED_AUTHORITATIVELY'].includes(currentMetric.availability)) throw new Error(`Part 15 current metric ${key} has invalid availability ${currentMetric.availability}.`);
   }
 
   const context=await authenticatedContext(browser,session,{width:1440,height:1000});
@@ -485,13 +490,14 @@ async function verifyPart15Admin(browser, session, truth) {
       if(rawLabel!==label) throw new Error(`Part 15 metric ${key} rendered label "${rawLabel}" instead of "${label}".`);
       const renderedText=String(await card.innerText() || '').replace(/\s+/g,' ').trim().toLowerCase();
       if(!renderedText.includes(label.toLowerCase())) throw new Error(`Part 15 visible metric card ${key} did not render its expected label text.`);
+      const currentAvailability=currentEvidence[key].availability;
       const availabilityText={
         AVAILABLE:'Available',
         INSUFFICIENT_DATA:'Insufficient data',
         NOT_TRACKED_AUTHORITATIVELY:'Not tracked authoritatively',
-      }[period.data.qualityEvidence[key].availability];
+      }[currentAvailability];
       if(!availabilityText || !renderedText.includes(availabilityText.toLowerCase())) {
-        throw new Error(`Part 15 visible metric card ${key} did not render availability ${period.data.qualityEvidence[key].availability}.`);
+        throw new Error(`Part 15 visible current metric card ${key} did not render availability ${currentAvailability}.`);
       }
     }
     await qualityPanel.getByText(/Sample \d+/).first().waitFor({state:'visible',timeout:30_000});

@@ -48,7 +48,8 @@ test('Part 15 Admin QA verifies visible quality evidence and human-review bounda
   assert.match(qa,/card\.innerText\(\)/);
   assert.match(qa,/rawLabel!==label/);
   assert.match(qa,/NOT_TRACKED_AUTHORITATIVELY:'Not tracked authoritatively'/);
-  assert.match(qa,/period\.data\.qualityEvidence\[key\]\.availability/);
+  assert.match(qa,/const currentEvidence=seller\.snapshot\?\.qualityEvidence/);
+  assert.match(qa,/const currentAvailability=currentEvidence\[key\]\.availability/);
   assert.match(ui,/firstResponseSla: 'First-response SLA'/);
   assert.match(ui,/commercialExceptions: 'Approval \/ exception frequency'/);
   assert.match(ui,/dealValue: 'Won deal value'/);
