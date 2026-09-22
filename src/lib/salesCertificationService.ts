@@ -8,6 +8,7 @@ export interface SalesCertificationProductPermission {
   productId: string;
   productCode: string;
   productName: string;
+  productType?: string | null;
   active: boolean;
   requiredCertification?: string | null;
   configuredPermissionMode?: SalesCertificationPermissionMode | null;
@@ -32,6 +33,23 @@ export interface SalesCertificationSnapshot {
   rolloutReason?: string | null;
   salespersonId: string;
   generalCertificationReady: boolean;
+  authoritativeGrantEvidenceReady?: boolean;
+  authoritativeEvidence?: {
+    grantEligible?: boolean;
+    academyReady?: boolean;
+    productTrainingPassed?: boolean;
+    productTrainingModuleId?: string | null;
+    productTrainingProgressId?: string | null;
+    productTrainingScore?: number | null;
+    finalCertificationPassed?: boolean;
+    finalCertificationProgressId?: string | null;
+    finalCertificationSessionId?: string | null;
+    finalCertificationScore?: number | null;
+    criticalFailures?: unknown[];
+    judgmentCriticalMisses?: number | null;
+    syntheticEvidenceDetected?: boolean;
+    blockers?: string[];
+  };
   finalCertification: {
     sessionId?: string | null;
     status?: string | null;
@@ -87,6 +105,7 @@ export interface SalesCertificationDealAssessment {
   productName?: string | null;
   requiredCertification?: string | null;
   permissionMode: SalesCertificationPermissionMode;
+  prospectivePermissionMode?: SalesCertificationPermissionMode | null;
   status: SalesCertificationPermissionMode;
   allowed: boolean;
   canDraft: boolean;
