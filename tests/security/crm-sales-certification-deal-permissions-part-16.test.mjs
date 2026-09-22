@@ -194,7 +194,8 @@ test('approved Part 16 production policy is encoded in a forward-only activation
   assert.match(activation,/Quotation Sent/);
   assert.match(activation,/Negotiation \/ Decision Pending/);
   assert.match(activation,/Awaiting Advance Payment/);
-  assert.doesNotMatch(activation,/\bINSERT\s+INTO\s+public\.sales_certification_package_grants/i);
+  assert.match(activation,/Part 16 policy activation must not create or backfill granular certification grants/);
+  assert.doesNotMatch(activation,/PERFORM\s+public\.admin_grant_sales_package_certification/i);
 });
 
 test('bounded discovery compatibility preserves PF-DISCOVERY as discovery + Growth + supervised',()=>{
@@ -228,7 +229,7 @@ test('all 37 approved active add-ons are explicitly classified',()=>{
     'PF-ADD-SUBSCRIPTION','PF-ADD-PAYGATEWAY','PF-ADD-CHECKOUT','PF-ADD-INT-ADV','PF-ADD-API','PF-ADD-PAYMENT','PF-ADD-BPA'
   ];
   assert.equal(codes.length,37);
-  for(const code of codes) assert.match(activation,new RegExp(code.replaceAll('-','\\\\-')));
+  for(const code of codes) assert.match(activation,new RegExp(code));
   for(const behavior of ['INHERIT_BASE_PACKAGE','REQUIRE_GROWTH','REQUIRE_SCALE','REQUIRE_SPECIALIST_VALIDATION']) {
     assert.match(activation,new RegExp(behavior));
   }
