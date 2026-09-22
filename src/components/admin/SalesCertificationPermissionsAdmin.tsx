@@ -24,6 +24,7 @@ export default function SalesCertificationPermissionsAdmin() {
   const [evidenceType, setEvidenceType] = useState('MANAGEMENT_REVIEW');
   const [reason, setReason] = useState('');
   const [evidenceNote, setEvidenceNote] = useState('');
+  const [qualificationBoundaryConfirmed, setQualificationBoundaryConfirmed] = useState(false);
   const [productRulesDraft, setProductRulesDraft] = useState('{}');
   const [addonRulesDraft, setAddonRulesDraft] = useState('{}');
   const [stagesDraft, setStagesDraft] = useState('[]');
@@ -68,11 +69,23 @@ export default function SalesCertificationPermissionsAdmin() {
   const grantMode = configuredMode && ['INDEPENDENT', 'SUPERVISED', 'QUALIFY_ONLY'].includes(configuredMode)
     ? configuredMode as SalesCertificationAuthorityMode
     : null;
-  const grantEnabled = policy.grantingActive === true && policy.criteriaApproved === true && grantMode !== null;
+  const authoritativeEvidence = selectedSeller?.snapshot.authoritativeEvidence || {};
+  const grantEnabled = policy.grantingActive === true
+    && policy.criteriaApproved === true
+    && grantMode !== null
+    && selectedSeller?.snapshot.authoritativeGrantEvidenceReady === true;
 
   const grant = async () => {
     if (!sellerId || !productId || !grantMode || !reason.trim() || !evidenceNote.trim()) {
-      setError('Seller, configured package permission, evidence note and grant reason are required.');
+      setError('Seller, configured product permission, evidence note and grant reason are required.');
+      return;
+    }
+    if (selectedSeller?.snapshot.authoritativeGrantEvidenceReady !== true) {
+      setError('This Seller does not have authoritative non-test certification evidence for a production grant.');
+      return;
+    }
+    if (selectedProduct?.requiredCertification === 'CUSTOM_QUALIFICATION_CERTIFIED' && !qualificationBoundaryConfirmed) {
+      setError('Confirm the qualification-versus-technical-commitment boundary before issuing Custom Qualification.');
       return;
     }
     setBusy(true);
@@ -84,12 +97,21 @@ export default function SalesCertificationPermissionsAdmin() {
         salesProductId: productId,
         authorityMode: grantMode,
         evidenceType: evidenceType.trim(),
-        evidence: { note: evidenceNote.trim() },
+        evidence: {
+          note: evidenceNote.trim(),
+          productTrainingProgressId: authoritativeEvidence.productTrainingProgressId || null,
+          finalCertificationProgressId: authoritativeEvidence.finalCertificationProgressId || null,
+          finalCertificationSessionId: authoritativeEvidence.finalCertificationSessionId || null,
+          qualificationBoundaryConfirmed: selectedProduct?.requiredCertification === 'CUSTOM_QUALIFICATION_CERTIFIED'
+            ? qualificationBoundaryConfirmed
+            : undefined,
+        },
         reason: reason.trim(),
       });
       setMessage('Package certification grant recorded from the active approved policy.');
       setReason('');
       setEvidenceNote('');
+      setQualificationBoundaryConfirmed(false);
       await load();
     } catch (err: any) {
       setError(err?.message || 'Package certification grant could not be recorded.');
@@ -176,12 +198,12 @@ export default function SalesCertificationPermissionsAdmin() {
           <StatusCard title="Deal enforcement" active={policy.enforcementActive === true} activeText="Active" inactiveText="Off" />
         </section>
 
-        {!grantEnabled && (
+        {!policy.enforcementActive && (
           <section className="rounded-3xl border border-amber-200 bg-amber-50 p-5" data-testid="part16-admin-staged-policy">
             <div className="flex items-start gap-3">
               <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-700" />
               <div>
-                <h2 className="text-sm font-black text-amber-950">Staged safely — no package criteria were invented</h2>
+                <h2 className="text-sm font-black text-amber-950">{policy.criteriaApproved ? 'Approved policy — enforcement staged for authoritative Launch evidence' : 'Staged safely — no package criteria were invented'}</h2>
                 <p className="mt-1 text-xs leading-5 text-amber-900">{String(policy.rolloutReason || 'Management-approved package certification criteria are required before grants can be issued or enforced.')}</p>
                 <p className="mt-2 text-[10px] font-bold uppercase tracking-wide text-amber-800">Policy v{policy.policyVersion || 1} · schema v{policy.schemaVersion || 1} · {String(policy.rolloutState || 'STAGED_POLICY_REQUIRED').replaceAll('_', ' ')}</p>
               </div>
@@ -245,18 +267,23 @@ export default function SalesCertificationPermissionsAdmin() {
         </section>
 
         <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-          <h2 className="text-lg font-black">Issue an evidence-backed package grant</h2>
-          <p className="mt-1 text-xs text-slate-500">The authority mode is server-policy-derived, not selected by the browser. This form stays disabled until approved criteria activate grant issuance.</p>
+          <h2 className="text-lg font-black">Issue an evidence-backed product certification grant</h2>
+          <p className="mt-1 text-xs text-slate-500">The authority mode is server-policy-derived, not selected by the browser. Grant issuance also requires authoritative non-test Product Training and Final Certification evidence.</p>
+          <div data-testid="part16-authoritative-evidence" className={`mt-4 rounded-2xl border p-4 text-xs ${selectedSeller?.snapshot.authoritativeGrantEvidenceReady ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : 'border-amber-200 bg-amber-50 text-amber-900'}`}>
+            <div className="font-black">{selectedSeller?.snapshot.authoritativeGrantEvidenceReady ? 'Authoritative production evidence verified' : 'Production grant blocked by evidence'}</div>
+            {!selectedSeller?.snapshot.authoritativeGrantEvidenceReady && <div className="mt-1 leading-5">{(selectedSeller?.snapshot.authoritativeEvidence?.blockers || ['Authoritative non-test certification evidence is required.']).join(' ')}</div>}
+          </div>
           <div className="mt-5 grid gap-4 lg:grid-cols-2">
             <Field label="Seller"><select className={inputClass} value={sellerId} onChange={event => { setSellerId(event.target.value); const seller = data?.sellers.find(item => item.id === event.target.value); setProductId(seller?.snapshot.products[0]?.productId || ''); }}>{(data?.sellers || []).map(seller => <option key={seller.id} value={seller.id}>{seller.name} · {seller.email}</option>)}</select></Field>
-            <Field label="Package"><select className={inputClass} value={productId} onChange={event => setProductId(event.target.value)}>{(selectedSeller?.snapshot.products || []).map(product => <option key={product.productId} value={product.productId}>{product.productName} · {product.productCode}</option>)}</select></Field>
+            <Field label="Protected product"><select className={inputClass} value={productId} onChange={event => { setProductId(event.target.value); setQualificationBoundaryConfirmed(false); }}>{(selectedSeller?.snapshot.products || []).filter(product => product.productType !== 'discovery').map(product => <option key={product.productId} value={product.productId}>{product.productName} · {product.productCode}</option>)}</select></Field>
             <Field label="Configured authority mode"><input className={inputClass} readOnly value={grantMode || configuredMode || 'Not configured'} /></Field>
             <Field label="Required certification"><input className={inputClass} readOnly value={selectedProduct?.requiredCertification || 'Not configured'} /></Field>
             <Field label="Evidence type"><input className={inputClass} value={evidenceType} onChange={event => setEvidenceType(event.target.value)} /></Field>
             <Field label="Evidence note"><textarea className={inputClass} rows={3} value={evidenceNote} onChange={event => setEvidenceNote(event.target.value)} placeholder="What verified evidence supports this package certification?" /></Field>
             <Field label="Grant reason"><textarea className={inputClass} rows={3} value={reason} onChange={event => setReason(event.target.value)} placeholder="Why is this authority being issued?" /></Field>
+            {selectedProduct?.requiredCertification === 'CUSTOM_QUALIFICATION_CERTIFIED' && <label className="flex min-h-12 items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 text-xs font-black text-slate-700"><input data-testid="part16-custom-boundary-confirmation" type="checkbox" checked={qualificationBoundaryConfirmed} onChange={event => setQualificationBoundaryConfirmed(event.target.checked)} className="h-4 w-4" />I confirm this Seller understands qualification versus technical commitment.</label>}
           </div>
-          <button data-testid="part16-grant-button" type="button" onClick={() => void grant()} disabled={!grantEnabled || busy || !selectedProduct} className="mt-4 rounded-xl bg-[#000080] px-5 py-3 text-xs font-black text-white focus:outline-none focus:ring-4 focus:ring-blue-100 disabled:cursor-not-allowed disabled:opacity-40">{grantEnabled ? 'Record package certification grant' : 'Granting staged until criteria approval'}</button>
+          <button data-testid="part16-grant-button" type="button" onClick={() => void grant()} disabled={!grantEnabled || busy || !selectedProduct} className="mt-4 rounded-xl bg-[#000080] px-5 py-3 text-xs font-black text-white focus:outline-none focus:ring-4 focus:ring-blue-100 disabled:cursor-not-allowed disabled:opacity-40">{grantEnabled ? 'Record certification grant' : policy.grantingActive ? 'Grant blocked until authoritative evidence is available' : 'Granting staged until criteria approval'}</button>
         </section>
 
         <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
