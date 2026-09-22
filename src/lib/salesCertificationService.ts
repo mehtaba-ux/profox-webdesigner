@@ -1,23 +1,29 @@
 import { supabase } from './supabase';
 
-export type SalesCertificationAuthorityMode = 'INDEPENDENT' | 'SUPERVISED';
-export type SalesCertificationDealStatus = 'STAGED_NOT_ENFORCED' | 'INDEPENDENT' | 'SUPERVISED' | 'BLOCKED';
+export type SalesCertificationAuthorityMode = 'INDEPENDENT' | 'SUPERVISED' | 'QUALIFY_ONLY';
+export type SalesCertificationPermissionMode = SalesCertificationAuthorityMode | 'BLOCKED' | 'STAGED_NOT_ENFORCED';
+export type SalesCertificationGrantStatus = 'ACTIVE' | 'PENDING' | 'SUSPENDED' | 'EXPIRED' | 'REVOKED' | 'NOT_GRANTED';
 
 export interface SalesCertificationProductPermission {
   productId: string;
   productCode: string;
   productName: string;
   active: boolean;
+  requiredCertification?: string | null;
+  configuredPermissionMode?: SalesCertificationPermissionMode | null;
   grantId?: string | null;
-  grantStatus: 'GRANTED' | 'NOT_GRANTED' | string;
+  certificationKey?: string | null;
+  grantStatus: SalesCertificationGrantStatus | string;
   authorityMode?: SalesCertificationAuthorityMode | null;
   evidenceType?: string | null;
   grantedAt?: string | null;
+  expiresAt?: string | null;
   policyVersion?: number | null;
 }
 
 export interface SalesCertificationSnapshot {
   policyKey: string;
+  schemaVersion?: number;
   policyVersion: number;
   grantingActive: boolean;
   enforcementActive: boolean;
@@ -33,29 +39,71 @@ export interface SalesCertificationSnapshot {
     evaluatedAt?: string | null;
     passed?: boolean;
   };
+  certifications?: Array<{
+    grantId: string;
+    certificationKey: string;
+    productId?: string | null;
+    productCode: string;
+    authorityMode: SalesCertificationAuthorityMode;
+    status: SalesCertificationGrantStatus | string;
+    grantedAt?: string | null;
+    expiresAt?: string | null;
+    policyVersion?: number | null;
+  }>;
   products: SalesCertificationProductPermission[];
+}
+
+export interface SalesCertificationItemPermission {
+  productId?: string | null;
+  productCode: string;
+  productName?: string | null;
+  productType?: string | null;
+  requiredCertification?: string | null;
+  permissionMode: SalesCertificationPermissionMode;
+  allowed: boolean;
+  canDraft: boolean;
+  canSend: boolean;
+  supervisionRequired: boolean;
+  supervisionSatisfied?: boolean;
+  validationRequired: boolean;
+  validationSatisfied?: boolean;
+  managerReviewRequired: boolean;
+  escalationRequired?: boolean;
+  recommendedAction?: string | null;
+  remediation?: string | null;
 }
 
 export interface SalesCertificationDealAssessment {
   policyKey: string;
+  schemaVersion?: number;
   policyVersion: number;
   enforcementActive: boolean;
+  criteriaApproved?: boolean;
+  rolloutState?: string | null;
   salespersonId: string;
   opportunityId?: string | null;
   quotationId?: string | null;
-  packageCodes: string[];
-  packagePermissions: Array<{
-    productCode: string;
-    grantStatus: string;
-    authorityMode?: SalesCertificationAuthorityMode | null;
-  }>;
-  generalCertificationReady: boolean;
-  status: SalesCertificationDealStatus;
+  productCode?: string | null;
+  productName?: string | null;
+  requiredCertification?: string | null;
+  permissionMode: SalesCertificationPermissionMode;
+  status: SalesCertificationPermissionMode;
+  allowed: boolean;
   canDraft: boolean;
   canSend: boolean;
-  supervisionSatisfied: boolean;
-  blockers: Array<{ code: string; productCode?: string; message: string }>;
+  supervisionRequired: boolean;
+  validationRequired: boolean;
+  managerReviewRequired: boolean;
+  supervisionSatisfied?: boolean;
+  packageCodes: string[];
+  itemPermissions?: SalesCertificationItemPermission[];
+  certifications?: SalesCertificationSnapshot['certifications'];
+  generalCertificationReady: boolean;
+  reasons: string[];
+  recommendedAction: string;
+  blockers: Array<{ code: string; productCode?: string; requiredCertification?: string; message: string }>;
   packageFitStatus?: string | null;
+  sourceEvidence?: Record<string, unknown>;
   separationOfDuties: string;
 }
 
@@ -75,7 +123,11 @@ export interface SalesCertificationAdminState {
     productId: string;
     productCode: string;
     productName: string;
+    certificationKey?: string | null;
     authorityMode: SalesCertificationAuthorityMode;
+    grantState?: string | null;
+    effectiveStatus?: SalesCertificationGrantStatus | string;
+    expiresAt?: string | null;
     evidenceType: string;
     evidence: Record<string, any>;
     grantReason: string;
@@ -115,6 +167,28 @@ export const salesCertificationService = {
     });
     if (error) throw error;
     return data as SalesCertificationDealAssessment;
+  },
+
+  async updatePolicy(input: {
+    productRules: Record<string, any>;
+    addonRules: Record<string, any>;
+    protectedCommitmentStages: string[];
+    criteriaApproved: boolean;
+    grantingActive: boolean;
+    enforcementActive: boolean;
+    reason: string;
+  }) {
+    const { data, error } = await supabase.rpc('admin_update_sales_certification_policy', {
+      p_product_rules: input.productRules,
+      p_addon_rules: input.addonRules,
+      p_protected_commitment_stages: input.protectedCommitmentStages,
+      p_criteria_approved: input.criteriaApproved,
+      p_granting_active: input.grantingActive,
+      p_enforcement_active: input.enforcementActive,
+      p_reason: input.reason,
+    });
+    if (error) throw error;
+    return data as Record<string, any>;
   },
 
   async grant(input: {

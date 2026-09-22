@@ -4,9 +4,10 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../lib/AuthContext';
 import { SalesCertificationSnapshot, salesCertificationService } from '../../lib/salesCertificationService';
 
-const tone = (mode?: string | null, granted?: boolean) => {
-  if (!granted) return 'border-slate-200 bg-slate-50 text-slate-500';
+const tone = (mode?: string | null, active?: boolean) => {
+  if (!active) return 'border-slate-200 bg-slate-50 text-slate-500';
   if (mode === 'INDEPENDENT') return 'border-emerald-200 bg-emerald-50 text-emerald-700';
+  if (mode === 'QUALIFY_ONLY') return 'border-blue-200 bg-blue-50 text-[#000080]';
   return 'border-amber-200 bg-amber-50 text-amber-800';
 };
 
@@ -59,7 +60,7 @@ export default function SalesCertificationPermissionsPanel() {
             <h2 className="mt-1 text-lg font-black text-slate-950">What you are currently certified to sell</h2>
             <p className="mt-1 max-w-3xl text-xs leading-5 text-slate-500">General Sales Academy completion and package-level deal authority are separate. A package is only certified when an explicit evidence-backed grant exists.</p>
           </div>
-          <button type="button" onClick={() => void load()} disabled={loading} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-[11px] font-black text-slate-600 disabled:opacity-50"><RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />Refresh</button>
+          <div className="flex flex-wrap gap-2"><button type="button" onClick={() => navigate('/academy/final-certification')} className="inline-flex min-h-10 items-center justify-center rounded-xl border border-[#000080]/20 bg-blue-50 px-3 text-[11px] font-black text-[#000080] focus:outline-none focus:ring-4 focus:ring-blue-100">Open training / re-certification</button><button type="button" onClick={() => void load()} disabled={loading} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-[11px] font-black text-slate-600 focus:outline-none focus:ring-4 focus:ring-blue-100 disabled:opacity-50"><RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />Refresh</button></div>
         </div>
 
         {loading && !data && <div className="mt-4 flex min-h-24 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-xs font-bold text-slate-500"><Loader2 className="mr-2 h-4 w-4 animate-spin text-[#000080]" />Loading certification truth…</div>}
@@ -86,14 +87,16 @@ export default function SalesCertificationPermissionsPanel() {
 
               <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                 {data.products.map(product => {
-                  const granted = product.grantStatus === 'GRANTED';
+                  const active = product.grantStatus === 'ACTIVE';
                   return <div key={product.productId} className="rounded-2xl border border-slate-200 bg-white p-4" data-testid={`part16-package-${product.productCode}`}>
                     <div className="text-[9px] font-black uppercase tracking-[.12em] text-slate-400">{product.productCode}</div>
                     <div className="mt-1 text-sm font-black text-slate-900">{product.productName}</div>
-                    <span className={`mt-3 inline-flex rounded-full border px-2.5 py-1 text-[9px] font-black ${tone(product.authorityMode, granted)}`}>
-                      {granted ? product.authorityMode?.replaceAll('_', ' ') : 'NOT CERTIFIED'}
+                    <div className="mt-2 text-[9px] text-slate-500">Required: {product.requiredCertification || 'Not configured'}</div>
+                    <div className="mt-1 text-[9px] text-slate-500">Policy mode: {product.configuredPermissionMode || 'Not configured'}</div>
+                    <span className={`mt-3 inline-flex rounded-full border px-2.5 py-1 text-[9px] font-black ${tone(product.authorityMode, active)}`}>
+                      {active ? `${product.certificationKey || 'CERTIFIED'} · ${product.authorityMode?.replaceAll('_', ' ')}` : String(product.grantStatus || 'NOT_GRANTED').replaceAll('_', ' ')}
                     </span>
-                    {granted && product.grantedAt && <div className="mt-2 text-[9px] text-slate-400">Granted {new Date(product.grantedAt).toLocaleDateString()}</div>}
+                    {active && product.grantedAt && <div className="mt-2 text-[9px] text-slate-400">Granted {new Date(product.grantedAt).toLocaleDateString()}{product.expiresAt ? ` · expires ${new Date(product.expiresAt).toLocaleDateString()}` : ''}</div>}
                   </div>;
                 })}
               </div>

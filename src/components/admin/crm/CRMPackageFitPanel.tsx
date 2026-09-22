@@ -218,12 +218,21 @@ function Metric({ label, value }: { label: string; value: number }) { return <di
 
 function DealPermissionNotice({ assessment }: { assessment: SalesCertificationDealAssessment }) {
   if (!assessment.enforcementActive) {
-    return <div className="rounded-xl border border-blue-100 bg-blue-50 p-3 text-[10px] leading-4 text-slate-600" data-testid="part16-deal-permission-staged"><strong>Sales certification permission:</strong> staged and not enforced. Current deal authority is unchanged, and no package certification is inferred from general Academy completion.</div>;
+    return <div className="rounded-xl border border-blue-100 bg-blue-50 p-3 text-[10px] leading-4 text-slate-600" data-testid="part16-deal-permission-staged"><strong>Sales certification permission:</strong> staged and not enforced. Current deal authority is unchanged, and no package certification is inferred from general Academy completion.<div className="mt-1 font-bold text-[#000080]">{assessment.recommendedAction}</div></div>;
   }
-  const tone = assessment.status === 'BLOCKED'
+  const tone = assessment.permissionMode === 'BLOCKED'
     ? 'border-rose-200 bg-rose-50 text-rose-800'
-    : assessment.status === 'SUPERVISED'
+    : assessment.permissionMode === 'SUPERVISED'
       ? 'border-amber-200 bg-amber-50 text-amber-900'
-      : 'border-emerald-200 bg-emerald-50 text-emerald-800';
-  return <div className={`rounded-xl border p-3 text-[10px] leading-4 ${tone}`} data-testid="part16-deal-permission-active"><strong>Sales certification permission:</strong> {assessment.status.replaceAll('_', ' ')}.{assessment.blockers.length > 0 && <span> {assessment.blockers.map(item => item.message).join(' ')}</span>}<div className="mt-1 opacity-80">{assessment.separationOfDuties}</div></div>;
+      : assessment.permissionMode === 'QUALIFY_ONLY'
+        ? 'border-blue-200 bg-blue-50 text-[#000080]'
+        : 'border-emerald-200 bg-emerald-50 text-emerald-800';
+  return <div className={`rounded-xl border p-3 text-[10px] leading-4 ${tone}`} data-testid="part16-deal-permission-active">
+    <div><strong>Seller permission:</strong> {assessment.permissionMode.replaceAll('_', ' ')}</div>
+    <div className="mt-1"><strong>Required certification:</strong> {assessment.requiredCertification || 'Policy-specific certification evidence'}</div>
+    <div className="mt-1"><strong>Required supervision / escalation:</strong> {assessment.supervisionRequired || assessment.validationRequired ? [assessment.supervisionRequired && 'supervision', assessment.validationRequired && 'Sales Validation / escalation'].filter(Boolean).join(' + ') : 'None from certification policy'}</div>
+    {assessment.blockers.length > 0 && <div className="mt-1">{assessment.blockers.map(item => item.message).join(' ')}</div>}
+    <div className="mt-2 font-black">{assessment.recommendedAction}</div>
+    <div className="mt-1 opacity-80">{assessment.separationOfDuties}</div>
+  </div>;
 }
