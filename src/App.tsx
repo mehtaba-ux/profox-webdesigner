@@ -30,6 +30,7 @@ const SellerProfile = lazy(() => import('./components/admin/SellerProfile'));
 const TeamProfile = lazy(() => import('./components/admin/TeamProfile'));
 const AdminTeamDashboardPreview = lazy(() => import('./components/admin/AdminTeamDashboardPreview'));
 const SalesPerformanceManagement = lazy(() => import('./components/admin/SalesPerformanceManagement'));
+const SalesCertificationPermissionsAdmin = lazy(() => import('./components/admin/SalesCertificationPermissionsAdmin'));
 const PublicPricingAdmin = lazy(() => import('./components/admin/PublicPricingAdmin'));
 const ProductivityRecordFocus = lazy(() => import('./components/admin/ProductivityRecordFocus'));
 const ProductivitySettingsAdmin = lazy(() => import('./components/admin/ProductivitySettingsAdmin'));
@@ -214,6 +215,7 @@ export default function App() {
       <Route path="/admin/seller-command-center" element={<SellerExperienceClosure/>}/>
       <Route path="/admin/seller-profile" element={<SellerProfile/>}/>
       <Route path="/admin/sales-performance" element={<SalesPerformanceManagement/>}/>
+      <Route path="/admin/sales-certification-permissions" element={<SalesCertificationPermissionsAdmin/>}/>
       <Route path="/admin/public-pricing" element={<PublicPricingAdmin/>}/>
       <Route path="/admin/focus/:entityType/:entityId" element={<ProductivityRecordFocus/>}/>
       <Route path="/admin/intelligence" element={<BusinessIntelligenceDashboard/>}/>

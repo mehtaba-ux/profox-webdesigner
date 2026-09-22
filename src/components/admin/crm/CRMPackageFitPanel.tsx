@@ -12,6 +12,7 @@ import {
 import { getPackageFitGuidance } from '../../../lib/crmPackageFitGuidance';
 import SellerGuidanceHelp from './SellerGuidanceHelp';
 import CRMPackageFitValidationReviews from './CRMPackageFitValidationReviews';
+import { SalesCertificationDealAssessment, salesCertificationService } from '../../../lib/salesCertificationService';
 
 export type CRMPackageFitPanelProps = {
   leadId?: string;
@@ -58,6 +59,7 @@ export default function CRMPackageFitPanel({ leadId, opportunityId, refreshKey, 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
+  const [dealPermission, setDealPermission] = useState<SalesCertificationDealAssessment | null>(null);
 
   const load = useCallback(async (mode: 'initial' | 'refresh' = 'initial') => {
     if (!leadId && !opportunityId) {
@@ -69,7 +71,17 @@ export default function CRMPackageFitPanel({ leadId, opportunityId, refreshKey, 
     mode === 'refresh' ? setRefreshing(true) : setLoading(true);
     setError('');
     try {
-      setAssessment(await crmPackageFitService.getAssessment({ leadId, opportunityId }));
+      const nextAssessment = await crmPackageFitService.getAssessment({ leadId, opportunityId });
+      setAssessment(nextAssessment);
+      if (opportunityId) {
+        try {
+          setDealPermission(await salesCertificationService.getDealAssessment({ opportunityId }));
+        } catch {
+          setDealPermission(null);
+        }
+      } else {
+        setDealPermission(null);
+      }
     } catch {
       setError('Package Fit could not be evaluated from the current CRM information.');
     } finally {
@@ -122,10 +134,12 @@ export default function CRMPackageFitPanel({ leadId, opportunityId, refreshKey, 
           <span className={`rounded-full border px-3 py-1.5 text-[9px] font-black ${confidenceTone(assessment.confidence)}`}>{assessment.confidence} confidence</span><SellerGuidanceHelp guidance={getPackageFitGuidance('field.package_fit_confidence')} />
           <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[9px] font-black text-slate-500">Policy v{assessment.policyVersion}</span>
           <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[9px] font-black text-slate-500">Evaluated {fmtTime(assessment.evaluatedAt)}</span>
+          {dealPermission && <span data-testid="part16-package-fit-authority" className={`rounded-full border px-3 py-1.5 text-[9px] font-black ${dealPermission.status === 'BLOCKED' ? 'border-rose-200 bg-rose-50 text-rose-700' : dealPermission.status === 'SUPERVISED' ? 'border-amber-200 bg-amber-50 text-amber-800' : dealPermission.status === 'INDEPENDENT' ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-blue-200 bg-blue-50 text-[#000080]'}`}>Deal authority: {dealPermission.status.replaceAll('_', ' ')}</span>}
         </div>
       </div>
 
       <div className="space-y-5 p-5">
+        {dealPermission && <DealPermissionNotice assessment={dealPermission} />}
         {assessment.recommendedProduct ? <CatalogCard product={assessment.recommendedProduct} /> : (
           <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
             <div className="flex items-start gap-2"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" /><div><div className="text-xs font-black text-amber-900">More information or review is required before a reliable recommendation</div><p className="mt-1 text-[10px] leading-4 text-amber-800">The evaluator intentionally returned no package rather than fabricating certainty.</p></div></div>
@@ -201,3 +215,15 @@ function CandidateComparison({ candidates }: { candidates: CRMPackageFitCandidat
 
 function Data({ label, value }: { label: string; value: string }) { return <div className="rounded-xl border border-slate-200 bg-white p-3"><div className="text-[8px] font-black uppercase tracking-[.12em] text-slate-400">{label}</div><div className="mt-1 break-words text-[11px] font-bold leading-5 text-slate-700">{value}</div></div>; }
 function Metric({ label, value }: { label: string; value: number }) { return <div className="rounded-xl border border-slate-100 bg-slate-50 p-3"><div className="text-lg font-black text-slate-900">{value}</div><div className="mt-0.5 text-[9px] font-black uppercase tracking-wide text-slate-400">{label}</div></div>; }
+
+function DealPermissionNotice({ assessment }: { assessment: SalesCertificationDealAssessment }) {
+  if (!assessment.enforcementActive) {
+    return <div className="rounded-xl border border-blue-100 bg-blue-50 p-3 text-[10px] leading-4 text-slate-600" data-testid="part16-deal-permission-staged"><strong>Sales certification permission:</strong> staged and not enforced. Current deal authority is unchanged, and no package certification is inferred from general Academy completion.</div>;
+  }
+  const tone = assessment.status === 'BLOCKED'
+    ? 'border-rose-200 bg-rose-50 text-rose-800'
+    : assessment.status === 'SUPERVISED'
+      ? 'border-amber-200 bg-amber-50 text-amber-900'
+      : 'border-emerald-200 bg-emerald-50 text-emerald-800';
+  return <div className={`rounded-xl border p-3 text-[10px] leading-4 ${tone}`} data-testid="part16-deal-permission-active"><strong>Sales certification permission:</strong> {assessment.status.replaceAll('_', ' ')}.{assessment.blockers.length > 0 && <span> {assessment.blockers.map(item => item.message).join(' ')}</span>}<div className="mt-1 opacity-80">{assessment.separationOfDuties}</div></div>;
+}

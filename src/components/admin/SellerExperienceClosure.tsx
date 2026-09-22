@@ -1,10 +1,12 @@
 import SellerExperienceLegacy from './SellerExperienceLegacy';
 import SellerLifecyclePanel from './SellerLifecyclePanel';
+import SalesCertificationPermissionsPanel from './SalesCertificationPermissionsPanel';
 
 export default function SellerExperienceClosure() {
   return (
     <>
       <SellerLifecyclePanel />
+      <SalesCertificationPermissionsPanel />
       <section className="bg-white px-4 py-5 sm:px-8">
         <div className="mx-auto max-w-7xl">
           <details className="rounded-2xl border border-slate-200 bg-slate-50/70">
