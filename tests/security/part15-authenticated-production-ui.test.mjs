@@ -87,6 +87,12 @@ test('Part 15 package wiring uses focused tests and trusted harness',()=>{
   assert.match(packageJson.scripts['production:verify-part15-ui'],/verify-part13-authenticated-production-ui\.mjs/);
 });
 
-test('Part 16 remains outside Part 15 QA',()=>{
-  assert.doesNotMatch(qa,/Part 16|certification permissions|deal-complexity permissions/i);
+test('Part 15 QA remains intact before the shared harness advances to Part 16',()=>{
+  const part15Admin=qa.indexOf('async function verifyPart15Admin');
+  const part15Seller=qa.indexOf('async function verifyPart15Seller');
+  const part16Admin=qa.indexOf('async function verifyPart16Admin');
+  const part16Seller=qa.indexOf('async function verifyPart16Seller');
+  assert.ok(part15Admin>=0 && part15Seller>=0 && part16Admin>part15Seller && part16Seller>part16Admin);
+  assert.match(qa,/Authenticated Part 15 Admin\/Seller production UI QA: COMPLETE\./);
+  assert.match(qa,/await verifyPart15Seller\(browser, sellerSession, truth\);\s+await verifyPart16Admin/);
 });
