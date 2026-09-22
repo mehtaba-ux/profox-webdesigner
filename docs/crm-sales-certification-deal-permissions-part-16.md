@@ -2,19 +2,23 @@
 
 ## Release status
 
-**PART 16 IMPLEMENTATION FOUNDATION COMPLETE — POLICY ACTIVATION REQUIRES EXPLICIT PRODUCT DECISION.**
+**PART 16 PRODUCT POLICY APPROVED + GRANTING-ONLY DEPLOYED — FINAL ENFORCEMENT AWAITS AUTHORITATIVE NON-TEST LAUNCH CERTIFICATION EVIDENCE.**
 
-The Part 16 implementation is deployed and production-verified. The exact Launch / Growth / Scale / Custom package-policy mapping, add-on mapping, and protected pipeline commitment-stage policy remain intentionally unapproved in production. Therefore:
+The Product Owner-approved Part 16 policy is now deployed and production-verified. The current safe production state is:
 
-- `criteriaApproved=false`
-- `grantingActive=false`
+- `schemaVersion=2`
+- `policyVersion=2`
+- `criteriaApproved=true`
+- `criteriaVersion=1`
+- `grantingActive=true`
 - `enforcementActive=false`
-- `productRules={}`
-- `addonRules={}`
-- `protectedCommitmentStages=[]`
+- `rolloutState=GRANTING_ONLY`
+- protected product rules = `5` (Launch, Growth, Scale, Custom, Discovery)
+- active add-on rules = `37`
+- protected commitment stages = `Quotation Sent`, `Negotiation / Decision Pending`, `Awaiting Advance Payment`
 - granular certification grants = `0`
 
-This is the required fail-closed state from the Part 16 SOP. No current Seller authority was fabricated or reduced to make the release pass.
+The policy mapping is no longer ambiguous. Final enforcement remains intentionally off because the only active Seller's canonical Academy / Product Training / Final Certification evidence is explicitly synthetic/test-tagged. The server-side authoritative-evidence guard therefore returns `grantEligible=false` and refuses to turn that test evidence into production commercial authority.
 
 ## Architecture decision
 
@@ -47,7 +51,7 @@ Canonical policy key:
 `crm_sales_certification_deal_permission_policy_v1`
 
 Current schema version: `2`  
-Current policy version: `1`
+Current policy version: `2`
 
 Canonical certification keys:
 
@@ -71,7 +75,7 @@ Canonical add-on behaviors:
 - `REQUIRE_SPECIALIST_VALIDATION`
 - `CUSTOM_QUALIFICATION_ONLY`
 
-The policy validator requires explicit rules for every active package and add-on before activation. It also hard-requires Custom to remain `CUSTOM_QUALIFICATION_CERTIFIED + QUALIFY_ONLY + Sales Validation`, and Scale policy to preserve explicit escalation. Because no approved exact mapping exists, production activation remains off.
+The policy validator now carries the Product Owner-approved mapping. Custom remains structurally locked to `CUSTOM_QUALIFICATION_CERTIFIED + QUALIFY_ONLY + Sales Validation`; Scale remains `SCALE_CERTIFIED + SUPERVISED` with explicit escalation; `PF-DISCOVERY` is supported as the existing `discovery` product with `GROWTH_CERTIFIED + SUPERVISED`. Care plans remain outside Part 16 protected package/add-on enforcement.
 
 ## Canonical evaluator and enforcement boundaries
 
@@ -374,8 +378,92 @@ Parts 11–15 remain intact and passed the final production verification chain.
 94. Remaining Part 16 blocker — production policy activation only; implementation foundation has no remaining runtime/release blocker.
 95. Final Part 16 status — **PART 16 IMPLEMENTATION FOUNDATION COMPLETE — POLICY ACTIVATION REQUIRES EXPLICIT PRODUCT DECISION.**
 
+## Product Owner policy approval + granting-only production activation — 2026-09-22
+
+Product Owner approval was recognized from the dedicated Part 16 activation instruction. The approved hierarchy is explicit:
+
+- `GROWTH_CERTIFIED` inherits Launch deal authority.
+- `SCALE_CERTIFIED` inherits Growth + Launch deal authority.
+- `CUSTOM_QUALIFICATION_CERTIFIED` remains separate and never inherits Launch/Growth/Scale.
+- Scale never implies Custom Qualification.
+
+Approved protected products:
+
+- `PF-WEB-LAUNCH` → `LAUNCH_CERTIFIED` → `INDEPENDENT`
+- `PF-WEB-GROWTH` → `GROWTH_CERTIFIED` → `INDEPENDENT`
+- `PF-WEB-SCALE` → `SCALE_CERTIFIED` → `SUPERVISED`
+- `PF-CUSTOM` → `CUSTOM_QUALIFICATION_CERTIFIED` → `QUALIFY_ONLY` + Sales Validation
+- `PF-DISCOVERY` → `GROWTH_CERTIFIED` → `SUPERVISED`
+
+All 37 active add-ons are explicitly classified under the approved `INHERIT_BASE_PACKAGE`, `REQUIRE_GROWTH`, `REQUIRE_SCALE`, or `REQUIRE_SPECIALIST_VALIDATION` behavior. No active add-on was left unclassified. The three active care plans remain under the existing Sales Catalog / quotation authority because the current Part 16 enforcement model intentionally does not widen into `care_plan`.
+
+Forward-only activation migration:
+
+- `20260922180000_crm_sales_certification_deal_permission_policy_activation_part_16.sql`
+- checksum `8f552abc1000f1bddbc82d860d9d5153a7b81c74268e05da0f20913e2d2b948f`
+
+The migration also adds the bounded `PF-DISCOVERY` compatibility extension and internal `sales_certification_authoritative_evidence(uuid)` helper. That helper verifies current Sales Academy readiness, Product & Package Training, Final Certification, zero critical failures, and rejects synthetic/test-tagged evidence. It does not create grants.
+
+Production rollout evidence:
+
+- implementation PR #153 — `feat(crm): activate approved Part 16 certification policy`
+- exact trusted PR head `2f97fcd2e3d3e1a1a21f9cd17f97079b3e2174e3`
+- trusted PR CI #964 / run `35734911224`: SUCCESS
+- merged main SHA `962fbd0160004977f99bfbf136b41008f54273a5`
+- merged-main CI #965 / run `35735447385`: SUCCESS
+- production deploy #388 / run `35735727025`: SUCCESS
+- Cloudflare Worker version `a6ac83b9-ceb1-4499-afd2-f50ae76fa438`
+- Part 16 release verifier: `0 failure(s)`
+- exact Part 16 matrix: `102 / 102 PASS`
+- focused Part 16 suite: `136 / 136 PASS`
+- authenticated Admin Part 16 QA: PASS
+- authenticated Seller Part 16 QA: PASS
+- mobile / keyboard QA: PASS
+- `PENDING_NEW=0`
+- `BLOCKED_UNRESOLVED=0`
+
+Final live migration ledger after activation:
+
+- `701` rows
+- max migration `20260922180000`
+- activation migration exact once with the repository checksum above
+
+Current Seller evidence:
+
+- Sales Academy readiness: PASS
+- Product & Package Training: PASS, score `100`
+- Final Certification: PASS, score `100`
+- critical failures: `0`
+- judgment critical misses: `0`
+- synthetic/test evidence detected: `true`
+- authoritative production grant eligibility: `false`
+- granular Launch/Growth/Scale/Custom grants: `0`
+
+Therefore no Launch grant was issued. No Growth, Scale, or Custom grant was fabricated. Because the activation instruction requires a legitimate Launch grant before final enforcement for the current Seller, `enforcementActive` correctly remains `false`.
+
+Production immutability after deploy #388:
+
+- Academy progress `54`
+- training reviews `8`
+- Final Certification state `1`
+- Final Certification sessions `1`
+- applicants `1`
+- active Sales `1`
+- performance reviews `16`
+- Leads `6`
+- Opportunities `2`
+- Activities `13`
+- Quotations `6`
+- Payments `5`
+- Projects `1`
+- handoff attempts `0`
+
+No fake certification or CRM/commercial record was created. No real quotation was sent and no real Opportunity was mutated solely for QA. Part 10B remains active at policy/schema `2/2`, and Parts 11–15 remain intact.
+
+**PART 16 POLICY APPROVED — ENFORCEMENT ACTIVATION BLOCKED BECAUSE THE CURRENT SELLER DOES NOT YET HAVE AUTHORITATIVE LAUNCH CERTIFICATION EVIDENCE.**
+
 ## Stop condition
 
 No Part 17 / AI seller assistance / AI package selection / AI certification / AI Sales Validation / AI performance judgment / automatic employment decision / automatic commission change / unrelated Academy redesign has been started.
 
-**PART 16 POLICY ACTIVATION BLOCKED — CONFIGURABLE CERTIFICATION INFRASTRUCTURE IS READY, BUT EXACT PRODUCTION DEAL-PERMISSION POLICY REQUIRES EXPLICIT PRODUCT APPROVAL.**
+**PART 16 POLICY APPROVED — ENFORCEMENT ACTIVATION BLOCKED BECAUSE THE CURRENT SELLER DOES NOT YET HAVE AUTHORITATIVE LAUNCH CERTIFICATION EVIDENCE.**
