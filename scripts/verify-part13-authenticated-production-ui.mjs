@@ -485,9 +485,16 @@ async function verifyPart15Admin(browser, session, truth) {
       if(rawLabel!==label) throw new Error(`Part 15 metric ${key} rendered label "${rawLabel}" instead of "${label}".`);
       const renderedText=String(await card.innerText() || '').replace(/\s+/g,' ').trim().toLowerCase();
       if(!renderedText.includes(label.toLowerCase())) throw new Error(`Part 15 visible metric card ${key} did not render its expected label text.`);
+      const availabilityText={
+        AVAILABLE:'Available',
+        INSUFFICIENT_DATA:'Insufficient data',
+        NOT_TRACKED_AUTHORITATIVELY:'Not tracked authoritatively',
+      }[period.data.qualityEvidence[key].availability];
+      if(!availabilityText || !renderedText.includes(availabilityText.toLowerCase())) {
+        throw new Error(`Part 15 visible metric card ${key} did not render availability ${period.data.qualityEvidence[key].availability}.`);
+      }
     }
     await qualityPanel.getByText(/Sample \d+/).first().waitFor({state:'visible',timeout:30_000});
-    await expectText(qualityPanel,'Not tracked authoritatively');
 
     const firstReviewButton=personDrawer.locator('button').filter({hasText:/Day 7 Check-In|Day 30 Review|Weekly Sales Coaching/}).first();
     await firstReviewButton.waitFor({state:'visible',timeout:30_000});
