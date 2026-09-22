@@ -427,10 +427,10 @@ try{
     if(policy.enforcementActive===false&&assessment?.status==='STAGED_NOT_ENFORCED'
        &&assessment?.allowed===true&&assessment?.canDraft===true&&assessment?.canSend===true
        &&assessment?.permissionMode==='STAGED_NOT_ENFORCED')
-      pass('Staged deal-authority preservation','existing Seller authority unchanged until explicit product policy approval');
+      pass('Staged deal-authority preservation','approved policy is loaded but current Seller authority remains unchanged until authoritative non-test Launch evidence permits enforcement');
     else fail('Staged deal-authority preservation',JSON.stringify(assessment));
   }else{
-    pass('Staged deal-authority live opportunity check','no Seller opportunity exists; self-scope permission snapshot still verified');
+    pass('Staged deal-authority live opportunity check','no Seller opportunity exists; approved granting-only self-scope permission snapshot still verified');
   }
 
   pass('Part 16 production inventory',`grant history ${state.grant_history_count}; active grants ${state.active_grant_count}; active Sales ${state.active_sales_count}; active packages ${state.active_package_count}; active add-ons ${state.active_addon_count}; active discovery ${state.active_discovery_count}`);
