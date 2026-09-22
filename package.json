@@ -40,7 +40,7 @@
     "test:crm-part15": "node --test tests/security/crm-seller-quality-performance-part-15.test.mjs tests/security/crm-seller-quality-performance-part-15-matrix.test.mjs tests/security/part15-authenticated-production-ui.test.mjs",
     "production:verify-part15": "node scripts/verify-part15-release-readiness.mjs",
     "production:verify-part15-ui": "node scripts/verify-part13-authenticated-production-ui.mjs",
-    "test:crm-part16": "node --test tests/security/crm-sales-certification-deal-permissions-part-16.test.mjs",
+    "test:crm-part16": "node --test tests/security/crm-sales-certification-deal-permissions-part-16.test.mjs tests/security/crm-sales-certification-deal-permissions-part-16-matrix.test.mjs tests/security/part16-authenticated-production-ui.test.mjs",
     "production:verify-part16": "node scripts/verify-part16-release-readiness.mjs"
   },
   "dependencies": {
