@@ -6,16 +6,16 @@
   "type": "module",
   "scripts": {
     "dev": "vite --port=3000 --host=0.0.0.0",
-    "build": "npm run test:crm-part10a && npm run test:crm-part10b && npm run test:crm-part11 && npm run test:crm-part12 && npm run test:crm-part13 && npm run test:crm-part14 && npm run test:crm-part15 && vite build && node scripts/verify-supabase-build-config.mjs",
+    "build": "npm run test:crm-part10a && npm run test:crm-part10b && npm run test:crm-part11 && npm run test:crm-part12 && npm run test:crm-part13 && npm run test:crm-part14 && npm run test:crm-part15 && npm run test:crm-part16 && vite build && node scripts/verify-supabase-build-config.mjs",
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit",
-    "migrations:check": "node scripts/migrate-production.mjs && npm run test:migration-reconciliation && node --check scripts/verify-project-chat-readiness.mjs && node --check scripts/verify-professional-mailbox-readiness.mjs && node --check scripts/verify-part11-release-readiness.mjs && node --check scripts/verify-part11-authenticated-production-ui.mjs && node --check scripts/verify-part12-release-readiness.mjs && node --check scripts/verify-part12-authenticated-production-ui.mjs && node --check scripts/verify-part13-release-readiness.mjs && node --check scripts/verify-part13-authenticated-production-ui.mjs && node --check scripts/verify-part14-release-readiness.mjs && node --check scripts/verify-part15-release-readiness.mjs",
+    "migrations:check": "node scripts/migrate-production.mjs && npm run test:migration-reconciliation && node --check scripts/verify-project-chat-readiness.mjs && node --check scripts/verify-professional-mailbox-readiness.mjs && node --check scripts/verify-part11-release-readiness.mjs && node --check scripts/verify-part11-authenticated-production-ui.mjs && node --check scripts/verify-part12-release-readiness.mjs && node --check scripts/verify-part12-authenticated-production-ui.mjs && node --check scripts/verify-part13-release-readiness.mjs && node --check scripts/verify-part13-authenticated-production-ui.mjs && node --check scripts/verify-part14-release-readiness.mjs && node --check scripts/verify-part15-release-readiness.mjs && node --check scripts/verify-part16-release-readiness.mjs",
     "migrations:apply": "node scripts/migrate-production.mjs --apply",
-    "production:verify": "node scripts/verify-production-readiness.mjs && npm run production:verify-part10b && npm run production:verify-part11 && npm run production:verify-part12 && npm run production:verify-part13 && npm run production:verify-part14 && npm run production:verify-part15 && node scripts/verify-project-chat-readiness.mjs && node scripts/verify-professional-mailbox-readiness.mjs",
+    "production:verify": "node scripts/verify-production-readiness.mjs && npm run production:verify-part10b && npm run production:verify-part11 && npm run production:verify-part12 && npm run production:verify-part13 && npm run production:verify-part14 && npm run production:verify-part15 && npm run production:verify-part16 && node scripts/verify-project-chat-readiness.mjs && node scripts/verify-professional-mailbox-readiness.mjs",
     "production:verify-part10b": "node scripts/verify-part10b-release-readiness.mjs",
     "production:activate-privacy": "node scripts/activate-production-privacy-consent.mjs",
-    "test": "npm run test:talent-partner && npm run test:security && npm run test:migration-reconciliation && npm run test:crm-part10a && npm run test:crm-part10b && npm run test:crm-part11 && npm run test:crm-part12 && npm run test:crm-part13 && npm run test:crm-part14 && npm run test:crm-part15",
+    "test": "npm run test:talent-partner && npm run test:security && npm run test:migration-reconciliation && npm run test:crm-part10a && npm run test:crm-part10b && npm run test:crm-part11 && npm run test:crm-part12 && npm run test:crm-part13 && npm run test:crm-part14 && npm run test:crm-part15 && npm run test:crm-part16",
     "test:talent-partner": "tsx --test tests/talent-partner/*.test.ts",
     "test:security": "tsx --test tests/security/*.test.ts",
     "test:migration-reconciliation": "node --test tests/security/production-migration-native-reconciliation.test.mjs tests/security/production-migration-ledger-audit.test.mjs tests/security/production-migration-forward-convergence.test.mjs tests/security/part10b6-forward-reconciliation-migrations.test.mjs",
@@ -39,7 +39,9 @@
     "production:verify-part14-ui": "node scripts/verify-part13-authenticated-production-ui.mjs",
     "test:crm-part15": "node --test tests/security/crm-seller-quality-performance-part-15.test.mjs tests/security/crm-seller-quality-performance-part-15-matrix.test.mjs tests/security/part15-authenticated-production-ui.test.mjs",
     "production:verify-part15": "node scripts/verify-part15-release-readiness.mjs",
-    "production:verify-part15-ui": "node scripts/verify-part13-authenticated-production-ui.mjs"
+    "production:verify-part15-ui": "node scripts/verify-part13-authenticated-production-ui.mjs",
+    "test:crm-part16": "node --test tests/security/crm-sales-certification-deal-permissions-part-16.test.mjs",
+    "production:verify-part16": "node scripts/verify-part16-release-readiness.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
