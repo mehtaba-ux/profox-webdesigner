@@ -67,6 +67,7 @@ console.log(`Removed ${existingAllowList.length - retained.length} localhost red
 await managementRequest('PATCH', {
   site_url: canonicalOrigin,
   uri_allow_list: nextAllowList.join(','),
+  password_hibp_enabled: true,
 });
 
 const after = await managementRequest('GET');
@@ -84,6 +85,10 @@ if (!finalAllowList.includes(`${canonicalOrigin}/**`)) {
 if (!finalAllowList.includes(`${apexOrigin}/**`)) {
   throw new Error('Apex production redirect pattern is missing from Supabase Auth allow list.');
 }
+if (after.password_hibp_enabled !== true) {
+  throw new Error('Supabase Auth leaked-password protection is not enabled.');
+}
 
 console.log(`Verified Supabase Auth Site URL: ${after.site_url}`);
 console.log(`Verified production Auth redirect entries: ${finalAllowList.join(', ')}`);
+console.log('Verified Supabase Auth leaked-password protection: enabled');

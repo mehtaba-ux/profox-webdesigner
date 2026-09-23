@@ -60,7 +60,9 @@ try {
 
   const acl = (await client.query(`
     select p.proname,
-      has_function_privilege('anon', p.oid, 'EXECUTE') as anon_execute
+      has_function_privilege('anon', p.oid, 'EXECUTE') as anon_execute,
+      has_function_privilege('authenticated', p.oid, 'EXECUTE') as authenticated_execute,
+      has_function_privilege('service_role', p.oid, 'EXECUTE') as service_execute
     from pg_proc p
     join pg_namespace n on n.oid=p.pronamespace
     where n.nspname='public'
@@ -71,12 +73,25 @@ try {
         'sales_academy_test_bypass_active',
         'admin_test_skip_sales_academy',
         'admin_get_sales_academy_test_bypass_status',
-        'admin_record_team_dashboard_preview'
+        'admin_record_team_dashboard_preview',
+        'service_authorize_recruitment_asset_access'
       )
   `)).rows;
   const exposed = acl.filter((row) => row.anon_execute).map((row) => row.proname);
   if (exposed.length === 0) pass('Sensitive RPC permissions', 'anonymous execution revoked');
   else fail('Sensitive RPC permissions', `anonymous execution remains on ${exposed.join(', ')}`);
+
+  const recruitmentAssetAcl = acl.find((row) => row.proname === 'service_authorize_recruitment_asset_access');
+  if (
+    recruitmentAssetAcl
+    && recruitmentAssetAcl.anon_execute === false
+    && recruitmentAssetAcl.authenticated_execute === false
+    && recruitmentAssetAcl.service_execute === true
+  ) {
+    pass('Recruitment private-asset RPC', 'service-role-only execution verified');
+  } else {
+    fail('Recruitment private-asset RPC', `expected service-role-only execution; received ${JSON.stringify(recruitmentAssetAcl || null)}`);
+  }
 
   const teamPreview = (await client.query(`
     with current_team as (
