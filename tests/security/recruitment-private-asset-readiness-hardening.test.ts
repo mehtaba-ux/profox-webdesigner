@@ -33,9 +33,12 @@ test('production readiness fails if private recruitment helper is exposed to bro
   assert.match(productionReadiness,/service-role-only execution verified/);
 });
 
-test('production auth enforcement enables and verifies leaked-password protection',()=>{
+test('production auth enforcement attempts leaked-password protection and fails closed except for documented plan limitation',()=>{
   assert.match(authEnforcement,/password_hibp_enabled:\s*true/);
+  assert.match(authEnforcement,/HTTP 402/);
+  assert.match(authEnforcement,/current project plan does not include this Pro-level feature/);
   assert.match(authEnforcement,/after\.password_hibp_enabled !== true/);
-  assert.match(authEnforcement,/leaked-password protection is not enabled/);
-  assert.match(authEnforcement,/Verified Supabase Auth leaked-password protection: enabled/);
+  assert.match(authEnforcement,/if \(!leakedPasswordProtectionPlanLimited\)/);
+  assert.match(authEnforcement,/throw new Error\('Supabase Auth leaked-password protection is not enabled\.'/);
+  assert.match(authEnforcement,/leaked-password protection remains disabled because the current project plan returned HTTP 402/);
 });

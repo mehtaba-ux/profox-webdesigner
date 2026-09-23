@@ -67,8 +67,22 @@ console.log(`Removed ${existingAllowList.length - retained.length} localhost red
 await managementRequest('PATCH', {
   site_url: canonicalOrigin,
   uri_allow_list: nextAllowList.join(','),
-  password_hibp_enabled: true,
 });
+
+let leakedPasswordProtectionPlanLimited = false;
+try {
+  await managementRequest('PATCH', {
+    password_hibp_enabled: true,
+  });
+} catch (error) {
+  const message = error instanceof Error ? error.message : String(error || '');
+  if (/HTTP 402\b/.test(message)) {
+    leakedPasswordProtectionPlanLimited = true;
+    console.warn('::warning::Supabase leaked-password protection could not be enabled because the current project plan does not include this Pro-level feature. Recruitment security deployment will continue; upgrade the Supabase plan to remove this warning.');
+  } else {
+    throw error;
+  }
+}
 
 const after = await managementRequest('GET');
 const finalAllowList = splitAllowList(after.uri_allow_list);
@@ -86,9 +100,13 @@ if (!finalAllowList.includes(`${apexOrigin}/**`)) {
   throw new Error('Apex production redirect pattern is missing from Supabase Auth allow list.');
 }
 if (after.password_hibp_enabled !== true) {
-  throw new Error('Supabase Auth leaked-password protection is not enabled.');
+  if (!leakedPasswordProtectionPlanLimited) {
+    throw new Error('Supabase Auth leaked-password protection is not enabled.');
+  }
+  console.warn('::warning::Supabase Auth leaked-password protection remains disabled because the current project plan returned HTTP 402.');
+} else {
+  console.log('Verified Supabase Auth leaked-password protection: enabled');
 }
 
 console.log(`Verified Supabase Auth Site URL: ${after.site_url}`);
 console.log(`Verified production Auth redirect entries: ${finalAllowList.join(', ')}`);
-console.log('Verified Supabase Auth leaked-password protection: enabled');
