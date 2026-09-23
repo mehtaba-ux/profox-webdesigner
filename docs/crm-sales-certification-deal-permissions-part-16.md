@@ -4,6 +4,8 @@
 
 **PART 16 PRODUCT POLICY APPROVED + GRANTING-ONLY DEPLOYED — FINAL ENFORCEMENT AWAITS AUTHORITATIVE NON-TEST LAUNCH CERTIFICATION EVIDENCE.**
 
+**AUTHORIZED PART 16 SCOPE CLOSURE: COMPLETE THROUGH THE APPROVED GRANTING-ONLY STOP CONDITION. REQUIRED 102-ITEM FINAL REPORT: COMPLETE.**
+
 The Product Owner-approved Part 16 policy is now deployed and production-verified. The current safe production state is:
 
 - `schemaVersion=2`
@@ -170,8 +172,8 @@ Broader pre-existing project advisor findings remain outside Part 16 scope and w
 
 ## Migrations
 
-Production ledger after release: `700`  
-Max migration after release: `20260922171000`
+Production ledger after approved policy activation: `701`  
+Max migration after approved policy activation: `20260922180000`
 
 Part 16 migration identities:
 
@@ -183,6 +185,8 @@ Part 16 migration identities:
    - SHA-256: `0eb8d030c8925ecd2ae30cb7ddccc444a263731ae7721aee4695ca6fb35c5666`
 4. `20260922171000_crm_sales_certification_deal_permissions_part_16_evaluator_completion.sql`
    - SHA-256: `7d69adcccc4156dde2170d2b38ca0967db6150df0f72613322dbcc7af8092747`
+5. `20260922180000_crm_sales_certification_deal_permission_policy_activation_part_16.sql`
+   - SHA-256: `8f552abc1000f1bddbc82d860d9d5153a7b81c74268e05da0f20913e2d2b948f`
 
 Current repository lineage after release:
 
@@ -191,15 +195,15 @@ Current repository lineage after release:
 
 ## Verification
 
-Part 16 exact matrix: **90 / 90 PASS**
+Part 16 exact matrix: **102 / 102 PASS**
 
-Part 16 focused suite on final runtime source: **117 / 117 PASS**
+Part 16 focused suite on approved activation runtime source: **136 / 136 PASS**
 
 Trusted merged-main CI:
 
-- CI #960
-- run `35699050245`
-- exact runtime main SHA `2897f98553d5e5792e581d740c1d6f7f72e44b5f`
+- CI #965
+- run `35735447385`
+- exact approved activation runtime main SHA `962fbd0160004977f99bfbf136b41008f54273a5`
 - TypeScript: PASS
 - migration integrity: PASS
 - full regression / `npm test`: PASS
@@ -210,11 +214,11 @@ Trusted merged-main CI:
 
 Final production deployment:
 
-- Deploy #386
-- run `35699204714`
-- exact runtime source `2897f98553d5e5792e581d740c1d6f7f72e44b5f`
+- Deploy #388
+- run `35735727025`
+- exact approved activation runtime source `962fbd0160004977f99bfbf136b41008f54273a5`
 - result: SUCCESS
-- Worker version: `1f266f7d-c7b1-4640-8081-fe11755e988e`
+- Worker version: `a6ac83b9-ceb1-4499-afd2-f50ae76fa438`
 - Part 16 release verifier: `0 failure(s)`
 - authenticated Admin Part 16 QA: PASS
 - authenticated Seller Part 16 QA: PASS
@@ -226,7 +230,8 @@ Historical fail-closed release corrections are retained rather than hidden:
 
 - Deploy #384 applied migrations and then stopped on a false-positive verifier scope. PR #150 corrected only verifier source selection; no SQL/runtime policy changed.
 - Deploy #385 passed the release verifier and deployed the Worker, then stopped on a QA snapshot query that ordered `final_certification_state` by a nonexistent `id`. PR #151 changed the QA ordering to canonical `progress_id`; no business/runtime policy changed.
-- Deploy #386 passed the complete chain.
+- Deploy #386 passed the complete staged-foundation chain.
+- Deploy #388 passed the approved granting-only activation chain with the bounded `PF-DISCOVERY` compatibility extension, synthetic-evidence rejection, zero fabricated grants, and enforcement safely left off.
 
 ## Production immutability
 
@@ -278,9 +283,16 @@ Parts 11–15 remain intact and passed the final production verification chain.
   - merge `41efc68bc40ab5c33ca25c80881d3a0fd2f1fc1b`
 - PR #151 — `fix(crm): align Part 16 authenticated QA with Final Certification schema`
   - final head `0bace398c20b59388eab43952eb8ef936ed1400a`
-  - merge / final runtime main `2897f98553d5e5792e581d740c1d6f7f72e44b5f`
+  - merge `2897f98553d5e5792e581d740c1d6f7f72e44b5f`
+- PR #152 — `docs(crm): close Part 16 staged foundation`
+  - merge `0c16ba27865403e43e666901ab130c398f24f9db`
+- PR #153 — `feat(crm): activate approved Part 16 certification policy`
+  - final head `2f97fcd2e3d3e1a1a21f9cd17f97079b3e2174e3`
+  - merge / approved activation runtime main `962fbd0160004977f99bfbf136b41008f54273a5`
+- PR #154 — `docs(crm): record Part 16 granting-only production activation`
+  - merge / documentation main `e98d7f96ba8b05dc5613e1fd7b26c3717d549371`
 
-## Required 95-item developer report
+## Required 102-item final report
 
 01. Starting main SHA — `084aef48eff6ca3b5d0051b90e3eec9366075697`.
 02. Actual implementation base SHA — `084aef48eff6ca3b5d0051b90e3eec9366075697`.
@@ -306,15 +318,15 @@ Parts 11–15 remain intact and passed the final production verification chain.
 22. Duplicate Academy created? — NO.
 23. Duplicate Final Certification created? — NO.
 24. Certification policy key — `crm_sales_certification_deal_permission_policy_v1`.
-25. Policy version — `1`; schema version `2`.
-26. Enforcement activation state — OFF; `criteriaApproved=false`, `grantingActive=false`, `enforcementActive=false`.
+25. Policy version — `2`; schema version `2`; criteria version `1`.
+26. Approved rollout state — `criteriaApproved=true`, `grantingActive=true`, `enforcementActive=false`, `rolloutState=GRANTING_ONLY`; final enforcement intentionally remains off pending authoritative non-test Launch evidence.
 27. Certification keys — `LAUNCH_CERTIFIED`, `GROWTH_CERTIFIED`, `SCALE_CERTIFIED`, `CUSTOM_QUALIFICATION_CERTIFIED`.
-28. Hierarchy/inheritance behavior — explicit policy only; no implicit hierarchy. Add-ons may inherit only via configured `INHERIT_BASE_PACKAGE`.
-29. Launch permission policy — infrastructure supported; exact production mapping not approved, therefore no active Launch rule.
-30. Growth permission policy — infrastructure supported; exact production mapping not approved, therefore no active Growth rule.
-31. Scale permission policy — infrastructure supported; any approved Scale rule must preserve explicit escalation; no active Scale mapping yet.
-32. Custom Qualification policy — structurally constrained to `CUSTOM_QUALIFICATION_CERTIFIED + QUALIFY_ONLY + Sales Validation`; no active mapping yet.
-33. Add-on complexity policy — configurable explicit behaviors; production `addonRules={}` until approved.
+28. Hierarchy/inheritance behavior — explicit approved policy only: Growth inherits Launch authority; Scale inherits Growth + Launch; Custom remains separate; add-ons inherit only through configured policy behavior.
+29. Launch permission policy — `PF-WEB-LAUNCH` requires `LAUNCH_CERTIFIED` with `INDEPENDENT` mode; explicit Growth/Scale inheritance is configured.
+30. Growth permission policy — `PF-WEB-GROWTH` requires `GROWTH_CERTIFIED` with `INDEPENDENT` mode; explicit Scale inheritance is configured.
+31. Scale permission policy — `PF-WEB-SCALE` requires `SCALE_CERTIFIED` with `SUPERVISED` mode and explicit escalation.
+32. Custom Qualification policy — `PF-CUSTOM` is `CUSTOM_QUALIFICATION_CERTIFIED + QUALIFY_ONLY + Sales Validation`; it remains separate from Launch/Growth/Scale inheritance.
+33. Add-on complexity policy — all 37 active add-ons are explicitly classified under the approved add-on behavior model; no active add-on is left unclassified.
 34. Canonical evaluator — `crm_get_sales_certification_deal_permission(uuid,text,uuid,uuid)`.
 35. Permission modes — `INDEPENDENT`, `SUPERVISED`, `QUALIFY_ONLY`, `BLOCKED`.
 36. Package Fit integration — recommendation remains independent commercial truth; Part 16 adds authority/remediation context only.
@@ -332,9 +344,9 @@ Parts 11–15 remain intact and passed the final production verification chain.
 48. Existing active Seller compatibility decision — preserve current authority with staged non-enforcement; do not fake backfill.
 49. Granular certification backfill performed? — NO.
 50. Fake certification created? — NO.
-51. Migration version — Part 16 series `20260922150000`, `20260922151000`, `20260922170000`, `20260922171000`.
-52. Migration filename — four files listed in the Migrations section above.
-53. Migration checksum — four exact SHA-256 values listed above and verified in production.
+51. Migration version — Part 16 series `20260922150000`, `20260922151000`, `20260922170000`, `20260922171000`, `20260922180000`.
+52. Migration filename — five forward-only repository-controlled files listed in the Migrations section above; all earlier Part 16 migrations are preserved.
+53. Migration checksum — five exact SHA-256 values listed above and verified in the repository-controlled production ledger.
 54. `migrations:check` — PASS on trusted final CI.
 55. Part 10A — unchanged by Part 16; no Part 16 replacement or bypass introduced.
 56. Part 10B — PASS / ACTIVE / preserved at policy-schema 2/2.
@@ -343,22 +355,22 @@ Parts 11–15 remain intact and passed the final production verification chain.
 59. Part 13 — PASS / intact.
 60. Part 14 — PASS / intact.
 61. Part 15 — PASS / intact.
-62. Exact Part 16 matrix count — 90 / 90 PASS.
-63. Part 16 focused suite — 117 / 117 PASS.
+62. Exact Part 16 matrix count — 102 / 102 PASS.
+63. Part 16 focused suite — 136 / 136 PASS.
 64. Full `npm test` — PASS in final trusted merged-main CI.
 65. Security suite — PASS; RLS/RPC/self/Admin/test-bypass contracts covered. Advisor findings reviewed.
 66. Lint / TypeScript — PASS.
 67. Build — PASS.
-68. PR number — implementation/release sequence #147, #148, #149, #150, #151.
-69. PR final head — `0bace398c20b59388eab43952eb8ef936ed1400a` on PR #151.
-70. Trusted CI — #960 / run `35699050245`: SUCCESS.
-71. Merge result — all five Part 16 implementation/release PRs merged.
-72. Final runtime main SHA — `2897f98553d5e5792e581d740c1d6f7f72e44b5f`.
-73. Production migration result — SUCCESS; ledger 700; max `20260922171000`; four Part 16 migrations exact.
-74. Production deploy — #386 / run `35699204714`: SUCCESS; Worker `1f266f7d-c7b1-4640-8081-fe11755e988e`.
+68. PR number — implementation/release/documentation sequence #147, #148, #149, #150, #151, #152, #153, #154.
+69. Approved policy activation PR head — `2f97fcd2e3d3e1a1a21f9cd17f97079b3e2174e3` on PR #153; documentation closure through PR #154.
+70. Trusted merged-main activation CI — #965 / run `35735447385`: SUCCESS.
+71. Merge result — Part 16 foundation, hardening, completion, fail-closed fixes, policy activation, and activation documentation PRs through #154 merged.
+72. Approved activation runtime main SHA — `962fbd0160004977f99bfbf136b41008f54273a5`; subsequent PR #154 is documentation-only.
+73. Production migration result — SUCCESS; repository-controlled ledger 701; max `20260922180000`; all five Part 16 migrations exact once with matching checksums.
+74. Production deploy — #388 / run `35735727025`: SUCCESS; Worker `a6ac83b9-ceb1-4499-afd2-f50ae76fa438`.
 75. Part 16 verifier — 0 failures, executed twice in final deploy.
 76. Authenticated Seller QA — PASS, including self-scope, staged authority, remediation, denial paths, mobile/keyboard.
-77. Authenticated Admin QA — PASS, including Academy/Final evidence, policy controls, zero-grant truth, mobile/keyboard; no mutation executed.
+77. Authenticated Admin QA — PASS, including approved policy controls, `PF-DISCOVERY`, synthetic/test evidence rejection, zero-grant truth, mobile/keyboard; no QA-only business mutation executed.
 78. Academy data before/after QA — progress 54→54; reviews 8→8.
 79. Final Certification data before/after QA — state 1→1; sessions 1→1.
 80. Applicant stage before/after QA — `Activated`→`Activated`; linked applicant count 1→1.
@@ -374,9 +386,16 @@ Parts 11–15 remain intact and passed the final production verification chain.
 90. Parts 11–15 intact — YES; final production verification chain PASS.
 91. Documentation updated — YES: this focused document plus `docs/sales-sop-system-implementation-spec.md`.
 92. Future phase started? — NO.
-93. Remaining policy ambiguity — exact approved production package mapping, add-on mapping, inheritance, supervision/validation requirements by product, and protected commitment stages.
-94. Remaining Part 16 blocker — production policy activation only; implementation foundation has no remaining runtime/release blocker.
-95. Final Part 16 status — **PART 16 IMPLEMENTATION FOUNDATION COMPLETE — POLICY ACTIVATION REQUIRES EXPLICIT PRODUCT DECISION.**
+93. Remaining policy ambiguity — NONE for the approved Part 16 product/add-on mapping; the remaining gate is evidence-based, not a missing policy decision.
+94. Remaining Part 16 blocker — authoritative genuine non-test Launch certification evidence for a production Seller, followed by a legitimate canonical Admin grant, before final enforcement activation.
+95. Authorized Part 16 rollout status — **APPROVED POLICY + GRANTING-ONLY ACTIVATION COMPLETE; FINAL ENFORCEMENT REMAINS CORRECTLY BLOCKED BY THE AUTHORITATIVE-EVIDENCE REQUIREMENT.**
+96. `PF-DISCOVERY` compatibility — COMPLETE: existing `discovery` product type supported by the canonical validator/evaluator with required certification `GROWTH_CERTIFIED` and permission mode `SUPERVISED`.
+97. Discovery supervision evidence — existing quotation approval (`approval_decision` / canonical approval evidence) is reused; no second approval or supervision subsystem was created.
+98. Synthetic/test evidence treatment — production helper detects synthetic/test-tagged evidence, returns `grantEligible=false`, and production grant history remains `0`; no Launch/Growth/Scale/Custom grant was fabricated.
+99. Activation migration identity — `20260922180000_crm_sales_certification_deal_permission_policy_activation_part_16.sql`, checksum `8f552abc1000f1bddbc82d860d9d5153a7b81c74268e05da0f20913e2d2b948f`, exact once in the repository-controlled production ledger.
+100. Activation verification — merged-main CI #965 / `35735447385` SUCCESS; production deploy #388 / `35735727025` SUCCESS; release verifier 0 failures; exact matrix 102/102; focused suite 136/136; authenticated Admin/Seller QA PASS.
+101. Documentation closure — COMPLETE: stale pre-activation migration/test/CI/report facts corrected to the verified activation state; this closure is documentation-only and does not mutate CRM/commercial/certification production records.
+102. Required final report closure — **102 / 102 ITEMS PRESENT. PART 16 IS COMPLETE THROUGH THE PRODUCT OWNER-AUTHORIZED GRANTING-ONLY STOP CONDITION. FINAL ENFORCEMENT MUST REMAIN OFF UNTIL AUTHORITATIVE NON-TEST LAUNCH CERTIFICATION EVIDENCE AND A LEGITIMATE CANONICAL GRANT EXIST.**
 
 ## Product Owner policy approval + granting-only production activation — 2026-09-22
 
