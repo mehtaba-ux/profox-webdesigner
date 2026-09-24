@@ -3,6 +3,13 @@ compatibility_date = "2024-09-23"
 compatibility_flags = ["nodejs_compat"]
 main = "worker/hardened.ts"
 
+# Keep the production hostname bound to this Worker in repository-controlled
+# configuration. The route was previously dashboard-only and could be lost by
+# a Git-connected deployment, causing /api/* requests to fall through to HTML.
+[[routes]]
+pattern = "www.profoxwebdesigner.com/*"
+zone_name = "profoxwebdesigner.com"
+
 # Automatically compile Vite build into ./dist before deploy
 [build]
 command = "npm run build"
