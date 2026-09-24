@@ -3,6 +3,12 @@ node_modules/
 .pnp
 .pnp.js
 
+# Canonical package manager: npm (packageManager in package.json)
+# Do not commit alternate lockfiles; Cloudflare auto-detection may otherwise
+# choose Bun instead of npm and fail frozen-lockfile installation.
+bun.lock
+bun.lockb
+
 # Production build outputs
 dist/
 dist-ssr/
