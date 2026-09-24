@@ -1,0 +1,576 @@
+import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import {
+  Activity,
+  ArrowRight,
+  BarChart3,
+  Building2,
+  CalendarDays,
+  CheckCircle2,
+  ChevronDown,
+  CircleDot,
+  ClipboardList,
+  Clock3,
+  FileText,
+  History,
+  Loader2,
+  Mail,
+  MessageCircle,
+  MessageSquareText,
+  NotebookPen,
+  Receipt,
+  RefreshCw,
+  Send,
+  UsersRound,
+  Video,
+  X,
+} from 'lucide-react';
+import { crmService } from '../../../lib/crmService';
+import {
+  CRMLead,
+  CRMLeadDetail,
+  CRMLeadEvent,
+  CRMLeadPerson,
+  LeadQuality,
+  LeadStatus,
+} from '../../../types';
+import CRMLeadStagePicker from './CRMLeadStagePicker';
+import CRMRequirementsWorkspace from './CRMRequirementsWorkspace';
+import CRMDiscoveryWorkspace from './CRMDiscoveryWorkspace';
+import CRMMeetingPrepWorkspace from './CRMMeetingPrepWorkspace';
+import CRMMeetingManagementWorkspace from './CRMMeetingManagementWorkspace';
+
+export type LeadDrawerTab = 'overview' | 'requirements' | 'discovery' | 'meeting-prep' | 'meeting-management' | 'timeline' | 'communication' | 'activities';
+
+type CRMLeadDrawerBaseProps = {
+  lead: CRMLead;
+  assignees: CRMLeadPerson[];
+  initialTab: LeadDrawerTab;
+  isAdmin: boolean;
+  currentUserId: string;
+  onClose: () => void;
+  onChanged: (message: string) => Promise<void>;
+  onOpenMeeting: () => void;
+  onOpenConversation: () => void;
+  onNavigate?: (tab: string) => void;
+  headerSummary?: React.ReactNode;
+  overviewSidebarExtra?: React.ReactNode;
+};
+
+const qualityTone: Record<LeadQuality, string> = {
+  High: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+  Medium: 'border-amber-200 bg-amber-50 text-amber-700',
+  Low: 'border-slate-200 bg-slate-100 text-slate-600',
+};
+
+const tabs: Array<{ id: LeadDrawerTab; label: string; icon: React.ReactNode }> = [
+  { id: 'overview', label: 'Overview', icon: <Building2 className="h-4 w-4" /> },
+  { id: 'requirements', label: 'Requirements', icon: <ClipboardList className="h-4 w-4" /> },
+  { id: 'discovery', label: 'Probing & Discovery', icon: <MessageSquareText className="h-4 w-4" /> },
+  { id: 'meeting-prep', label: 'Meeting Prep', icon: <CalendarDays className="h-4 w-4" /> },
+  { id: 'meeting-management', label: 'Meeting Management', icon: <Video className="h-4 w-4" /> },
+  { id: 'timeline', label: 'Complete log', icon: <History className="h-4 w-4" /> },
+  { id: 'communication', label: 'Conversation', icon: <MessageCircle className="h-4 w-4" /> },
+  { id: 'activities', label: 'Follow-ups', icon: <Activity className="h-4 w-4" /> },
+];
+
+function initials(value: string) {
+  return value.split(/\s+/).filter(Boolean).slice(0, 2).map(part => part[0]).join('').toUpperCase() || 'PF';
+}
+
+function formatDate(value?: string) {
+  if (!value) return 'Not recorded';
+  return new Date(value).toLocaleString([], { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+
+function responseSlaState(lead: CRMLead) {
+  if (lead.firstResponseAt) return { label: `Responded ${formatDate(lead.firstResponseAt)}`, tone: 'border-emerald-200 bg-emerald-50 text-emerald-700' };
+  if (!lead.firstResponseDueAt) return { label: 'Starts when assigned', tone: 'border-slate-200 bg-slate-50 text-slate-600' };
+  const overdue = new Date(lead.firstResponseDueAt).getTime() <= Date.now();
+  return {
+    label: `${overdue ? 'Overdue' : 'Due'} ${formatDate(lead.firstResponseDueAt)}`,
+    tone: overdue ? 'border-rose-200 bg-rose-50 text-rose-700' : 'border-amber-200 bg-amber-50 text-amber-700',
+  };
+}
+
+export default function CRMLeadDrawerBase({
+  lead,
+  assignees,
+  initialTab,
+  isAdmin,
+  currentUserId,
+  onClose,
+  onChanged,
+  onOpenMeeting,
+  onOpenConversation,
+  headerSummary,
+  overviewSidebarExtra,
+}: CRMLeadDrawerBaseProps) {
+  const navigate = useNavigate();
+  const [tab, setTab] = useState<LeadDrawerTab>(initialTab);
+  const [requirementsVisited, setRequirementsVisited] = useState(initialTab === 'requirements');
+  const [discoveryVisited, setDiscoveryVisited] = useState(initialTab === 'discovery');
+  const [meetingPrepVisited, setMeetingPrepVisited] = useState(initialTab === 'meeting-prep');
+  const [meetingManagementVisited, setMeetingManagementVisited] = useState(initialTab === 'meeting-management');
+  const [detail, setDetail] = useState<CRMLeadDetail | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState('');
+  const [error, setError] = useState('');
+  const [followUpOpen, setFollowUpOpen] = useState(false);
+  const [responseChannel, setResponseChannel] = useState('Email');
+
+  const loadDetail = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      setDetail(await crmService.getLeadDetail(lead.id));
+    } catch (err: any) {
+      setError(err?.message || 'Lead history could not be loaded.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    setTab(initialTab);
+    setRequirementsVisited(initialTab === 'requirements');
+    setDiscoveryVisited(initialTab === 'discovery');
+    setMeetingPrepVisited(initialTab === 'meeting-prep');
+    setMeetingManagementVisited(initialTab === 'meeting-management');
+    void loadDetail();
+  }, [lead.id, initialTab]);
+
+  const updateStage = async (value: LeadStatus) => {
+    if (value === lead.status) return;
+    setBusy('stage');
+    setError('');
+    try {
+      await crmService.updateLead(lead.id, { status: value });
+      await onChanged(`Lead stage updated to ${value}.`);
+      await loadDetail();
+    } catch (err: any) {
+      setError(err?.message || 'Stage could not be updated.');
+    } finally {
+      setBusy('');
+    }
+  };
+
+  const assign = async (value: string) => {
+    if (value === lead.salespersonId) return;
+    setBusy('assign');
+    setError('');
+    try {
+      await crmService.assignLead(lead.id, value);
+      await onChanged('Lead ownership updated and recorded in the timeline.');
+      await loadDetail();
+    } catch (err: any) {
+      setError(err?.message || 'Lead could not be reassigned.');
+    } finally {
+      setBusy('');
+    }
+  };
+
+  const accept = async () => {
+    setBusy('accept');
+    setError('');
+    try {
+      await crmService.acceptLead(lead.id);
+      await onChanged('Lead accepted. The first-response SLA remains active until a customer-facing response is recorded.');
+      await loadDetail();
+    } catch (err: any) {
+      setError(err?.message || 'Lead could not be accepted.');
+    } finally {
+      setBusy('');
+    }
+  };
+
+  const recordResponse = async () => {
+    if (!window.confirm(`Confirm that a customer-facing response was actually sent by ${responseChannel}. Opening an application or completing a task alone is not enough.`)) return;
+    setBusy('response');
+    setError('');
+    try {
+      await crmService.recordLeadFirstResponse(lead.id, responseChannel);
+      await onChanged(`First customer-facing response recorded with ${responseChannel} evidence.`);
+      await loadDetail();
+    } catch (err: any) {
+      setError(err?.message || 'The customer response could not be recorded.');
+    } finally {
+      setBusy('');
+    }
+  };
+
+  const convert = async () => {
+    setBusy('convert');
+    setError('');
+    try {
+      await crmService.convertToOpportunity(lead.id, { name: lead.title });
+      await onChanged('Qualified lead converted to an opportunity.');
+      onClose();
+    } catch (err: any) {
+      setError(err?.message || 'Lead could not be converted.');
+    } finally {
+      setBusy('');
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[110] flex justify-end bg-slate-950/45 backdrop-blur-sm" onMouseDown={event => { if (event.currentTarget === event.target) onClose(); }}>
+      <aside className="flex h-full w-full max-w-[1040px] flex-col bg-[#f6f8fc] shadow-2xl">
+        <header className="border-b border-slate-200 bg-white px-4 py-4 sm:px-7">
+          <div className="flex items-start gap-4">
+            <div className={`grid min-w-0 flex-1 gap-4 ${headerSummary ? 'lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start' : ''}`}>
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className={`rounded-full border px-2.5 py-1 text-[10px] font-black ${qualityTone[lead.leadQuality]}`}>{lead.leadQuality} · {lead.leadScore}/100</span>
+                  <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-black text-slate-500">{lead.source}</span>
+                </div>
+                <h2 className="mt-3 break-words text-xl font-black text-slate-950 sm:text-2xl">{lead.title}</h2>
+                <p className="mt-1 break-words text-xs text-slate-500">{lead.companyName}{lead.contactName ? ` · ${lead.contactName}` : ''}</p>
+              </div>
+              {headerSummary && <div className="min-w-0">{headerSummary}</div>}
+            </div>
+            <button onClick={onClose} className="shrink-0 rounded-xl border border-slate-200 bg-white p-2 text-slate-400 hover:bg-slate-50" aria-label="Close lead details">
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+          <div className="mt-4 flex gap-1 overflow-x-auto rounded-xl bg-slate-100 p-1">
+            {tabs.map(item => (
+              <button
+                key={item.id}
+                onClick={() => {
+                  if (item.id === 'communication') {
+                    onOpenConversation();
+                    return;
+                  }
+                  if (item.id === 'requirements') setRequirementsVisited(true);
+                  if (item.id === 'discovery') setDiscoveryVisited(true);
+                  if (item.id === 'meeting-prep') setMeetingPrepVisited(true);
+                  if (item.id === 'meeting-management') setMeetingManagementVisited(true);
+                  setTab(item.id);
+                }}
+                className={`inline-flex min-h-10 shrink-0 items-center gap-2 rounded-lg px-3 text-[11px] font-black ${tab === item.id ? 'bg-white text-[#000080] shadow-sm' : 'text-slate-500'}`}
+              >
+                {item.icon}{item.label}
+              </button>
+            ))}
+          </div>
+        </header>
+
+        <div className="flex-1 overflow-y-auto p-4 sm:p-7">
+          {error && <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs font-bold text-rose-700">{error}</div>}
+          {loading && !detail ? (
+            <div className="flex min-h-64 items-center justify-center"><Loader2 className="h-7 w-7 animate-spin text-[#000080]" /></div>
+          ) : (
+            <>
+              {tab === 'overview' && (
+                <Overview
+                  lead={lead}
+                  detail={detail}
+                  assignees={assignees}
+                  isAdmin={isAdmin}
+                  currentUserId={currentUserId}
+                  busy={busy}
+                  responseChannel={responseChannel}
+                  onResponseChannel={setResponseChannel}
+                  onStage={value => void updateStage(value)}
+                  onAssign={value => void assign(value)}
+                  onAccept={() => void accept()}
+                  onRecordResponse={() => void recordResponse()}
+                  onMeeting={onOpenMeeting}
+                  onFollowUp={() => setFollowUpOpen(true)}
+                  onConvert={() => void convert()}
+                  onQuote={() => navigate(`/admin/quotations/new?opportunityId=${lead.convertedOpportunityId}`)}
+                  sidebarExtra={overviewSidebarExtra}
+                />
+              )}
+              {requirementsVisited && (
+                <div className={tab === 'requirements' ? 'block' : 'hidden'} aria-hidden={tab !== 'requirements'}>
+                  <CRMRequirementsWorkspace leadId={lead.id} refreshKey={lead.updatedAt} onChanged={onChanged} />
+                </div>
+              )}
+              {discoveryVisited && (
+                <div className={tab === 'discovery' ? 'block' : 'hidden'} aria-hidden={tab !== 'discovery'}>
+                  <CRMDiscoveryWorkspace
+                    leadId={lead.id}
+                    refreshKey={lead.updatedAt}
+                    onChanged={onChanged}
+                    onViewRequirements={() => {
+                      setRequirementsVisited(true);
+                      setTab('requirements');
+                    }}
+                  />
+                </div>
+              )}
+              {meetingPrepVisited && (
+                <div className={tab === 'meeting-prep' ? 'block' : 'hidden'} aria-hidden={tab !== 'meeting-prep'}>
+                  <CRMMeetingPrepWorkspace
+                    lead={lead}
+                    refreshKey={lead.updatedAt}
+                    onChanged={onChanged}
+                    onScheduleMeeting={onOpenMeeting}
+                    onViewRequirements={() => {
+                      setRequirementsVisited(true);
+                      setTab('requirements');
+                    }}
+                    onViewDiscovery={() => {
+                      setDiscoveryVisited(true);
+                      setTab('discovery');
+                    }}
+                  />
+                </div>
+              )}
+              {meetingManagementVisited && (
+                <div className={tab === 'meeting-management' ? 'block' : 'hidden'} aria-hidden={tab !== 'meeting-management'}>
+                  <CRMMeetingManagementWorkspace
+                    lead={lead}
+                    ownerName={detail?.assignee?.name}
+                    refreshKey={lead.updatedAt}
+                    onChanged={onChanged}
+                    onScheduleMeeting={onOpenMeeting}
+                    onOpenMeetingPrep={() => {
+                      setMeetingPrepVisited(true);
+                      setTab('meeting-prep');
+                    }}
+                    onViewRequirements={() => {
+                      setRequirementsVisited(true);
+                      setTab('requirements');
+                    }}
+                    onViewDiscovery={() => {
+                      setDiscoveryVisited(true);
+                      setTab('discovery');
+                    }}
+                  />
+                </div>
+              )}
+              {tab === 'timeline' && <Timeline leadId={lead.id} events={detail?.events || []} onAdded={async () => { await loadDetail(); await onChanged('Internal note added to the lead timeline.'); }} />}
+              {tab === 'communication' && <ConversationHandoff lead={lead} onOpen={onOpenConversation} />}
+              {tab === 'activities' && <Activities lead={lead} detail={detail} onMeeting={onOpenMeeting} onFollowUp={() => setFollowUpOpen(true)} />}
+            </>
+          )}
+        </div>
+        {followUpOpen && <FollowUpModal lead={lead} onClose={() => setFollowUpOpen(false)} onCreated={async () => { setFollowUpOpen(false); await loadDetail(); await onChanged('Follow-up scheduled and added to the lead timeline.'); }} />}
+      </aside>
+    </div>
+  );
+}
+
+function Overview({
+  lead,
+  detail,
+  assignees,
+  isAdmin,
+  currentUserId,
+  busy,
+  responseChannel,
+  onResponseChannel,
+  onStage,
+  onAssign,
+  onAccept,
+  onRecordResponse,
+  onMeeting,
+  onFollowUp,
+  onConvert,
+  onQuote,
+  sidebarExtra,
+}: {
+  lead: CRMLead;
+  detail: CRMLeadDetail | null;
+  assignees: CRMLeadPerson[];
+  isAdmin: boolean;
+  currentUserId: string;
+  busy: string;
+  responseChannel: string;
+  onResponseChannel: (value: string) => void;
+  onStage: (value: LeadStatus) => void;
+  onAssign: (value: string) => void;
+  onAccept: () => void;
+  onRecordResponse: () => void;
+  onMeeting: () => void;
+  onFollowUp: () => void;
+  onConvert: () => void;
+  onQuote: () => void;
+  sidebarExtra?: React.ReactNode;
+}) {
+  const websiteLead = lead.source === 'Website Contact Form';
+  const canAccept = websiteLead && Boolean(lead.salespersonId) && !lead.acceptedAt && (isAdmin || lead.salespersonId === currentUserId);
+  const canConvert = lead.status === 'Qualified' && !lead.convertedOpportunityId && (!websiteLead || Boolean(lead.acceptedAt && lead.firstResponseAt));
+  const sla = responseSlaState(lead);
+
+  return (
+    <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
+      <div className="min-w-0 space-y-5">
+        <Panel title="Contact and company">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Data label="Company" value={lead.companyName} />
+            <Data label="Contact" value={lead.contactName || 'Not provided'} />
+            <Data label="Email" value={lead.email || 'Not provided'} />
+            <Data label="Phone" value={lead.phone || 'Not provided'} />
+            <Data label="Website" value={lead.website || 'Not provided'} link={lead.website || undefined} />
+            <Data label="Country / industry" value={`${lead.country || 'Unknown'} · ${lead.industry || 'Other'}`} />
+          </div>
+        </Panel>
+
+        <Panel title="Qualification">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Data label="Source" value={lead.source} />
+            <Data label="Acquisition class" value={lead.originType.replace('_', ' ')} />
+            <Data label="Service interest" value={lead.serviceInterest || 'Not captured'} />
+            <Data label="Estimated value" value={`${lead.currency} ${lead.estimatedValue.toLocaleString()}`} />
+          </div>
+          <div className={`mt-5 rounded-2xl border p-4 ${qualityTone[lead.leadQuality]}`}>
+            <div className="flex items-start gap-3">
+              <BarChart3 className="mt-0.5 h-5 w-5 shrink-0" />
+              <div className="min-w-0">
+                <div className="text-sm font-black">{lead.leadQuality} quality · {lead.leadScore}/100</div>
+                <p className="mt-1 break-words text-xs leading-5 opacity-80">{lead.scoreReason}</p>
+              </div>
+            </div>
+          </div>
+        </Panel>
+
+        <Panel title="Internal context">
+          <p className="whitespace-pre-wrap break-words text-sm leading-6 text-slate-600">{lead.notes || 'No internal notes have been added.'}</p>
+        </Panel>
+      </div>
+
+      <aside className="min-w-0 space-y-4">
+        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="text-[10px] font-black uppercase tracking-[.12em] text-slate-400">Pipeline controls</div>
+          <div className="mt-4">
+            <div className="mb-1.5 text-[10px] font-black uppercase text-slate-500">Stage</div>
+            <CRMLeadStagePicker lead={lead} busy={busy === 'stage'} onStage={onStage} fullWidth />
+          </div>
+          <label className="mt-4 block text-[10px] font-black uppercase text-slate-500">
+            Assignee
+            <div className="relative mt-1.5">
+              <select disabled={!isAdmin || busy === 'assign'} value={lead.salespersonId || ''} onChange={event => onAssign(event.target.value)} className="h-11 w-full appearance-none rounded-xl border border-slate-200 bg-slate-50 px-3 pr-9 text-xs font-black outline-none disabled:opacity-70">
+                <option value="">Unassigned</option>
+                {assignees.map(person => <option key={person.id} value={person.id}>{person.name}</option>)}
+              </select>
+              <ChevronDown className="pointer-events-none absolute right-3 top-3.5 h-4 w-4 text-slate-400" />
+            </div>
+          </label>
+          <PersonCard label="Current owner" person={detail?.assignee} />
+          <PersonCard label="Added by" person={detail?.createdBy} fallback={lead.originType === 'website' ? 'Website visitor' : 'System'} />
+          {lead.assignedAt && <div className="mt-3 text-[10px] leading-5 text-slate-400">Assigned {formatDate(lead.assignedAt)}{detail?.assignedBy ? ` by ${detail.assignedBy.name}` : ''}</div>}
+        </section>
+
+        {sidebarExtra}
+
+        {websiteLead && (
+          <section className={`rounded-2xl border p-4 shadow-sm ${sla.tone}`}>
+            <div className="text-[10px] font-black uppercase tracking-[.12em]">Assignment response</div>
+            <div className="mt-2 text-xs font-black">{lead.acceptedAt ? `Accepted ${formatDate(lead.acceptedAt)}` : 'Awaiting acceptance'}</div>
+            <div className="mt-1 text-[10px] font-semibold">First response: {sla.label}{lead.firstResponseSlaMinutes ? ` · ${lead.firstResponseSlaMinutes} minute target` : ''}</div>
+            {lead.firstResponseAt && <div className="mt-1 text-[10px] font-semibold">Evidence: {lead.firstResponseChannel || 'Recorded'} · {(lead.firstResponseEvidenceType || 'manual_confirmation').replaceAll('_', ' ')}</div>}
+            {canAccept && <button disabled={busy === 'accept'} onClick={onAccept} className="mt-3 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-xl bg-[#000080] px-3 text-xs font-black text-white disabled:opacity-50">{busy === 'accept' ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}Accept assigned lead</button>}
+            {lead.acceptedAt && !lead.firstResponseAt && (isAdmin || lead.salespersonId === currentUserId) && (
+              <>
+                <select aria-label="Customer response channel" value={responseChannel} onChange={event => onResponseChannel(event.target.value)} className="mt-3 h-10 w-full rounded-xl border border-current bg-white/80 px-3 text-xs font-black">
+                  <option>Email</option><option>Phone</option><option>WhatsApp</option><option>Video Call</option><option>Meeting</option><option>Other</option>
+                </select>
+                <button disabled={busy === 'response'} onClick={onRecordResponse} className="mt-2 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-xl border border-current bg-white/70 px-3 text-xs font-black disabled:opacity-50">{busy === 'response' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}Confirm response actually sent</button>
+              </>
+            )}
+          </section>
+        )}
+
+        <section className="grid grid-cols-2 gap-2 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <Quick icon={<CalendarDays className="h-4 w-4" />} label="Meeting" onClick={onMeeting} />
+          <Quick icon={<Clock3 className="h-4 w-4" />} label="Follow-up" onClick={onFollowUp} />
+          {canConvert && <Quick icon={<ArrowRight className="h-4 w-4" />} label="Convert" onClick={onConvert} />}
+          {lead.status === 'Qualified' && Boolean(lead.convertedOpportunityId) && <Quick icon={<Receipt className="h-4 w-4" />} label="Quotation" onClick={onQuote} />}
+        </section>
+
+        {websiteLead && lead.status === 'Qualified' && !lead.convertedOpportunityId && !canConvert && <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-[10px] font-bold leading-5 text-amber-800">Accept the lead and record the first customer-facing response before converting it to a qualified opportunity.</div>}
+
+        <section className="rounded-2xl border border-slate-200 bg-white p-5 text-[11px] leading-5 text-slate-500 shadow-sm">
+          <div className="font-black uppercase tracking-wide text-slate-400">Record provenance</div>
+          <div className="mt-3">Created {formatDate(lead.createdAt)}</div>
+          <div>Updated {formatDate(lead.updatedAt)}</div>
+          <div className="mt-2 break-all font-mono text-[9px] text-slate-400">{lead.id}</div>
+        </section>
+      </aside>
+    </div>
+  );
+}
+
+function Timeline({ leadId, events, onAdded }: { leadId: string; events: CRMLeadEvent[]; onAdded: () => Promise<void> }) {
+  const [note, setNote] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const add = async () => {
+    setSaving(true);
+    setError('');
+    try {
+      await crmService.addLeadNote(leadId, note);
+      setNote('');
+      await onAdded();
+    } catch (err: any) {
+      setError(err?.message || 'Note could not be added.');
+    } finally {
+      setSaving(false);
+    }
+  };
+  return <div className="space-y-5"><section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><div className="flex items-center gap-2 text-xs font-black text-slate-800"><NotebookPen className="h-4 w-4 text-[#000080]" />Add internal note</div><textarea value={note} onChange={event => setNote(event.target.value)} rows={3} placeholder="Record a decision, customer context or the next action…" className="mt-3 w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm outline-none focus:border-[#000080]" />{error && <p className="mt-2 text-xs font-bold text-rose-600">{error}</p>}<div className="mt-3 flex justify-end"><button disabled={saving || note.trim().length < 2} onClick={() => void add()} className="inline-flex items-center gap-2 rounded-xl bg-[#000080] px-4 py-2.5 text-xs font-black text-white disabled:opacity-50">{saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}Save note</button></div></section><section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><div className="mb-5 flex items-center justify-between"><div><h3 className="text-sm font-black">Complete lead log</h3><p className="mt-1 text-xs text-slate-500">Append-only history across CRM, chat, email, meetings and follow-ups.</p></div><span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-black text-slate-500">{events.length} events</span></div>{events.length === 0 ? <Empty text="No lead activity has been recorded." /> : <div className="relative space-y-0 before:absolute before:bottom-3 before:left-[17px] before:top-3 before:w-px before:bg-slate-200">{events.map(event => <TimelineEvent key={event.id} event={event} />)}</div>}</section></div>;
+}
+
+function TimelineEvent({ event }: { event: CRMLeadEvent }) {
+  const Icon = event.eventType.includes('chat') ? MessageCircle : event.eventType.includes('email') ? Mail : event.eventType.includes('meeting') ? CalendarDays : event.eventType.includes('assignment') ? UsersRound : event.eventType.includes('stage') ? RefreshCw : event.eventType.includes('note') ? NotebookPen : CircleDot;
+  return <article className="relative flex gap-4 pb-6"><div className="z-10 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-[#000080] shadow-sm"><Icon className="h-4 w-4" /></div><div className="min-w-0 flex-1 pt-0.5"><div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between"><div className="text-xs font-black text-slate-800">{event.title}</div><time className="shrink-0 text-[10px] text-slate-400">{formatDate(event.occurredAt)}</time></div>{event.description && <p className="mt-1 whitespace-pre-wrap text-xs leading-5 text-slate-500">{event.description}</p>}<div className="mt-2 flex items-center gap-2 text-[10px] font-bold text-slate-400"><span className="flex h-5 w-5 items-center justify-center rounded-md bg-slate-100">{initials(event.actorName)}</span>{event.actorName}<span>·</span><span className="capitalize">{event.actorRole.replaceAll('_', ' ')}</span></div></div></article>;
+}
+
+function ConversationHandoff({ lead, onOpen }: { lead: CRMLead; onOpen: () => void }) {
+  return <section className="rounded-3xl border border-blue-200 bg-white p-6 shadow-sm sm:p-8"><div className="flex flex-col items-start gap-5 sm:flex-row"><div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#000080] text-white"><MessageCircle className="h-6 w-6" /></div><div className="flex-1"><div className="text-[10px] font-black uppercase tracking-[.16em] text-[#000080]">Canonical customer communication</div><h3 className="mt-2 text-xl font-black text-slate-950">Open the unified conversation for {lead.contactName || lead.companyName}.</h3><p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">Website Chat, permitted Professional Email, WhatsApp, delivery state and private Internal Notes now live in one protected timeline. The old separate Chat/Email composer has been retired so there is only one customer communication surface.</p><div className="mt-4 flex flex-wrap gap-2 text-[10px] font-black"><span className="rounded-lg border border-indigo-200 bg-indigo-50 px-2.5 py-1.5 text-indigo-700">Website Chat</span><span className="rounded-lg border border-sky-200 bg-sky-50 px-2.5 py-1.5 text-sky-700">Professional Email</span><span className="rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-emerald-700">WhatsApp</span><span className="rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-amber-700">Internal Notes</span></div><button type="button" onClick={onOpen} className="mt-6 inline-flex min-h-11 items-center gap-2 rounded-xl bg-[#000080] px-5 text-xs font-black text-white shadow-lg shadow-blue-950/10"><MessageCircle className="h-4 w-4" />Open customer conversation<ArrowRight className="h-4 w-4" /></button></div></div></section>;
+}
+
+function Activities({ lead, detail, onMeeting, onFollowUp }: { lead: CRMLead; detail: CRMLeadDetail | null; onMeeting: () => void; onFollowUp: () => void }) {
+  const activities = detail?.activities || [];
+  const meetings = detail?.meetings || [];
+  return <div className="space-y-5"><div className="grid grid-cols-2 gap-3"><button onClick={onFollowUp} className="flex min-h-14 items-center justify-center gap-2 rounded-2xl bg-[#000080] px-4 text-xs font-black text-white"><Clock3 className="h-4 w-4" />Schedule follow-up</button><button onClick={onMeeting} className="flex min-h-14 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 text-xs font-black text-slate-700"><CalendarDays className="h-4 w-4 text-[#000080]" />Book meeting</button></div><Panel title={`Activities · ${activities.length}`}>{activities.length === 0 ? <Empty text="No follow-ups or CRM activities yet." /> : <div className="space-y-3">{activities.map(item => <article key={item.id} className="flex flex-col justify-between gap-3 rounded-xl border border-slate-100 bg-slate-50 p-4 sm:flex-row sm:items-center"><div><div className="flex flex-wrap items-center gap-2"><div className="text-xs font-black text-slate-800">{item.subject}</div><span className={`rounded-full px-2 py-0.5 text-[9px] font-black ${item.status === 'Completed' ? 'bg-emerald-100 text-emerald-700' : new Date(item.dueAt).getTime() < Date.now() ? 'bg-rose-100 text-rose-700' : 'bg-blue-100 text-blue-700'}`}>{item.status}</span></div><div className="mt-1 text-[10px] text-slate-500">{item.activityType} · {formatDate(item.dueAt)} · {item.assigneeName || 'Unassigned'}</div>{item.notes && <p className="mt-2 line-clamp-2 text-xs leading-5 text-slate-500">{item.notes}</p>}</div></article>)}</div>}</Panel><Panel title={`Meetings · ${meetings.length}`}>{meetings.length === 0 ? <Empty text="No meetings linked to this lead." /> : <div className="space-y-3">{meetings.map(item => <article key={item.id} className="flex flex-col justify-between gap-3 rounded-xl border border-slate-100 bg-slate-50 p-4 sm:flex-row sm:items-center"><div><div className="text-xs font-black text-slate-800">{item.title}</div><div className="mt-1 text-[10px] text-slate-500">{item.meetingType} · {formatDate(item.startAt)} · {item.status}</div></div>{item.meetingUrl && <a href={item.meetingUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-[10px] font-black text-[#000080]"><Video className="h-3.5 w-3.5" />Join</a>}</article>)}</div>}</Panel>{lead.nextFollowUpAt && <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4 text-xs font-bold text-blue-800">Current next follow-up: {formatDate(lead.nextFollowUpAt)}</div>}</div>;
+}
+
+function FollowUpModal({ lead, onClose, onCreated }: { lead: CRMLead; onClose: () => void; onCreated: () => Promise<void> }) {
+  const defaultDate = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  defaultDate.setMinutes(0, 0, 0);
+  const [dueAt, setDueAt] = useState(new Date(defaultDate.getTime() - defaultDate.getTimezoneOffset() * 60000).toISOString().slice(0, 16));
+  const [subject, setSubject] = useState(`Follow up with ${lead.companyName}`);
+  const [notes, setNotes] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const submit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setSaving(true);
+    setError('');
+    try {
+      await crmService.scheduleLeadFollowUp(lead.id, new Date(dueAt).toISOString(), subject, notes);
+      await onCreated();
+    } catch (err: any) {
+      setError(err?.message || 'Follow-up could not be scheduled.');
+    } finally {
+      setSaving(false);
+    }
+  };
+  return <div className="absolute inset-0 z-20 flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm"><form onSubmit={submit} className="w-full max-w-lg rounded-3xl bg-white shadow-2xl"><div className="flex items-start justify-between border-b border-slate-100 p-5"><div><h3 className="text-lg font-black">Schedule follow-up</h3><p className="mt-1 text-xs text-slate-500">Linked directly to {lead.companyName} and the current assignee.</p></div><button type="button" onClick={onClose} className="rounded-xl p-2 text-slate-400"><X className="h-5 w-5" /></button></div><div className="space-y-4 p-5">{error && <div className="rounded-xl bg-rose-50 p-3 text-xs font-bold text-rose-700">{error}</div>}<label className="block text-xs font-black text-slate-600">Subject<input required value={subject} onChange={event => setSubject(event.target.value)} className="mt-1.5 h-11 w-full rounded-xl border border-slate-200 px-3 text-sm" /></label><label className="block text-xs font-black text-slate-600">Due date and time<input required type="datetime-local" value={dueAt} onChange={event => setDueAt(event.target.value)} className="mt-1.5 h-11 w-full rounded-xl border border-slate-200 px-3 text-sm" /></label><label className="block text-xs font-black text-slate-600">Notes<textarea rows={4} value={notes} onChange={event => setNotes(event.target.value)} className="mt-1.5 w-full rounded-xl border border-slate-200 p-3 text-sm" /></label></div><div className="flex justify-end gap-2 border-t border-slate-100 bg-slate-50 p-4"><button type="button" onClick={onClose} className="rounded-xl px-4 py-2 text-xs font-black text-slate-500">Cancel</button><button disabled={saving} className="inline-flex items-center gap-2 rounded-xl bg-[#000080] px-4 py-2.5 text-xs font-black text-white">{saving && <Loader2 className="h-4 w-4 animate-spin" />}Schedule</button></div></form></div>;
+}
+
+function Panel({ title, children }: { title: string; children: React.ReactNode }) {
+  return <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><h3 className="mb-4 text-[10px] font-black uppercase tracking-[.14em] text-slate-400">{title}</h3>{children}</section>;
+}
+
+function Data({ label, value, link }: { label: string; value: string; link?: string }) {
+  const content = <div className="mt-1 break-words text-sm font-black text-slate-700">{value}</div>;
+  return <div className="min-w-0"><div className="text-[9px] font-black uppercase tracking-wide text-slate-400">{label}</div>{link ? <a href={link} target="_blank" rel="noreferrer" className="text-[#000080] hover:underline">{content}</a> : content}</div>;
+}
+
+function PersonCard({ label, person, fallback = 'Unassigned' }: { label: string; person?: CRMLeadPerson; fallback?: string }) {
+  return <div className="mt-4 rounded-xl border border-slate-100 bg-slate-50 p-3"><div className="text-[9px] font-black uppercase text-slate-400">{label}</div><div className="mt-2 flex items-center gap-2">{person?.avatarUrl ? <img src={person.avatarUrl} alt="" className="h-8 w-8 rounded-lg object-cover" /> : <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white text-[9px] font-black text-slate-500">{initials(person?.name || fallback)}</div>}<div className="min-w-0"><div className="break-words text-xs font-black text-slate-700">{person?.name || fallback}</div><div className="text-[9px] capitalize text-slate-400">{person?.role?.replaceAll('_', ' ') || 'system'}</div></div></div></div>;
+}
+
+function Quick({ icon, label, onClick }: { icon: React.ReactNode; label: string; onClick: () => void }) {
+  return <button onClick={onClick} className="flex min-h-12 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-2 text-[10px] font-black text-slate-700 hover:border-[#000080]/30 hover:bg-blue-50 hover:text-[#000080]">{icon}{label}</button>;
+}
+
+function Empty({ text }: { text: string }) {
+  return <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center text-xs text-slate-400">{text}</div>;
+}

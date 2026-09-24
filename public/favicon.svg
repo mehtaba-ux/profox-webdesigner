@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <!-- Modern Geometric Elegant Fox Icon -->
+  <path d="M16 4 L6 14 L11 19 L16 15 L21 19 L26 14 Z" fill="url(#foxOrange)" />
+  <path d="M11 19 L16 30 L21 19 L16 23 Z" fill="url(#foxWhite)" />
+  <path d="M16 15 L12 18 L16 21 L20 18 Z" fill="#1E293B" />
+  <circle cx="12.5" cy="14" r="1" fill="#FFFFFF" />
+  <circle cx="19.5" cy="14" r="1" fill="#FFFFFF" />
+  <defs>
+    <linearGradient id="foxOrange" x1="6" y1="4" x2="26" y2="19" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#F97316" />
+      <stop offset="100%" stop-color="#EA580C" />
+    </linearGradient>
+    <linearGradient id="foxWhite" x1="11" y1="19" x2="21" y2="30" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#F8FAFC" />
+      <stop offset="100%" stop-color="#CBD5E1" />
+    </linearGradient>
+  </defs>
+</svg>

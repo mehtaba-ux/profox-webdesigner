@@ -1,0 +1,1 @@
+Invariant: dashboard and public pricing aggregate canonical sources; they do not own duplicate business facts.

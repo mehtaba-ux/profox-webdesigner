@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /client-portal/
+Disallow: /api/
+
+# Sitemap location for Google, Bing, Yandex, DuckDuckGo, Yahoo
+Sitemap: https://www.profoxwebdesigner.com/sitemap.xml
