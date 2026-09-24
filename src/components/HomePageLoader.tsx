@@ -20,7 +20,13 @@ export default function HomePageLoader() {
   const accentColor = settings.accentColor || '#000080';
   const separatorColor = settings.separatorColor || '#b6bac5';
   const logoWidth = Math.min(320, Math.max(110, Number(settings.logoWidth) || 190));
-  const alreadySeen = useMemo(() => typeof window !== 'undefined' && sessionStorage.getItem(INTRO_KEY) === 'true', []);
+  const alreadySeen = useMemo(() => {
+    try {
+      return typeof window !== 'undefined' && sessionStorage.getItem(INTRO_KEY) === 'true';
+    } catch {
+      return false;
+    }
+  }, []);
   const [visible, setVisible] = useState(enabled && (replayEveryVisit || !alreadySeen));
 
   useEffect(() => {
@@ -32,7 +38,11 @@ export default function HomePageLoader() {
     const originalOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     const timer = window.setTimeout(() => {
-      sessionStorage.setItem(INTRO_KEY, 'true');
+      try {
+        sessionStorage.setItem(INTRO_KEY, 'true');
+      } catch {
+        // Storage may be unavailable in restricted environments
+      }
       window.dispatchEvent(new CustomEvent('profox:loader-complete'));
       setVisible(false);
       document.body.style.overflow = originalOverflow;

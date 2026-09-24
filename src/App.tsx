@@ -1,6 +1,14 @@
-import { lazy, Suspense, useEffect, useRef, useState, type ReactNode } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import { Navigate, Route, Routes, useParams } from 'react-router-dom';
 import Hero from './components/Hero';
+import Services from './components/Services';
+import ServicePackages from './components/ServicePackages';
+import CaseStudies from './components/CaseStudies';
+import GrowthSection from './components/GrowthSection';
+import FAQSection from './components/FAQSection';
+import FeedbackSection from './components/FeedbackSection';
+import Insights from './components/Insights';
+import CTA from './components/CTA';
 import { CMSProvider, useCMS } from './lib/CMSProvider';
 import { AuthProvider, useAuth } from './lib/AuthContext';
 import MainLayout from './components/MainLayout';
@@ -12,14 +20,6 @@ import TalentPartnerReferralTracker from './components/TalentPartnerReferralTrac
 import { ConfirmProvider } from './components/admin/ConfirmContext';
 
 const MeetingsWorkspace = lazy(() => import('./components/admin/MeetingsWorkspace'));
-const Services = lazy(() => import('./components/Services'));
-const ServicePackages = lazy(() => import('./components/ServicePackages'));
-const CaseStudies = lazy(() => import('./components/CaseStudies'));
-const GrowthSection = lazy(() => import('./components/GrowthSection'));
-const Insights = lazy(() => import('./components/Insights'));
-const CTA = lazy(() => import('./components/CTA'));
-const FeedbackSection = lazy(() => import('./components/FeedbackSection'));
-const FAQSection = lazy(() => import('./components/FAQSection'));
 const MeetingSettingsAdmin = lazy(() => import('./components/admin/MeetingSettingsAdmin'));
 const CalendarHub = lazy(() => import('./components/admin/CalendarHub'));
 const BookingSetupWorkspace = lazy(() => import('./components/admin/BookingSetupWorkspace'));
@@ -119,30 +119,6 @@ function LegacyPageRedirect() {
   return page ? <Navigate to={getPagePath(page)} replace /> : <Navigate to={`/${slug}`} replace />;
 }
 
-function DeferredSection({ children, minHeight, eager = false }: { children: ReactNode; minHeight: number; eager?: boolean }) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [visible, setVisible] = useState(eager);
-
-  useEffect(() => {
-    if (eager || visible) return;
-    const element = containerRef.current;
-    if (!element || !('IntersectionObserver' in window)) {
-      setVisible(true);
-      return;
-    }
-    const observer = new IntersectionObserver(([entry]) => {
-      if (entry.isIntersecting) {
-        setVisible(true);
-        observer.disconnect();
-      }
-    }, { rootMargin: '500px 0px' });
-    observer.observe(element);
-    return () => observer.disconnect();
-  }, [eager, visible]);
-
-  return <div ref={containerRef} style={visible ? undefined : { minHeight }} aria-hidden={visible ? undefined : true}>{visible ? children : null}</div>;
-}
-
 function HomePage() {
   const { content, isLiveEditing } = useCMS();
   const { isAdminOrEditor } = useAuth();
@@ -155,7 +131,22 @@ function HomePage() {
   const isInsightsEnabled = content.insights?.enabled !== false;
   const isCaseStudiesEnabled = content.caseStudies?.enabled !== false;
   const isCTAEnabled = content.cta?.enabled !== false;
-  return <><HomePageLoader/><HomeScrollProgress/><Hero isLiveEditing={activeEditing}/><DeferredSection minHeight={900} eager={activeEditing}><Services isLiveEditing={activeEditing}/></DeferredSection>{isPricingEnabled&&<DeferredSection minHeight={800} eager={activeEditing}><ServicePackages isLiveEditing={activeEditing}/></DeferredSection>}{isCaseStudiesEnabled&&<DeferredSection minHeight={1200} eager={activeEditing}><CaseStudies isLiveEditing={activeEditing}/></DeferredSection>}<DeferredSection minHeight={850} eager={activeEditing}><GrowthSection isLiveEditing={activeEditing}/></DeferredSection><DeferredSection minHeight={700} eager={activeEditing}><FAQSection isLiveEditing={activeEditing}/></DeferredSection><DeferredSection minHeight={650} eager={activeEditing}><FeedbackSection isLiveEditing={activeEditing}/></DeferredSection>{isInsightsEnabled&&<DeferredSection minHeight={800} eager={activeEditing}><Insights isLiveEditing={activeEditing}/></DeferredSection>}{isCTAEnabled&&<DeferredSection minHeight={500} eager={activeEditing}><CTA isLiveEditing={activeEditing}/></DeferredSection>}</>;
+
+  return (
+    <>
+      <HomePageLoader />
+      <HomeScrollProgress />
+      <Hero isLiveEditing={activeEditing} />
+      <Services isLiveEditing={activeEditing} />
+      {isPricingEnabled && <ServicePackages isLiveEditing={activeEditing} />}
+      {isCaseStudiesEnabled && <CaseStudies isLiveEditing={activeEditing} />}
+      <GrowthSection isLiveEditing={activeEditing} />
+      <FAQSection isLiveEditing={activeEditing} />
+      <FeedbackSection isLiveEditing={activeEditing} />
+      {isInsightsEnabled && <Insights isLiveEditing={activeEditing} />}
+      {isCTAEnabled && <CTA isLiveEditing={activeEditing} />}
+    </>
+  );
 }
 
 function RouteLoading() {
