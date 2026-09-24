@@ -1,0 +1,2 @@
+create index idx_internal_chat_threads_created_by on public.internal_chat_threads(created_by);
+create index idx_internal_chat_threads_last_sender on public.internal_chat_threads(last_message_sender_id) where last_message_sender_id is not null;

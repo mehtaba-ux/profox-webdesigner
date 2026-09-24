@@ -1,8 +1,0 @@
-{
-  "name": "Remix Profox Web Desiner -- app an website",
-  "description": "ProFox Digital Agency platform with integrated CRM, team management, and secure role-based access control.",
-  "requestFramePermissions": [],
-  "majorCapabilities": [
-    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
-  ]
-}

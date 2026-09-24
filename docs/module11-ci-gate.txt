@@ -1,1 +1,0 @@
-Exact implementation head must pass ProFox CRM CI before merge.

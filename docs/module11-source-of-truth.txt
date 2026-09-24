@@ -1,3 +1,0 @@
-Branch: feature/module-11-email-communication-automation
-Base: main
-Module: Application Roadmap Module 11 - Email & Communication Automation

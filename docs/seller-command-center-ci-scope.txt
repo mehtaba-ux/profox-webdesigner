@@ -1,1 +1,0 @@
-CI scope: TypeScript check and production build must pass before merge.
