@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --port=3000 --host=0.0.0.0",
-    "build": "vite build",
+    "build": "npm run test:crm-part10a && npm run test:crm-part10b && npm run test:crm-part11 && npm run test:crm-part12 && npm run test:crm-part13 && npm run test:crm-part14 && npm run test:crm-part15 && npm run test:crm-part16 && vite build && node scripts/verify-supabase-build-config.mjs",
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit",
