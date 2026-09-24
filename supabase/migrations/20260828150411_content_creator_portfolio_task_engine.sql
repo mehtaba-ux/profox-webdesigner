@@ -1,0 +1,5 @@
+-- Historical alignment marker.
+-- This migration was applied directly to Supabase production as
+-- 20260828150411_content_creator_portfolio_task_engine.
+-- The complete idempotent final state is reconciled by
+-- 20260828153000_content_creator_recruitment_final_reconciliation.sql.
