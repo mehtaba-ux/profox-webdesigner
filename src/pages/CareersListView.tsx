@@ -92,7 +92,7 @@ export default function CareersListView() {
     <div className="bg-white text-slate-950">
       <section
         data-testid="careers-hero"
-        className="h-[100vh] w-[100vw] max-w-full overflow-hidden border-b border-slate-100 bg-[#fbfcff] pt-28 sm:pt-32"
+        className="h-[100vh] w-[100vw] max-w-full overflow-x-hidden overflow-y-auto border-b border-slate-100 bg-[#fbfcff] pt-28 sm:pt-32"
       >
         <div className="mx-auto h-full max-w-6xl px-5 pb-16 sm:px-6 sm:pb-20 lg:pb-24">
           <Link to="/" className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3.5 py-1.5 text-[11px] font-bold text-slate-500 transition hover:border-slate-300 hover:text-[#000080]">
