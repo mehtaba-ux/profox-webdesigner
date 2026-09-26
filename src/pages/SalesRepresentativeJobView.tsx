@@ -231,7 +231,8 @@ export default function SalesRepresentativeJobView({ context }: { context: Publi
             <span className="grid h-12 w-12 place-items-center rounded-2xl bg-[#000080] text-white shadow-[0_14px_35px_rgba(0,0,128,0.18)]"><TrendingUp className="h-5 w-5" /></span>
             <div className="pf-eyebrow mt-6 text-[#000080]">Career progression</div>
             <h2 className="pf-section-title mt-3 text-[#071126]">{careerProgression.title || 'Path to a monthly salary discussion'}</h2>
-            <p className="mt-5 text-base leading-7 text-slate-600">After at least 6 months with ProFox, a representative may become eligible for an invitation to discuss a monthly salary if, during the most recent 3 months, they achieve any one of the verified paid-sales routes.</p>
+            <p className="mt-5 text-base leading-7 text-slate-600">After at least 6 months with ProFox, complete any <strong className="font-semibold text-[#071126]">one</strong> of the sales routes shown here using verified paid sales from your most recent 3 months. That makes you eligible for management review and a possible monthly salary discussion.</p>
+            <div className="mt-6 inline-flex rounded-full border border-[#000080]/10 bg-white px-4 py-2 text-sm font-bold text-[#000080]">Complete any 1 route</div>
           </div>
           <div>
             <div className="grid gap-4 sm:grid-cols-2">{[
@@ -239,8 +240,18 @@ export default function SalesRepresentativeJobView({ context }: { context: Publi
               '10 ProFox Launch + 4 ProFox Scale',
               '6 ProFox Growth + 3 ProFox Scale',
               '3 ProFox Scale',
-            ].map((route, index) => <div key={route} className="rounded-2xl border border-slate-200 bg-white p-6 shadow-[0_14px_35px_rgba(15,23,42,0.04)]"><div className="pf-eyebrow text-[#000080]">Qualification route {index + 1}</div><div className="mt-3 text-lg font-semibold leading-7 tracking-[-0.02em] text-[#071126]">{route}</div><div className="mt-3 text-xs leading-5 text-slate-500">Verified paid sales during the most recent 3 months.</div></div>)}</div>
-            <div className="mt-5 rounded-2xl border border-[#000080]/10 bg-[#000080]/5 p-6 text-[15px] leading-7 text-slate-700"><strong className="font-bold text-[#071126]">How qualification works:</strong> completing any one route after at least 6 months with ProFox creates eligibility for management review and an invitation to discuss a possible monthly salary arrangement. A salary is not automatic, guaranteed or pre-set. Any salary offer and amount will be discussed at that time based on performance, responsibilities, business needs and management approval.</div>
+            ].map((route, index) => <div key={route} className="rounded-2xl border border-slate-200 bg-white p-6 shadow-[0_14px_35px_rgba(15,23,42,0.04)]"><div className="pf-eyebrow text-[#000080]">Route {index + 1}</div><div className="mt-3 text-lg font-semibold leading-7 tracking-[-0.02em] text-[#071126]">{route}</div><div className="mt-3 text-xs leading-5 text-slate-500">Verified paid sales from your most recent 3 months.</div></div>)}</div>
+            <div className="mt-5 rounded-2xl border border-[#000080]/10 bg-[#000080]/5 p-6">
+              <div className="pf-eyebrow text-[#000080]">How it works</div>
+              <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                {[
+                  ['1', 'Work with ProFox for at least 6 months.'],
+                  ['2', 'Complete any 1 route using verified paid sales from your latest 3 months.'],
+                  ['3', 'Management reviews your performance and may invite you to discuss a monthly salary.'],
+                ].map(([step, text]) => <div key={step} className="rounded-xl border border-[#000080]/10 bg-white/80 p-4"><div className="grid h-7 w-7 place-items-center rounded-full bg-[#000080] text-xs font-bold text-white">{step}</div><p className="mt-3 text-sm leading-6 text-slate-700">{text}</p></div>)}
+              </div>
+              <p className="mt-4 text-sm leading-6 text-slate-600"><strong className="font-bold text-[#071126]">Important:</strong> a salary is not automatic or guaranteed. Any offer depends on performance, responsibilities, business needs and management approval.</p>
+            </div>
           </div>
         </div>
       </div>
