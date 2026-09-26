@@ -71,6 +71,40 @@ for (const route of ['/pricing', '/careers', '/talent-partner-program']) {
   });
 }
 
+test('careers hero stays locked to the viewport while featured jobs change', async ({ page }) => {
+  await page.goto('/careers');
+  await expect(page.locator('h1').first()).toBeVisible();
+
+  const hero = page.getByTestId('careers-hero');
+  await expect(hero).toBeVisible();
+
+  const readDimensions = () => hero.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    return {
+      width: Math.round(rect.width),
+      height: Math.round(rect.height),
+      viewportWidth: document.documentElement.clientWidth,
+      viewportHeight: window.innerHeight,
+    };
+  });
+
+  const before = await readDimensions();
+  expect(Math.abs(before.height - before.viewportHeight)).toBeLessThanOrEqual(1);
+  expect(Math.abs(before.width - before.viewportWidth)).toBeLessThanOrEqual(1);
+
+  const featuredJobButtons = page.locator('[aria-label="Featured career opportunities"] button');
+  const featuredJobCount = await featuredJobButtons.count();
+
+  if (featuredJobCount > 1) {
+    await featuredJobButtons.nth(1).click();
+    await expect(featuredJobButtons.nth(1)).toHaveAttribute('aria-current', 'true');
+
+    const after = await readDimensions();
+    expect(after.height).toBe(before.height);
+    expect(after.width).toBe(before.width);
+  }
+});
+
 test('talent partner entry is branded and exposes secure account access', async ({ page }) => {
   await page.goto('/talent-partner');
   await expect(page.getByRole('heading', { name: /help us find great people/i })).toBeVisible();
