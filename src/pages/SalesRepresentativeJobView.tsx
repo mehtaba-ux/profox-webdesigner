@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  ArrowLeft, ArrowRight, BriefcaseBusiness, CheckCircle2, Clock3, FileText, Globe2,
-  Laptop2, Loader2, Send, ShieldCheck, Target, TrendingUp, Users, Video, UploadCloud, ChevronLeft, ChevronRight
+  ArrowLeft, ArrowRight, BriefcaseBusiness, Camera, CheckCircle2, Clock3, FileText, Globe2,
+  Headphones, Laptop2, Loader2, Send, ShieldCheck, Target, TrendingUp, Users, Video, UploadCloud,
+  Volume2, Wifi, ChevronLeft, ChevronRight
 } from 'lucide-react';
 import { applicantService } from '../lib/applicantService';
 import type { PublicSalesRoleContext } from '../lib/careerService';
@@ -202,7 +203,10 @@ export default function SalesRepresentativeJobView({ context }: { context: Publi
     <section className="bg-white py-20 sm:py-24">
       <div className="pf-container">
         <SectionIntro eyebrow="Working arrangement" title="Remote, structured and self-managed." text={`${details.workingArrangement?.workingDays || 'Monday to Friday'} · Approximately ${details.workingArrangement?.expectedHoursPerWeek || 35} hours per week`} />
-        <div className="mt-9 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{(details.equipmentRequirements || []).map(item => <div key={item} className="rounded-2xl border border-slate-200 bg-[#fbfcff] p-5"><span className="grid h-10 w-10 place-items-center rounded-xl bg-[#000080]/5 text-[#000080]"><Laptop2 className="h-5 w-5" /></span><div className="mt-4 text-sm font-semibold leading-6 text-slate-800">{item}</div></div>)}</div>
+        <div className="mt-9 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{(details.equipmentRequirements || []).map(item => {
+          const RequirementIcon = getEquipmentRequirementIcon(item);
+          return <div key={item} className="rounded-2xl border border-slate-200 bg-[#fbfcff] p-5"><span className="grid h-10 w-10 place-items-center rounded-xl bg-[#000080]/5 text-[#000080]"><RequirementIcon className="h-5 w-5" aria-hidden="true" /></span><div className="mt-4 text-sm font-semibold leading-6 text-slate-800">{item}</div></div>;
+        })}</div>
       </div>
     </section>
 
@@ -265,6 +269,21 @@ export default function SalesRepresentativeJobView({ context }: { context: Publi
 
     <ApplicationSection context={context} />
   </div>;
+}
+
+function getEquipmentRequirementIcon(item: string) {
+  const label = item.trim().toLowerCase();
+
+  if (label.includes('laptop') || label.includes('desktop') || label.includes('computer')) return Laptop2;
+  if (label.includes('internet') || label.includes('wifi') || label.includes('wi-fi')) return Wifi;
+  if (label.includes('workspace') || label.includes('work space')) return BriefcaseBusiness;
+  if (label.includes('audio') || label.includes('quiet environment')) return Volume2;
+  if (label.includes('headset') || label.includes('headphone')) return Headphones;
+  if (label.includes('webcam') || label.includes('camera')) return Camera;
+  if (label.includes('zoom')) return Video;
+  if (label.includes('google meet') || label.includes('meet')) return Users;
+
+  return CheckCircle2;
 }
 
 function ApplicationSection({ context }: { context: PublicSalesRoleContext }) {
