@@ -130,6 +130,42 @@ test('sales role experience accepts years and months while preserving total mont
   })).toBe('27');
 });
 
+test('sales application validation scrolls to the first error without duplicate messages', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/careers/independent-sales-representative#apply');
+
+  const continueButton = page.getByRole('button', { name: /Continue/i });
+  await continueButton.click();
+
+  const experienceError = page.getByText('This role currently requires at least 6 months of sales experience.');
+  await expect(experienceError).toHaveCount(1);
+  await expect(experienceError).toBeVisible();
+  await expect(page.getByLabel('Total sales experience years')).toBeFocused();
+
+  await expect.poll(async () => experienceError.evaluate((element) => {
+    const target = element.closest('[data-validation-target="true"]');
+    if (!target) return false;
+    const rect = target.getBoundingClientRect();
+    return rect.top >= 0 && rect.bottom <= window.innerHeight;
+  })).toBe(true);
+
+  await page.getByLabel('Total sales experience years').fill('1');
+  await continueButton.click();
+
+  const hoursError = page.getByText('This role currently requires at least 35 available hours per week.');
+  await expect(hoursError).toHaveCount(1);
+  await expect(hoursError).toBeVisible();
+  await expect(page.getByLabel('Hours available per week *')).toBeFocused();
+
+  await page.getByLabel('Hours available per week *').fill('35');
+  await continueButton.click();
+
+  const eligibilityError = page.getByText('Please confirm every current role requirement before continuing.');
+  await expect(eligibilityError).toHaveCount(1);
+  await expect(eligibilityError).toBeVisible();
+  await expect(page.getByRole('checkbox').first()).toBeFocused();
+});
+
 test('sales role apply CTA becomes sticky after the hero on mobile', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/careers/independent-sales-representative');
