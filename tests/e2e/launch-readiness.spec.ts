@@ -105,6 +105,32 @@ test('careers hero stays locked to the viewport while featured jobs change', asy
   }
 });
 
+test('sales role apply CTA becomes sticky after the hero on mobile', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/careers/independent-sales-representative');
+  await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+
+  const hero = page.getByTestId('sales-role-hero');
+  await expect(hero).toBeVisible();
+  await expect(page.getByTestId('sticky-apply-cta')).toHaveCount(0);
+
+  await hero.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    window.scrollTo({ top: window.scrollY + rect.bottom + 8, behavior: 'instant' });
+  });
+
+  const stickyApply = page.getByTestId('sticky-apply-cta');
+  await expect(stickyApply).toBeVisible();
+  await expect(stickyApply).toHaveAttribute('href', '#apply');
+  await expect(stickyApply).toContainText('Apply for this role');
+
+  const box = await stickyApply.boundingBox();
+  expect(box).not.toBeNull();
+  expect(box!.x).toBeGreaterThanOrEqual(0);
+  expect(box!.x + box!.width).toBeLessThanOrEqual(390);
+  expect(box!.y + box!.height).toBeLessThanOrEqual(844);
+});
+
 test('talent partner entry is branded and exposes secure account access', async ({ page }) => {
   await page.goto('/talent-partner');
   await expect(page.getByRole('heading', { name: /help us find great people/i })).toBeVisible();
