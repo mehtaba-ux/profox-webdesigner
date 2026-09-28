@@ -173,6 +173,23 @@ test('sales application country selection persists and validates correctly', asy
   await expect(page.getByText('Select your country.')).toHaveCount(0);
 });
 
+test('sales application omits CRM experience while keeping measurable sales result', async ({ page }) => {
+  await page.addInitScript(() => {
+    window.localStorage.setItem('profox:sales-application-draft:independent-sales-representative', JSON.stringify({
+      step: 2,
+      form: {},
+      cvName: '',
+    }));
+  });
+
+  await page.goto('/careers/independent-sales-representative#apply');
+
+  await expect(page.getByText('Show us how you sell')).toBeVisible();
+  await expect(page.getByText('CRM experience (optional)')).toHaveCount(0);
+  await expect(page.getByPlaceholder('Which CRM systems have you used and how did you use them?')).toHaveCount(0);
+  await expect(page.getByText('One measurable sales result *')).toBeVisible();
+});
+
 test('sales application validation scrolls to the first error without duplicate messages', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/careers/independent-sales-representative#apply');
