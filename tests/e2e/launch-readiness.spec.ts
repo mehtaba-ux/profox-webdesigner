@@ -190,6 +190,39 @@ test('sales application omits CRM experience while keeping measurable sales resu
   await expect(page.getByText('One measurable sales result *')).toBeVisible();
 });
 
+test('sales application scrolls each successful next step to the form top', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.addInitScript(() => {
+    window.localStorage.setItem('profox:sales-application-draft:independent-sales-representative', JSON.stringify({
+      step: 0,
+      form: {
+        salesExperienceMonths: '12',
+        availableHoursPerWeek: '40',
+        comfortableCommission: true,
+        comfortableSourcing: true,
+        comfortableEnglishCalls: true,
+        hasLaptopInternet: true,
+        videoCommitment: true,
+      },
+      cvName: '',
+    }));
+  });
+
+  await page.goto('/careers/independent-sales-representative#apply');
+
+  const continueButton = page.getByRole('button', { name: /Continue/i });
+  await continueButton.scrollIntoViewIfNeeded();
+  await continueButton.click();
+
+  await expect(page.getByText('Personal and contact details')).toBeVisible();
+
+  const stepStart = page.getByTestId('sales-application-step-start');
+  await expect.poll(async () => stepStart.evaluate((element) => {
+    const top = element.getBoundingClientRect().top;
+    return top >= 0 && top <= 140;
+  })).toBe(true);
+});
+
 test('sales application validation scrolls to the first error without duplicate messages', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/careers/independent-sales-representative#apply');
