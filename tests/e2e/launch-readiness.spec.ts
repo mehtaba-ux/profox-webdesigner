@@ -190,6 +190,47 @@ test('sales application omits CRM experience while keeping measurable sales resu
   await expect(page.getByText('One measurable sales result *')).toBeVisible();
 });
 
+test('sales application omits retired B2B and outreach fields with no hidden validation', async ({ page }) => {
+  await page.addInitScript(() => {
+    const future = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    window.localStorage.setItem('profox:sales-application-draft:independent-sales-representative', JSON.stringify({
+      step: 3,
+      form: {
+        b2bExperienceMonths: '18',
+        crmExperience: 'Legacy CRM answer',
+        sampleOutreachMessage: 'Legacy outreach answer that should not remain in the current form.',
+        availableDays: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
+        availableHoursPerWeek: '40',
+        earliestStartDate: future,
+        heardAboutSource: 'ProFox website',
+      },
+      cvName: '',
+    }));
+  });
+
+  await page.goto('/careers/independent-sales-representative#apply');
+
+  await expect(page.getByText('Availability and work preferences')).toBeVisible();
+  await expect(page.getByText('Sample cold outreach message *')).toHaveCount(0);
+  await expect(page.getByText('B2B sales experience in months (optional)')).toHaveCount(0);
+
+  await expect.poll(async () => page.evaluate(() => {
+    const raw = window.localStorage.getItem('profox:sales-application-draft:independent-sales-representative');
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    const form = parsed?.form || {};
+    return {
+      hasB2B: Object.prototype.hasOwnProperty.call(form, 'b2bExperienceMonths'),
+      hasCrm: Object.prototype.hasOwnProperty.call(form, 'crmExperience'),
+      hasOutreach: Object.prototype.hasOwnProperty.call(form, 'sampleOutreachMessage'),
+    };
+  })).toEqual({ hasB2B: false, hasCrm: false, hasOutreach: false });
+
+  await page.getByRole('button', { name: /Continue/i }).click();
+  await expect(page.getByText('Proof, introduction video and consent')).toBeVisible();
+  await expect(page.getByText('Write a short sample message to a qualified prospect.')).toHaveCount(0);
+});
+
 test('sales application scrolls each successful next step to the form top', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.addInitScript(() => {
