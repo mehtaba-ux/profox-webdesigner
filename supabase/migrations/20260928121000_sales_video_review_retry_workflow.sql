@@ -134,7 +134,7 @@ ProFox Recruitment Team$text$,
 (
   'recruitment_video_retry_submission_received',
   'Recruitment - video retry submission received',
-  'Interview retry received — ProFox',
+  'Interview retry received - ProFox',
   $text$Hi {{fullName}},
 
 We successfully received your new introduction-video submission.
@@ -155,7 +155,7 @@ ProFox Recruitment Team$text$,
 (
   'recruitment_video_retry_admin_submitted',
   'Recruitment - video retry submitted to admin',
-  'Interview retry submitted — {{fullName}}',
+  'Interview retry submitted - {{fullName}}',
   $text$A candidate has submitted a new introduction-video retry.
 
 Candidate: {{fullName}}
@@ -175,7 +175,7 @@ Review the candidate in ProFox:
 (
   'recruitment_video_retry_overdue_admin',
   'Recruitment - video retry overdue',
-  'Interview retry overdue — {{fullName}}',
+  'Interview retry overdue - {{fullName}}',
   $text$The requested introduction-video retry is overdue.
 
 Candidate: {{fullName}}
