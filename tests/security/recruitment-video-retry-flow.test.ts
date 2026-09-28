@@ -7,6 +7,7 @@ const suppressionGuard = fs.readFileSync('supabase/migrations/20260928124500_sal
 const persistentLinks = fs.readFileSync('supabase/migrations/20260928140000_recruitment_video_retry_persistent_links.sql','utf8');
 const taskService = fs.readFileSync('src/lib/recruitmentTaskService.ts','utf8');
 const workflow = fs.readFileSync('src/components/admin/RecruitmentWorkflowPanel.tsx','utf8');
+const detail = fs.readFileSync('src/components/admin/RecruitmentApplicantDetailModal.tsx','utf8');
 const page = fs.readFileSync('src/pages/RecruitmentVideoRetryPage.tsx','utf8');
 const app = fs.readFileSync('src/App.tsx','utf8');
 
@@ -30,7 +31,13 @@ test('candidate retry page and route are present', () => {
 test('admin scoring stays locked until the retry is submitted', () => {
   assert.match(workflow, /candidate must submit the requested interview-video retry/i);
   assert.match(workflow, /defaultEvidenceUrl/);
-  assert.match(workflow, /Open Submitted Retry Video/);
+  assert.match(workflow, /Interview video attempts/);
+  assert.match(workflow, /Original submission/);
+  assert.match(workflow, /Retry submission/);
+  assert.match(workflow, /Open Attempt #/);
+  assert.match(workflow, /task\?\.finalData\?\.videoUrl/);
+  assert.match(workflow, /videoRetryTasks/);
+  assert.match(detail, /originalVideoUrl=\{videoUrl\}/);
 });
 
 
