@@ -105,6 +105,31 @@ test('careers hero stays locked to the viewport while featured jobs change', asy
   }
 });
 
+test('sales role experience accepts years and months while preserving total months', async ({ page }) => {
+  await page.goto('/careers/independent-sales-representative#apply');
+
+  const years = page.getByLabel('Total sales experience years');
+  const months = page.getByLabel('Total sales experience additional months');
+
+  await expect(years).toBeVisible();
+  await expect(months).toBeVisible();
+
+  await years.fill('2');
+  await months.fill('3');
+
+  await expect(page.getByText('27 months total')).toBeVisible();
+
+  await expect.poll(async () => page.evaluate(() => {
+    const raw = window.localStorage.getItem('profox:sales-application-draft:independent-sales-representative');
+    if (!raw) return null;
+    try {
+      return JSON.parse(raw)?.form?.salesExperienceMonths ?? null;
+    } catch {
+      return null;
+    }
+  })).toBe('27');
+});
+
 test('sales role apply CTA becomes sticky after the hero on mobile', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/careers/independent-sales-representative');
