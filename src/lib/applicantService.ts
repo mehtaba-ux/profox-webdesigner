@@ -70,10 +70,10 @@ export interface ApplicantTimelineEvent {
 
 export interface SalesApplicationV3Payload {
   fullName:string; email:string; phone:string; country:string; countryCode:string; timezone:string; linkedinUrl:string; currentRole?:string;
-  salesExperience:string; salesExperienceMonths:number; b2bExperienceMonths?:number|null; digitalSalesExperience?:string; internationalSalesExperience?:string;
-  englishRating:string; previousSalesResults:string; targetMarkets:string[]; prospectingChannels:string[]; crmExperience?:string;
+  salesExperience:string; salesExperienceMonths:number; digitalSalesExperience?:string; internationalSalesExperience?:string;
+  englishRating:string; previousSalesResults:string; targetMarkets:string[]; prospectingChannels:string[];
   availableDays:string[]; availableHoursPerWeek:number; preferredWorkWindow?:string; earliestStartDate?:string;
-  sampleOutreachMessage:string; professionalReference?:string; heardAboutSource?:string; heardAboutDetail?:string; message?:string;
+  professionalReference?:string; heardAboutSource?:string; heardAboutDetail?:string; message?:string;
   hasLaptopInternet:boolean; comfortableCommission:boolean; comfortableSourcing:boolean; comfortableEnglishCalls:boolean; videoCommitment:boolean;
   consentAccurate:boolean; consentPrivacy:boolean; cvUrl?:string; videoUrl?:string; cvStoragePath?:string; videoStoragePath?:string;
 }
