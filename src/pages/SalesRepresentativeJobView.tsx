@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   ArrowLeft, ArrowRight, BriefcaseBusiness, Camera, CheckCircle2, Clock3, FileText, Globe2,
@@ -69,9 +69,39 @@ function readApplicationDraft(key: string): ApplicationDraft | null {
 export default function SalesRepresentativeJobView({ context }: { context: PublicSalesRoleContext }) {
   const { job, products, additionalServices, careerProgression } = context;
   const details = job.roleDetails || {};
+  const heroRef = useRef<HTMLElement | null>(null);
+  const [showStickyApply, setShowStickyApply] = useState(false);
+
+  useEffect(() => {
+    const hero = heroRef.current;
+    if (!hero) return;
+
+    const syncStickyState = () => {
+      const rect = hero.getBoundingClientRect();
+      setShowStickyApply(rect.bottom <= 0);
+    };
+
+    syncStickyState();
+
+    if (typeof IntersectionObserver === 'undefined') {
+      window.addEventListener('scroll', syncStickyState, { passive: true });
+      window.addEventListener('resize', syncStickyState);
+      return () => {
+        window.removeEventListener('scroll', syncStickyState);
+        window.removeEventListener('resize', syncStickyState);
+      };
+    }
+
+    const observer = new IntersectionObserver(([entry]) => {
+      setShowStickyApply(!entry.isIntersecting && entry.boundingClientRect.bottom <= 0);
+    }, { threshold: 0 });
+
+    observer.observe(hero);
+    return () => observer.disconnect();
+  }, []);
 
   return <div className="min-h-screen bg-white text-slate-950">
-    <section className="border-b border-slate-100 bg-[#fbfcff] pt-28 sm:pt-32">
+    <section ref={heroRef} data-testid="sales-role-hero" className="border-b border-slate-100 bg-[#fbfcff] pt-28 sm:pt-32">
       <div className="pf-container pb-16 sm:pb-20 lg:pb-24">
         <Link to="/careers" className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3.5 py-1.5 text-[11px] font-bold text-slate-500 transition hover:border-slate-300 hover:text-[#000080]">
           <ArrowLeft className="h-3.5 w-3.5" /> Back to Careers
@@ -123,6 +153,18 @@ export default function SalesRepresentativeJobView({ context }: { context: Publi
         </div>
       </div>
     </section>
+
+    {showStickyApply && (
+      <a
+        href="#apply"
+        data-testid="sticky-apply-cta"
+        className="fixed bottom-4 left-4 z-40 inline-flex max-w-[calc(100vw-7rem)] items-center gap-2 rounded-xl bg-[#000080] px-4 py-3 text-xs font-bold text-white shadow-[0_16px_40px_rgba(0,0,128,0.28)] ring-1 ring-white/60 transition hover:bg-[#000066] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#000080] focus-visible:ring-offset-2 sm:bottom-6 sm:left-6 sm:max-w-none sm:px-5 sm:text-sm"
+        aria-label="Apply for this role"
+      >
+        <span className="truncate">Apply for this role</span>
+        <ArrowRight className="h-4 w-4 shrink-0" aria-hidden="true" />
+      </a>
+    )}
 
     <nav className="border-b border-slate-200 bg-white" aria-label="Role sections">
       <div className="pf-container overflow-x-auto">
