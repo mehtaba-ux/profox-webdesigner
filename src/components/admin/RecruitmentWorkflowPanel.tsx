@@ -14,6 +14,7 @@ import {
   Settings2,
   ShieldCheck,
   UserCheck,
+  Video,
   XCircle,
 } from 'lucide-react';
 import type { ApplicantRecord } from '../../lib/applicantService';
@@ -40,6 +41,7 @@ import SalesAcademyTestBypassControl from './SalesAcademyTestBypassControl';
 interface Props {
   applicant: ApplicantRecord;
   currentAdminId?: string;
+  originalVideoUrl?: string;
   onChanged: () => Promise<void>;
 }
 
@@ -109,7 +111,95 @@ function formatDuration(hours: number) {
   return `${Math.floor(hours / 24)}d ${Math.round(hours % 24)}h`;
 }
 
-export default function RecruitmentWorkflowPanel({ applicant, currentAdminId, onChanged }: Props) {
+function VideoAttemptCard({
+  attemptNo,
+  sourceLabel,
+  videoUrl,
+  submittedAt,
+  issuedAt,
+  taskStatus,
+  assessment,
+}: {
+  attemptNo: number;
+  sourceLabel: string;
+  videoUrl: string;
+  submittedAt?: string | null;
+  issuedAt?: string | null;
+  taskStatus?: string;
+  assessment?: RecruitmentAssessment;
+}) {
+  const reviewLabel = assessment
+    ? 'Reviewed · ' + assessment.status
+    : submittedAt
+      ? 'Submitted · Awaiting review'
+      : taskStatus || 'Awaiting submission';
+  const statusClass = assessment?.status === 'Passed'
+    ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+    : assessment?.status === 'Failed'
+      ? 'border-red-200 bg-red-50 text-red-700'
+      : assessment?.status === 'Retry Required'
+        ? 'border-amber-200 bg-amber-50 text-amber-800'
+        : submittedAt
+          ? 'border-blue-200 bg-blue-50 text-[#000080]'
+          : 'border-slate-200 bg-slate-100 text-slate-600';
+
+  return (
+    <article className="rounded-2xl border border-slate-200 bg-slate-50/60 p-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <div className="text-xs font-black uppercase tracking-[0.12em] text-[#000080]">Attempt #{attemptNo}</div>
+          <div className="mt-1 text-base font-bold text-slate-950">{sourceLabel}</div>
+        </div>
+        <span className={'rounded-full border px-2.5 py-1 text-xs font-bold ' + statusClass}>{reviewLabel}</span>
+      </div>
+
+      <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs leading-5 text-slate-500">
+        {issuedAt && <span>Issued: <strong className="font-semibold text-slate-700">{fmt(issuedAt)}</strong></span>}
+        {submittedAt && <span>Submitted: <strong className="font-semibold text-slate-700">{fmt(submittedAt)}</strong></span>}
+      </div>
+
+      {videoUrl ? (
+        <a
+          href={videoUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-[#000080]/20 bg-white px-3 py-2.5 text-sm font-bold text-[#000080] transition hover:border-[#000080]/40 hover:bg-[#F0F2F9]"
+        >
+          <Video className="h-4 w-4" />
+          Open Attempt #{attemptNo} Video
+        </a>
+      ) : (
+        <div className="mt-3 rounded-lg border border-dashed border-slate-300 bg-white p-3 text-sm leading-6 text-slate-600">
+          {submittedAt
+            ? 'This attempt is marked submitted, but no submitted video reference is available in the preserved record.'
+            : 'No submitted video is available for this attempt yet.'}
+        </div>
+      )}
+
+      {assessment ? (
+        <div className="mt-3 rounded-xl border border-slate-200 bg-white p-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="text-sm font-bold text-slate-900">Assessment #{assessment.attemptNo}</div>
+            {assessment.evaluatedAt && <div className="text-xs text-slate-500">Saved {fmt(assessment.evaluatedAt)}</div>}
+          </div>
+          <div className="mt-2 grid gap-2 sm:grid-cols-3">
+            <div><div className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Score</div><div className="mt-0.5 text-sm font-black text-slate-900">{assessment.score}%</div></div>
+            <div><div className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Decision</div><div className="mt-0.5 text-sm font-black text-slate-900">{assessment.status}</div></div>
+            <div><div className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Evaluator</div><div className="mt-0.5 text-sm font-semibold text-slate-700">{assessment.evaluatorName || 'Not recorded'}</div></div>
+          </div>
+        </div>
+      ) : (
+        <div className="mt-3 text-xs leading-5 text-slate-500">
+          {submittedAt
+            ? <>Assessment #{attemptNo} has not been recorded yet.</>
+            : <>Assessment #{attemptNo} stays locked until this video attempt is submitted.</>}
+        </div>
+      )}
+    </article>
+  );
+}
+
+export default function RecruitmentWorkflowPanel({ applicant, currentAdminId, originalVideoUrl = '', onChanged }: Props) {
   const [policies, setPolicies] = useState<RecruitmentStagePolicy[]>([]);
   const [assessments, setAssessments] = useState<RecruitmentAssessment[]>([]);
   const [interviews, setInterviews] = useState<RecruitmentInterview[]>([]);
@@ -183,6 +273,27 @@ export default function RecruitmentWorkflowPanel({ applicant, currentAdminId, on
   const currentInterviews = useMemo(() => interviews.filter(item => item.stage === String(applicant.stage)), [interviews, applicant.stage]);
   const latestInterview = currentInterviews[0];
   const currentTasks = useMemo(() => tasks.filter(item => item.stage === String(applicant.stage)), [tasks, applicant.stage]);
+  const videoRetryTasks = useMemo(
+    () => tasks
+      .filter(item => item.taskKey === 'sales_video_retry_v1' && item.attemptNo > 1)
+      .sort((a, b) => a.attemptNo - b.attemptNo),
+    [tasks],
+  );
+  const videoAssessments = useMemo(
+    () => assessments
+      .filter(item => item.stage === 'Video Review' && item.attemptNo > 0)
+      .sort((a, b) => a.attemptNo - b.attemptNo),
+    [assessments],
+  );
+  const originalInterviewVideoUrl = originalVideoUrl || applicant.videoUrl || '';
+  const videoAttemptNumbers = useMemo(() => {
+    const attempts = new Set<number>();
+    if (originalInterviewVideoUrl || applicant.videoStoragePath || videoAssessments.some(item => item.attemptNo === 1)) attempts.add(1);
+    videoRetryTasks.forEach(item => attempts.add(item.attemptNo));
+    videoAssessments.forEach(item => attempts.add(item.attemptNo));
+    return Array.from(attempts).sort((a, b) => a - b);
+  }, [applicant.videoStoragePath, originalInterviewVideoUrl, videoAssessments, videoRetryTasks]);
+  const showVideoAttemptHistory = jobContext.systemRole === 'sales' && videoAttemptNumbers.length > 0;
   const videoRetryTask = currentTasks.find(item => item.taskKey === 'sales_video_retry_v1');
   const latestTask = videoRetryTask || currentTasks[0];
   const isVideoRetryTask = latestTask?.taskKey === 'sales_video_retry_v1';
@@ -393,14 +504,51 @@ export default function RecruitmentWorkflowPanel({ applicant, currentAdminId, on
           </div>
         )}
 
+        {showVideoAttemptHistory && (
+          <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <div className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-[#000080]"><Video className="h-4 w-4" />Interview video attempts</div>
+                <p className="mt-1 text-sm leading-6 text-slate-600">Every submitted introduction video and its matching evaluator attempt stay separate. A retry never replaces the original submission.</p>
+              </div>
+              <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-bold text-slate-600">
+                {videoAttemptNumbers.length} {videoAttemptNumbers.length === 1 ? 'attempt' : 'attempts'} on record
+              </span>
+            </div>
+
+            <div className="mt-4 space-y-3">
+              {videoAttemptNumbers.map(attemptNo => {
+                const task = videoRetryTasks.find(item => item.attemptNo === attemptNo);
+                const assessment = videoAssessments.find(item => item.attemptNo === attemptNo);
+                const isOriginalAttempt = attemptNo === 1;
+                const recordedVideoUrl = isOriginalAttempt
+                  ? originalInterviewVideoUrl || String(assessment?.evidenceUrl || '')
+                  : String(task?.finalData?.videoUrl || assessment?.evidenceUrl || '');
+                return (
+                  <VideoAttemptCard
+                    key={'video-attempt-' + attemptNo}
+                    attemptNo={attemptNo}
+                    sourceLabel={isOriginalAttempt ? 'Original submission' : 'Retry submission'}
+                    videoUrl={recordedVideoUrl}
+                    submittedAt={isOriginalAttempt ? applicant.applicationSubmittedAt || applicant.createdAt : task?.submittedAt}
+                    issuedAt={isOriginalAttempt ? null : task?.issuedAt}
+                    taskStatus={isOriginalAttempt ? undefined : task?.status}
+                    assessment={assessment}
+                  />
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {(taskGateRequired || currentTasks.length > 0) && (
           <div className="mt-4 rounded-2xl border border-indigo-200 bg-indigo-50/50 p-4 sm:p-5">
             <div className="flex items-start justify-between gap-3">
               <div><div className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-[#000080]"><ClipboardList className="h-4 w-4"/>{isVideoRetryTask ? 'Candidate interview-video retry' : 'Candidate practical task'}</div><p className="mt-1 text-sm leading-6 text-slate-600">{isVideoRetryTask ? 'The first interview-video assessment stays preserved. A new assessment attempt unlocks only after the candidate submits the requested replacement video.' : 'Candidate submission and evaluator scoring are stored separately. Final assessment is unlocked only after the current task attempt is submitted.'}</p></div>
               {!isVideoRetryTask && <a href="/admin/recruitment-task-settings" className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-indigo-200 bg-white px-2.5 py-2 text-xs font-bold text-[#000080]"><Settings2 className="h-3.5 w-3.5"/>Settings</a>}
             </div>
-            {latestTask ? <div className="mt-4"><div className="grid gap-3 sm:grid-cols-3"><div className="rounded-xl border border-indigo-100 bg-white p-3.5"><div className="text-xs font-bold uppercase tracking-wide text-slate-500">Status</div><div className="mt-1 text-base font-black text-slate-900">{latestTask.status}</div></div><div className="rounded-xl border border-indigo-100 bg-white p-3.5"><div className="text-xs font-bold uppercase tracking-wide text-slate-500">Attempt</div><div className="mt-1 text-base font-black text-slate-900">#{latestTask.attemptNo} of {latestTask.maxAttempts}</div></div><div className="rounded-xl border border-indigo-100 bg-white p-3.5"><div className="text-xs font-bold uppercase tracking-wide text-slate-500">Deadline</div><div className="mt-1 text-sm font-bold leading-5 text-slate-900">{fmt(latestTask.dueAt)}</div></div></div><div className="mt-3 text-sm leading-6 text-slate-600">{latestTask.submittedAt ? <>Submitted: <strong className="text-slate-900">{fmt(latestTask.submittedAt)}</strong></> : latestTask.lastSavedAt ? <>Last draft saved: <strong className="text-slate-900">{fmt(latestTask.lastSavedAt)}</strong></> : latestTask.viewedAt ? <>Candidate opened task: <strong className="text-slate-900">{fmt(latestTask.viewedAt)}</strong></> : <>Secure task issued: <strong className="text-slate-900">{fmt(latestTask.issuedAt)}</strong></>}</div>{isVideoRetryTask && latestTask.submittedAt && latestTask.finalData?.videoUrl && <a href={latestTask.finalData.videoUrl} target="_blank" rel="noreferrer" className="mt-4 inline-flex w-full items-center justify-center rounded-xl border border-indigo-200 bg-white px-4 py-3 text-sm font-bold text-[#000080]">Open Submitted Retry Video</a>}<button type="button" onClick={()=>setSelectedTask(latestTask)} className="mt-3 w-full rounded-xl bg-[#000080] px-4 py-3 text-sm font-bold text-white">{latestTask.submittedAt ? (isVideoRetryTask ? 'Review Retry Submission' : 'Review Submission') : (isVideoRetryTask ? 'Manage Video Retry' : 'Manage Candidate Task')}</button>{!taskReadyForAssessment && <p className="mt-3 text-sm leading-6 text-amber-800">{isVideoRetryTask ? 'Waiting for the candidate to submit the replacement interview video. Attempt #1 remains preserved and a new evaluator attempt is locked until submission.' : 'Waiting for final candidate submission. Assessment scoring is intentionally locked until this attempt is submitted.'}</p>}</div> : <div className="mt-4 rounded-xl border border-dashed border-indigo-200 bg-white p-4 text-sm leading-6 text-slate-600">The secure task has not been issued yet. Entering Lead Research Assessment automatically creates and emails the task; refresh if this candidate was already at the stage before the task system was enabled.</div>}
-            {currentTasks.length > 1 && <div className="mt-3 text-xs font-semibold text-slate-500">{currentTasks.length} task attempts are preserved in this candidate history.</div>}
+            {latestTask ? <div className="mt-4"><div className="grid gap-3 sm:grid-cols-3"><div className="rounded-xl border border-indigo-100 bg-white p-3.5"><div className="text-xs font-bold uppercase tracking-wide text-slate-500">Status</div><div className="mt-1 text-base font-black text-slate-900">{latestTask.status}</div></div><div className="rounded-xl border border-indigo-100 bg-white p-3.5"><div className="text-xs font-bold uppercase tracking-wide text-slate-500">Attempt</div><div className="mt-1 text-base font-black text-slate-900">#{latestTask.attemptNo} of {latestTask.maxAttempts}</div></div><div className="rounded-xl border border-indigo-100 bg-white p-3.5"><div className="text-xs font-bold uppercase tracking-wide text-slate-500">Deadline</div><div className="mt-1 text-sm font-bold leading-5 text-slate-900">{fmt(latestTask.dueAt)}</div></div></div><div className="mt-3 text-sm leading-6 text-slate-600">{latestTask.submittedAt ? <>Submitted: <strong className="text-slate-900">{fmt(latestTask.submittedAt)}</strong></> : latestTask.lastSavedAt ? <>Last draft saved: <strong className="text-slate-900">{fmt(latestTask.lastSavedAt)}</strong></> : latestTask.viewedAt ? <>Candidate opened task: <strong className="text-slate-900">{fmt(latestTask.viewedAt)}</strong></> : <>Secure task issued: <strong className="text-slate-900">{fmt(latestTask.issuedAt)}</strong></>}</div><button type="button" onClick={()=>setSelectedTask(latestTask)} className="mt-3 w-full rounded-xl bg-[#000080] px-4 py-3 text-sm font-bold text-white">{latestTask.submittedAt ? (isVideoRetryTask ? 'Review Retry Submission' : 'Review Submission') : (isVideoRetryTask ? 'Manage Video Retry' : 'Manage Candidate Task')}</button>{!taskReadyForAssessment && <p className="mt-3 text-sm leading-6 text-amber-800">{isVideoRetryTask ? 'Waiting for the candidate to submit the replacement interview video. Attempt #1 remains preserved and a new evaluator attempt is locked until submission.' : 'Waiting for final candidate submission. Assessment scoring is intentionally locked until this attempt is submitted.'}</p>}</div> : <div className="mt-4 rounded-xl border border-dashed border-indigo-200 bg-white p-4 text-sm leading-6 text-slate-600">The secure task has not been issued yet. Entering Lead Research Assessment automatically creates and emails the task; refresh if this candidate was already at the stage before the task system was enabled.</div>}
+            {!isVideoRetryTask && currentTasks.length > 1 && <div className="mt-3 text-xs font-semibold text-slate-500">{currentTasks.length} task attempts are preserved in this candidate history.</div>}
           </div>
         )}
 
