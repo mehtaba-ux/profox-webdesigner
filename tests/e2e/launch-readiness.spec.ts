@@ -130,6 +130,49 @@ test('sales role experience accepts years and months while preserving total mont
   })).toBe('27');
 });
 
+test('sales application country selection persists and validates correctly', async ({ page }) => {
+  await page.addInitScript(() => {
+    window.localStorage.setItem('profox:sales-application-draft:independent-sales-representative', JSON.stringify({
+      step: 1,
+      form: {
+        fullName: 'Test Candidate',
+        email: 'candidate@example.com',
+        phone: '+918894135994',
+        country: '',
+        countryCode: '',
+        timezone: 'Asia/Calcutta',
+        linkedinUrl: 'https://www.linkedin.com/in/test-candidate',
+      },
+      cvName: '',
+    }));
+  });
+
+  await page.goto('/careers/independent-sales-representative#apply');
+
+  const country = page.getByLabel('Country *');
+  await expect(country).toBeVisible();
+  await country.selectOption('IN');
+  await expect(country).toHaveValue('IN');
+
+  await expect.poll(async () => page.evaluate(() => {
+    const raw = window.localStorage.getItem('profox:sales-application-draft:independent-sales-representative');
+    if (!raw) return null;
+    try {
+      const parsed = JSON.parse(raw);
+      return {
+        countryCode: parsed?.form?.countryCode ?? null,
+        country: parsed?.form?.country ?? null,
+      };
+    } catch {
+      return null;
+    }
+  })).toEqual({ countryCode: 'IN', country: 'India' });
+
+  await page.getByRole('button', { name: /Continue/i }).click();
+  await expect(page.getByText('Show us how you sell')).toBeVisible();
+  await expect(page.getByText('Select your country.')).toHaveCount(0);
+});
+
 test('sales application validation scrolls to the first error without duplicate messages', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/careers/independent-sales-representative#apply');
