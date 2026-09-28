@@ -650,9 +650,11 @@ begin
   where applicant_id=new.applicant_id and stage=new.stage and attempt_no=new.attempt_no
   order by created_at desc limit 1;
   if not found or v_task.status not in('Submitted','Under Review') or v_task.submitted_at is null then
-    raise exception case when v_task_key='sales_video_retry_v1'
-      then 'The candidate must submit the current interview-video retry before this assessment attempt can be recorded.'
-      else 'Review the candidate practical task submission before recording this assessment.' end;
+    if v_task_key='sales_video_retry_v1' then
+      raise exception 'The candidate must submit the current interview-video retry before this assessment attempt can be recorded.';
+    else
+      raise exception 'Review the candidate practical task submission before recording this assessment.';
+    end if;
   end if;
   if new.status='Retry Required' and v_task.attempt_no>=coalesce(v_max_attempts,(v_task.template_snapshot->>'maxAttempts')::integer,1) then
     raise exception 'Maximum recruitment task attempts reached. Mark the assessment Passed or Failed.';

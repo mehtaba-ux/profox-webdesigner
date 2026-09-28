@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { AlertCircle, CheckCircle2, Clock3, ExternalLink, Loader2, Save, Send, ShieldCheck, Video } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Clock3, Loader2, Save, Send, ShieldCheck, Video } from 'lucide-react';
 import { useParams } from 'react-router-dom';
 import { recruitmentTaskService, type PublicRecruitmentTask } from '../lib/recruitmentTaskService';
 
@@ -79,8 +79,8 @@ export default function RecruitmentVideoRetryPage() {
     try {
       await recruitmentTaskService.submit(token, { leads: [], videoUrl: videoUrl.trim(), candidateNote: candidateNote.trim() });
       setSubmitted(true);
+      setTask(current => current ? { ...current, status: 'Submitted', submittedAt: new Date().toISOString(), canEdit: false } : current);
       setMessage('Your retry video has been submitted successfully. The ProFox Recruitment Team has been notified.');
-      await load();
     } catch (err: any) {
       setError(err?.message || 'Your retry video could not be submitted.');
     } finally {
