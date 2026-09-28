@@ -498,6 +498,8 @@ export default function RecruitmentWorkflowPanel({ applicant, currentAdminId, on
           completedInterview={completedInterview}
           interviewSkipped={interviewSkipped}
           nextStage={nextStageLabel || nextStage}
+          defaultEvidence={assessmentMode === 'new' && isVideoRetryTask && latestTask ? `Candidate-submitted interview-video retry · Attempt #${latestTask.attemptNo}` : ''}
+          defaultEvidenceUrl={assessmentMode === 'new' && isVideoRetryTask ? String(latestTask?.finalData?.videoUrl || '') : ''}
           onClose={() => setAssessmentOpen(false)}
           onSaved={assessmentSaved}
         />
