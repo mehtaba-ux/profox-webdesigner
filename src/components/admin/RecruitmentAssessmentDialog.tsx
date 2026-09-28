@@ -29,6 +29,8 @@ interface Props {
   completedInterview: boolean;
   interviewSkipped: boolean;
   nextStage?: string | null;
+  defaultEvidence?: string;
+  defaultEvidenceUrl?: string;
   onClose: () => void;
   onSaved: (message: string) => Promise<void>;
 }
@@ -62,6 +64,8 @@ export default function RecruitmentAssessmentDialog({
   completedInterview,
   interviewSkipped,
   nextStage,
+  defaultEvidence = '',
+  defaultEvidenceUrl = '',
   onClose,
   onSaved,
 }: Props) {
@@ -79,8 +83,8 @@ export default function RecruitmentAssessmentDialog({
   );
   const [hasCriticalFailure, setHasCriticalFailure] = useState(Boolean(editing && assessment?.criticalFailures?.length));
   const [criticalFailures, setCriticalFailures] = useState(editing ? (assessment?.criticalFailures || []).join('\n') : '');
-  const [evidence, setEvidence] = useState(editing ? assessment?.evidence || '' : '');
-  const [evidenceUrl, setEvidenceUrl] = useState(editing ? assessment?.evidenceUrl || '' : '');
+  const [evidence, setEvidence] = useState(editing ? assessment?.evidence || '' : defaultEvidence);
+  const [evidenceUrl, setEvidenceUrl] = useState(editing ? assessment?.evidenceUrl || '' : defaultEvidenceUrl);
   const [notes, setNotes] = useState(editing ? assessment?.evaluatorNotes || '' : '');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
