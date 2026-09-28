@@ -183,9 +183,13 @@ export default function RecruitmentWorkflowPanel({ applicant, currentAdminId, on
   const currentInterviews = useMemo(() => interviews.filter(item => item.stage === String(applicant.stage)), [interviews, applicant.stage]);
   const latestInterview = currentInterviews[0];
   const currentTasks = useMemo(() => tasks.filter(item => item.stage === String(applicant.stage)), [tasks, applicant.stage]);
-  const latestTask = currentTasks[0];
+  const videoRetryTask = currentTasks.find(item => item.taskKey === 'sales_video_retry_v1');
+  const latestTask = videoRetryTask || currentTasks[0];
+  const isVideoRetryTask = latestTask?.taskKey === 'sales_video_retry_v1';
   const isContentWriter = jobContext.systemRole === 'content_writer';
-  const taskGateRequired = jobContext.systemRole === 'sales' && String(applicant.stage) === 'Lead Research Test';
+  const taskGateRequired = jobContext.systemRole === 'sales' && (
+    String(applicant.stage) === 'Lead Research Test' || Boolean(videoRetryTask)
+  );
   const taskReadyForAssessment = !taskGateRequired || Boolean(latestTask && ['Submitted', 'Under Review'].includes(latestTask.status));
   const passedAssessment = latestAssessment?.status === 'Passed';
   const completedInterview = currentInterviews.some(item => item.status === 'Completed');
