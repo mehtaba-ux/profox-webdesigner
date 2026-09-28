@@ -183,9 +183,13 @@ export default function RecruitmentWorkflowPanel({ applicant, currentAdminId, on
   const currentInterviews = useMemo(() => interviews.filter(item => item.stage === String(applicant.stage)), [interviews, applicant.stage]);
   const latestInterview = currentInterviews[0];
   const currentTasks = useMemo(() => tasks.filter(item => item.stage === String(applicant.stage)), [tasks, applicant.stage]);
-  const latestTask = currentTasks[0];
+  const videoRetryTask = currentTasks.find(item => item.taskKey === 'sales_video_retry_v1');
+  const latestTask = videoRetryTask || currentTasks[0];
+  const isVideoRetryTask = latestTask?.taskKey === 'sales_video_retry_v1';
   const isContentWriter = jobContext.systemRole === 'content_writer';
-  const taskGateRequired = jobContext.systemRole === 'sales' && String(applicant.stage) === 'Lead Research Test';
+  const taskGateRequired = jobContext.systemRole === 'sales' && (
+    String(applicant.stage) === 'Lead Research Test' || Boolean(videoRetryTask)
+  );
   const taskReadyForAssessment = !taskGateRequired || Boolean(latestTask && ['Submitted', 'Under Review'].includes(latestTask.status));
   const passedAssessment = latestAssessment?.status === 'Passed';
   const completedInterview = currentInterviews.some(item => item.status === 'Completed');
@@ -231,7 +235,7 @@ export default function RecruitmentWorkflowPanel({ applicant, currentAdminId, on
 
   const openNewAssessment = () => {
     if (!taskReadyForAssessment) {
-      setError('The candidate must submit the current Lead Research Assessment attempt before evaluator scoring can be recorded.');
+      setError(isVideoRetryTask ? 'The candidate must submit the requested interview-video retry before a new assessment attempt can be recorded.' : 'The candidate must submit the current Lead Research Assessment attempt before evaluator scoring can be recorded.');
       return;
     }
     setAssessmentMode('new');
@@ -243,7 +247,7 @@ export default function RecruitmentWorkflowPanel({ applicant, currentAdminId, on
   const openEditAssessment = () => {
     if (!latestAssessment) return;
     if (!taskReadyForAssessment) {
-      setError('The current Lead Research Assessment retry must be submitted before this stage can be assessed again.');
+      setError(isVideoRetryTask ? 'The current interview-video retry must be submitted before this stage can be assessed again.' : 'The current Lead Research Assessment retry must be submitted before this stage can be assessed again.');
       return;
     }
     setAssessmentMode('edit');
@@ -392,10 +396,10 @@ export default function RecruitmentWorkflowPanel({ applicant, currentAdminId, on
         {(taskGateRequired || currentTasks.length > 0) && (
           <div className="mt-4 rounded-2xl border border-indigo-200 bg-indigo-50/50 p-4 sm:p-5">
             <div className="flex items-start justify-between gap-3">
-              <div><div className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-[#000080]"><ClipboardList className="h-4 w-4"/>Candidate practical task</div><p className="mt-1 text-sm leading-6 text-slate-600">Candidate submission and evaluator scoring are stored separately. Final assessment is unlocked only after the current task attempt is submitted.</p></div>
-              <a href="/admin/recruitment-task-settings" className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-indigo-200 bg-white px-2.5 py-2 text-xs font-bold text-[#000080]"><Settings2 className="h-3.5 w-3.5"/>Settings</a>
+              <div><div className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-[#000080]"><ClipboardList className="h-4 w-4"/>{isVideoRetryTask ? 'Candidate interview-video retry' : 'Candidate practical task'}</div><p className="mt-1 text-sm leading-6 text-slate-600">{isVideoRetryTask ? 'The first interview-video assessment stays preserved. A new assessment attempt unlocks only after the candidate submits the requested replacement video.' : 'Candidate submission and evaluator scoring are stored separately. Final assessment is unlocked only after the current task attempt is submitted.'}</p></div>
+              {!isVideoRetryTask && <a href="/admin/recruitment-task-settings" className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-indigo-200 bg-white px-2.5 py-2 text-xs font-bold text-[#000080]"><Settings2 className="h-3.5 w-3.5"/>Settings</a>}
             </div>
-            {latestTask ? <div className="mt-4"><div className="grid gap-3 sm:grid-cols-3"><div className="rounded-xl border border-indigo-100 bg-white p-3.5"><div className="text-xs font-bold uppercase tracking-wide text-slate-500">Status</div><div className="mt-1 text-base font-black text-slate-900">{latestTask.status}</div></div><div className="rounded-xl border border-indigo-100 bg-white p-3.5"><div className="text-xs font-bold uppercase tracking-wide text-slate-500">Attempt</div><div className="mt-1 text-base font-black text-slate-900">#{latestTask.attemptNo} of {latestTask.maxAttempts}</div></div><div className="rounded-xl border border-indigo-100 bg-white p-3.5"><div className="text-xs font-bold uppercase tracking-wide text-slate-500">Deadline</div><div className="mt-1 text-sm font-bold leading-5 text-slate-900">{fmt(latestTask.dueAt)}</div></div></div><div className="mt-3 text-sm leading-6 text-slate-600">{latestTask.submittedAt ? <>Submitted: <strong className="text-slate-900">{fmt(latestTask.submittedAt)}</strong></> : latestTask.lastSavedAt ? <>Last draft saved: <strong className="text-slate-900">{fmt(latestTask.lastSavedAt)}</strong></> : latestTask.viewedAt ? <>Candidate opened task: <strong className="text-slate-900">{fmt(latestTask.viewedAt)}</strong></> : <>Secure task issued: <strong className="text-slate-900">{fmt(latestTask.issuedAt)}</strong></>}</div><button type="button" onClick={()=>setSelectedTask(latestTask)} className="mt-4 w-full rounded-xl bg-[#000080] px-4 py-3 text-sm font-bold text-white">{latestTask.submittedAt ? 'Review Submission' : 'Manage Candidate Task'}</button>{!taskReadyForAssessment && <p className="mt-3 text-sm leading-6 text-amber-800">Waiting for final candidate submission. Assessment scoring is intentionally locked until this attempt is submitted.</p>}</div> : <div className="mt-4 rounded-xl border border-dashed border-indigo-200 bg-white p-4 text-sm leading-6 text-slate-600">The secure task has not been issued yet. Entering Lead Research Assessment automatically creates and emails the task; refresh if this candidate was already at the stage before the task system was enabled.</div>}
+            {latestTask ? <div className="mt-4"><div className="grid gap-3 sm:grid-cols-3"><div className="rounded-xl border border-indigo-100 bg-white p-3.5"><div className="text-xs font-bold uppercase tracking-wide text-slate-500">Status</div><div className="mt-1 text-base font-black text-slate-900">{latestTask.status}</div></div><div className="rounded-xl border border-indigo-100 bg-white p-3.5"><div className="text-xs font-bold uppercase tracking-wide text-slate-500">Attempt</div><div className="mt-1 text-base font-black text-slate-900">#{latestTask.attemptNo} of {latestTask.maxAttempts}</div></div><div className="rounded-xl border border-indigo-100 bg-white p-3.5"><div className="text-xs font-bold uppercase tracking-wide text-slate-500">Deadline</div><div className="mt-1 text-sm font-bold leading-5 text-slate-900">{fmt(latestTask.dueAt)}</div></div></div><div className="mt-3 text-sm leading-6 text-slate-600">{latestTask.submittedAt ? <>Submitted: <strong className="text-slate-900">{fmt(latestTask.submittedAt)}</strong></> : latestTask.lastSavedAt ? <>Last draft saved: <strong className="text-slate-900">{fmt(latestTask.lastSavedAt)}</strong></> : latestTask.viewedAt ? <>Candidate opened task: <strong className="text-slate-900">{fmt(latestTask.viewedAt)}</strong></> : <>Secure task issued: <strong className="text-slate-900">{fmt(latestTask.issuedAt)}</strong></>}</div>{isVideoRetryTask && latestTask.submittedAt && latestTask.finalData?.videoUrl && <a href={latestTask.finalData.videoUrl} target="_blank" rel="noreferrer" className="mt-4 inline-flex w-full items-center justify-center rounded-xl border border-indigo-200 bg-white px-4 py-3 text-sm font-bold text-[#000080]">Open Submitted Retry Video</a>}<button type="button" onClick={()=>setSelectedTask(latestTask)} className="mt-3 w-full rounded-xl bg-[#000080] px-4 py-3 text-sm font-bold text-white">{latestTask.submittedAt ? (isVideoRetryTask ? 'Review Retry Submission' : 'Review Submission') : (isVideoRetryTask ? 'Manage Video Retry' : 'Manage Candidate Task')}</button>{!taskReadyForAssessment && <p className="mt-3 text-sm leading-6 text-amber-800">{isVideoRetryTask ? 'Waiting for the candidate to submit the replacement interview video. Attempt #1 remains preserved and a new evaluator attempt is locked until submission.' : 'Waiting for final candidate submission. Assessment scoring is intentionally locked until this attempt is submitted.'}</p>}</div> : <div className="mt-4 rounded-xl border border-dashed border-indigo-200 bg-white p-4 text-sm leading-6 text-slate-600">The secure task has not been issued yet. Entering Lead Research Assessment automatically creates and emails the task; refresh if this candidate was already at the stage before the task system was enabled.</div>}
             {currentTasks.length > 1 && <div className="mt-3 text-xs font-semibold text-slate-500">{currentTasks.length} task attempts are preserved in this candidate history.</div>}
           </div>
         )}
@@ -434,7 +438,7 @@ export default function RecruitmentWorkflowPanel({ applicant, currentAdminId, on
               </div>
             )}
 
-            {taskGateRequired && !taskReadyForAssessment && <p className="mt-3 text-sm leading-6 text-amber-800">Lead Research Assessment evidence must be submitted first. Open the Candidate Practical Task section to monitor or manage the secure task.</p>}
+            {taskGateRequired && !taskReadyForAssessment && <p className="mt-3 text-sm leading-6 text-amber-800">{isVideoRetryTask ? 'The candidate must submit the secure interview-video retry before Attempt #' + ((latestAssessment?.attemptNo || 1) + 1) + ' can be scored.' : 'Lead Research Assessment evidence must be submitted first. Open the Candidate Practical Task section to monitor or manage the secure task.'}</p>}
             {policy.interviewRequired && !completedInterview && !interviewSkipped && <p className="mt-3 text-sm leading-6 text-amber-800">You can save scoring as Failed or Retry Required now. Complete the required interview, or use the audited Admin skip when appropriate, before selecting Passed.</p>}
             {policy.interviewRequired && interviewSkipped && <p className="mt-3 text-sm leading-6 text-amber-800">The interview requirement was skipped by Admin. The structured assessment remains protected by its score and critical-failure rules.</p>}
           </div>
@@ -494,6 +498,8 @@ export default function RecruitmentWorkflowPanel({ applicant, currentAdminId, on
           completedInterview={completedInterview}
           interviewSkipped={interviewSkipped}
           nextStage={nextStageLabel || nextStage}
+          defaultEvidence={assessmentMode === 'new' && isVideoRetryTask && latestTask ? `Candidate-submitted interview-video retry · Attempt #${latestTask.attemptNo}` : ''}
+          defaultEvidenceUrl={assessmentMode === 'new' && isVideoRetryTask ? String(latestTask?.finalData?.videoUrl || '') : ''}
           onClose={() => setAssessmentOpen(false)}
           onSaved={assessmentSaved}
         />

@@ -30,9 +30,12 @@ export interface LeadResearchEntry {
 
 export interface RecruitmentTaskAnswers {
   leads: LeadResearchEntry[];
+  videoUrl?: string;
+  candidateNote?: string;
 }
 
 export interface PublicRecruitmentTask {
+  taskKey: string;
   title: string;
   description: string;
   targetMarket: string;
@@ -49,6 +52,9 @@ export interface PublicRecruitmentTask {
   dueAt: string;
   submittedAt?: string | null;
   retryFeedback: string;
+  previousScore?: number | null;
+  passingScore?: number | null;
+  roleTitle?: string;
   expired: boolean;
   canEdit: boolean;
   answers: RecruitmentTaskAnswers;
@@ -56,6 +62,7 @@ export interface PublicRecruitmentTask {
 
 export interface AdminRecruitmentTask {
   id: string;
+  taskKey: string;
   stage: string;
   attemptNo: number;
   status: RecruitmentTaskStatus;
@@ -114,8 +121,15 @@ export const emptyLeadResearchEntry = (): LeadResearchEntry => ({
   serviceFitReason: '',
 });
 
-function normalizeAnswers(value: unknown, requiredItems = 5): RecruitmentTaskAnswers {
+function normalizeAnswers(value: unknown, requiredItems = 5, taskKey = ''): RecruitmentTaskAnswers {
   const row = value && typeof value === 'object' ? value as Record<string, unknown> : {};
+  if (taskKey === 'sales_video_retry_v1') {
+    return {
+      leads: [],
+      videoUrl: String(row.videoUrl || ''),
+      candidateNote: String(row.candidateNote || ''),
+    };
+  }
   const raw = Array.isArray(row.leads) ? row.leads : [];
   const leads = raw.slice(0, requiredItems).map((item: any) => ({
     businessName: String(item?.businessName || ''),
@@ -139,7 +153,9 @@ function normalizeAnswers(value: unknown, requiredItems = 5): RecruitmentTaskAns
 
 function normalizePublicTask(data: any): PublicRecruitmentTask {
   const requiredItems = Math.max(1, Number(data?.requiredItems || 5));
+  const taskKey = String(data?.taskKey || '');
   return {
+    taskKey,
     title: String(data?.title || 'Recruitment Practical Task'),
     description: String(data?.description || ''),
     targetMarket: String(data?.targetMarket || ''),
@@ -156,9 +172,12 @@ function normalizePublicTask(data: any): PublicRecruitmentTask {
     dueAt: String(data?.dueAt || ''),
     submittedAt: data?.submittedAt ? String(data.submittedAt) : null,
     retryFeedback: String(data?.retryFeedback || ''),
+    previousScore: data?.previousScore === null || data?.previousScore === undefined ? null : Number(data.previousScore),
+    passingScore: data?.passingScore === null || data?.passingScore === undefined ? null : Number(data.passingScore),
+    roleTitle: String(data?.roleTitle || ''),
     expired: data?.expired === true,
     canEdit: data?.canEdit === true,
-    answers: normalizeAnswers(data?.answers, requiredItems),
+    answers: normalizeAnswers(data?.answers, requiredItems, taskKey),
   };
 }
 
@@ -187,14 +206,15 @@ export const recruitmentTaskService = {
     return (Array.isArray(data) ? data : []).map((row: any) => ({
       ...row,
       id: String(row?.id || ''),
+      taskKey: String(row?.taskKey || ''),
       stage: String(row?.stage || ''),
       attemptNo: Number(row?.attemptNo || 0),
       requiredItems: Number(row?.requiredItems || 0),
       estimatedMinutes: Number(row?.estimatedMinutes || 0),
       maxAttempts: Number(row?.maxAttempts || 1),
       instructions: Array.isArray(row?.instructions) ? row.instructions.map((item: unknown) => String(item || '')) : [],
-      finalData: row?.finalData ? normalizeAnswers(row.finalData, Number(row?.requiredItems || 5)) : null,
-      draftData: row?.draftData ? normalizeAnswers(row.draftData, Number(row?.requiredItems || 5)) : null,
+      finalData: row?.finalData ? normalizeAnswers(row.finalData, Number(row?.requiredItems || 5), String(row?.taskKey || '')) : null,
+      draftData: row?.draftData ? normalizeAnswers(row.draftData, Number(row?.requiredItems || 5), String(row?.taskKey || '')) : null,
     })) as AdminRecruitmentTask[];
   },
 
