@@ -388,7 +388,7 @@ function ApplicationSection({ context }: { context: PublicSalesRoleContext }) {
         <div className="mt-5 grid grid-cols-5 gap-2">{steps.map((label,index)=>{const complete=index<step;const active=index===step;return <button type="button" key={label} disabled={index>step} onClick={()=>index<step&&setStep(index)} className={`group min-w-0 text-center ${index>step?'cursor-default':''}`} aria-current={active?'step':undefined}><span className={`mx-auto grid h-8 w-8 place-items-center rounded-full border text-xs font-bold transition ${active?'border-[#000080] bg-[#000080] text-white':complete?'border-[#000080]/20 bg-[#000080]/5 text-[#000080]':'border-slate-200 bg-white text-slate-400'}`}>{complete?<CheckCircle2 className="h-4 w-4"/>:index+1}</span><span className={`mt-2 hidden truncate text-[10px] font-semibold sm:block ${active?'text-[#000080]':complete?'text-slate-600':'text-slate-400'}`}>{label}</span></button>})}</div>
       </div>
       <div className="space-y-7 p-5 sm:p-8">{error&&<div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-semibold leading-6 text-red-700">{error}</div>}
-        {step===0&&<><StepTitle title="Confirm the role fits before you apply" text="Review the minimum requirements first. This prevents you from spending time on a full application if the role does not fit your current availability or experience."/><div className="grid gap-5 sm:grid-cols-2"><Field label="Total sales experience in months *" error={fieldErrors.salesExperienceMonths} hint={`Minimum currently required: ${minExperience} months`} help="Enter your total professional sales, business-development or client-facing sales experience in months."><input type="number" min={0} max={600} className={inputClass} value={form.salesExperienceMonths} onChange={e=>patch('salesExperienceMonths',e.target.value)}/></Field><Field label="Hours available per week *" error={fieldErrors.availableHoursPerWeek} hint={`Minimum currently required: ${minHours} hours`} help="Enter the number of hours you can reliably commit to this role in a normal week."><input type="number" min={1} max={80} className={inputClass} value={form.availableHoursPerWeek} onChange={e=>patch('availableHoursPerWeek',e.target.value)}/></Field></div><div className="space-y-3 rounded-2xl border border-slate-200 bg-[#fbfcff] p-5 sm:p-6"><div className="mb-1 text-sm font-semibold text-[#071126]">Confirm each requirement</div><Confirm checked={form.comfortableCommission} onChange={v=>patch('comfortableCommission',v)}>I understand this role starts as an independent commission-based opportunity.</Confirm><Confirm checked={form.comfortableSourcing} onChange={v=>patch('comfortableSourcing',v)}>I can initially research and generate my own qualified leads.</Confirm><Confirm checked={form.comfortableEnglishCalls} onChange={v=>patch('comfortableEnglishCalls',v)}>I can conduct professional sales conversations and video meetings in English.</Confirm><Confirm checked={form.hasLaptopInternet} onChange={v=>patch('hasLaptopInternet',v)}>I have a computer, reliable internet, webcam and a suitable call environment.</Confirm><Confirm checked={form.videoCommitment} onChange={v=>patch('videoCommitment',v)}>I can provide a shareable link to the required 60-120 second English introduction video.</Confirm>{fieldErrors.eligibility&&<p className="text-xs font-bold text-red-600">{fieldErrors.eligibility}</p>}</div></>}
+        {step===0&&<><StepTitle title="Confirm the role fits before you apply" text="Review the minimum requirements first. This prevents you from spending time on a full application if the role does not fit your current availability or experience."/><div className="grid gap-5 sm:grid-cols-2"><ExperienceDurationField totalMonths={form.salesExperienceMonths} minExperience={minExperience} error={fieldErrors.salesExperienceMonths} onChange={value=>patch('salesExperienceMonths',value)} /><Field label="Hours available per week *" error={fieldErrors.availableHoursPerWeek} hint={`Minimum currently required: ${minHours} hours`} help="Enter the number of hours you can reliably commit to this role in a normal week."><input type="number" min={1} max={80} className={inputClass} value={form.availableHoursPerWeek} onChange={e=>patch('availableHoursPerWeek',e.target.value)}/></Field></div><div className="space-y-3 rounded-2xl border border-slate-200 bg-[#fbfcff] p-5 sm:p-6"><div className="mb-1 text-sm font-semibold text-[#071126]">Confirm each requirement</div><Confirm checked={form.comfortableCommission} onChange={v=>patch('comfortableCommission',v)}>I understand this role starts as an independent commission-based opportunity.</Confirm><Confirm checked={form.comfortableSourcing} onChange={v=>patch('comfortableSourcing',v)}>I can initially research and generate my own qualified leads.</Confirm><Confirm checked={form.comfortableEnglishCalls} onChange={v=>patch('comfortableEnglishCalls',v)}>I can conduct professional sales conversations and video meetings in English.</Confirm><Confirm checked={form.hasLaptopInternet} onChange={v=>patch('hasLaptopInternet',v)}>I have a computer, reliable internet, webcam and a suitable call environment.</Confirm><Confirm checked={form.videoCommitment} onChange={v=>patch('videoCommitment',v)}>I can provide a shareable link to the required 60-120 second English introduction video.</Confirm>{fieldErrors.eligibility&&<p className="text-xs font-bold text-red-600">{fieldErrors.eligibility}</p>}</div></>}
         {step===1&&<><StepTitle title="Personal and contact details" text="Use current details that ProFox can rely on throughout screening. Application updates will be sent to the email address you enter here."/><div className="grid gap-5 sm:grid-cols-2"><Field label="Full name *" error={fieldErrors.fullName} help="Enter your full professional name as you want it shown on your candidate record."><input className={inputClass} autoComplete="name" value={form.fullName} onChange={e=>patch('fullName',e.target.value)}/></Field><Field label="Email *" error={fieldErrors.email} help="Use an email address you check regularly. ProFox will use it for your application update and next steps."><input type="email" className={inputClass} autoComplete="email" value={form.email} onChange={e=>patch('email',e.target.value)}/></Field><Field label="WhatsApp / contact number *" error={fieldErrors.phone} hint="Include country code, for example +14155552671" help="Enter an international-format phone or WhatsApp number where you can be contacted if needed."><input type="tel" className={inputClass} autoComplete="tel" value={form.phone} onChange={e=>patch('phone',e.target.value)}/></Field><Field label="Country *" error={fieldErrors.country} help="Select the country where you currently live and will normally work from."><select className={inputClass} value={form.countryCode} onChange={e=>{const item=countries.find(x=>x.code===e.target.value);patch('countryCode',e.target.value);patch('country',item?.name||'')}}><option value="">Select country</option>{countries.map(item=><option key={item.code} value={item.code}>{item.name}</option>)}</select></Field><Field label="Time zone *" error={fieldErrors.timezone} help="Choose your working time zone so meetings and availability can be interpreted correctly."><select className={inputClass} value={form.timezone} onChange={e=>patch('timezone',e.target.value)}>{timezones.map(item=><option key={item} value={item}>{item}</option>)}</select></Field><Field label="Current role (optional)" help="If you are currently employed or freelancing, enter your present job title or professional role."><input className={inputClass} value={form.currentRole} onChange={e=>patch('currentRole',e.target.value)} placeholder="Example: Business Development Executive"/></Field></div><Field label="LinkedIn profile URL *" error={fieldErrors.linkedinUrl} help="Provide the full URL to your current LinkedIn profile so we can review your professional background."><input className={inputClass} value={form.linkedinUrl} onChange={e=>patch('linkedinUrl',e.target.value)} placeholder="https://linkedin.com/in/..."/></Field></>}
         {step===2&&<><StepTitle title="Show us how you sell" text="Give specific evidence. Clear examples, numbers and your personal contribution are more useful than general sales claims."/><div className="grid gap-5 sm:grid-cols-2"><Field label="English level *" error={fieldErrors.englishRating} help="Choose the level that best reflects your ability to hold professional sales calls and written conversations in English."><select className={inputClass} value={form.englishRating} onChange={e=>patch('englishRating',e.target.value)}><option value="">Select level</option><option>Fluent / Native</option><option>Professional working proficiency</option><option>Conversational</option></select></Field><Field label="B2B sales experience in months (optional)" help="Enter only the months where you directly sold to businesses or business decision-makers."><input type="number" min={0} max={600} className={inputClass} value={form.b2bExperienceMonths} onChange={e=>patch('b2bExperienceMonths',e.target.value)}/></Field></div><Field label="Sales experience *" error={fieldErrors.salesExperience} help="Explain what you sold, who you sold to, and which parts of the sales process you personally handled."><textarea rows={4} className={inputClass} value={form.salesExperience} onChange={e=>patch('salesExperience',e.target.value)} placeholder="What have you sold, to whom, and what parts of the sales cycle did you own?"/></Field><div className="grid gap-5 sm:grid-cols-2"><Field label="Digital / SaaS / website sales experience (optional)" help="Describe any experience selling websites, software, SaaS, digital marketing or other technology services."><textarea rows={3} className={inputClass} value={form.digitalSalesExperience} onChange={e=>patch('digitalSalesExperience',e.target.value)} placeholder="Products, services, deal types and your role"/></Field><Field label="International sales experience (optional)" help="Mention markets, countries and customer types you have sold to outside your home market."><textarea rows={3} className={inputClass} value={form.internationalSalesExperience} onChange={e=>patch('internationalSalesExperience',e.target.value)} placeholder="Countries, markets and customer types"/></Field></div><Field label="One measurable sales result *" error={fieldErrors.previousSalesResults} hint="Tell us what you sold, approximate deal value/result, and your contribution." help="Give one concrete result with a number where possible: revenue, deal value, appointments, conversion rate or another measurable outcome."><textarea rows={4} className={inputClass} value={form.previousSalesResults} onChange={e=>patch('previousSalesResults',e.target.value)}/></Field><ChoiceGroup title="Markets you have sold to *" options={marketOptions} selected={form.targetMarkets} onToggle={v=>toggle('targetMarkets',v)} error={fieldErrors.targetMarkets} help="Select every market that accurately reflects your previous selling experience."/><ChoiceGroup title="Prospecting / sales channels you have used *" options={channelOptions} selected={form.prospectingChannels} onToggle={v=>toggle('prospectingChannels',v)} error={fieldErrors.prospectingChannels} help="Select the channels you have actually used to find, contact, qualify, meet or close prospects."/><Field label="CRM experience (optional)" help="Tell us which CRM systems you have used and what you recorded or managed inside them."><textarea rows={3} className={inputClass} value={form.crmExperience} onChange={e=>patch('crmExperience',e.target.value)} placeholder="Which CRM systems have you used and how did you use them?"/></Field></>}
         {step===3&&<><StepTitle title="Availability and practical evidence" text="Tell us when you can consistently work and show how you would approach a real prospect. Times below make the preferred working window clear across international markets."/><ChoiceGroup title="Days you can normally work *" options={['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']} selected={form.availableDays} onToggle={v=>toggle('availableDays',v)} error={fieldErrors.availableDays} help="Select every day you can normally commit to sales activity, follow-ups and scheduled meetings."/><div className="grid gap-5 sm:grid-cols-2"><Field label="Hours available per week *" error={fieldErrors.availableHoursPerWeek} help="Enter the total number of hours you can reliably commit each week."><input type="number" min={1} max={80} className={inputClass} value={form.availableHoursPerWeek} onChange={e=>patch('availableHoursPerWeek',e.target.value)}/></Field><Field label="Earliest start date *" error={fieldErrors.earliestStartDate} help="Choose the earliest date on which you could realistically begin after completing the selection and onboarding process."><input type="date" min={new Date().toISOString().slice(0,10)} className={inputClass} value={form.earliestStartDate} onChange={e=>patch('earliestStartDate',e.target.value)}/></Field></div><Field label="Preferred working window" hint="Local-time options use the time zone you selected in Personal details." help="Choose the time block you can cover most consistently. Market-specific options use the named business time zone."><select className={inputClass} value={form.preferredWorkWindow} onChange={e=>patch('preferredWorkWindow',e.target.value)}><option value="">Select your preferred working window</option>{workingWindowOptions.map(item=><option key={item} value={item}>{item}</option>)}</select></Field><Field label="Sample cold outreach message *" error={fieldErrors.sampleOutreachMessage} hint="Write a short message you would send to a qualified business prospect." help="Write the actual first message you would send. Keep it relevant, personalized and focused on starting a useful conversation."><textarea rows={5} className={inputClass} value={form.sampleOutreachMessage} onChange={e=>patch('sampleOutreachMessage',e.target.value)} placeholder="Write your sample message here..."/></Field><div className="grid gap-5 sm:grid-cols-2"><Field label="How did you hear about ProFox? *" error={fieldErrors.heardAboutSource} help="Select the source where you first found this ProFox opportunity."><select className={inputClass} value={form.heardAboutSource} onChange={e=>patch('heardAboutSource',e.target.value)}><option value="">Select source</option>{sourceOptions.map(item=><option key={item}>{item}</option>)}</select></Field><Field label="Source details (optional)" help="Add the job board name, referrer, social account, page or other detail that helps identify the source."><input className={inputClass} value={form.heardAboutDetail} onChange={e=>patch('heardAboutDetail',e.target.value)} placeholder="Job board name, referrer, page, etc."/></Field></div></>}
@@ -400,6 +400,110 @@ function ApplicationSection({ context }: { context: PublicSalesRoleContext }) {
 }
 
 const inputClass='w-full rounded-lg border border-slate-300 bg-white px-3.5 py-3 text-base text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#000080]/50 focus:ring-4 focus:ring-[#000080]/5 sm:text-sm';
+
+function ExperienceDurationField({
+  totalMonths,
+  minExperience,
+  error,
+  onChange,
+}: {
+  totalMonths: string;
+  minExperience: number;
+  error?: string;
+  onChange: (value: string) => void;
+}) {
+  const initialTotal = Math.max(0, Math.min(600, Math.floor(Number(totalMonths) || 0)));
+  const [years, setYears] = useState(totalMonths === '' ? '' : String(Math.floor(initialTotal / 12)));
+  const [months, setMonths] = useState(totalMonths === '' ? '' : String(initialTotal % 12));
+
+  const update = (nextYears: string, nextMonths: string) => {
+    let safeYears = nextYears === '' ? 0 : Math.max(0, Math.min(50, Math.floor(Number(nextYears) || 0)));
+    let safeMonths = nextMonths === '' ? 0 : Math.max(0, Math.min(11, Math.floor(Number(nextMonths) || 0)));
+
+    if (safeYears >= 50) {
+      safeYears = 50;
+      safeMonths = 0;
+      if (nextMonths !== '') setMonths('0');
+    }
+
+    if (nextYears === '' && nextMonths === '') {
+      onChange('');
+      return;
+    }
+
+    onChange(String(Math.min(600, safeYears * 12 + safeMonths)));
+  };
+
+  const handleYears = (value: string) => {
+    const normalized = value === '' ? '' : String(Math.max(0, Math.min(50, Math.floor(Number(value) || 0))));
+    setYears(normalized);
+    update(normalized, months);
+  };
+
+  const handleMonths = (value: string) => {
+    const maxMonths = Number(years || 0) >= 50 ? 0 : 11;
+    const normalized = value === '' ? '' : String(Math.max(0, Math.min(maxMonths, Math.floor(Number(value) || 0))));
+    setMonths(normalized);
+    update(years, normalized);
+  };
+
+  const enteredTotal = years === '' && months === ''
+    ? null
+    : Math.min(600, (Number(years) || 0) * 12 + (Number(months) || 0));
+
+  return <div className="block text-sm font-semibold text-slate-700">
+    <div className="inline-flex items-center gap-2">
+      <span>Total sales experience *</span>
+      <HelpTip text="Enter your total professional sales, business-development or client-facing sales experience using years and months. We convert it to total months automatically for your application." />
+    </div>
+
+    <div className="mt-2 grid grid-cols-2 gap-3">
+      <label className="block">
+        <span className="mb-1.5 block text-xs font-semibold text-slate-500">Years</span>
+        <div className="relative">
+          <input
+            type="number"
+            min={0}
+            max={50}
+            step={1}
+            inputMode="numeric"
+            className={`${inputClass} pr-14`}
+            value={years}
+            onChange={e=>handleYears(e.target.value)}
+            placeholder="0"
+            aria-label="Total sales experience years"
+          />
+          <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs font-semibold text-slate-400">yrs</span>
+        </div>
+      </label>
+
+      <label className="block">
+        <span className="mb-1.5 block text-xs font-semibold text-slate-500">Months</span>
+        <div className="relative">
+          <input
+            type="number"
+            min={0}
+            max={Number(years || 0) >= 50 ? 0 : 11}
+            step={1}
+            inputMode="numeric"
+            className={`${inputClass} pr-16`}
+            value={months}
+            onChange={e=>handleMonths(e.target.value)}
+            placeholder="0"
+            aria-label="Total sales experience additional months"
+          />
+          <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs font-semibold text-slate-400">mos</span>
+        </div>
+      </label>
+    </div>
+
+    <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+      <div className="text-xs font-normal leading-5 text-slate-400">Minimum currently required: {minExperience} months</div>
+      {enteredTotal !== null && <div className="rounded-full bg-[#000080]/5 px-2.5 py-1 text-[11px] font-bold text-[#000080]">{enteredTotal} months total</div>}
+    </div>
+    {error&&<div className="mt-1.5 text-xs font-semibold text-red-600">{error}</div>}
+  </div>;
+}
 function Meta({icon:Icon,label,value}:{icon:any;label:string;value:string}){return <div className="flex min-h-[118px] items-start gap-4 border-b border-slate-200 p-5 last:border-b-0 sm:border-b-0 sm:border-r sm:last:border-r-0 sm:p-6"><span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#000080]/5 text-[#000080]"><Icon className="h-5 w-5"/></span><div><div className="pf-eyebrow text-slate-400">{label}</div><div className="mt-2 text-sm font-semibold leading-6 text-slate-900">{value}</div></div></div>}
 function SectionIntro({eyebrow,title,text,dark=false}:{eyebrow:string;title:string;text:string;dark?:boolean}){return <div className="max-w-3xl"><div className={`pf-eyebrow ${dark?'text-[#aaaaff]':'text-[#000080]'}`}>{eyebrow}</div><h2 className={`pf-section-title mt-3 ${dark?'text-white':'text-[#071126]'}`}>{title}</h2>{text&&<p className={`mt-5 text-base leading-7 sm:leading-8 ${dark?'text-slate-300':'text-slate-600'}`}>{text}</p>}</div>}
 function StepTitle({title,text}:{title:string;text:string}){return <div className="border-b border-slate-100 pb-5"><h3 className="text-2xl font-semibold tracking-[-0.025em] text-[#071126]">{title}</h3><p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500">{text}</p></div>}
