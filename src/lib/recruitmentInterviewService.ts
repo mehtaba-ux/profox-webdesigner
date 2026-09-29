@@ -56,6 +56,30 @@ export interface RecruitmentInterviewBookingResult {
   notificationState?: string;
 }
 
+export interface RecruitmentInterviewDeliveryStatus {
+  interviewId: string;
+  recipientEmail: string;
+  sendCount: number;
+  hasNotification: boolean;
+  notificationId?: string | null;
+  status: string;
+  deliveryStatus: string;
+  lastQueuedAt?: string | null;
+  lastUpdatedAt?: string | null;
+  lastError: string;
+}
+
+export interface RecruitmentInterviewResendResult {
+  success: boolean;
+  queued: boolean;
+  duplicatePrevented: boolean;
+  notificationId?: string | null;
+  status: string;
+  deliveryStatus: string;
+  recipientEmail: string;
+  message: string;
+}
+
 export interface RecruitmentInterviewSkipResult {
   success: boolean;
   skipId: string;
@@ -149,6 +173,44 @@ export const recruitmentInterviewService = {
     }
 
     return (data || { success: true }) as RecruitmentInterviewBookingResult;
+  },
+
+  async getDeliveryStatus(interviewId: string): Promise<RecruitmentInterviewDeliveryStatus> {
+    const { data, error } = await supabase.rpc('admin_get_recruitment_interview_delivery_status', {
+      p_interview_id: interviewId,
+    });
+    if (error) throw error;
+    const row = (data || {}) as Record<string, unknown>;
+    return {
+      interviewId: String(row.interviewId || interviewId),
+      recipientEmail: String(row.recipientEmail || ''),
+      sendCount: Number(row.sendCount || 0),
+      hasNotification: row.hasNotification === true,
+      notificationId: row.notificationId ? String(row.notificationId) : null,
+      status: String(row.status || 'Not Sent'),
+      deliveryStatus: String(row.deliveryStatus || 'Not Sent'),
+      lastQueuedAt: row.lastQueuedAt ? String(row.lastQueuedAt) : null,
+      lastUpdatedAt: row.lastUpdatedAt ? String(row.lastUpdatedAt) : null,
+      lastError: String(row.lastError || ''),
+    };
+  },
+
+  async resendInvitation(interviewId: string): Promise<RecruitmentInterviewResendResult> {
+    const { data, error } = await supabase.rpc('admin_resend_recruitment_interview_invitation', {
+      p_interview_id: interviewId,
+    });
+    if (error) throw error;
+    const row = (data || {}) as Record<string, unknown>;
+    return {
+      success: row.success !== false,
+      queued: row.queued === true,
+      duplicatePrevented: row.duplicatePrevented === true,
+      notificationId: row.notificationId ? String(row.notificationId) : null,
+      status: String(row.status || 'Pending'),
+      deliveryStatus: String(row.deliveryStatus || 'Unknown'),
+      recipientEmail: String(row.recipientEmail || ''),
+      message: String(row.message || 'Interview invitation queued for resend.'),
+    };
   },
 
   async skipInterview(applicantId: string, reason: string): Promise<RecruitmentInterviewSkipResult> {

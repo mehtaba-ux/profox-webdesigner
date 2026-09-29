@@ -20,7 +20,7 @@ import {
 import type { ApplicantRecord } from '../../lib/applicantService';
 import { agreementService } from '../../lib/agreementService';
 import { profileService } from '../../lib/profileService';
-import { recruitmentInterviewService, type RecruitmentInterviewBookingContext } from '../../lib/recruitmentInterviewService';
+import { recruitmentInterviewService, type RecruitmentInterviewBookingContext, type RecruitmentInterviewDeliveryStatus } from '../../lib/recruitmentInterviewService';
 import { recruitmentTaskService, type AdminRecruitmentTask } from '../../lib/recruitmentTaskService';
 import {
   recruitmentWorkflowService,
@@ -206,6 +206,7 @@ export default function RecruitmentWorkflowPanel({ applicant, currentAdminId, or
   const [tasks, setTasks] = useState<AdminRecruitmentTask[]>([]);
   const [selectedTask, setSelectedTask] = useState<AdminRecruitmentTask | null>(null);
   const [bookingContext, setBookingContext] = useState<RecruitmentInterviewBookingContext | null>(null);
+  const [interviewDelivery, setInterviewDelivery] = useState<RecruitmentInterviewDeliveryStatus | null>(null);
   const [meta, setMeta] = useState<RecruitmentWorkflowMeta | null>(null);
   const [jobContext, setJobContext] = useState<RecruitmentJobContext>({ title: applicant.position || 'Candidate', department: '', systemRole: 'pending', trainingTrack: 'general' });
   const [linkedUser, setLinkedUser] = useState<UserProfile | null>(null);
@@ -247,6 +248,16 @@ export default function RecruitmentWorkflowPanel({ applicant, currentAdminId, or
       setInterviews(interviewRows);
       setTasks(taskRows);
       setBookingContext(interviewBooking);
+      const stageInterview = interviewRows.find(item => item.stage === String(applicant.stage));
+      if (stageInterview) {
+        try {
+          setInterviewDelivery(await recruitmentInterviewService.getDeliveryStatus(stageInterview.id));
+        } catch {
+          setInterviewDelivery(null);
+        }
+      } else {
+        setInterviewDelivery(null);
+      }
       setMeta(workflowMeta);
       setJobContext(context);
       if (selectedTask) setSelectedTask(taskRows.find(item => item.id === selectedTask.id) || null);
@@ -389,9 +400,28 @@ export default function RecruitmentWorkflowPanel({ applicant, currentAdminId, or
   };
 
   const interviewBooked = async () => {
-    setNotice('Recruitment interview booked. Google Meet creation and the candidate email are automatic.');
+    setNotice('Recruitment interview booked. Zoho Meeting creation and the candidate email are automatic.');
     await onChanged();
     await load();
+  };
+
+  const resendInterviewInvitation = async () => {
+    if (!latestInterview) return;
+    setBusy(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const result = await recruitmentInterviewService.resendInvitation(latestInterview.id);
+      setNotice(result.duplicatePrevented
+        ? result.message
+        : `Interview invitation queued for ${result.recipientEmail || 'the candidate'}. The existing Zoho meeting is unchanged.`);
+      await onChanged();
+      await load();
+    } catch (err) {
+      setError(errorMessage(err, 'The interview invitation could not be resent.'));
+    } finally {
+      setBusy(false);
+    }
   };
 
   const interviewSkippedByAdmin = async () => {
@@ -484,8 +514,26 @@ export default function RecruitmentWorkflowPanel({ applicant, currentAdminId, or
             {interviewSkipped ? (
               <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm leading-6 text-amber-900"><div className="font-bold">Skipped by Administrator</div><div className="mt-1">{bookingContext?.skipReason || 'Administrative exception recorded.'}</div><div className="mt-1 text-amber-700">{bookingContext?.skippedByName ? `By ${bookingContext.skippedByName}` : 'Admin action'}{bookingContext?.skippedAt ? ` · ${fmt(bookingContext.skippedAt)}` : ''}</div></div>
             ) : latestInterview ? (
-              <div className="mt-2 text-sm leading-6 text-slate-600"><div className="font-semibold text-slate-800">{latestInterview.status}</div><div>{fmt(latestInterview.startAt)} · {latestInterview.timezone}</div>{latestInterview.interviewerName && <div>Interviewer: {latestInterview.interviewerName}</div>}{latestInterview.meetingUrl ? <a href={latestInterview.meetingUrl} target="_blank" rel="noreferrer" className="mt-1 inline-block font-semibold text-[#000080]">Open meeting link</a> : latestInterview.status === 'Scheduled' ? <div className="mt-1 text-slate-500">Google Meet link is being created automatically.</div> : null}</div>
+              <div className="mt-2 text-sm leading-6 text-slate-600"><div className="font-semibold text-slate-800">{latestInterview.status}</div><div>{fmt(latestInterview.startAt)} · {latestInterview.timezone}</div>{latestInterview.interviewerName && <div>Interviewer: {latestInterview.interviewerName}</div>}{latestInterview.meetingUrl ? <a href={latestInterview.meetingUrl} target="_blank" rel="noreferrer" className="mt-1 inline-block font-semibold text-[#000080]">Open meeting link</a> : latestInterview.status === 'Scheduled' ? <div className="mt-1 text-slate-500">Zoho Meeting link is being created automatically.</div> : null}</div>
             ) : <p className="mt-2 text-sm leading-6 text-slate-600">Book and complete the required interview before this stage can be marked Passed. The meeting link is generated automatically from the responsible person&apos;s connected calendar.</p>}
+
+            {latestInterview && !interviewSkipped && ['Scheduled', 'Rescheduled'].includes(latestInterview.status) && latestInterview.meetingUrl && (
+              <div className="mt-3 rounded-xl border border-blue-100 bg-white p-3">
+                <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wide text-[#000080]"><Mail className="h-4 w-4" />Candidate invitation</div>
+                <div className="mt-2 break-all text-xs font-semibold text-slate-700">{interviewDelivery?.recipientEmail || applicant.email}</div>
+                <div className="mt-1 text-xs leading-5 text-slate-500">
+                  {interviewDelivery?.hasNotification
+                    ? <>Last status: <strong className="text-slate-700">{interviewDelivery.deliveryStatus || interviewDelivery.status}</strong>{interviewDelivery.lastUpdatedAt ? ` · ${fmt(interviewDelivery.lastUpdatedAt)}` : ''}{interviewDelivery.sendCount ? ` · ${interviewDelivery.sendCount} on record` : ''}</>
+                    : <>No candidate invitation delivery is recorded yet.</>}
+                </div>
+                {interviewDelivery?.lastError && <div className="mt-1 text-xs leading-5 text-red-600">{interviewDelivery.lastError}</div>}
+                <button type="button" onClick={() => void resendInterviewInvitation()} disabled={busy} className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-[#000080]/20 bg-white px-3 py-2.5 text-sm font-bold text-[#000080] transition hover:bg-blue-50 disabled:opacity-50">
+                  {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}
+                  Resend Interview Email
+                </button>
+                <p className="mt-2 text-[11px] leading-5 text-slate-400">Reuses this same interview and Zoho Meeting. It does not create another meeting.</p>
+              </div>
+            )}
 
             {!latestInterview && !interviewSkipped && <button type="button" onClick={() => setInterviewOpen(true)} disabled={busy} className="mt-3 w-full rounded-lg bg-[#000080] px-3 py-2.5 text-sm font-bold text-white disabled:opacity-50">Book Interview</button>}
 
