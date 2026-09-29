@@ -232,7 +232,9 @@ Deno.serve(async (req: Request) => {
       topic: String(meeting.title || "ProFox Meeting").slice(0, 200), agenda: agenda.slice(0, 2000), presenter: String(connection.presenter_zuid),
       startTime: meetingStart(String(meeting.start_at), timezone), duration, timezone,
     };
-    if (validEmail(String(meeting.attendee_email || ""))) session.participants = [{ email: String(meeting.attendee_email).trim().toLowerCase() }];
+    // Candidate-facing invitations are sent only by ProFox. Do not add the
+    // attendee as a Zoho Meeting participant here, because Zoho sends its own
+    // provider-branded participant email (including app/download guidance).
     return { session };
   }
   async function getMeetingByKey(key: string) { return api(meetingBase, `/api/v2/${encodeURIComponent(String(connection.meeting_org_id))}/sessions/${encodeURIComponent(key)}.json`, { method: "GET" }, true); }
@@ -281,8 +283,10 @@ Deno.serve(async (req: Request) => {
       dateandtime: { start: toBasicUtc(meeting.start_at), end: toBasicUtc(meeting.end_at), timezone: String(meeting.timezone || "UTC") },
       isallday: false, isprivate: false,
       description: `${String(meeting.description || "").trim()}${meeting.description ? "\n\n" : ""}${markerFor(String(meeting.id))}`,
-      transparency: 0, conference: "none", notifyType: 1, allowForwarding: true,
+      transparency: 0, conference: "none", notifyType: 1, notify_attendee: 0, allowForwarding: false,
     };
+    // Keep attendee metadata on the staff calendar event without asking Zoho
+    // Calendar to send a second candidate-facing invitation.
     if (validEmail(String(meeting.attendee_email || ""))) data.attendees = [{ email: String(meeting.attendee_email).trim().toLowerCase(), status: "NEEDS-ACTION", attendance: 1 }];
     if (eventUid) data.uid = eventUid; if (etag) data.etag = etag; return data;
   }
