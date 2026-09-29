@@ -3,6 +3,9 @@ import { supabase } from './supabase';
 export type RecruitmentInterviewSetupKind =
   | 'company_settings'
   | 'availability'
+  | 'zoho_connection'
+  | 'zoho_calendar'
+  | 'zoho_meeting'
   | 'google_connection'
   | 'google_sync'
   | 'google_meet'
@@ -73,7 +76,9 @@ function normalizeContext(value: unknown): RecruitmentInterviewBookingContext {
     ? '/admin/meeting-settings?source=recruitment'
     : setupKind === 'availability'
       ? '/admin/booking-setup?source=recruitment'
-      : '/admin/calendar?section=google&source=recruitment';
+      : setupKind.startsWith('google_')
+        ? '/admin/calendar?section=google&source=recruitment'
+        : '/admin/calendar?section=zoho&source=recruitment';
 
   return {
     interviewRequired: row.interviewRequired === true,
@@ -82,7 +87,7 @@ function normalizeContext(value: unknown): RecruitmentInterviewBookingContext {
     timezone: String(row.timezone || 'UTC'),
     durationMinutes: Number(row.durationMinutes || 30),
     meetingType: String(row.meetingType || 'Recruitment Interview'),
-    providerLabel: String(row.providerLabel || 'Google Meet'),
+    providerLabel: String(row.providerLabel || 'Zoho Meeting'),
     calendarReady: row.calendarReady === true,
     setupRequired: row.setupRequired === true,
     setupKind,
@@ -131,12 +136,12 @@ export const recruitmentInterviewService = {
     });
     if (error) throw error;
 
-    // The meeting insert already queues Google synchronization atomically. This
-    // authenticated nudge lets a connected staff calendar process the new Meet
-    // event immediately when the sync worker is available, without making the
-    // successful booking depend on an external API call.
+    // The canonical meeting insert queues Zoho synchronization atomically.
+    // This nudge asks the central Zoho worker to process the queued Calendar
+    // event and Zoho Meeting immediately without making booking depend on the
+    // provider API call succeeding in the browser request.
     try {
-      await supabase.functions.invoke('process-google-calendar-sync', {
+      await supabase.functions.invoke('process-zoho-calendar-sync', {
         body: { action: 'sync_now' },
       });
     } catch {

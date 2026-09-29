@@ -124,7 +124,7 @@ export default function RecruitmentInterviewBookingDialog({
             <div>
               <div className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#000080]">Protected recruitment booking</div>
               <h3 className="mt-1 text-xl font-bold text-slate-900">Book Recruitment Interview</h3>
-              <p className="mt-1 text-sm leading-6 text-slate-500">Choose an available time from the responsible person&apos;s configured calendar. ProFox creates the Google Meet link automatically after booking.</p>
+              <p className="mt-1 text-sm leading-6 text-slate-500">Choose an available time from the responsible person&apos;s configured calendar. ProFox creates the {liveContext.providerLabel} link automatically after booking.</p>
             </div>
             <button type="button" onClick={onClose} disabled={busy} aria-label="Close booking" className="rounded-xl border border-slate-200 p-2.5 text-slate-500 hover:text-slate-800 disabled:opacity-50"><XCircle className="h-5 w-5" /></button>
           </div>
@@ -175,7 +175,7 @@ export default function RecruitmentInterviewBookingDialog({
             </section>
           )}
 
-          {liveContext.calendarReady && <div className="mt-5 rounded-xl border border-blue-100 bg-blue-50/60 p-3 text-xs leading-5 text-slate-600"><strong className="text-[#000080]">Automatic meeting delivery:</strong> ProFox creates the calendar event through the connected account, generates the Google Meet link, and sends the candidate&apos;s branded interview email only after that join link is ready.</div>}
+          {liveContext.calendarReady && <div className="mt-5 rounded-xl border border-blue-100 bg-blue-50/60 p-3 text-xs leading-5 text-slate-600"><strong className="text-[#000080]">Automatic meeting delivery:</strong> ProFox creates the Zoho Calendar event, generates the Zoho Meeting link, and sends the candidate&apos;s branded interview email only after that join link is ready.</div>}
         </div>
 
         <div className="border-t border-slate-200 bg-white px-5 py-4 sm:px-6">
