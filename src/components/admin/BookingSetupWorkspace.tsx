@@ -66,7 +66,7 @@ function calendarDefaults(person: UserProfile, settings: MeetingSettings, curren
     bufferBeforeMinutes: current?.bufferBeforeMinutes ?? settings.bufferBeforeMinutes,
     bufferAfterMinutes: current?.bufferAfterMinutes ?? settings.bufferAfterMinutes,
     bookingUrl: current?.bookingUrl || '',
-    defaultPlatform: current?.defaultPlatform || 'ProFox Calendar',
+    defaultPlatform: current?.defaultPlatform || 'Zoho Meeting',
     connectionStatus: 'Not Connected' as const,
     active: current?.active ?? true
   };
@@ -175,7 +175,7 @@ export default function BookingSetupWorkspace() {
         connectionStatus: 'Not Connected',
         bookingUrl: publicBookingUrl,
         defaultDurationMinutes: bookingProfile.meetingDurationMinutes,
-        defaultPlatform: 'ProFox Calendar'
+        defaultPlatform: 'Zoho Meeting'
       });
       setCalendarForm(calendarDefaults(targetPerson!,meetingSettings,saved));
       setMessage('Availability saved. Public slots now follow these working hours, buffers and time zone.');

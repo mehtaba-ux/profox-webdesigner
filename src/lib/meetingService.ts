@@ -200,7 +200,7 @@ const mapCalendarSettings = (row: any): UserCalendarSettings => ({
   bufferBeforeMinutes: Number(row.buffer_before_minutes || 0),
   bufferAfterMinutes: Number(row.buffer_after_minutes || 15),
   bookingUrl: row.booking_url || '',
-  defaultPlatform: row.default_platform || 'Manual',
+  defaultPlatform: row.default_platform || 'Zoho Meeting',
   connectionStatus: row.connection_status || 'Not Connected',
   active: row.active !== false,
   updatedAt: row.updated_at
@@ -358,7 +358,7 @@ export const meetingService = {
 
   async saveCalendarSettings(settings: Omit<UserCalendarSettings, 'updatedAt'>): Promise<UserCalendarSettings> {
     if (settings.provider !== 'Manual' || settings.connectionStatus !== 'Not Connected') {
-      throw new Error('External calendar connection must be established through the secure OAuth flow, which is not enabled in this core release.');
+      throw new Error('Availability settings use the internal ProFox calendar record. Zoho authorization is managed separately from the Calendar workspace.');
     }
     const { data, error } = await supabase.from('user_calendar_settings').upsert({
       user_id: settings.userId,
@@ -372,7 +372,7 @@ export const meetingService = {
       buffer_before_minutes: settings.bufferBeforeMinutes,
       buffer_after_minutes: settings.bufferAfterMinutes,
       booking_url: settings.bookingUrl,
-      default_platform: settings.defaultPlatform,
+      default_platform: 'Zoho Meeting',
       connection_status: 'Not Connected',
       active: settings.active,
       updated_at: new Date().toISOString()

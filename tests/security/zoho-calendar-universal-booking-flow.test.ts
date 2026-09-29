@@ -33,6 +33,7 @@ test('CRM and direct meeting scheduling no longer ask for manual or Google links
   assert.doesNotMatch(crmModal, /Google Meet/);
   assert.doesNotMatch(crmModal, /meetingUrl\.trim\(\)/);
   assert.match(crmModal, /Zoho Calendar \+ Zoho Meeting/);
-  assert.doesNotMatch(meetingsWorkspace, /Manual Meeting Link/);
+  assert.match(meetingsWorkspace, /meetingUrl:''/);
   assert.match(meetingsWorkspace, /Zoho Calendar \+ Zoho Meeting/);
+  assert.match(meetingsWorkspace, /defaultPlatform:current\?\.defaultPlatform\|\|'Zoho Meeting'/);
 });
