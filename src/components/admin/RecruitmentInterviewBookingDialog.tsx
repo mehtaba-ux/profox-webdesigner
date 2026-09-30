@@ -11,6 +11,7 @@ interface Props {
   candidateName: string;
   candidateTimezone?: string;
   context: RecruitmentInterviewBookingContext;
+  mode?: 'book' | 'reschedule';
   onClose: () => void;
   onBooked: () => Promise<void>;
 }
@@ -39,6 +40,7 @@ export default function RecruitmentInterviewBookingDialog({
   candidateName,
   candidateTimezone,
   context,
+  mode = 'book',
   onClose,
   onBooked,
 }: Props) {
@@ -123,8 +125,8 @@ export default function RecruitmentInterviewBookingDialog({
           <div className="flex items-start justify-between gap-4">
             <div>
               <div className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#000080]">Protected recruitment booking</div>
-              <h3 className="mt-1 text-xl font-bold text-slate-900">Book Recruitment Interview</h3>
-              <p className="mt-1 text-sm leading-6 text-slate-500">Choose an available time from the responsible person&apos;s configured calendar. ProFox creates the {liveContext.providerLabel} link automatically after booking.</p>
+              <h3 className="mt-1 text-xl font-bold text-slate-900">{mode === 'reschedule' ? 'Reschedule Recruitment Interview' : 'Book Recruitment Interview'}</h3>
+              <p className="mt-1 text-sm leading-6 text-slate-500">Choose an available time from the responsible person&apos;s configured calendar. {mode === 'reschedule' ? 'ProFox updates the existing interview, Zoho Calendar event, and Zoho Meeting without creating a duplicate.' : <>ProFox creates the {liveContext.providerLabel} link automatically after booking.</>}</p>
             </div>
             <button type="button" onClick={onClose} disabled={busy} aria-label="Close booking" className="rounded-xl border border-slate-200 p-2.5 text-slate-500 hover:text-slate-800 disabled:opacity-50"><XCircle className="h-5 w-5" /></button>
           </div>
@@ -175,11 +177,11 @@ export default function RecruitmentInterviewBookingDialog({
             </section>
           )}
 
-          {liveContext.calendarReady && <div className="mt-5 rounded-xl border border-blue-100 bg-blue-50/60 p-3 text-xs leading-5 text-slate-600"><strong className="text-[#000080]">Automatic meeting delivery:</strong> ProFox creates the Zoho Calendar event, generates the Zoho Meeting link, and sends the candidate&apos;s branded interview email only after that join link is ready.</div>}
+          {liveContext.calendarReady && <div className="mt-5 rounded-xl border border-blue-100 bg-blue-50/60 p-3 text-xs leading-5 text-slate-600"><strong className="text-[#000080]">Automatic meeting delivery:</strong> {mode === 'reschedule' ? 'ProFox keeps the same interview and provider records, updates the time, refreshes the Zoho Meeting link, and then sends a fresh candidate email.' : 'ProFox creates the Zoho Calendar event, generates the Zoho Meeting link, and sends the candidate branded interview email only after that join link is ready.'}</div>}
         </div>
 
         <div className="border-t border-slate-200 bg-white px-5 py-4 sm:px-6">
-          <div className="grid gap-3 sm:grid-cols-2"><button type="button" onClick={onClose} disabled={busy} className="min-h-11 rounded-xl border border-slate-300 py-3 text-sm font-bold text-slate-700 disabled:opacity-50">Cancel</button><button type="button" onClick={() => void book()} disabled={busy || !selectedSlot || !liveContext.calendarReady} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#000080] py-3 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-40">{busy && <Loader2 className="h-4 w-4 animate-spin" />}Book Interview</button></div>
+          <div className="grid gap-3 sm:grid-cols-2"><button type="button" onClick={onClose} disabled={busy} className="min-h-11 rounded-xl border border-slate-300 py-3 text-sm font-bold text-slate-700 disabled:opacity-50">Cancel</button><button type="button" onClick={() => void book()} disabled={busy || !selectedSlot || !liveContext.calendarReady} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#000080] py-3 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-40">{busy && <Loader2 className="h-4 w-4 animate-spin" />}{mode === 'reschedule' ? 'Confirm Reschedule' : 'Book Interview'}</button></div>
         </div>
       </div>
     </div>
