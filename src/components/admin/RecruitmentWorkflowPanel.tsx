@@ -219,6 +219,7 @@ export default function RecruitmentWorkflowPanel({ applicant, currentAdminId, or
   const [assessmentMode, setAssessmentMode] = useState<RecruitmentAssessmentDialogMode>('new');
 
   const [interviewOpen, setInterviewOpen] = useState(false);
+  const [interviewBookingMode, setInterviewBookingMode] = useState<'book' | 'reschedule'>('book');
   const [skipInterviewOpen, setSkipInterviewOpen] = useState(false);
   const [interviewOutcome, setInterviewOutcome] = useState('');
   const [interviewStatus, setInterviewStatus] = useState<RecruitmentInterviewStatus>('Completed');
@@ -283,6 +284,7 @@ export default function RecruitmentWorkflowPanel({ applicant, currentAdminId, or
   const latestAssessment = currentAssessments[0];
   const currentInterviews = useMemo(() => interviews.filter(item => item.stage === String(applicant.stage)), [interviews, applicant.stage]);
   const latestInterview = currentInterviews[0];
+  const latestInterviewEnded = Boolean(latestInterview && new Date(latestInterview.endAt).getTime() <= Date.now());
   const currentTasks = useMemo(() => tasks.filter(item => item.stage === String(applicant.stage)), [tasks, applicant.stage]);
   const videoRetryTasks = useMemo(
     () => tasks
@@ -400,7 +402,9 @@ export default function RecruitmentWorkflowPanel({ applicant, currentAdminId, or
   };
 
   const interviewBooked = async () => {
-    setNotice('Recruitment interview booked. Zoho Meeting creation and the candidate email are automatic.');
+    setNotice(interviewBookingMode === 'reschedule'
+      ? 'Recruitment interview rescheduled. The existing Zoho meeting and calendar event are being refreshed, and a fresh candidate email will follow.'
+      : 'Recruitment interview booked. Zoho Meeting creation and the candidate email are automatic.');
     await onChanged();
     await load();
   };
@@ -535,7 +539,9 @@ export default function RecruitmentWorkflowPanel({ applicant, currentAdminId, or
               </div>
             )}
 
-            {!latestInterview && !interviewSkipped && <button type="button" onClick={() => setInterviewOpen(true)} disabled={busy} className="mt-3 w-full rounded-lg bg-[#000080] px-3 py-2.5 text-sm font-bold text-white disabled:opacity-50">Book Interview</button>}
+            {latestInterview && !interviewSkipped && latestInterview.status === 'Scheduled' && latestInterviewEnded && <button type="button" onClick={() => { setInterviewBookingMode('reschedule'); setInterviewOpen(true); }} disabled={busy} className="mt-3 w-full rounded-lg bg-[#000080] px-3 py-2.5 text-sm font-bold text-white disabled:opacity-50">Reschedule Interview</button>}
+
+            {!latestInterview && !interviewSkipped && <button type="button" onClick={() => { setInterviewBookingMode('book'); setInterviewOpen(true); }} disabled={busy} className="mt-3 w-full rounded-lg bg-[#000080] px-3 py-2.5 text-sm font-bold text-white disabled:opacity-50">Book Interview</button>}
 
             {latestInterview && !interviewSkipped && latestInterview.status !== 'Completed' && (
               <div className="mt-3 space-y-2">
@@ -544,7 +550,7 @@ export default function RecruitmentWorkflowPanel({ applicant, currentAdminId, or
                 </select>
                 <textarea value={interviewOutcome} onChange={event => setInterviewOutcome(event.target.value)} rows={2} placeholder="Interview outcome / notes" className="w-full rounded-lg border border-blue-100 bg-white px-3 py-2.5 text-sm outline-none focus:border-[#000080]" />
                 <button type="button" onClick={() => void updateLatestInterview()} disabled={busy} className="w-full rounded-lg border border-[#000080]/20 bg-white px-3 py-2.5 text-sm font-bold text-[#000080] disabled:opacity-50">Update Interview</button>
-                {(['Rescheduled', 'Cancelled', 'No Show'] as RecruitmentInterviewStatus[]).includes(latestInterview.status) && <button type="button" onClick={() => setInterviewOpen(true)} disabled={busy} className="w-full rounded-lg bg-[#000080] px-3 py-2.5 text-sm font-bold text-white disabled:opacity-50">Book New Time</button>}
+                {(['Rescheduled', 'Cancelled', 'No Show'] as RecruitmentInterviewStatus[]).includes(latestInterview.status) && <button type="button" onClick={() => { setInterviewBookingMode(latestInterview.status === 'Rescheduled' ? 'reschedule' : 'book'); setInterviewOpen(true); }} disabled={busy} className="w-full rounded-lg bg-[#000080] px-3 py-2.5 text-sm font-bold text-white disabled:opacity-50">{latestInterview.status === 'Rescheduled' ? 'Choose Rescheduled Time' : 'Book New Time'}</button>}
               </div>
             )}
 
@@ -702,7 +708,7 @@ export default function RecruitmentWorkflowPanel({ applicant, currentAdminId, or
       )}
 
       {selectedTask && <RecruitmentTaskReviewDialog task={selectedTask} candidateName={applicant.fullName} onClose={()=>setSelectedTask(null)} onChanged={async()=>{await onChanged();await load();}}/>}
-      {interviewOpen && bookingContext && <RecruitmentInterviewBookingDialog applicantId={applicant.id} candidateName={applicant.fullName} candidateTimezone={applicant.timezone} context={bookingContext} onClose={() => setInterviewOpen(false)} onBooked={interviewBooked} />}
+      {interviewOpen && bookingContext && <RecruitmentInterviewBookingDialog applicantId={applicant.id} candidateName={applicant.fullName} candidateTimezone={applicant.timezone} context={bookingContext} mode={interviewBookingMode} onClose={() => setInterviewOpen(false)} onBooked={interviewBooked} />}
       {skipInterviewOpen && <RecruitmentInterviewSkipDialog applicantId={applicant.id} candidateName={applicant.fullName} stage={String(applicant.stage)} onClose={() => setSkipInterviewOpen(false)} onSkipped={interviewSkippedByAdmin} />}
     </div>
   );
