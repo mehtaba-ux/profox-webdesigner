@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
-const migration = fs.readFileSync('supabase/migrations/20260930211000_recruitment_interview_reschedule_self_service.sql','utf8');
+const migration = fs.readFileSync('supabase/migrations/20260930161358_recruitment_interview_reschedule_self_service.sql','utf8');
 const joinService = fs.readFileSync('src/lib/recruitmentInterviewJoinService.ts','utf8');
 const joinPage = fs.readFileSync('src/pages/RecruitmentInterviewJoinPage.tsx','utf8');
 const workflowPanel = fs.readFileSync('src/components/admin/RecruitmentWorkflowPanel.tsx','utf8');
