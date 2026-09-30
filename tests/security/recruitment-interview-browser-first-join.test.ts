@@ -27,6 +27,6 @@ test('public recruitment interview route forwards to the validated Zoho particip
   assert.match(app, /RecruitmentInterviewJoinPage/);
   assert.match(app, /recruitment\/interview\/:token/);
   assert.match(page, /window\.location\.replace\(interview\.joinUrl\)/);
-  assert.match(page, /Opening your ProFox interview/);
+  assert.match(page, /Your ProFox interview is ready/);
   assert.match(page, /Zoho may hand the meeting off to its mobile app/);
 });
