@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
 const migration = fs.readFileSync('supabase/migrations/20260930161358_recruitment_interview_reschedule_self_service.sql','utf8');
+const expiredZohoMigration = fs.readFileSync('supabase/migrations/20261001073000_rotate_expired_zoho_reschedules.sql','utf8');
 const joinService = fs.readFileSync('src/lib/recruitmentInterviewJoinService.ts','utf8');
 const joinPage = fs.readFileSync('src/pages/RecruitmentInterviewJoinPage.tsx','utf8');
 const workflowPanel = fs.readFileSync('src/components/admin/RecruitmentWorkflowPanel.tsx','utf8');
@@ -39,4 +40,20 @@ test('candidate secure page exposes available slots and one-time reschedule acti
   assert.match(joinPage, /Reschedule Interview/);
   assert.match(joinPage, /24 hours later/);
   assert.match(joinPage, /does not create a duplicate meeting/);
+});
+
+
+test('expired Zoho interview reschedules rotate stale provider mappings without duplicating the ProFox meeting', () => {
+  assert.match(expiredZohoMigration, /rotate_expired_zoho_provider_links_before_reschedule/);
+  assert.match(expiredZohoMigration, /old\.end_at > now\(\)/);
+  assert.match(expiredZohoMigration, /delete from public\.zoho_calendar_event_links/);
+  assert.match(expiredZohoMigration, /delete from public\.meeting_provider_private_links/);
+  assert.match(expiredZohoMigration, /queue_zoho_calendar_sync/);
+  assert.match(expiredZohoMigration, /meeting_provider_rotations/);
+});
+
+test('admin recruitment interview view protects the Zoho presenter link', () => {
+  assert.match(expiredZohoMigration, /public\.is_admin\(\) or ri\.interviewer_id=auth\.uid\(\)/);
+  assert.match(expiredZohoMigration, /mpl\.host_url/);
+  assert.match(expiredZohoMigration, /else m\.meeting_url/);
 });
