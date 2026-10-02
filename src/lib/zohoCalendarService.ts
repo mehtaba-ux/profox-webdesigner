@@ -8,6 +8,8 @@ export interface ZohoCalendarConnectionStatus {
   calendarTimezone: string;
   meetingReady: boolean;
   sdkMeetingReady: boolean;
+  sdkHostStatus: 'unknown' | 'ready' | 'avsdk_required' | 'reauthorization_required' | 'error';
+  sdkHostError: string | null;
   lastAuthAt: string | null;
   lastSuccessfulSyncAt: string | null;
   lastError: string | null;
