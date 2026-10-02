@@ -125,17 +125,32 @@ Deno.serve(async (req: Request) => {
       const granted = String(token?.scope || "").split(/[ ,]+/).filter(Boolean);
       const requiredSdkScopes = ["ZohoMeeting.sdk.READ", "ZohoMeeting.sdk.CREATE"];
       const missingSdkScopes = requiredSdkScopes.filter(scope => !granted.includes(scope));
-      if (missingSdkScopes.length) {
-        throw new Error(`Zoho Meeting SDK authorization is incomplete. Missing: ${missingSdkScopes.join(", ")}. Re-authorize and approve the requested Meeting SDK permissions.`);
-      }
+      let sdkHostStatus = "unknown";
+      let sdkHostError = "";
 
-      const sdkProbe = await fetch(`${meetingBase}/meeting/api/v2/${encodeURIComponent(zsoid)}/sdk/sessions?index=0&count=1&filterType=sdkMeetingList&listtype=upcoming`, {
-        headers: { ...authHeaders, "X-ZSOURCE": "ProFox" },
-      });
-      const sdkProbePayload: any = await sdkProbe.json().catch(() => ({}));
-      if (!sdkProbe.ok) {
-        const detail = String(sdkProbePayload?.error?.message || sdkProbePayload?.message || `HTTP ${sdkProbe.status}`);
-        throw new Error(`Zoho Meeting SDK access is not available for this organization. ${detail}`);
+      if (missingSdkScopes.length) {
+        sdkHostStatus = "reauthorization_required";
+        sdkHostError = `Zoho Meeting SDK authorization is incomplete. Missing: ${missingSdkScopes.join(", ")}.`;
+      } else {
+        const sdkProbe = await fetch(`${meetingBase}/meeting/api/v2/${encodeURIComponent(zsoid)}/sdk/sessions?index=0&count=1&filterType=sdkMeetingList&listtype=upcoming`, {
+          headers: { ...authHeaders, "X-ZSOURCE": "ProFox" },
+        });
+        const sdkProbePayload: any = await sdkProbe.json().catch(() => ({}));
+        if (sdkProbe.ok) {
+          sdkHostStatus = "ready";
+        } else {
+          const detail = String(sdkProbePayload?.error?.message || sdkProbePayload?.message || `HTTP ${sdkProbe.status}`);
+          if (/AVSDK is not enabled/i.test(detail)) {
+            sdkHostStatus = "avsdk_required";
+            sdkHostError = "Zoho Meeting AVSDK is not enabled. Standard Calendar and Meeting remain connected.";
+          } else if (/INVALID_OAUTHTOKEN|INVALID_TOKEN|scope|permission|not authorized/i.test(detail)) {
+            sdkHostStatus = "reauthorization_required";
+            sdkHostError = `Zoho Meeting SDK authorization is incomplete. ${detail}`;
+          } else {
+            sdkHostStatus = "error";
+            sdkHostError = `Zoho Meeting SDK capability check failed. ${detail}`;
+          }
+        }
       }
 
       const { error: saveError } = await service.rpc("service_upsert_zoho_service_calendar_connection", {
@@ -154,12 +169,22 @@ Deno.serve(async (req: Request) => {
       });
       if (saveError) throw saveError;
 
+      const { error: capabilityError } = await service.from("zoho_service_calendar_connection").update({
+        sdk_host_status: sdkHostStatus,
+        sdk_host_error: sdkHostError || null,
+        sdk_host_checked_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }).eq("singleton_key", "primary");
+      if (capabilityError) throw capabilityError;
+
       const { error: activateError } = await service.rpc("service_activate_zoho_service_calendar");
       if (activateError) throw activateError;
       await ignoreRpcFailure(service.rpc("service_queue_existing_unsynced_meetings_for_central_zoho"));
-      await ignoreRpcFailure(service.rpc("service_queue_upcoming_recruitment_meetings_for_zoho_sdk"));
+      if (sdkHostStatus === "ready") {
+        await ignoreRpcFailure(service.rpc("service_queue_upcoming_recruitment_meetings_for_zoho_sdk"));
+      }
 
-      return Response.redirect(`${publicBase}${returnPath}${returnPath.includes("?") ? "&" : "?"}zoho=service_connected`, 302);
+      return Response.redirect(`${publicBase}${returnPath}${returnPath.includes("?") ? "&" : "?"}zoho=service_connected&sdk=${encodeURIComponent(sdkHostStatus)}`, 302);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Zoho Calendar and Meeting connection failed.";
       await ignoreRpcFailure(service.rpc("service_mark_zoho_service_calendar_state", { p_status: "error", p_error: message, p_success: false }));
