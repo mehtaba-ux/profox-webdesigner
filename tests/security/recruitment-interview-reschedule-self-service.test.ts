@@ -9,6 +9,8 @@ const interviewerHostMigration = fs.readFileSync('supabase/migrations/2026100203
 const zohoWorker = fs.readFileSync('supabase/functions/process-zoho-calendar-sync/index.ts','utf8');
 const zohoOauth = fs.readFileSync('supabase/functions/zoho-calendar-oauth/index.ts','utf8');
 const sdkFoundation = fs.readFileSync('supabase/migrations/20261002034955_recruitment_zoho_sdk_host_launch_foundation.sql','utf8');
+const sdkCapability = fs.readFileSync('supabase/migrations/20261002040601_zoho_sdk_host_capability_state.sql','utf8');
+const noParticipantFallback = fs.readFileSync('supabase/migrations/20261002040911_recruitment_host_launch_no_participant_fallback.sql','utf8');
 const joinService = fs.readFileSync('src/lib/recruitmentInterviewJoinService.ts','utf8');
 const joinPage = fs.readFileSync('src/pages/RecruitmentInterviewJoinPage.tsx','utf8');
 const workflowPanel = fs.readFileSync('src/components/admin/RecruitmentWorkflowPanel.tsx','utf8');
@@ -57,25 +59,29 @@ test('expired Zoho interview reschedules rotate stale provider mappings without 
   assert.match(expiredZohoMigration, /meeting_provider_rotations/);
 });
 
-test('admin or assigned interviewer launches recruitment through a signed stateless Zoho host URL', () => {
+test('admin or assigned interviewer launches only through a signed stateless Zoho host URL', () => {
   assert.match(staffBrowserJoinMigration, /mpl\.join_url/);
-  assert.match(sdkFoundation, /public\.is_admin\(\) or ri\.interviewer_id=auth\.uid\(\)/);
   assert.match(sdkFoundation, /statelessStart/);
-  assert.match(sdkFoundation, /signature=/);
-  assert.match(sdkFoundation, /meetingLaunchRole/);
-  assert.match(sdkFoundation, /hostLaunchReady/);
+  assert.match(noParticipantFallback, /public\.is_admin\(\) or ri\.interviewer_id=auth\.uid\(\)/);
+  assert.match(noParticipantFallback, /participantMeetingUrl/);
+  assert.match(noParticipantFallback, /participantMeetingReady/);
+  assert.match(noParticipantFallback, /else ''/);
   assert.match(workflowPanel, /Launch Interview as Host/);
-  assert.match(workflowPanel, /Host launch is not ready yet/);
+  assert.match(workflowPanel, /will not fall back to the candidate participant link/);
 });
 
-test('Zoho recruitment sync creates SDK sessions and requires SDK OAuth scopes', () => {
+test('Zoho recruitment sync uses SDK when available and preserves normal meetings when AVSDK is disabled', () => {
   assert.match(zohoWorker, /ZohoMeeting\.sdk\.READ/);
   assert.match(zohoWorker, /ZohoMeeting\.sdk\.CREATE/);
   assert.match(zohoWorker, /\/sdk\/session/);
   assert.match(zohoWorker, /statelessStart/);
   assert.match(zohoWorker, /createRecruitmentSdkMeeting/);
+  assert.match(zohoWorker, /AVSDK is not enabled/);
+  assert.match(zohoWorker, /sdk_host_status: "avsdk_required"/);
+  assert.match(zohoWorker, /Preserve the working candidate meeting/);
   assert.match(zohoOauth, /ZohoMeeting\.sdk\.READ/);
   assert.match(zohoOauth, /ZohoMeeting\.sdk\.CREATE/);
-  assert.match(zohoOauth, /service_queue_upcoming_recruitment_meetings_for_zoho_sdk/);
+  assert.match(sdkCapability, /sdk_host_status/);
+  assert.match(sdkCapability, /avsdk_required/);
   assert.match(zohoWorker, /findCalendarEventByMarker/);
 });
