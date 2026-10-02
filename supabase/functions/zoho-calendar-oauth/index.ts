@@ -123,6 +123,21 @@ Deno.serve(async (req: Request) => {
       const { data: secretId, error: secretError } = await service.rpc("service_store_zoho_service_calendar_refresh_token", { p_refresh_token: refreshToken });
       if (secretError || !secretId) throw secretError || new Error("Secure central refresh-token storage failed.");
       const granted = String(token?.scope || "").split(/[ ,]+/).filter(Boolean);
+      const requiredSdkScopes = ["ZohoMeeting.sdk.READ", "ZohoMeeting.sdk.CREATE"];
+      const missingSdkScopes = requiredSdkScopes.filter(scope => !granted.includes(scope));
+      if (missingSdkScopes.length) {
+        throw new Error(`Zoho Meeting SDK authorization is incomplete. Missing: ${missingSdkScopes.join(", ")}. Re-authorize and approve the requested Meeting SDK permissions.`);
+      }
+
+      const sdkProbe = await fetch(`${meetingBase}/meeting/api/v2/${encodeURIComponent(zsoid)}/sdk/sessions?index=0&count=1&filterType=sdkMeetingList&listtype=upcoming`, {
+        headers: { ...authHeaders, "X-ZSOURCE": "ProFox" },
+      });
+      const sdkProbePayload: any = await sdkProbe.json().catch(() => ({}));
+      if (!sdkProbe.ok) {
+        const detail = String(sdkProbePayload?.error?.message || sdkProbePayload?.message || `HTTP ${sdkProbe.status}`);
+        throw new Error(`Zoho Meeting SDK access is not available for this organization. ${detail}`);
+      }
+
       const { error: saveError } = await service.rpc("service_upsert_zoho_service_calendar_connection", {
         p_connected_by: adminUserId,
         p_account_email: accountEmail,
@@ -142,6 +157,7 @@ Deno.serve(async (req: Request) => {
       const { error: activateError } = await service.rpc("service_activate_zoho_service_calendar");
       if (activateError) throw activateError;
       await ignoreRpcFailure(service.rpc("service_queue_existing_unsynced_meetings_for_central_zoho"));
+      await ignoreRpcFailure(service.rpc("service_queue_upcoming_recruitment_meetings_for_zoho_sdk"));
 
       return Response.redirect(`${publicBase}${returnPath}${returnPath.includes("?") ? "&" : "?"}zoho=service_connected`, 302);
     } catch (error) {
@@ -194,6 +210,8 @@ Deno.serve(async (req: Request) => {
       "ZohoCalendar.event.ALL",
       "ZohoMeeting.manageOrg.READ",
       "ZohoMeeting.meeting.ALL",
+      "ZohoMeeting.sdk.READ",
+      "ZohoMeeting.sdk.CREATE",
     ];
     const authUrl = new URL(`${accountBase}/oauth/v2/auth`);
     authUrl.search = new URLSearchParams({
