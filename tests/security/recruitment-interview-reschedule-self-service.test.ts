@@ -7,6 +7,8 @@ const expiredZohoMigration = fs.readFileSync('supabase/migrations/20261001073000
 const staffBrowserJoinMigration = fs.readFileSync('supabase/migrations/20261002031341_recruitment_staff_browser_join.sql','utf8');
 const interviewerHostMigration = fs.readFileSync('supabase/migrations/20261002033022_recruitment_interviewer_host_launch.sql','utf8');
 const zohoWorker = fs.readFileSync('supabase/functions/process-zoho-calendar-sync/index.ts','utf8');
+const zohoOauth = fs.readFileSync('supabase/functions/zoho-calendar-oauth/index.ts','utf8');
+const sdkFoundation = fs.readFileSync('supabase/migrations/20261002034955_recruitment_zoho_sdk_host_launch_foundation.sql','utf8');
 const joinService = fs.readFileSync('src/lib/recruitmentInterviewJoinService.ts','utf8');
 const joinPage = fs.readFileSync('src/pages/RecruitmentInterviewJoinPage.tsx','utf8');
 const workflowPanel = fs.readFileSync('src/components/admin/RecruitmentWorkflowPanel.tsx','utf8');
@@ -55,18 +57,25 @@ test('expired Zoho interview reschedules rotate stale provider mappings without 
   assert.match(expiredZohoMigration, /meeting_provider_rotations/);
 });
 
-test('admin or assigned interviewer launches the recruitment interview with a tokenized Zoho presenter URL', () => {
+test('admin or assigned interviewer launches recruitment through a signed stateless Zoho host URL', () => {
   assert.match(staffBrowserJoinMigration, /mpl\.join_url/);
-  assert.match(interviewerHostMigration, /public\.is_admin\(\) or ri\.interviewer_id=auth\.uid\(\)/);
-  assert.match(interviewerHostMigration, /mpl\.host_url/);
-  assert.match(interviewerHostMigration, /embedmeeting\.jsp/);
-  assert.match(interviewerHostMigration, /meetingLaunchRole/);
+  assert.match(sdkFoundation, /public\.is_admin\(\) or ri\.interviewer_id=auth\.uid\(\)/);
+  assert.match(sdkFoundation, /statelessStart/);
+  assert.match(sdkFoundation, /signature=/);
+  assert.match(sdkFoundation, /meetingLaunchRole/);
+  assert.match(sdkFoundation, /hostLaunchReady/);
   assert.match(workflowPanel, /Launch Interview as Host/);
+  assert.match(workflowPanel, /Host launch is not ready yet/);
 });
 
-test('Zoho sync stores the tokenized presenter URL instead of the login-gated start link', () => {
-  assert.match(zohoWorker, /meetingEmbedUrl/);
-  assert.match(zohoWorker, /presenterLaunchUrl/);
-  assert.match(zohoWorker, /tokenized presenter launch URL/);
+test('Zoho recruitment sync creates SDK sessions and requires SDK OAuth scopes', () => {
+  assert.match(zohoWorker, /ZohoMeeting\.sdk\.READ/);
+  assert.match(zohoWorker, /ZohoMeeting\.sdk\.CREATE/);
+  assert.match(zohoWorker, /\/sdk\/session/);
+  assert.match(zohoWorker, /statelessStart/);
+  assert.match(zohoWorker, /createRecruitmentSdkMeeting/);
+  assert.match(zohoOauth, /ZohoMeeting\.sdk\.READ/);
+  assert.match(zohoOauth, /ZohoMeeting\.sdk\.CREATE/);
+  assert.match(zohoOauth, /service_queue_upcoming_recruitment_meetings_for_zoho_sdk/);
   assert.match(zohoWorker, /findCalendarEventByMarker/);
 });
