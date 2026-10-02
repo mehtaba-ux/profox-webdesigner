@@ -324,6 +324,19 @@ Deno.serve(async (req: Request) => {
     if (eventUid) data.uid = eventUid; if (etag) data.etag = etag; return data;
   }
   async function getCalendarEvent(eventId: string) { const cal = encodeURIComponent(String(connection.calendar_id)); return api(calendarBase, `/api/v1/calendars/${cal}/events/${encodeURIComponent(eventId)}`, { method: "GET" }); }
+  async function findCalendarEventByMarker(meeting: any) {
+    const marker = markerFor(String(meeting.id));
+    const start = new Date(new Date(meeting.start_at).getTime() - 24 * 60 * 60 * 1000);
+    const end = new Date(new Date(meeting.end_at).getTime() + 24 * 60 * 60 * 1000);
+    const range = JSON.stringify({ start: toBasicUtc(start), end: toBasicUtc(end) });
+    const cal = encodeURIComponent(String(connection.calendar_id));
+    const listing = await api(calendarBase, `/api/v1/calendars/${cal}/events?${new URLSearchParams({ range }).toString()}`, { method: "GET" });
+    if (!listing.response.ok) return null;
+    const events = Array.isArray(listing.payload?.events) ? listing.payload.events : [];
+    const exact = events.filter((item: any) => String(item?.description || "").includes(marker));
+    if (exact.length > 1) throw Object.assign(new Error("Multiple Zoho Calendar events match this ProFox meeting marker; automatic recovery stopped."), { kind: "failed" });
+    return exact[0] || null;
+  }
   async function persistCalendar(job: any, event: any, operation: string, joinUrl: string) {
     const uid = String(event?.uid || ""); if (!uid) throw new Error("Zoho Calendar returned no event UID.");
     const { error } = await service.rpc("service_upsert_zoho_event_link", { p_meeting_id: job.meeting_id, p_user_id: job.user_id, p_calendar_id: String(connection.calendar_id), p_event_id: uid, p_etag: String(event?.etag || ""), p_meeting_url: joinUrl, p_operation: operation });
@@ -333,14 +346,33 @@ Deno.serve(async (req: Request) => {
     const cal = encodeURIComponent(String(connection.calendar_id)), link = await loadCalendarLink(job);
     if (link?.external_event_id) {
       const current = await getCalendarEvent(String(link.external_event_id));
-      if (current.response.status === 404) { await finish(job, "dead_letter", "Stored Zoho Calendar event ID no longer exists. Automatic recreation is blocked to prevent duplicate events."); return false; }
-      if (!current.response.ok) return handleFailure(job, current.response, current.payload, "idempotent", "Zoho Calendar event");
-      const existing = eventFrom(current.payload);
-      const params = new URLSearchParams({ eventdata: JSON.stringify(calendarEventData(meeting, String(link.external_event_id), String(existing?.etag || link.etag || ""))) });
-      const written = await api(calendarBase, `/api/v1/calendars/${cal}/events/${encodeURIComponent(String(link.external_event_id))}?${params.toString()}`, { method: "PUT" });
-      if (!written.response.ok) return handleFailure(job, written.response, written.payload, "idempotent", "Zoho Calendar event");
-      try { await persistCalendar(job, eventFrom(written.payload) || { uid: link.external_event_id, etag: link.etag }, "update", joinUrl); return true; }
-      catch (error: any) { await finish(job, "retry", error?.message || "Zoho Calendar event persistence failed.", retryDelay(Number(job.attempts || 1))); return false; }
+      if (current.response.status === 404) {
+        // A 404 proves the stored event ID is stale. Recover an event with the
+        // same immutable ProFox marker if one exists; otherwise clear only the
+        // stale calendar mapping and safely create a replacement.
+        const recovered = await findCalendarEventByMarker(meeting);
+        if (recovered?.uid) {
+          try { await persistCalendar(job, recovered, "recover", joinUrl); return true; }
+          catch (error: any) { await finish(job, "retry", error?.message || "Recovered Zoho Calendar event could not be persisted.", retryDelay(Number(job.attempts || 1))); return false; }
+        }
+        const { error: staleLinkError } = await service.from("zoho_calendar_event_links").delete().eq("meeting_id", job.meeting_id);
+        if (staleLinkError) { await finish(job, "retry", staleLinkError.message, retryDelay(Number(job.attempts || 1))); return false; }
+        const { error: staleMeetingError } = await service.from("sales_meetings").update({
+          external_calendar_id: null,
+          external_event_id: null,
+          sync_status: "Pending",
+          sync_error: null,
+        }).eq("id", job.meeting_id);
+        if (staleMeetingError) { await finish(job, "retry", staleMeetingError.message, retryDelay(Number(job.attempts || 1))); return false; }
+      } else {
+        if (!current.response.ok) return handleFailure(job, current.response, current.payload, "idempotent", "Zoho Calendar event");
+        const existing = eventFrom(current.payload);
+        const params = new URLSearchParams({ eventdata: JSON.stringify(calendarEventData(meeting, String(link.external_event_id), String(existing?.etag || link.etag || ""))) });
+        const written = await api(calendarBase, `/api/v1/calendars/${cal}/events/${encodeURIComponent(String(link.external_event_id))}?${params.toString()}`, { method: "PUT" });
+        if (!written.response.ok) return handleFailure(job, written.response, written.payload, "idempotent", "Zoho Calendar event");
+        try { await persistCalendar(job, eventFrom(written.payload) || { uid: link.external_event_id, etag: link.etag }, "update", joinUrl); return true; }
+        catch (error: any) { await finish(job, "retry", error?.message || "Zoho Calendar event persistence failed.", retryDelay(Number(job.attempts || 1))); return false; }
+      }
     }
     const params = new URLSearchParams({ eventdata: JSON.stringify(calendarEventData(meeting)) });
     let written;
