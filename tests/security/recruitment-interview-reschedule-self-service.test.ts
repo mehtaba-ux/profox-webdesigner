@@ -4,6 +4,7 @@ import fs from 'node:fs';
 
 const migration = fs.readFileSync('supabase/migrations/20260930161358_recruitment_interview_reschedule_self_service.sql','utf8');
 const expiredZohoMigration = fs.readFileSync('supabase/migrations/20261001073000_rotate_expired_zoho_reschedules.sql','utf8');
+const staffBrowserJoinMigration = fs.readFileSync('supabase/migrations/20261002031341_recruitment_staff_browser_join.sql','utf8');
 const joinService = fs.readFileSync('src/lib/recruitmentInterviewJoinService.ts','utf8');
 const joinPage = fs.readFileSync('src/pages/RecruitmentInterviewJoinPage.tsx','utf8');
 const workflowPanel = fs.readFileSync('src/components/admin/RecruitmentWorkflowPanel.tsx','utf8');
@@ -52,8 +53,9 @@ test('expired Zoho interview reschedules rotate stale provider mappings without 
   assert.match(expiredZohoMigration, /meeting_provider_rotations/);
 });
 
-test('admin recruitment interview view protects the Zoho presenter link', () => {
-  assert.match(expiredZohoMigration, /public\.is_admin\(\) or ri\.interviewer_id=auth\.uid\(\)/);
-  assert.match(expiredZohoMigration, /mpl\.host_url/);
-  assert.match(expiredZohoMigration, /else m\.meeting_url/);
+test('admin recruitment interview joins through the browser participant URL without exposing the Zoho host URL', () => {
+  assert.match(staffBrowserJoinMigration, /mpl\.join_url/);
+  assert.match(staffBrowserJoinMigration, /m\.meeting_url/);
+  assert.doesNotMatch(staffBrowserJoinMigration, /mpl\.host_url/);
+  assert.match(workflowPanel, /Join Interview/);
 });
