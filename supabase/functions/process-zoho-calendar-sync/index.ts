@@ -101,6 +101,8 @@ Deno.serve(async (req: Request) => {
   const { data: connection, error: connectionError } = await service.from("zoho_service_calendar_connection").select("*").eq("singleton_key", "primary").maybeSingle();
   if (connectionError || !connection || !["connected", "error"].includes(String(connection.status))) return json({ error: connectionError?.message || "Central Zoho service connection is unavailable." }, 503);
   if (!connection.calendar_id || !connection.meeting_org_id || !connection.presenter_zuid || !connection.meeting_ready) return json({ error: "Central Zoho Calendar/Meeting capability is incomplete." }, 503);
+  const grantedScopes = Array.isArray(connection.scopes) ? connection.scopes.map((value: unknown) => String(value)) : [];
+  const sdkMeetingReady = grantedScopes.includes("ZohoMeeting.sdk.READ") && grantedScopes.includes("ZohoMeeting.sdk.CREATE");
 
   const { data: provider, error: providerError } = await service.rpc("service_get_zoho_provider_credentials");
   if (providerError || !provider?.clientId || !provider?.clientSecret) return json({ error: "Zoho OAuth provider credentials are not configured." }, 503);
@@ -199,6 +201,10 @@ Deno.serve(async (req: Request) => {
     const { data } = await service.from("meeting_provider_private_links").select("*").eq("meeting_id", job.meeting_id).eq("provider", "zoho_meeting").maybeSingle();
     return data || null;
   }
+  async function isRecruitmentInterview(job: any) {
+    const { data } = await service.from("recruitment_interviews").select("id").eq("meeting_id", job.meeting_id).maybeSingle();
+    return Boolean(data?.id);
+  }
   async function ensureStillZoho(job: any) {
     const { data } = await service.rpc("service_meeting_external_provider", { p_meeting_id: job.meeting_id });
     return String(data || "") === "zoho";
@@ -249,26 +255,25 @@ Deno.serve(async (req: Request) => {
     const key = String(exact[0]?.meetingKey || exact[0]?.meeting_key || ""); if (!key) return null;
     const current = await getMeetingByKey(key); return current.response.ok ? sessionFrom(current.payload) : null;
   }
-  function presenterLaunchUrl(session: any) {
-    const embed = String(session?.meetingEmbedUrl || session?.meeting_embedurl || "").trim();
-    return /^https:\/\//i.test(embed) ? embed : "";
-  }
-  async function persistPrivate(job: any, session: any) {
+  const isStatelessHostUrl = (value: unknown) => {
+    const url = String(value || "").trim();
+    return /^https:\/\//i.test(url)
+      && /\/meeting\/statelessStart\?/i.test(url)
+      && /[?&]signature=/i.test(url)
+      && /[?&]key=/i.test(url);
+  };
+
+  async function persistPrivate(job: any, session: any, options: { requireStatelessHost?: boolean; fallbackHost?: string } = {}) {
     const key = String(session?.meetingKey || session?.meeting_key || "").trim();
     const join = String(session?.joinLink || session?.join_link || "").trim();
-    let host = presenterLaunchUrl(session);
-
-    // The create/update response can omit meetingEmbedUrl even though the
-    // Meeting Details API returns it. Fetch the full record before falling
-    // back so staff receive the tokenized presenter URL rather than Zoho's
-    // login-gated startLink.
-    if (key && !host) {
-      const detail = await getMeetingByKey(key);
-      if (detail.response.ok) host = presenterLaunchUrl(sessionFrom(detail.payload));
-    }
+    const responseHost = String(session?.startLink || session?.start_link || "").trim();
+    const host = responseHost || String(options.fallbackHost || "").trim();
 
     if (!key || !/^https:\/\//i.test(join) || !/^https:\/\//i.test(host)) {
-      throw Object.assign(new Error("Zoho Meeting did not return a tokenized presenter launch URL."), { kind: "uncertain_create" });
+      throw Object.assign(new Error("Zoho Meeting did not return complete meeting links."), { kind: "uncertain_create" });
+    }
+    if (options.requireStatelessHost && !isStatelessHostUrl(host)) {
+      throw Object.assign(new Error("Zoho Meeting SDK did not return a signed stateless presenter start link."), { kind: "uncertain_create" });
     }
 
     const { error } = await service.rpc("service_upsert_meeting_provider_private_link", {
@@ -280,6 +285,100 @@ Deno.serve(async (req: Request) => {
     if (error) throw Object.assign(new Error(error.message), { kind: "persist" });
     return { key, join, host };
   }
+
+  async function createRecruitmentSdkMeeting(job: any, meeting: any, existing: any) {
+    if (!sdkMeetingReady) {
+      await finish(job, "reconnect_required", "Zoho Meeting SDK permissions are required for no-login interviewer host launch. Re-authorize the central Zoho Calendar + Meeting connection.");
+      return null;
+    }
+
+    let created;
+    try {
+      created = await api(
+        meetingBase,
+        `/meeting/api/v2/${encodeURIComponent(String(connection.meeting_org_id))}/sdk/session`,
+        { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(meetingBody(meeting)) },
+        true,
+      );
+    } catch (error) {
+      await quarantineCreate(job, "Zoho Meeting SDK session", error instanceof Error ? error.message : "Network failure");
+      return null;
+    }
+    if (!created.response.ok) {
+      await handleFailure(job, created.response, created.payload, "create", "Zoho Meeting SDK session");
+      return null;
+    }
+
+    let next;
+    try {
+      next = await persistPrivate(job, sessionFrom(created.payload), { requireStatelessHost: true });
+    } catch (error: any) {
+      await quarantineCreate(job, "Zoho Meeting SDK session", error?.message || "SDK response could not be persisted");
+      return null;
+    }
+
+    // The new SDK session is safely persisted before the obsolete normal
+    // Zoho session is removed. Failure to delete the old provider object does
+    // not invalidate the live ProFox meeting, but the current links always
+    // point to the new SDK session.
+    const oldKey = String(existing?.external_meeting_id || "");
+    if (oldKey && oldKey !== next.key) {
+      try {
+        await api(
+          meetingBase,
+          `/api/v2/${encodeURIComponent(String(connection.meeting_org_id))}/sessions/${encodeURIComponent(oldKey)}.json`,
+          { method: "DELETE" },
+          true,
+        );
+      } catch { /* best-effort cleanup after safe replacement */ }
+    }
+
+    return next;
+  }
+
+  async function ensureRecruitmentSdkMeeting(job: any, meeting: any) {
+    const existing = await loadPrivateLink(job);
+
+    if (existing?.external_meeting_id && isStatelessHostUrl(existing.host_url)) {
+      // SDK sessions remain ordinary Zoho meetings underneath. Reuse the
+      // existing provider object for normal future edits and preserve the
+      // signed stateless presenter URL.
+      const current = await getMeetingByKey(String(existing.external_meeting_id));
+      if (current.response.ok) {
+        const update = await api(
+          meetingBase,
+          `/api/v2/${encodeURIComponent(String(connection.meeting_org_id))}/sessions/${encodeURIComponent(String(existing.external_meeting_id))}.json`,
+          { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(meetingBody(meeting)) },
+          true,
+        );
+        if (update.response.ok) {
+          const currentSession = sessionFrom(current.payload) || {};
+          const updated = sessionFrom(update.payload) || {};
+          try {
+            return await persistPrivate(job, {
+              ...currentSession,
+              ...updated,
+              meetingKey: existing.external_meeting_id,
+              joinLink: updated?.joinLink || currentSession?.joinLink || existing.join_url,
+              startLink: existing.host_url,
+            }, { requireStatelessHost: true, fallbackHost: existing.host_url });
+          } catch (error) {
+            await finish(job, "retry", error instanceof Error ? error.message : "Zoho SDK meeting persistence failed.", retryDelay(Number(job.attempts || 1)));
+            return null;
+          }
+        }
+      }
+
+      // If Zoho will not edit the SDK meeting, replace it safely rather than
+      // degrading the interviewer to participant access.
+      return createRecruitmentSdkMeeting(job, meeting, existing);
+    }
+
+    // Existing recruitment meetings created through the normal Meeting API
+    // are upgraded once to an SDK session to obtain statelessStart.
+    return createRecruitmentSdkMeeting(job, meeting, existing);
+  }
+
   async function ensureMeeting(job: any, meeting: any) {
     const existing = await loadPrivateLink(job);
     if (existing?.external_meeting_id) {
@@ -296,8 +395,8 @@ Deno.serve(async (req: Request) => {
           ...updated,
           meetingKey: existing.external_meeting_id,
           joinLink: updated?.joinLink || currentSession?.joinLink || existing.join_url,
-          meetingEmbedUrl: updated?.meetingEmbedUrl || updated?.meeting_embedurl || currentSession?.meetingEmbedUrl || currentSession?.meeting_embedurl || "",
-        });
+          startLink: updated?.startLink || currentSession?.startLink || existing.host_url,
+        }, { fallbackHost: existing.host_url });
       }
       catch (error) { await finish(job, "retry", error instanceof Error ? error.message : "Private Zoho Meeting link persistence failed.", retryDelay(Number(job.attempts || 1))); return null; }
     }
@@ -411,7 +510,11 @@ Deno.serve(async (req: Request) => {
       const meeting = await loadMeeting(job);
       if (job.job_type === "delete_event" || meeting.status === "Cancelled") { const ok = await deleteProviderObjects(job); results.push({ id: job.id, status: ok ? "succeeded" : "deferred", operation: "delete" }); continue; }
       if (!["Scheduled", "Rescheduled"].includes(String(meeting.status))) { await finish(job, "skipped", `Meeting status ${meeting.status} is not syncable.`); results.push({ id: job.id, status: "skipped" }); continue; }
-      const meetingLink = await ensureMeeting(job, meeting); if (!meetingLink) { results.push({ id: job.id, status: "deferred", operation: "meeting" }); continue; }
+      const recruitmentInterview = await isRecruitmentInterview(job);
+      const meetingLink = recruitmentInterview
+        ? await ensureRecruitmentSdkMeeting(job, meeting)
+        : await ensureMeeting(job, meeting);
+      if (!meetingLink) { results.push({ id: job.id, status: "deferred", operation: recruitmentInterview ? "recruitment_sdk_meeting" : "meeting" }); continue; }
       const calendarOk = await upsertCalendar(job, meeting, meetingLink.join); if (!calendarOk) { results.push({ id: job.id, status: "deferred", operation: "calendar" }); continue; }
       await finish(job, "succeeded"); await markHealthy(); results.push({ id: job.id, status: "succeeded", operation: "upsert" });
     } catch (error: any) {
