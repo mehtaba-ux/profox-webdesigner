@@ -60,6 +60,7 @@ export interface RecruitmentInterview {
   endAt: string;
   timezone: string;
   meetingUrl?: string;
+  meetingLaunchRole?: 'host' | 'participant';
   status: RecruitmentInterviewStatus;
   outcomeNotes?: string;
   createdAt?: string;
