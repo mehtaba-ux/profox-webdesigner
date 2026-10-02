@@ -249,12 +249,36 @@ Deno.serve(async (req: Request) => {
     const key = String(exact[0]?.meetingKey || exact[0]?.meeting_key || ""); if (!key) return null;
     const current = await getMeetingByKey(key); return current.response.ok ? sessionFrom(current.payload) : null;
   }
+  function presenterLaunchUrl(session: any) {
+    const embed = String(session?.meetingEmbedUrl || session?.meeting_embedurl || "").trim();
+    return /^https:\/\//i.test(embed) ? embed : "";
+  }
   async function persistPrivate(job: any, session: any) {
-    const key = String(session?.meetingKey || session?.meeting_key || ""), join = String(session?.joinLink || session?.join_link || ""), start = String(session?.startLink || session?.start_link || "");
-    if (!key || !/^https:\/\//i.test(join) || !/^https:\/\//i.test(start)) throw Object.assign(new Error("Zoho Meeting did not return meetingKey, joinLink and startLink."), { kind: "uncertain_create" });
-    const { error } = await service.rpc("service_upsert_meeting_provider_private_link", { p_meeting_id: job.meeting_id, p_external_meeting_id: key, p_join_url: join, p_host_url: start });
+    const key = String(session?.meetingKey || session?.meeting_key || "").trim();
+    const join = String(session?.joinLink || session?.join_link || "").trim();
+    let host = presenterLaunchUrl(session);
+
+    // The create/update response can omit meetingEmbedUrl even though the
+    // Meeting Details API returns it. Fetch the full record before falling
+    // back so staff receive the tokenized presenter URL rather than Zoho's
+    // login-gated startLink.
+    if (key && !host) {
+      const detail = await getMeetingByKey(key);
+      if (detail.response.ok) host = presenterLaunchUrl(sessionFrom(detail.payload));
+    }
+
+    if (!key || !/^https:\/\//i.test(join) || !/^https:\/\//i.test(host)) {
+      throw Object.assign(new Error("Zoho Meeting did not return a tokenized presenter launch URL."), { kind: "uncertain_create" });
+    }
+
+    const { error } = await service.rpc("service_upsert_meeting_provider_private_link", {
+      p_meeting_id: job.meeting_id,
+      p_external_meeting_id: key,
+      p_join_url: join,
+      p_host_url: host,
+    });
     if (error) throw Object.assign(new Error(error.message), { kind: "persist" });
-    return { key, join, start };
+    return { key, join, host };
   }
   async function ensureMeeting(job: any, meeting: any) {
     const existing = await loadPrivateLink(job);
@@ -264,8 +288,17 @@ Deno.serve(async (req: Request) => {
       if (!current.response.ok) { await handleFailure(job, current.response, current.payload, "idempotent", "Zoho Meeting"); return null; }
       const update = await api(meetingBase, `/api/v2/${encodeURIComponent(String(connection.meeting_org_id))}/sessions/${encodeURIComponent(String(existing.external_meeting_id))}.json`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(meetingBody(meeting)) }, true);
       if (!update.response.ok) { await handleFailure(job, update.response, update.payload, "idempotent", "Zoho Meeting"); return null; }
-      const updated = sessionFrom(update.payload) || sessionFrom(current.payload);
-      try { return await persistPrivate(job, { ...updated, meetingKey: existing.external_meeting_id, joinLink: updated?.joinLink || existing.join_url, startLink: updated?.startLink || existing.host_url }); }
+      const currentSession = sessionFrom(current.payload) || {};
+      const updated = sessionFrom(update.payload) || {};
+      try {
+        return await persistPrivate(job, {
+          ...currentSession,
+          ...updated,
+          meetingKey: existing.external_meeting_id,
+          joinLink: updated?.joinLink || currentSession?.joinLink || existing.join_url,
+          meetingEmbedUrl: updated?.meetingEmbedUrl || updated?.meeting_embedurl || currentSession?.meetingEmbedUrl || currentSession?.meeting_embedurl || "",
+        });
+      }
       catch (error) { await finish(job, "retry", error instanceof Error ? error.message : "Private Zoho Meeting link persistence failed.", retryDelay(Number(job.attempts || 1))); return null; }
     }
     try { const recovered = await findExistingMeetingByMarker(meeting); if (recovered) return await persistPrivate(job, recovered); } catch { /* read-only preflight */ }
