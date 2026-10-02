@@ -60,8 +60,12 @@ export interface RecruitmentInterview {
   endAt: string;
   timezone: string;
   meetingUrl?: string;
+  participantMeetingUrl?: string;
+  participantMeetingReady?: boolean;
   meetingLaunchRole?: 'host' | 'participant';
   hostLaunchReady?: boolean;
+  hostLaunchStatus?: 'unknown' | 'ready' | 'avsdk_required' | 'reauthorization_required' | 'error';
+  hostLaunchMessage?: string | null;
   status: RecruitmentInterviewStatus;
   outcomeNotes?: string;
   createdAt?: string;
