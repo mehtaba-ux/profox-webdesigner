@@ -76,7 +76,8 @@ function mailConnectionLabel(status: ProfessionalIntegrationsConfig['zohoMailCon
 
 function calendarConnectionLabel(snapshot: ZohoCalendarIntegrationSnapshot | null) {
   const status = snapshot?.connection.status || 'disconnected';
-  if (status === 'connected' && snapshot?.connection.meetingReady) return 'Calendar + Meeting ready';
+  if (status === 'connected' && snapshot?.connection.meetingReady && snapshot?.connection.sdkMeetingReady) return 'Calendar + Meeting + Host launch ready';
+  if (status === 'connected' && snapshot?.connection.meetingReady) return 'Calendar + Meeting ready · Host re-auth needed';
   if (status === 'connected') return 'Calendar connected · Meeting unavailable';
   if (status === 'reconnect_required') return 'Reconnect required';
   if (status === 'error') return 'Connection error';
@@ -386,13 +387,14 @@ export default function ProfessionalIntegrationsAdmin() {
 
       <div className={`rounded-3xl border p-5 ${calendarReady ? 'border-emerald-200 bg-emerald-50/40' : 'border-amber-200 bg-amber-50/40'}`}>
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div><div className="text-sm font-black text-slate-950">2. Authorize central Zoho Calendar + Meeting</div><p className="mt-1 text-xs leading-5 text-slate-500">Only a ProFox Administrator can run this consent. It verifies the central Calendar, Meeting organization and presenter without creating a test meeting.</p></div>
+          <div><div className="text-sm font-black text-slate-950">2. Authorize central Zoho Calendar + Meeting</div><p className="mt-1 text-xs leading-5 text-slate-500">Only a ProFox Administrator can run this consent. It verifies Calendar, Meeting, and the Zoho Meeting SDK permissions used to generate signed no-login host links for recruitment interviews.</p></div>
           <span className={`w-fit rounded-full px-3 py-1.5 text-[10px] font-black uppercase tracking-wide ${calendarReady ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>{calendarConnectionLabel(calendarSnapshot)}</span>
         </div>
         <div className="mt-4 flex flex-wrap items-center gap-3">
           <button type="button" onClick={() => void connectCentralCalendar()} disabled={calendarBusy || !config.zohoProviderConfigured} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-[#000080] px-4 text-xs font-black text-white disabled:opacity-50">{calendarBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ExternalLink className="h-4 w-4" />}{calendarSnapshot?.connection.connected ? 'Re-authorize Calendar + Meeting' : 'Connect Calendar + Meeting'}</button>
           <div className="text-[11px] text-slate-500">Last successful sync: <span className="font-bold text-slate-700">{formatTimestamp(calendarSnapshot?.connection.lastSuccessfulSyncAt)}</span></div>
         </div>
+        {calendarSnapshot?.connection.connected && calendarSnapshot.connection.meetingReady && !calendarSnapshot.connection.sdkMeetingReady && <div className="mt-3 rounded-xl border border-amber-200 bg-white/80 p-3 text-[11px] font-semibold leading-5 text-amber-800">Recruitment host launch needs one re-authorization. Click <strong>Re-authorize Calendar + Meeting</strong> and approve the Zoho Meeting SDK permissions. Existing Calendar/Meeting data is preserved.</div>}
         {calendarSnapshot?.connection.lastError && <div className="mt-3 rounded-xl border border-amber-200 bg-white/70 p-3 text-[11px] font-semibold leading-5 text-amber-800">{calendarSnapshot.connection.lastError}</div>}
       </div>
 
