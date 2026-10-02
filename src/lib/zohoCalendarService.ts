@@ -7,6 +7,7 @@ export interface ZohoCalendarConnectionStatus {
   calendarId: string;
   calendarTimezone: string;
   meetingReady: boolean;
+  sdkMeetingReady: boolean;
   lastAuthAt: string | null;
   lastSuccessfulSyncAt: string | null;
   lastError: string | null;
