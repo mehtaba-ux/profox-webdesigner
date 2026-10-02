@@ -373,6 +373,49 @@ Deno.serve(async (req: Request) => {
       return null;
     }
     if (!created.response.ok) {
+      const sdkMessage = zohoError(created.payload, created.response.status);
+
+      if (/AVSDK is not enabled/i.test(sdkMessage)) {
+        await service.from("zoho_service_calendar_connection").update({
+          status: "connected",
+          last_error: null,
+          sdk_host_status: "avsdk_required",
+          sdk_host_error: "Zoho Meeting AVSDK is not enabled. Standard Calendar and Meeting remain connected; no-login host launch is unavailable until AVSDK is enabled.",
+          sdk_host_checked_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        }).eq("singleton_key", "primary");
+
+        // Preserve the working candidate meeting while AVSDK is unavailable.
+        // If this interview already has a valid participant link, reuse it
+        // without touching the old provider object. New interviews still get
+        // a normal Zoho Meeting so candidate delivery remains operational.
+        if (existing?.external_meeting_id && /^https:\/\//i.test(String(existing.join_url || ""))) {
+          return {
+            key: String(existing.external_meeting_id),
+            join: String(existing.join_url),
+            host: String(existing.host_url || ""),
+          };
+        }
+
+        return ensureMeeting(job, meeting);
+      }
+
+      if (reconnectRequired(created.response.status, created.payload)) {
+        await service.from("zoho_service_calendar_connection").update({
+          sdk_host_status: "reauthorization_required",
+          sdk_host_error: sdkMessage,
+          sdk_host_checked_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        }).eq("singleton_key", "primary");
+      } else {
+        await service.from("zoho_service_calendar_connection").update({
+          sdk_host_status: "error",
+          sdk_host_error: sdkMessage,
+          sdk_host_checked_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        }).eq("singleton_key", "primary");
+      }
+
       await handleFailure(job, created.response, created.payload, "create", "Zoho Meeting SDK session");
       return null;
     }
@@ -384,12 +427,26 @@ Deno.serve(async (req: Request) => {
         scopes: mergedScopes,
         status: "connected",
         last_error: null,
+        sdk_host_status: "ready",
+        sdk_host_error: null,
+        sdk_host_checked_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       }).eq("singleton_key", "primary");
       if (scopePersistError) {
         await finish(job, "retry", scopePersistError.message, retryDelay(Number(job.attempts || 1)));
         return null;
       }
+    }
+
+    if (sdkMeetingReady) {
+      await service.from("zoho_service_calendar_connection").update({
+        status: "connected",
+        last_error: null,
+        sdk_host_status: "ready",
+        sdk_host_error: null,
+        sdk_host_checked_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }).eq("singleton_key", "primary");
     }
 
     let next;
