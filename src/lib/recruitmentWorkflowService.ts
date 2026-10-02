@@ -61,6 +61,7 @@ export interface RecruitmentInterview {
   timezone: string;
   meetingUrl?: string;
   meetingLaunchRole?: 'host' | 'participant';
+  hostLaunchReady?: boolean;
   status: RecruitmentInterviewStatus;
   outcomeNotes?: string;
   createdAt?: string;
