@@ -102,7 +102,7 @@ Deno.serve(async (req: Request) => {
   if (connectionError || !connection || !["connected", "error"].includes(String(connection.status))) return json({ error: connectionError?.message || "Central Zoho service connection is unavailable." }, 503);
   if (!connection.calendar_id || !connection.meeting_org_id || !connection.presenter_zuid || !connection.meeting_ready) return json({ error: "Central Zoho Calendar/Meeting capability is incomplete." }, 503);
   const grantedScopes = Array.isArray(connection.scopes) ? connection.scopes.map((value: unknown) => String(value)) : [];
-  const sdkMeetingReady = grantedScopes.includes("ZohoMeeting.sdk.READ") && grantedScopes.includes("ZohoMeeting.sdk.CREATE");
+  let sdkMeetingReady = grantedScopes.includes("ZohoMeeting.sdk.READ") && grantedScopes.includes("ZohoMeeting.sdk.CREATE");
 
   const { data: provider, error: providerError } = await service.rpc("service_get_zoho_provider_credentials");
   if (providerError || !provider?.clientId || !provider?.clientSecret) return json({ error: "Zoho OAuth provider credentials are not configured." }, 503);
@@ -154,7 +154,26 @@ Deno.serve(async (req: Request) => {
   if (String(connection.status) === "error") {
     try {
       const range = JSON.stringify({ start: toBasicUtc(new Date()), end: toBasicUtc(new Date(Date.now() + 24 * 60 * 60 * 1000)) });
-      const calendarProbe = await api(calendarBase, `/api/v1/calendars/${encodeURIComponent(String(connection.calendar_id))}/events?${new URLSearchParams({ range }).toString()}`, { method: "GET" });
+      let calendarProbe = await api(calendarBase, `/api/v1/calendars/${encodeURIComponent(String(connection.calendar_id))}/events?${new URLSearchParams({ range }).toString()}`, { method: "GET" });
+
+      if (!calendarProbe.response.ok && (calendarProbe.response.status === 404 || /calendar not found/i.test(zohoError(calendarProbe.payload, calendarProbe.response.status)))) {
+        const primary = await api(calendarBase, "/api/v1/calendars/primary", { method: "GET" });
+        const primaryCalendar = Array.isArray(primary.payload?.calendars) ? primary.payload.calendars[0] : null;
+        const recoveredCalendarId = String(primaryCalendar?.uid || "").trim();
+        if (primary.response.ok && recoveredCalendarId) {
+          const { error: recoverCalendarError } = await service.from("zoho_service_calendar_connection").update({
+            calendar_id: recoveredCalendarId,
+            calendar_timezone: String(primaryCalendar?.timezone || connection.calendar_timezone || "UTC"),
+            updated_at: new Date().toISOString(),
+          }).eq("singleton_key", "primary");
+          if (recoverCalendarError) return json({ error: recoverCalendarError.message, recoveryProbe: "calendar_identity" }, 503);
+
+          connection.calendar_id = recoveredCalendarId;
+          connection.calendar_timezone = String(primaryCalendar?.timezone || connection.calendar_timezone || "UTC");
+          calendarProbe = await api(calendarBase, `/api/v1/calendars/${encodeURIComponent(recoveredCalendarId)}/events?${new URLSearchParams({ range }).toString()}`, { method: "GET" });
+        }
+      }
+
       if (!calendarProbe.response.ok) {
         const message = `Zoho Calendar recovery probe failed: ${zohoError(calendarProbe.payload, calendarProbe.response.status)}`.slice(0, 1800);
         const reconnect = reconnectRequired(calendarProbe.response.status, calendarProbe.payload);
@@ -287,11 +306,10 @@ Deno.serve(async (req: Request) => {
   }
 
   async function createRecruitmentSdkMeeting(job: any, meeting: any, existing: any) {
-    if (!sdkMeetingReady) {
-      await finish(job, "reconnect_required", "Zoho Meeting SDK permissions are required for no-login interviewer host launch. Re-authorize the central Zoho Calendar + Meeting connection.");
-      return null;
-    }
-
+    // Stored scope metadata can lag a newly granted refresh token. The SDK
+    // endpoint is the source of truth. A successful SDK create confirms the
+    // permission; an OAuth/scope error is handled below without creating a
+    // duplicate provider meeting.
     let created;
     try {
       created = await api(
@@ -307,6 +325,21 @@ Deno.serve(async (req: Request) => {
     if (!created.response.ok) {
       await handleFailure(job, created.response, created.payload, "create", "Zoho Meeting SDK session");
       return null;
+    }
+
+    if (!sdkMeetingReady) {
+      sdkMeetingReady = true;
+      const mergedScopes = Array.from(new Set([...grantedScopes, "ZohoMeeting.sdk.READ", "ZohoMeeting.sdk.CREATE"]));
+      const { error: scopePersistError } = await service.from("zoho_service_calendar_connection").update({
+        scopes: mergedScopes,
+        status: "connected",
+        last_error: null,
+        updated_at: new Date().toISOString(),
+      }).eq("singleton_key", "primary");
+      if (scopePersistError) {
+        await finish(job, "retry", scopePersistError.message, retryDelay(Number(job.attempts || 1)));
+        return null;
+      }
     }
 
     let next;
