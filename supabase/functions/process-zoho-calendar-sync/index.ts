@@ -154,6 +154,51 @@ Deno.serve(async (req: Request) => {
     return { response, payload };
   }
 
+  // Re-resolve the Meeting identity from the active refresh token. This
+  // prevents stale org/presenter IDs from breaking SDK sessions after a
+  // central Zoho re-authorization or account-side change.
+  const identityProbe = await api(meetingBase, "/api/v2/user.json", { method: "GET" }, true);
+  if (!identityProbe.response.ok) {
+    const message = `Zoho Meeting identity verification failed: ${zohoError(identityProbe.payload, identityProbe.response.status)}`.slice(0, 1800);
+    const reconnect = reconnectRequired(identityProbe.response.status, identityProbe.payload);
+    await service.rpc("service_mark_zoho_service_calendar_state", {
+      p_status: reconnect ? "reconnect_required" : "error",
+      p_error: message,
+      p_success: false,
+    });
+    return json({ error: message, identityProbe: true }, reconnect ? 401 : 503);
+  }
+
+  const liveMeetingUser = identityProbe.payload?.userDetails || {};
+  const liveOrgId = String(liveMeetingUser?.zsoid || "").trim();
+  const livePresenterZuid = String(liveMeetingUser?.zuid || "").trim();
+  const liveAccountEmail = String(liveMeetingUser?.primaryEmail || "").trim().toLowerCase();
+  if (!/^\d+$/.test(liveOrgId) || !/^\d+$/.test(livePresenterZuid) || !validEmail(liveAccountEmail)) {
+    return json({ error: "Zoho Meeting did not return a usable organization and presenter identity." }, 503);
+  }
+
+  if (
+    liveOrgId !== String(connection.meeting_org_id || "")
+    || livePresenterZuid !== String(connection.presenter_zuid || "")
+    || liveAccountEmail !== String(connection.account_email || "").toLowerCase()
+  ) {
+    const { error: identityPersistError } = await service.from("zoho_service_calendar_connection").update({
+      zoho_account_id: liveOrgId,
+      zoho_user_id: livePresenterZuid,
+      meeting_org_id: liveOrgId,
+      presenter_zuid: livePresenterZuid,
+      account_email: liveAccountEmail,
+      updated_at: new Date().toISOString(),
+    }).eq("singleton_key", "primary");
+    if (identityPersistError) return json({ error: identityPersistError.message, identityPersist: true }, 503);
+
+    connection.zoho_account_id = liveOrgId;
+    connection.zoho_user_id = livePresenterZuid;
+    connection.meeting_org_id = liveOrgId;
+    connection.presenter_zuid = livePresenterZuid;
+    connection.account_email = liveAccountEmail;
+  }
+
   if (String(connection.status) === "error") {
     try {
       const range = JSON.stringify({ start: toBasicUtc(new Date()), end: toBasicUtc(new Date(Date.now() + 24 * 60 * 60 * 1000)) });
