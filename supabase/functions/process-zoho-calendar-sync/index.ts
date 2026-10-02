@@ -53,7 +53,10 @@ const zohoError = (payload: any, status: number) => (
   detailValue(payload) || `Zoho API request failed (${status})`
 ).slice(0, 1800);
 const retryable = (status: number) => status === 408 || status === 409 || status === 425 || status === 429 || status >= 500;
-const reconnectRequired = (status: number, payload: any) => status === 401 || status === 403 || /INVALID_OAUTHTOKEN|INVALID_TOKEN|invalid oauth|scope|permission/i.test(zohoError(payload, status));
+const reconnectRequired = (status: number, payload: any) => {
+  const message = zohoError(payload, status);
+  return status === 401 || /INVALID_OAUTHTOKEN|INVALID_TOKEN|invalid oauth|invalid token|scope|oauth scope|permission denied|not authorized/i.test(message);
+};
 const retryDelay = (attempts: number) => Math.max(10, Math.min(21600, Math.round(30 * Math.pow(2, Math.max(attempts - 1, 0)))));
 const markerFor = (meetingId: string) => `ProFox Meeting ID: ${meetingId}`;
 
@@ -253,8 +256,10 @@ Deno.serve(async (req: Request) => {
     const timezone = String(meeting.timezone || connection.calendar_timezone || "UTC");
     const duration = Math.max(60000, new Date(meeting.end_at).getTime() - new Date(meeting.start_at).getTime());
     const agenda = `${String(meeting.description || "").trim()}${meeting.description ? "\n\n" : ""}${markerFor(String(meeting.id))}`;
+    const presenterText = String(connection.presenter_zuid || "").trim();
+    const presenter = /^\d+$/.test(presenterText) ? Number(presenterText) : presenterText;
     const session: any = {
-      topic: String(meeting.title || "ProFox Meeting").slice(0, 200), agenda: agenda.slice(0, 2000), presenter: String(connection.presenter_zuid),
+      topic: String(meeting.title || "ProFox Meeting").slice(0, 200), agenda: agenda.slice(0, 2000), presenter,
       startTime: meetingStart(String(meeting.start_at), timezone), duration, timezone,
     };
     // Candidate-facing invitations are sent only by ProFox. Do not add the
